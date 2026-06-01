@@ -12,7 +12,8 @@
         .chat-area { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; background: transparent; scrollbar-width: none; }
         .chat-area::-webkit-scrollbar { display: none; }
         .message-row { display: flex; align-items: center; gap: 10px; background: rgba(31,31,31,0.9); padding: 10px; border-radius: 8px; backdrop-filter: blur(5px); }
-        .input-area { background-color: rgba(31,31,31,0.95); padding: 10px; display: flex; gap: 10px; align-items: center; border-top: 1px solid #333; backdrop-filter: blur(5px); }
+        .input-area { background-color: rgba(31,31,31,0.95); padding: 10px;
+padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)); display: flex; gap: 10px; align-items: center; border-top: 1px solid #333; backdrop-filter: blur(5px); }
         input { flex: 1; background: rgba(42,42,42,0.9); border: 1px solid #444; padding: 12px; color: white; border-radius: 6px; font-size: 16px; outline: none; }
         .drawer { background-color: rgba(31,31,31,0.95); border-right-color: #2E7D32; backdrop-filter: blur(10px); }
         .drawer-header { background-color: #2E7D32; color: white; }
@@ -292,7 +293,7 @@
         if (ref === myPubkey) { updateRobinStatus('Это ваш собственный колчан', 2000); return; }
         let contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
         if (contacts.some(c => c.pubkey === ref)) { updateRobinStatus('Стрелок уже есть', 2000); return; }
-        const tempName = ref.slice(0,8);
+        const tempName = 'Стрелок-' + ref.slice(-4);
         contacts.push({ name: tempName, pubkey: ref, avatar: 'assets/avatars/001-.png', status: 'confirmed' });
         localStorage.setItem('robinhood_contacts', JSON.stringify(contacts));
         updateRobinStatus(`Стрелок ${tempName} добавлен`, 3000);
@@ -310,7 +311,7 @@
         if (ref && ref !== myPubkey) {
             let contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
             if (!contacts.some(c => c.pubkey === ref)) {
-                const tempName = ref.slice(0,8);
+                const tempName = 'Стрелок-' + ref.slice(-4);
                 contacts.push({ name: tempName, pubkey: ref, avatar: 'assets/avatars/001-.png', status: 'confirmed' });
                 localStorage.setItem('robinhood_contacts', JSON.stringify(contacts));
                 loadContacts();
@@ -374,6 +375,10 @@
     }
 
     async function sendMessageHandler() {
+        if (!activeContact) {
+    updateRobinStatus('Сначала выберите стрелка в Шервудских письмах!', 3000);
+    return;
+}
         const text = msgInput.value.trim();
         if (!text || !activeContact) return;
         await sendMessage(text, activeContact.pubkey);
