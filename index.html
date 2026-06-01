@@ -75,9 +75,8 @@
         .contact-menu { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); background: #1F1F1F; border: 1px solid #2E7D32; border-radius: 12px; padding: 10px; z-index: 300; min-width: 220px; box-shadow: 0 8px 20px rgba(0,0,0,0.6); }
         .contact-menu-item { padding: 10px; cursor: pointer; border-radius: 6px; margin-bottom: 4px; }
         .contact-menu-item:hover { background: rgba(255,255,255,0.1); }
-
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-         /* Шторка чатов */
+        /* Шторка чатов */
         .chat-switcher { position: fixed; top: 50px; left: 50%; transform: translateX(-50%) translateY(-10px); width: 90%; max-width: 320px; max-height: 50vh; background: rgba(20,20,20,0.98); z-index: 150; border: 1px solid #2E7D32; border-radius: 0 0 12px 12px; opacity: 0; visibility: hidden; transition: opacity 0.2s, visibility 0.2s, transform 0.2s; overflow-y: auto; padding: 10px 0; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
         .chat-switcher.open { opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0); }
         .chat-switcher-header { padding: 8px 16px; font-weight: bold; color: #888; border-bottom: 1px solid #333; margin-bottom: 5px; }
@@ -368,7 +367,7 @@
         if (ref === myPubkey) { updateRobinStatus('Это ваш собственный колчан', 2000); return; }
         let contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
         if (contacts.some(c => c.pubkey === ref)) { updateRobinStatus('Стрелок уже есть', 2000); return; }
-        const tempName = 'Лучник-' + ref.slice(-4);
+        const tempName = 'Лучник';
         contacts.push({ name: tempName, pubkey: ref, avatar: 'assets/avatars/001-.png', status: 'confirmed' });
         localStorage.setItem('robinhood_contacts', JSON.stringify(contacts));
         updateRobinStatus(`Стрелок ${tempName} добавлен`, 3000);
@@ -386,72 +385,55 @@
         if (ref && ref !== myPubkey) {
             let contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
             if (!contacts.some(c => c.pubkey === ref)) {
-                const tempName = 'Стрелок-' + ref.slice(-4);
+                const tempName = 'Лучник';
                 contacts.push({ name: tempName, pubkey: ref, avatar: 'assets/avatars/001-.png', status: 'confirmed' });
                 localStorage.setItem('robinhood_contacts', JSON.stringify(contacts));
                 loadContacts();
-                updateRobinStatus(`Лучник ${tempName} добавлен по реф. стреле`, 3000);
+                updateRobinStatus(`Лучник добавлен по реф. стреле`, 3000);
             }
         }
     }
 
     // Стрельцы
     function loadContacts() {
-    const contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
-    const confirmed = contacts.filter(c => c.status === 'confirmed');
-    contactsListInner.innerHTML = '';
-    if (confirmed.length) {
-        confirmed.forEach(c => {
-            const div = document.createElement('div'); div.className = 'contact-item';
-            div.innerHTML = `<div class="contact-info"><img src="${c.avatar || 'assets/avatars/001-.png'}" class="contact-avatar"><span class="contact-name">${c.name}</span></div><button class="delete-contact" data-pubkey="${c.pubkey}">✖</button>`;
-            const infoDiv = div.querySelector('.contact-info');
-            infoDiv.addEventListener('click', () => openChatWithContact(c));
-            const delBtn = div.querySelector('.delete-contact');
-            delBtn.addEventListener('click', (e) => { e.stopPropagation(); deleteContact(c.pubkey, e); });
-            
-            // Длинное нажатие
-            let pressTimer;
-            const startPress = (e) => {
-                pressTimer = setTimeout(() => {
-                    showContactMenu(c, div);
-                }, 600);
-            };
-            const cancelPress = () => {
-                clearTimeout(pressTimer);
-            };
-            div.addEventListener('mousedown', startPress);
-            div.addEventListener('mouseup', cancelPress);
-            div.addEventListener('mouseleave', cancelPress);
-            div.addEventListener('touchstart', startPress, { passive: true });
-            div.addEventListener('touchend', cancelPress);
-            div.addEventListener('touchmove', cancelPress);
-            
-            contactsListInner.appendChild(div);
-        });
-    } else {
-        contactsListInner.innerHTML = '<div style="padding:10px;color:#888;">Воспользуйся реферальной стрелой!</div>';
-    }
-}
-
-    function deleteContact(pubkey, event) {
-        event.stopPropagation();
-        let contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
-        contacts = contacts.filter(c => c.pubkey !== pubkey);
-        localStorage.setItem('robinhood_contacts', JSON.stringify(contacts));
-        if (activeContact && activeContact.pubkey === pubkey) { 
-            activeContact = null; 
-            headerTitle.textContent = 'RobinHood P2P';
-            chatSwitcherLabel.textContent = 'Перестрелки';
-            chatSwitcherBtn.classList.remove('open');
-            chatSwitcher.classList.remove('open');
+        const contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
+        const confirmed = contacts.filter(c => c.status === 'confirmed');
+        contactsListInner.innerHTML = '';
+        if (confirmed.length) {
+            confirmed.forEach(c => {
+                const div = document.createElement('div'); div.className = 'contact-item';
+                div.innerHTML = `<div class="contact-info"><img src="${c.avatar || 'assets/avatars/001-.png'}" class="contact-avatar"><span class="contact-name">${c.name}</span></div><button class="delete-contact" data-pubkey="${c.pubkey}">✖</button>`;
+                const infoDiv = div.querySelector('.contact-info');
+                infoDiv.addEventListener('click', () => openChatWithContact(c));
+                const delBtn = div.querySelector('.delete-contact');
+                delBtn.addEventListener('click', (e) => { e.stopPropagation(); deleteContact(c.pubkey, e); });
+                
+                // Длинное нажатие
+                let pressTimer;
+                const startPress = (e) => {
+                    pressTimer = setTimeout(() => {
+                        showContactMenu(c, div);
+                    }, 600);
+                };
+                const cancelPress = () => {
+                    clearTimeout(pressTimer);
+                };
+                div.addEventListener('mousedown', startPress);
+                div.addEventListener('mouseup', cancelPress);
+                div.addEventListener('mouseleave', cancelPress);
+                div.addEventListener('touchstart', startPress, { passive: true });
+                div.addEventListener('touchend', cancelPress);
+                div.addEventListener('touchmove', cancelPress);
+                
+                contactsListInner.appendChild(div);
+            });
+        } else {
+            contactsListInner.innerHTML = '<div style="padding:10px;color:#888;">Воспользуйся реферальной стрелой!</div>';
         }
-        loadContacts();
-        updateRobinStatus('Стрелок уволен', 2000);
     }
 
     function openChatWithContact(contact) {
         activeContact = contact;
-        headerTitle.textContent = contact.name;
         chatSwitcherLabel.textContent = contact.name;
         msgInput.placeholder = "Выпустить стрелу " + contact.name + "...";
         document.querySelectorAll(".message-row:not(#robin-row)").forEach(m => m.remove());
@@ -696,8 +678,36 @@
     if (savedHistory !== null) toggleHistory.checked = savedHistory === 'true';
     const savedSound = localStorage.getItem('robinhood_sound');
     if (savedSound !== null) toggleSound.checked = savedSound === 'true';
-        // ---------- КОНТЕКСТНОЕ МЕНЮ КОНТАКТА ----------
+
+    // ---------- КОНТЕКСТНОЕ МЕНЮ КОНТАКТА ----------
     let currentMenuContact = null;
+
+    function showDeleteConfirmation(pubkey, name) {
+        const confirmDiv = document.createElement('div');
+        confirmDiv.style.position = 'fixed'; confirmDiv.style.top = '50%'; confirmDiv.style.left = '50%';
+        confirmDiv.style.transform = 'translate(-50%,-50%)'; confirmDiv.style.background = '#1F1F1F';
+        confirmDiv.style.border = '1px solid #f44336'; confirmDiv.style.borderRadius = '12px';
+        confirmDiv.style.padding = '20px'; confirmDiv.style.zIndex = '400'; confirmDiv.style.textAlign = 'center';
+        confirmDiv.innerHTML = `<p style="margin-bottom:15px;">Уверены, что хотите сжечь колчан с ${name}?</p>`;
+        const btnContainer = document.createElement('div');
+        btnContainer.style.display = 'flex'; btnContainer.style.justifyContent = 'center'; btnContainer.style.gap = '15px';
+
+        const yesBtn = document.createElement('button');
+        yesBtn.textContent = '✓ Да'; yesBtn.style.background = '#2E7D32'; yesBtn.style.color = 'white'; yesBtn.style.border = 'none'; yesBtn.style.padding = '10px 20px'; yesBtn.style.borderRadius = '6px'; yesBtn.style.cursor = 'pointer';
+        yesBtn.addEventListener('click', () => {
+            document.body.removeChild(confirmDiv);
+            deleteContactAfterConfirm(pubkey, name);
+        });
+
+        const noBtn = document.createElement('button');
+        noBtn.textContent = '✕ Нет'; noBtn.style.background = '#f44336'; noBtn.style.color = 'white'; noBtn.style.border = 'none'; noBtn.style.padding = '10px 20px'; noBtn.style.borderRadius = '6px'; noBtn.style.cursor = 'pointer';
+        noBtn.addEventListener('click', () => document.body.removeChild(confirmDiv));
+
+        btnContainer.appendChild(yesBtn);
+        btnContainer.appendChild(noBtn);
+        confirmDiv.appendChild(btnContainer);
+        document.body.appendChild(confirmDiv);
+    }
 
     function showContactMenu(contact, element) {
         const menuOpenTime = Date.now();
@@ -752,7 +762,7 @@
 
         document.getElementById('menu-cancel').onclick = hideContactMenu;
 
-                // Закрывать меню только по клику вне его, но не сразу после открытия
+        // Закрывать меню только по клику вне его, но не сразу после открытия
         setTimeout(() => {
             const closeHandler = (e) => {
                 // Игнорируем клики, произошедшие в течение 500 мс после открытия меню
@@ -771,41 +781,39 @@
         currentMenuContact = null;
     }
 
-    function showDeleteConfirmation(pubkey, name) {
-        const confirmDiv = document.createElement('div');
-        confirmDiv.style.position = 'fixed'; confirmDiv.style.top = '50%'; confirmDiv.style.left = '50%';
-        confirmDiv.style.transform = 'translate(-50%,-50%)'; confirmDiv.style.background = '#1F1F1F';
-        confirmDiv.style.border = '1px solid #f44336'; confirmDiv.style.borderRadius = '12px';
-        confirmDiv.style.padding = '20px'; confirmDiv.style.zIndex = '400'; confirmDiv.style.textAlign = 'center';
-        confirmDiv.innerHTML = `<p style="margin-bottom:15px;">Уверены, что хотите сжечь колчан с ${name}?</p>`;
-        const btnContainer = document.createElement('div');
-        btnContainer.style.display = 'flex'; btnContainer.style.justifyContent = 'center'; btnContainer.style.gap = '15px';
+    function deleteContactAfterConfirm(pubkey, name) {
+        let contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
+        const before = contacts.length;
+        contacts = contacts.filter(c => c.pubkey !== pubkey);
+        if (contacts.length === before) {
+            updateRobinStatus('Колчан уже сожжён', 2000);
+            return;
+        }
+        localStorage.setItem('robinhood_contacts', JSON.stringify(contacts));
 
-        const yesBtn = document.createElement('button');
-        yesBtn.textContent = '✓ Да'; yesBtn.style.background = '#2E7D32'; yesBtn.style.color = 'white'; yesBtn.style.border = 'none'; yesBtn.style.padding = '10px 20px'; yesBtn.style.borderRadius = '6px'; yesBtn.style.cursor = 'pointer';
-        yesBtn.addEventListener('click', () => {
-            document.body.removeChild(confirmDiv);
-            deleteContactAfterConfirm(pubkey, name);
-        });
+        if (activeContact && activeContact.pubkey === pubkey) {
+            activeContact = null;
+            headerTitle.textContent = 'RobinHood P2P';
+            chatSwitcherLabel.textContent = 'Перестрелки';
+            chatSwitcherBtn.classList.remove('open');
+            chatSwitcher.classList.remove('open');
+            document.querySelectorAll('.message-row:not(#robin-row)').forEach(m => m.remove());
+        }
 
-        const noBtn = document.createElement('button');
-        noBtn.textContent = '✕ Нет'; noBtn.style.background = '#f44336'; noBtn.style.color = 'white'; noBtn.style.border = 'none'; noBtn.style.padding = '10px 20px'; noBtn.style.borderRadius = '6px'; noBtn.style.cursor = 'pointer';
-        noBtn.addEventListener('click', () => document.body.removeChild(confirmDiv));
+        const itemToRemove = document.querySelector(`.contact-item [data-pubkey="${pubkey}"]`)?.closest('.contact-item');
+        if (itemToRemove) itemToRemove.remove();
 
-        btnContainer.appendChild(yesBtn);
-        btnContainer.appendChild(noBtn);
-        confirmDiv.appendChild(btnContainer);
-        document.body.appendChild(confirmDiv);
+        loadContacts();
+        updateRobinStatus(`Колчан с ${name} сожжён`, 3000);
     }
 
-        function deleteContact(pubkey, event) {
+    function deleteContact(pubkey, event) {
         event.stopPropagation();
         const contact = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]').find(c => c.pubkey === pubkey);
         if (contact) {
             showDeleteConfirmation(pubkey, contact.name);
         }
     }
-        
 </script>
 <!-- Контекстное меню контакта -->
 <div id="contact-menu" class="contact-menu" style="display:none;">
