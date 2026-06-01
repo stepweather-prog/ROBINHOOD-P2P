@@ -700,6 +700,7 @@
     let currentMenuContact = null;
 
     function showContactMenu(contact, element) {
+        const menuOpenTime = Date.now();
         currentMenuContact = contact;
         const menu = document.getElementById('contact-menu');
         menu.style.display = 'block';
@@ -751,8 +752,11 @@
 
         document.getElementById('menu-cancel').onclick = hideContactMenu;
 
+                // Закрывать меню только по клику вне его, но не сразу после открытия
         setTimeout(() => {
             const closeHandler = (e) => {
+                // Игнорируем клики, произошедшие в течение 500 мс после открытия меню
+                if (Date.now() - menuOpenTime < 500) return;
                 if (!menu.contains(e.target)) {
                     hideContactMenu();
                     document.removeEventListener('click', closeHandler);
