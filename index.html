@@ -367,7 +367,8 @@
     async function generateReferralLink() {
         if (!myPubkey) return '';
         return new Promise((resolve) => {
-            torrentClient.seed([], { name: 'robinhood-invite' }, (torrent) => {
+                const inviteFile = { name: 'invite.txt', content: 'Join RobinHood P2P' };
+    torrentClient.seed([inviteFile], { name: 'robinhood-invite' }, (torrent) => {
                 const magnet = torrent.magnetURI;
                 const basePath = window.location.pathname.replace(/\/[^/]*$/, '/');
                 const fullOrigin = window.location.origin + basePath;
@@ -434,7 +435,8 @@
         input.value = '';
         document.getElementById('ref-modal').classList.remove('active');
         // Создаём колчан для друга (если у него нет магнита)
-        torrentClient.seed([], { name: 'robinhood-chat' }, (torrent) => {
+                const initFile = { name: 'init.txt', content: 'Chat started' };
+        torrentClient.seed([initFile], { name: 'robinhood-chat' }, (torrent) => {
             const magnet = torrent.magnetURI;
             contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
             const c = contacts.find(cc => cc.pubkey === ref);
