@@ -260,7 +260,7 @@
                 candidates.forEach(c => stream.pc.addIceCandidate(c).catch(()=>{}));
             }
         };
-                const pollInterval = setInterval(check, 2000);
+        const pollInterval = setInterval(check, 2000);
         check();
         const stopPoll = () => clearInterval(pollInterval);
         if (stream.pc) {
@@ -268,6 +268,7 @@
                 if (stream.pc.connectionState === 'connected' || stream.pc.connectionState === 'failed') stopPoll();
             });
         }
+    }
 
     async function acceptOfferForContact(contactPubkey, sessionId) {
         if (activeStreams[contactPubkey]) return;
@@ -294,6 +295,12 @@
         };
         const iceInterval = setInterval(checkIce, 2000);
         checkIce();
+        // Остановить опрос ICE при изменении состояния соединения
+        pc.addEventListener('connectionstatechange', () => {
+            if (pc.connectionState === 'connected' || pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
+                clearInterval(iceInterval);
+            }
+        });
     }
 
     // ---------- ИНТЕРФЕЙС ----------
@@ -372,7 +379,7 @@
     document.getElementById('add-friend-btn').addEventListener('click', addFriendManually);
     document.getElementById('friend-input').addEventListener('keypress', (e) => { if (e.key === 'Enter') addFriendManually(); });
 
-        function processReferral() {
+    function processReferral() {
         const urlParams = new URLSearchParams(window.location.search);
         const ref = urlParams.get('ref');
         const sid = urlParams.get('sid');
