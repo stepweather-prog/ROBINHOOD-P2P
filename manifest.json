@@ -1,19 +1,15 @@
 {
   "name": "RobinHood P2P",
   "short_name": "RobinHood",
-  "start_url": "/",
+  "start_url": "/RobinHood-messenger/",
+  "scope": "/RobinHood-messenger/",
   "display": "standalone",
   "background_color": "#121212",
   "theme_color": "#2E7D32",
   "icons": [
     {
-      "src": "assets/avatars/017--15.png",
+      "src": "assets/icons/013--11.png",
       "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "assets/avatars/017--15.png",
-      "sizes": "512x512",
       "type": "image/png"
     }
   ]
