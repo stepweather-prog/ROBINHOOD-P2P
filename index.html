@@ -438,11 +438,11 @@
     chatSwitcherBtn.addEventListener('click', () => {
         if (chatSwitcher.classList.contains('open')) {
             chatSwitcher.classList.remove('open');
-            headerTitleBtn.classList.remove('open');
+            chatSwitcherBtn.classList.remove('open');
         } else {
             populateChatSwitcher();
             chatSwitcher.classList.add('open');
-            headerTitleBtn.classList.add('open');
+            chatSwitcherBtn.classList.add('open');
         }
     });
 
@@ -458,7 +458,7 @@
             div.innerHTML = `<img src="${c.avatar || 'assets/avatars/001-.png'}" class="contact-avatar"><span class="contact-name">${c.name}</span>`;
             div.addEventListener('click', () => {
                 chatSwitcher.classList.remove('open');
-                headerTitleBtn.classList.remove('open');
+                chatSwitcherBtn.classList.remove('open');
                 openChatWithContact(c);
             });
             chatSwitcherList.appendChild(div);
