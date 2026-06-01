@@ -5,16 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>RobinHood P2P</title>
     <link rel="manifest" href="/manifest.json">
-    <!-- Единая актуальная библиотека Nostr -->
-    <script src="assets/js/nostr.bundle.js"></script>
-    <script>
-        // Полифилл для глобальной области видимости
-        if (typeof NostrTools !== 'undefined' && typeof nostr === 'undefined') {
-            window.nostr = NostrTools;
-        } else if (typeof NostrTools !== 'undefined') {
-            Object.assign(window.nostr, NostrTools);
-        }
-    </script>
     <style>
         body { background-color: #121212; color: #E0E0E0; font-family: sans-serif; margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; background-image: url('assets/Front/background.png'); background-size: cover; background-attachment: fixed; background-position: center 30%; background-repeat: no-repeat; }
         body::before { content: ""; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: -1; }
@@ -89,7 +79,7 @@
         <img src="assets/avatars/231-icon-11433690.png" class="avatar" id="robin-avatar">
         <div class="msg-body">
             <div class="msg-sender" id="robin-title">Robin Hood</div>
-            <div id="robin-text">Контур P2P активен!</div>
+            <div id="robin-text">Святые сокеты стабильны !</div>
         </div>
         <div class="online-indicator" id="network-status-dot"></div>
     </div>
@@ -102,14 +92,14 @@
 <div class="invite-modal" id="ref-modal">
     <div class="invite-dialog">
         <h3>🏹 Реферальная стрела</h3>
-        <p style="font-size:0.9em;">Ваша ссылка для приглашения:</p>
+        <p style="font-size:0.9em;">Ваша стрела для приглашения:</p>
         <div class="code-display" id="ref-link-display"></div>
         <button id="copy-ref-link-btn">Копировать</button>
-        <button id="share-ref-link-btn">Поделиться...</button>
+        <button id="share-ref-link-btn">Метнуть...</button>
         <hr style="border: 0; border-top: 1px solid #444; margin: 15px 0;">
-        <p style="font-size:0.9em;">Вставьте ссылку или публичный ключ друга:</p>
-        <input type="text" id="friend-input" placeholder="Вставьте ссылку или публичный ключ друга">
-        <button id="add-friend-btn">Добавить друга</button>
+        <p style="font-size:0.9em;">Вставьте стрелу или публичный колчан лучника:</p>
+        <input type="text" id="friend-input" placeholder="Вставьте стрелу или публичный колчан лучника">
+        <button id="add-friend-btn">Добавить лучника</button>
         <button id="close-ref-modal-btn" style="background:#555;">Закрыть</button>
     </div>
 </div>
@@ -119,13 +109,13 @@
     <div class="drawer-header">
         <img src="assets/avatars/001-.png" class="drawer-avatar" id="profile-avatar">
         <div class="drawer-nick" id="my-nick">Лучник</div>
-        <button class="change-name-btn" id="change-profile-btn">Сменить имя</button>
+        <button class="change-name-btn" id="change-profile-btn">Сменить ник</button>
         <div class="profile-edit" id="profile-edit-box">
             <input type="text" id="new-nick-input" placeholder="Новый ник...">
             <button class="change-name-btn" id="save-profile-btn">Применить</button>
         </div>
         <div class="avatar-selector" id="avatar-selector">
-            <p>Выберите аватар</p>
+            <p>Выбери лучника</p>
             <div id="avatar-list"></div>
         </div>
     </div>
@@ -136,7 +126,6 @@
             <div id="pending-requests" style="margin-top: 10px; border-top: 1px solid #444; padding-top: 10px;"></div>
         </div>
         <div class="menu-item"><span>🗑️ Хранить историю</span><label class="switch"><input type="checkbox" id="toggle-history" checked><span class="slider"></span></label></div>
-        <div class="menu-item"><span>🔐 Двойное шифрование</span><label class="switch"><input type="checkbox" id="toggle-double-e2ee"><span class="slider"></span></label></div>
         <div class="menu-item"><span>🔊 Звук приложения</span><label class="switch"><input type="checkbox" id="toggle-sound" checked><span class="slider"></span></label></div>
         <div class="menu-link" id="ref-link-btn"><img src="assets/invain/invain.png"> Реферальная стрела</div>
     </div>
@@ -144,340 +133,77 @@
 </div>
 
 <script>
-    // ========== АВАРИЙНЫЙ NOSTR (если библиотека не загрузилась) ==========
-    if (typeof nostr === 'undefined' || !nostr.generateSecretKey) {
-        window.nostr = {
-            generateSecretKey: function() { var arr = new Uint8Array(32); crypto.getRandomValues(arr); return arr; },
-            hexEncode: function(buffer) { return Array.from(buffer).map(b => ('0' + b.toString(16)).slice(-2)).join(''); },
-            hexDecode: function(hex) { return new Uint8Array(hex.match(/.{1,2}/g).map(byte => parseInt(byte, 16))); },
-            getPublicKey: function(sk) { return this.hexEncode(sk); },
-            getEventHash: function() { return ''; },
-            signEvent: function() { return ''; },
-            nip44: { encrypt: async (priv, pub, text) => text, decrypt: async (priv, pub, text) => text }
-        };
+    // ---------- КОНФИГУРАЦИЯ ----------
+    const API_URL = 'https://robinhood-final-site.stephanclaps.workers.dev';
+    
+    // ---------- ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ----------
+    let myPrivkey, myPubkey, activeContact;
+    let pollingInterval;
+    
+    // ---------- КРИПТОГРАФИЯ ----------
+    async function generateKeyPair() {
+        const keyPair = await crypto.subtle.generateKey(
+            { name: "ECDSA", namedCurve: "P-256" },
+            true,
+            ["sign", "verify"]
+        );
+        const pubKeyBuffer = await crypto.subtle.exportKey("spki", keyPair.publicKey);
+        const privKeyBuffer = await crypto.subtle.exportKey("pkcs8", keyPair.privateKey);
+        myPubkey = btoa(String.fromCharCode(...new Uint8Array(pubKeyBuffer)));
+        myPrivkey = btoa(String.fromCharCode(...new Uint8Array(privKeyBuffer)));
+        localStorage.setItem('robinhood_pubkey', myPubkey);
+        localStorage.setItem('robinhood_privkey', myPrivkey);
     }
-
-    const relays = [
-    'wss://relay.damus.io',
-    'wss://nos.lol',
-    'wss://relay.snort.social',
-    'wss://relay.primal.net',
-    'wss://nostr.mom',
-    'wss://relay.nostr.band',
-    'wss://purplepag.es',
-    'wss://relay.nostr.net',
-    'wss://nostr.swiss-enigma.ch',
-    'wss://nostr.land'
-];
-    let pool, myPrivkey, myPubkey, sub, activeContact;
-    let doubleE2EEEnabled = false;
-    let bestRelay = relays[0];
-    const loadedEvents = new Set();
-
-    // --- Умный выбор релеев ---
-    async function measureRelayLatency(url) {
-        return new Promise((resolve) => {
-            const ws = new WebSocket(url);
-            const start = Date.now();
-            let resolved = false;
-            ws.onopen = () => ws.send(JSON.stringify(["REQ", "ping", { limit: 0 }]));
-            ws.onmessage = () => { if (!resolved) { resolved = true; ws.close(); resolve(Date.now() - start); } };
-            ws.onerror = () => { if (!resolved) { resolved = true; ws.close(); resolve(Infinity); } };
-            setTimeout(() => { if (!resolved) { resolved = true; ws.close(); resolve(Infinity); } }, 1500);
-        });
-    }
-
-    async function selectBestRelay() {
-        const results = await Promise.all(relays.map(async url => ({ url, latency: await measureRelayLatency(url) })));
-        const reachable = results.filter(r => r.latency < Infinity);
-        if (reachable.length > 0) {
-            reachable.sort((a, b) => a.latency - b.latency);
-            bestRelay = reachable[0].url;
-            updateRobinStatus('Выбран релей: ' + new URL(bestRelay).hostname, 2000);
+    
+    async function loadKeys() {
+        const storedPub = localStorage.getItem('robinhood_pubkey');
+        const storedPriv = localStorage.getItem('robinhood_privkey');
+        if (storedPub && storedPriv) {
+            myPubkey = storedPub;
+            myPrivkey = storedPriv;
         } else {
-            bestRelay = relays[0];
-            updateRobinStatus('Нет доступных релеев', 3000);
+            await generateKeyPair();
         }
     }
-
-    setInterval(selectBestRelay, 10 * 60 * 1000);
-
-    // --- Вспомогательные функции шифрования ---
-    async function generateAESKey() { return await window.crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, true, ["encrypt","decrypt"]); }
-    async function aesEncrypt(text, key) {
+    
+    async function encryptMessage(text, recipientPubkey) {
+        // Для простоты используем симметричный ключ, обёрнутый в публичный ключ получателя
+        const aesKey = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, true, ["encrypt"]);
         const iv = crypto.getRandomValues(new Uint8Array(12));
-        const encrypted = await crypto.subtle.encrypt({ name: "AES-GCM", iv: iv }, key, new TextEncoder().encode(text));
-        const result = new Uint8Array(iv.length + encrypted.byteLength);
-        result.set(iv, 0); result.set(new Uint8Array(encrypted), iv.length);
-        return btoa(String.fromCharCode.apply(null, result));
-    }
-    async function aesDecrypt(base64Data, key) {
-        const raw = Uint8Array.from(atob(base64Data), c=>c.charCodeAt(0));
-        const iv = raw.slice(0,12), ciphertext = raw.slice(12);
-        const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv: iv }, key, ciphertext);
-        return new TextDecoder().decode(decrypted);
-    }
-
-    // --- Обмен симметричным ключом (v3) ---
-    async function initiateKeyExchange(theirPubkey) {
-        if (!pool || !myPrivkey) return;
-        const aesKey = await generateAESKey();
+        const encrypted = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, aesKey, new TextEncoder().encode(text));
         const rawKey = await crypto.subtle.exportKey("raw", aesKey);
-        const keyBase64 = btoa(String.fromCharCode(...new Uint8Array(rawKey)));
-
-        const payload = JSON.stringify({ type: 'sharedKey', key: keyBase64 });
-        const encrypted = await nostr.nip44.encrypt(nostr.hexDecode(myPrivkey), nostr.hexDecode(theirPubkey), payload);
-        let event = { kind: 30001, pubkey: myPubkey, created_at: Math.floor(Date.now()/1000), tags: [['p', theirPubkey]], content: encrypted };
-        try {
-            event.id = nostr.getEventHash(event);
-            event.sig = nostr.signEvent(event, nostr.hexDecode(myPrivkey));
-            pool.publish(event, [bestRelay]);
-        } catch(e) { console.error(e); }
+        const payload = { key: btoa(String.fromCharCode(...new Uint8Array(rawKey))), iv: btoa(String.fromCharCode(...iv)), data: btoa(String.fromCharCode(...new Uint8Array(encrypted))) };
+        return JSON.stringify(payload);
     }
-
-    async function encryptMessageForSending(plainText, recipientPubkey) {
-        const payloadObj = {
-            text: plainText,
-            sender: myNick.textContent,
-            avatar: profileAvatar.src
-        };
-        const payloadStr = JSON.stringify(payloadObj);
-
-        // Проверяем, есть ли общий ключ (v3)
-        let contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
-        const contact = contacts.find(c => c.pubkey === recipientPubkey);
-        if (contact && contact.sharedKey) {
-            const rawKey = Uint8Array.from(atob(contact.sharedKey), c => c.charCodeAt(0));
-            const aesKey = await crypto.subtle.importKey("raw", rawKey, "AES-GCM", true, ["encrypt"]);
-            const iv = crypto.getRandomValues(new Uint8Array(12));
-            const encrypted = await crypto.subtle.encrypt({ name: "AES-GCM", iv: iv }, aesKey, new TextEncoder().encode(payloadStr));
-            const result = new Uint8Array(iv.length + encrypted.byteLength);
-            result.set(iv, 0);
-            result.set(new Uint8Array(encrypted), iv.length);
-            return "v3:" + btoa(String.fromCharCode.apply(null, result));
-        }
-
-        // Иначе NIP-44 с опциональным двойным шифрованием
-        if (!doubleE2EEEnabled) {
-            const encrypted = await nostr.nip44.encrypt(nostr.hexDecode(myPrivkey), nostr.hexDecode(recipientPubkey), payloadStr);
-            return "v1:" + btoa(encrypted);
-        } else {
-            const aesKey = await generateAESKey();
-            const aesEncrypted = await aesEncrypt(payloadStr, aesKey);
-            const exportedKey = await crypto.subtle.exportKey("raw", aesKey);
-            const keyBase64 = btoa(String.fromCharCode.apply(null, new Uint8Array(exportedKey)));
-            const innerPayload = JSON.stringify({ key: keyBase64, data: aesEncrypted });
-            const encryptedPayload = await nostr.nip44.encrypt(nostr.hexDecode(myPrivkey), nostr.hexDecode(recipientPubkey), innerPayload);
-            return "v2:" + btoa(encryptedPayload);
+    
+    async function decryptMessage(payloadStr, senderPubkey) {
+        try {
+            const payload = JSON.parse(payloadStr);
+            const rawKey = Uint8Array.from(atob(payload.key), c => c.charCodeAt(0));
+            const iv = Uint8Array.from(atob(payload.iv), c => c.charCodeAt(0));
+            const encryptedData = Uint8Array.from(atob(payload.data), c => c.charCodeAt(0));
+            const aesKey = await crypto.subtle.importKey("raw", rawKey, { name: "AES-GCM" }, false, ["decrypt"]);
+            const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, aesKey, encryptedData);
+            return new TextDecoder().decode(decrypted);
+        } catch(e) {
+            return "[Ошибка расшифровки]";
         }
     }
-
-    async function decryptReceivedMessage(content, senderPubkey) {
-        try {
-            let decryptedPayload;
-
-            if (content.startsWith("v3:")) {
-                // Расшифровка общим ключом
-                const contact = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]').find(c => c.pubkey === senderPubkey);
-                if (contact && contact.sharedKey) {
-                    const rawKey = Uint8Array.from(atob(contact.sharedKey), c => c.charCodeAt(0));
-                    const aesKey = await crypto.subtle.importKey("raw", rawKey, "AES-GCM", true, ["decrypt"]);
-                    const raw = Uint8Array.from(atob(content.slice(3)), c => c.charCodeAt(0));
-                    const iv = raw.slice(0,12), ciphertext = raw.slice(12);
-                    const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv: iv }, aesKey, ciphertext);
-                    return new TextDecoder().decode(decrypted);
-                }
-                return "[Ошибка расшифровки v3]";
-            }
-
-            if (content.startsWith("v2:")) {
-                const innerEncrypted = atob(content.slice(3));
-                const decryptedInner = await nostr.nip44.decrypt(nostr.hexDecode(myPrivkey), nostr.hexDecode(senderPubkey), innerEncrypted);
-                const { key: keyBase64, data: aesEncrypted } = JSON.parse(decryptedInner);
-                const keyRaw = Uint8Array.from(atob(keyBase64), c=>c.charCodeAt(0));
-                const aesKey = await crypto.subtle.importKey("raw", keyRaw, "AES-GCM", true, ["decrypt"]);
-                decryptedPayload = await aesDecrypt(aesEncrypted, aesKey);
-            } else if (content.startsWith("v1:")) {
-                const innerEncrypted = atob(content.slice(3));
-                decryptedPayload = await nostr.nip44.decrypt(nostr.hexDecode(myPrivkey), nostr.hexDecode(senderPubkey), innerEncrypted);
-            } else {
-                try { return JSON.parse(content).text || content; } catch(e) { return content; }
-            }
-
-            const data = JSON.parse(decryptedPayload);
-            if (data.sender && data.sender !== 'Вы') updateContactInfo(senderPubkey, data.sender, data.avatar);
-            return data.text || decryptedPayload;
-        } catch(e) { return "[Ошибка расшифровки]"; }
+    
+    // ---------- API (WORKERS) ----------
+    async function sendMessage(text, recipientPubkey) {
+        const encrypted = await encryptMessage(text, recipientPubkey);
+        const body = { sender: myPubkey, recipient: recipientPubkey, content: encrypted, timestamp: Date.now() };
+        await fetch(API_URL + '/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     }
-
-    // --- Загрузка метаданных контакта (kind 0) ---
-    async function fetchAndUpdateContactMeta(pubkey) {
-        if (!pool) return;
-        try {
-            const metaSub = pool.subscribeMany(relays, [{ kinds: [0], authors: [pubkey], limit: 1 }], {
-                onevent: event => {
-                    try {
-                        const meta = JSON.parse(event.content);
-                        let contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
-                        let updated = false;
-                        contacts = contacts.map(c => {
-                            if (c.pubkey === pubkey) {
-                                if (meta.name && c.name !== meta.name) { c.name = meta.name; updated = true; }
-                                if (meta.picture && c.avatar !== meta.picture) { c.avatar = meta.picture; updated = true; }
-                            }
-                            return c;
-                        });
-                        if (updated) {
-                            localStorage.setItem('robinhood_contacts', JSON.stringify(contacts));
-                            loadContacts();
-                            if (activeContact && activeContact.pubkey === pubkey) {
-                                activeContact.name = meta.name || activeContact.name;
-                                activeContact.avatar = meta.picture || activeContact.avatar;
-                                headerTitle.textContent = activeContact.name;
-                            }
-                        }
-                    } catch(e) {}
-                    metaSub.close();
-                }
-            });
-        } catch(e) {}
+    
+    async function getMessages(since = 0) {
+        const res = await fetch(API_URL + '/messages?pubkey=' + encodeURIComponent(myPubkey) + '&since=' + since);
+        if (!res.ok) return [];
+        return await res.json();
     }
-
-    // --- Nostr соединение ---
-    async function startNostrConnection() {
-        if (typeof nostr === 'undefined' || !nostr.SimplePool) {
-            updateRobinStatus('Библиотека Nostr не загружена, работаем офлайн');
-            return;
-        }
-        try {
-            pool = new nostr.SimplePool();
-            await selectBestRelay();
-
-            // Личные сообщения (kind 4)
-            sub = pool.subscribeMany(relays, [{kinds: [4], '#p': [myPubkey]}], {
-                onevent: async (event) => {
-                    if (loadedEvents.has(event.id)) return;
-                    loadedEvents.add(event.id);
-                    const decrypted = await decryptReceivedMessage(event.content, event.pubkey);
-                    let senderName = event.pubkey.slice(0,8);
-                    let senderAvatar = 'assets/avatars/001-.png';
-                    if (!event.content.startsWith("v1:") && !event.content.startsWith("v2:") && !event.content.startsWith("v3:")) {
-                        try { const data = JSON.parse(event.content); senderName = data.sender || senderName; senderAvatar = data.avatar || senderAvatar; } catch(e) {}
-                    }
-                    let contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
-                    if (event.pubkey !== myPubkey) {
-                        const existingContact = contacts.find(c => c.pubkey === event.pubkey);
-                        if (!existingContact) {
-                            updateRobinStatus(`Сообщение от неизвестного отправителя ${senderName}`, 3000);
-                            return;
-                        } else if (existingContact.status !== 'confirmed') {
-                            updateRobinStatus(`Сообщение от ${senderName} скрыто (${existingContact.status})`, 2000);
-                            return;
-                        }
-                    }
-                    appendMessage(senderName, decrypted, senderAvatar, new Date(event.created_at*1000).toLocaleTimeString());
-                    if (toggleHistory.checked) saveHistory();
-                }
-            });
-
-            // Запросы в друзья (kind 10000)
-            const friendSub = pool.subscribeMany(relays, [{kinds: [10000], '#p': [myPubkey]}], {
-                onevent: event => {
-                    if (event.pubkey === myPubkey) return;
-                    try {
-                        const data = JSON.parse(event.content);
-                        const senderName = data.name || event.pubkey.slice(0,8);
-                        const senderAvatar = data.avatar || 'assets/avatars/001-.png';
-                        let contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
-                        if (!contacts.some(c => c.pubkey === event.pubkey)) {
-                            contacts.push({ name: senderName, pubkey: event.pubkey, avatar: senderAvatar, status: 'pending' });
-                            localStorage.setItem('robinhood_contacts', JSON.stringify(contacts));
-                            loadContacts();
-                        }
-                        updateRobinStatus(`Пользователь ${senderName} добавил вас в друзья!`, 5000);
-                    } catch(e) {}
-                }
-            });
-
-            // Обмен ключами (kind 30001)
-            const keySub = pool.subscribeMany(relays, [{kinds: [30001], '#p': [myPubkey]}], {
-                onevent: async (event) => {
-                    if (event.pubkey === myPubkey) return;
-                    try {
-                        const decrypted = await nostr.nip44.decrypt(nostr.hexDecode(myPrivkey), nostr.hexDecode(event.pubkey), event.content);
-                        const data = JSON.parse(decrypted);
-                        if (data.type === 'sharedKey') {
-                            let contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
-                            const contact = contacts.find(c => c.pubkey === event.pubkey);
-                            if (contact) {
-                                contact.sharedKey = data.key;
-                                localStorage.setItem('robinhood_contacts', JSON.stringify(contacts));
-                                updateRobinStatus(`Ключ защиты установлен с ${contact.name}`, 3000);
-                            }
-                        }
-                    } catch(e) {}
-                }
-            });
-
-            updateRobinStatus('Подключение к релеям установлено');
-        } catch(e) { console.error(e); updateRobinStatus('Ошибка подключения'); }
-    }
-
-    async function sendNostrMessage(text) {
-        if (!pool || !activeContact) { appendMessage('Вы', text, profileAvatar.src); if (toggleHistory.checked) saveHistory(); return; }
-        const encrypted = await encryptMessageForSending(text, activeContact.pubkey);
-        let event = { kind: 4, pubkey: myPubkey, created_at: Math.floor(Date.now()/1000), tags: [['p', activeContact.pubkey]], content: encrypted };
-        try {
-            event.id = nostr.getEventHash(event);
-            event.sig = nostr.signEvent(event, nostr.hexDecode(myPrivkey));
-            pool.publish(event, [bestRelay || relays[0]]);
-            appendMessage('Вы', text, profileAvatar.src);
-            if (toggleHistory.checked) saveHistory();
-        } catch(e) { console.error(e); updateRobinStatus('Ошибка отправки'); }
-    }
-
-    async function sendMessage() { const text = msgInput.value.trim(); if (!text) return; await sendNostrMessage(text); updateRobinStatus('Стрела в полёте...'); playSound('bow_shot.wav'); msgInput.value = ''; }
-
-    async function loadChatHistory(contactPubkey) {
-        if (!pool || !myPubkey) return;
-        const filter = { kinds: [4], authors: [myPubkey, contactPubkey], '#p': [myPubkey, contactPubkey], limit: 100 };
-        const historySub = pool.subscribeMany(relays, [filter], {
-            onevent: event => {
-                if (loadedEvents.has(event.id)) return;
-                loadedEvents.add(event.id);
-                events.push(event);
-            }
-        });
-        const events = [];
-        setTimeout(async () => {
-            historySub.close();
-            events.sort((a,b) => a.created_at - b.created_at);
-            for (const event of events) {
-                const decrypted = await decryptReceivedMessage(event.content, event.pubkey);
-                let senderName = event.pubkey.slice(0,8);
-                let senderAvatar = 'assets/avatars/001-.png';
-                if (!event.content.startsWith("v1:") && !event.content.startsWith("v2:") && !event.content.startsWith("v3:")) {
-                    try { const data = JSON.parse(event.content); senderName = data.sender || senderName; senderAvatar = data.avatar || senderAvatar; } catch(e) {}
-                }
-                appendMessage(senderName, decrypted, senderAvatar, new Date(event.created_at*1000).toLocaleTimeString());
-            }
-        }, 1500);
-    }
-
-    function generateKeys() {
-        try {
-            const sk = nostr.generateSecretKey();
-            myPrivkey = nostr.hexEncode(sk);
-            myPubkey = nostr.getPublicKey(sk);
-            localStorage.setItem('robinhood_sk', myPrivkey);
-        } catch(e) { myPrivkey = 'fallback_key'; myPubkey = 'fallback_pub'; }
-    }
-    function loadKeys() {
-        const stored = localStorage.getItem('robinhood_sk');
-        if (stored) { myPrivkey = stored; try { const sk = nostr.hexDecode(myPrivkey); myPubkey = nostr.getPublicKey(sk); } catch(e) { generateKeys(); } }
-        else generateKeys();
-    }
-
+    
+    // ---------- ИНТЕРФЕЙС ----------
     const openMenuBtn = document.getElementById('open-menu');
     const drawer = document.getElementById('drawer');
     const overlay = document.getElementById('drawer-overlay');
@@ -496,6 +222,12 @@
     const avatarList = document.getElementById('avatar-list');
     const sherwoodBtn = document.getElementById('sherwood-letters-btn');
     const contactsListDiv = document.getElementById('contacts-list');
+    const toggleHistory = document.getElementById('toggle-history');
+    const toggleSound = document.getElementById('toggle-sound');
+    const contactsListInner = document.getElementById('contacts-list-inner');
+    const headerTitle = document.getElementById('header-title');
+
+    // Кнопка "Шервудские письма"
     sherwoodBtn.addEventListener('click', () => {
         if (contactsListDiv.style.display === 'block') {
             contactsListDiv.style.display = 'none';
@@ -504,50 +236,49 @@
             contactsListDiv.style.display = 'block';
         }
     });
-    const toggleHistory = document.getElementById('toggle-history');
-    const toggleSound = document.getElementById('toggle-sound');
-    const toggleDoubleE2EE = document.getElementById('toggle-double-e2ee');
-    const contactsListInner = document.getElementById('contacts-list-inner');
-    const headerTitle = document.getElementById('header-title');
 
+    // Реферальная стрела
     function generateReferralLink() {
-    if (!myPubkey || myPubkey === 'fallback_pub') {
-        loadKeys();
-        if (!myPubkey || myPubkey === 'fallback_pub') {
-            updateRobinStatus('Ключ не готов. Попробуйте позже.', 3000);
-            return '';
-        }
+        if (!myPubkey) return '';
+        const basePath = window.location.pathname.replace(/\/[^/]*$/, '/');
+        const fullOrigin = window.location.origin + basePath;
+        return fullOrigin + "?ref=" + encodeURIComponent(myPubkey);
     }
-    // Правильный путь для GitHub Pages (или другой поддиректории)
-    const basePath = window.location.pathname.replace(/\/[^/]*$/, '/'); // убираем index.html, если есть
-    const fullOrigin = window.location.origin + basePath;
-    return fullOrigin + "?ref=" + encodeURIComponent(myPubkey);
-} 
-    document.getElementById('ref-link-btn').addEventListener('click', () => { const link = generateReferralLink(); if (link) { document.getElementById('ref-link-display').textContent = link; document.getElementById('ref-modal').classList.add('active'); } });
+    document.getElementById('ref-link-btn').addEventListener('click', () => {
+        const link = generateReferralLink();
+        if (link) {
+            document.getElementById('ref-link-display').textContent = link;
+            document.getElementById('ref-modal').classList.add('active');
+        }
+    });
     document.getElementById('copy-ref-link-btn').addEventListener('click', function() {
         const link = document.getElementById('ref-link-display').textContent;
         if (!link) return;
         const btn = this;
         if (navigator.clipboard?.writeText) {
             navigator.clipboard.writeText(link).then(() => {
-                btn.textContent = '✔ Скопировано!';
+                btn.textContent = '✔ Заряжено!';
                 btn.style.background = '#388E3C';
-                setTimeout(() => {
-                    btn.textContent = 'Копировать';
-                    btn.style.background = '#2E7D32';
-                }, 2000);
+                setTimeout(() => { btn.textContent = 'Зарядить'; btn.style.background = '#2E7D32'; }, 2000);
             });
         } else {
             const range = document.createRange();
             range.selectNode(document.getElementById('ref-link-display'));
             window.getSelection().removeAllRanges();
             window.getSelection().addRange(range);
-            updateRobinStatus('Выделите и скопируйте', 2000);
+            updateRobinStatus('Выделите и метните', 2000);
         }
     });
-    document.getElementById('share-ref-link-btn').addEventListener('click', () => { const link = document.getElementById('ref-link-display').textContent; if (!link) return; if (navigator.share) navigator.share({ title: 'RobinHood P2P', text: 'Присоединяйся!', url: link }).catch(()=>{}); });
-    document.getElementById('close-ref-modal-btn').addEventListener('click', () => { document.getElementById('ref-modal').classList.remove('active'); });
+    document.getElementById('share-ref-link-btn').addEventListener('click', () => {
+        const link = document.getElementById('ref-link-display').textContent;
+        if (!link) return;
+        if (navigator.share) navigator.share({ title: 'RobinHood P2P', text: 'Присоединяйся!', url: link }).catch(()=>{});
+    });
+    document.getElementById('close-ref-modal-btn').addEventListener('click', () => {
+        document.getElementById('ref-modal').classList.remove('active');
+    });
 
+    // Добавление друга
     function addFriendManually() {
         const input = document.getElementById('friend-input');
         let value = input.value.trim();
@@ -557,77 +288,41 @@
             const url = new URL(value);
             ref = url.searchParams.get('ref') || ref;
         }
-        if (!/^[0-9a-fA-F]{64}$/.test(ref)) { updateRobinStatus('Неверный формат ссылки или ключа', 2000); return; }
-        if (ref === myPubkey) { updateRobinStatus('Это ваш собственный ключ', 2000); return; }
+        if (!ref) { updateRobinStatus('Неверный формат стрелы или колчана', 2000); return; }
+        if (ref === myPubkey) { updateRobinStatus('Это ваш собственный колчан', 2000); return; }
         let contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
-        if (contacts.some(c => c.pubkey === ref)) { updateRobinStatus('Контакт уже существует', 2000); return; }
+        if (contacts.some(c => c.pubkey === ref)) { updateRobinStatus('Стрелок уже есть', 2000); return; }
         const tempName = ref.slice(0,8);
         contacts.push({ name: tempName, pubkey: ref, avatar: 'assets/avatars/001-.png', status: 'confirmed' });
         localStorage.setItem('robinhood_contacts', JSON.stringify(contacts));
-        updateRobinStatus(`Контакт ${tempName} добавлен`, 3000);
+        updateRobinStatus(`Стрелок ${tempName} добавлен`, 3000);
         loadContacts();
-        fetchAndUpdateContactMeta(ref);
-        initiateKeyExchange(ref);
         input.value = '';
         document.getElementById('ref-modal').classList.remove('active');
-        if (pool) {
-            const friendEvent = { kind: 10000, pubkey: myPubkey, created_at: Math.floor(Date.now()/1000), tags: [['p', ref]], content: JSON.stringify({ name: myNick.textContent, avatar: profileAvatar.src }) };
-            try { friendEvent.id = nostr.getEventHash(friendEvent); friendEvent.sig = nostr.signEvent(friendEvent, nostr.hexDecode(myPrivkey)); pool.publish(friendEvent, [bestRelay || relays[0]]); } catch(e) {}
-        }
     }
     document.getElementById('add-friend-btn').addEventListener('click', addFriendManually);
     document.getElementById('friend-input').addEventListener('keypress', (e) => { if (e.key === 'Enter') addFriendManually(); });
 
-    if (localStorage.getItem('robinhood_double_e2ee') === 'true') { doubleE2EEEnabled = true; toggleDoubleE2EE.checked = true; }
-    toggleDoubleE2EE.addEventListener('change', function() { doubleE2EEEnabled = this.checked; localStorage.setItem('robinhood_double_e2ee', this.checked); updateRobinStatus(this.checked ? 'Двойное шифрование включено' : 'Выключено'); });
-
-    const avatars = ['assets/avatars/001-.png','assets/avatars/002--1.png','assets/avatars/003-icon-8033085.png','assets/avatars/009--7.png','assets/avatars/010--8.png','assets/avatars/018--16.png','assets/avatars/022--20.png','assets/avatars/037--35.png','assets/avatars/043--41.png','assets/avatars/048--46.png','assets/avatars/050--48.png','assets/avatars/052--50.png','assets/avatars/053--51.png','assets/avatars/056--54.png','assets/avatars/066--64.png','assets/avatars/077-icon-8033092.png','assets/avatars/083-icon-11885568.png','assets/avatars/094-icon-18926716.png','assets/avatars/108--83.png','assets/avatars/147-icon-6081840.png','assets/avatars/148-icon-5532632.png','assets/avatars/149-icon-4132697.png','assets/avatars/150-icon-10756654.png','assets/avatars/153-icon-4964924.png','assets/avatars/154-icon-4261075.png','assets/avatars/156-icon-4132828.png','assets/avatars/158--116.png','assets/avatars/160-icon-2332597.png','assets/avatars/162-icon-6237595.png','assets/avatars/167-icon-1920840.png','assets/avatars/168-icon-228268.png','assets/avatars/169-icon-5613167.png','assets/avatars/173-icon-1615623.png','assets/avatars/183-icon-5840846.png','assets/avatars/186-icon-6237499.png','assets/avatars/188-icon-6267517.png','assets/avatars/203-icon-3516506.png','assets/avatars/216-icon-5504960.png','assets/avatars/221-icon-9530256.png','assets/avatars/226-icon-9669507.png','assets/avatars/227-icon-9623471.png','assets/avatars/229-icon-10032172.png','assets/avatars/230-icon-10049316.png','assets/avatars/232-icon-11434002.png','assets/avatars/234-icon-10756328.png','assets/avatars/245-icon-16150697.png','assets/avatars/246-icon-16150730.png','assets/avatars/249-icon-17159913.png','assets/avatars/250-icon-17159758.png','assets/avatars/251-icon-17159744.png','assets/avatars/253-icon-18426073.png','assets/avatars/254-icon-18621065.png','assets/avatars/255-icon-18926692.png','assets/avatars/256--120.png'];
-    function loadAvatars() { avatarList.innerHTML = ''; avatars.forEach(src => { const img = document.createElement('img'); img.src = src; img.className = 'avatar-option'; img.addEventListener('click', () => { profileAvatar.src = src; localStorage.setItem('robinhood_avatar', src); updateRobinStatus('Аватар обновлён'); avatarSelector.style.display = 'none'; }); avatarList.appendChild(img); }); }
-    profileAvatar.addEventListener('click', () => { avatarSelector.style.display = avatarSelector.style.display === 'block' ? 'none' : 'block'; if (avatarSelector.style.display === 'block') loadAvatars(); });
-    const savedAvatar = localStorage.getItem('robinhood_avatar'); if (savedAvatar) profileAvatar.src = savedAvatar;
-
-    const savedNick = localStorage.getItem('robinhood_nick'); if (savedNick) myNick.textContent = savedNick;
-    changeProfileBtn.addEventListener('click', () => profileEditBox.style.display = profileEditBox.style.display === 'block' ? 'none' : 'block');
-    saveProfileBtn.addEventListener('click', () => { const newNick = newNickInput.value.trim(); if (newNick) { myNick.textContent = newNick; localStorage.setItem('robinhood_nick', newNick); newNickInput.value = ''; profileEditBox.style.display = 'none'; updateRobinStatus(`Ник изменён на ${newNick}`); } });
-
-    function saveHistory() {
-        if (!toggleHistory.checked) return;
-        const messages = [];
-        document.querySelectorAll('.message-row:not(#robin-row)').forEach(row => {
-            const sender = row.querySelector('.msg-sender').textContent;
-            const text = row.querySelector('.msg-sender').nextElementSibling.textContent;
-            const time = row.querySelector('.msg-status').textContent;
-            const avatar = row.querySelector('.avatar').src;
-            messages.push({ sender, text, time, avatar });
-        });
-        localStorage.setItem('robinhood_chat_history', JSON.stringify(messages));
+    // Обработка перехода по реферальной ссылке
+    function processReferral() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const ref = urlParams.get('ref');
+        if (ref && ref !== myPubkey) {
+            let contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
+            if (!contacts.some(c => c.pubkey === ref)) {
+                const tempName = ref.slice(0,8);
+                contacts.push({ name: tempName, pubkey: ref, avatar: 'assets/avatars/001-.png', status: 'confirmed' });
+                localStorage.setItem('robinhood_contacts', JSON.stringify(contacts));
+                loadContacts();
+                updateRobinStatus(`Стрелок ${tempName} добавлен по реф. стреле`, 3000);
+            }
+        }
     }
-    function loadHistory() { if (!toggleHistory.checked) return; const stored = localStorage.getItem('robinhood_chat_history'); if (stored) JSON.parse(stored).forEach(msg => appendMessage(msg.sender, msg.text, msg.avatar, msg.time)); }
-    function appendMessage(sender, text, avatarSrc, timeStr = null) { const row = document.createElement('div'); row.className = 'message-row'; const finalTime = timeStr || new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' }); row.innerHTML = `<img src="${avatarSrc}" class="avatar"><div class="msg-body"><div class="msg-sender">${sender}</div><div>${text}</div><div class="msg-status">${finalTime}</div></div>`; chatBox.appendChild(row); chatBox.scrollTop = chatBox.scrollHeight; }
 
-    sendBtn.addEventListener('click', sendMessage);
-    msgInput.addEventListener('keypress', e => { if (e.key === 'Enter') sendBtn.click(); });
-
-    ddgClearBtn.addEventListener('click', () => { document.querySelectorAll('.message-row:not(#robin-row)').forEach(m => m.remove()); localStorage.removeItem('robinhood_chat_history'); updateRobinStatus('История очищена',5000); });
-
-    toggleHistory.addEventListener('change', function() { localStorage.setItem('robinhood_history', this.checked); updateRobinStatus(this.checked ? 'История сохраняется' : 'История не сохраняется'); if (!this.checked) { localStorage.removeItem('robinhood_chat_history'); document.querySelectorAll('.message-row:not(#robin-row)').forEach(m => m.remove()); } else loadHistory(); });
-    toggleSound.addEventListener('change', function() { localStorage.setItem('robinhood_sound', this.checked); updateRobinStatus(this.checked ? 'Звук включён' : 'Выключен'); });
-
+    // Стрельцы
     function loadContacts() {
         const contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
-        
-        let updated = false;
-        contacts.forEach(c => {
-            if (!c.status) {
-                c.status = 'confirmed';
-                updated = true;
-            }
-        });
-        if (updated) localStorage.setItem('robinhood_contacts', JSON.stringify(contacts));
-        
         const confirmed = contacts.filter(c => c.status === 'confirmed');
-        const pending = contacts.filter(c => c.status === 'pending');
-        
         contactsListInner.innerHTML = '';
         if (confirmed.length) {
             confirmed.forEach(c => {
@@ -642,86 +337,160 @@
         } else {
             contactsListInner.innerHTML = '<div style="padding:10px;color:#888;">Воспользуйся реферальной стрелой!</div>';
         }
-        
-        const pendingDiv = document.getElementById('pending-requests');
-        if (!pendingDiv) return;
-        pendingDiv.innerHTML = '';
-        if (pending.length) {
-            pendingDiv.innerHTML = '<div style="padding: 8px 0; color: #FFA000; font-weight: bold;">Запросы в друзья:</div>';
-            pending.forEach(c => {
-                const div = document.createElement('div'); div.className = 'contact-item';
-                div.style.justifyContent = 'space-between';
-                div.innerHTML = `
-                    <div class="contact-info"><img src="${c.avatar || 'assets/avatars/001-.png'}" class="contact-avatar"><span class="contact-name">${c.name}</span></div>
-                    <div>
-                        <button class="accept-request" data-pubkey="${c.pubkey}" style="background:#2E7D32; color:white; border:none; padding:4px 8px; border-radius:4px; margin-right:4px;">✓</button>
-                        <button class="reject-request" data-pubkey="${c.pubkey}" style="background:#f44336; color:white; border:none; padding:4px 8px; border-radius:4px;">✕</button>
-                    </div>`;
-                pendingDiv.appendChild(div);
-            });
-            
-            document.querySelectorAll('.accept-request').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const pubkey = e.target.getAttribute('data-pubkey');
-                    let contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
-                    const contact = contacts.find(c => c.pubkey === pubkey);
-                    if (contact) {
-                        contact.status = 'confirmed';
-                        localStorage.setItem('robinhood_contacts', JSON.stringify(contacts));
-                        loadContacts();
-                        updateRobinStatus(`Запрос от ${contact.name} принят!`, 3000);
-                        fetchAndUpdateContactMeta(pubkey);
-                        initiateKeyExchange(pubkey);
-                    }
-                });
-            });
-            
-            document.querySelectorAll('.reject-request').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const pubkey = e.target.getAttribute('data-pubkey');
-                    let contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
-                    contacts = contacts.filter(c => c.pubkey !== pubkey);
-                    localStorage.setItem('robinhood_contacts', JSON.stringify(contacts));
-                    loadContacts();
-                    updateRobinStatus('Запрос отклонён', 2000);
-                });
-            });
+    }
+
+    function deleteContact(pubkey, event) {
+        event.stopPropagation();
+        let contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
+        contacts = contacts.filter(c => c.pubkey !== pubkey);
+        localStorage.setItem('robinhood_contacts', JSON.stringify(contacts));
+        if (activeContact && activeContact.pubkey === pubkey) { activeContact = null; headerTitle.textContent = 'RobinHood P2P'; }
+        loadContacts();
+        updateRobinStatus('Стрелок уволен', 2000);
+    }
+
+    function openChatWithContact(contact) {
+        activeContact = contact;
+        headerTitle.textContent = contact.name;
+        msgInput.placeholder = "Выпустить стрелу " + contact.name + "...";
+        document.querySelectorAll(".message-row:not(#robin-row)").forEach(m => m.remove());
+        updateRobinStatus("Перестрелка с " + contact.name + " открыт", 3000);
+        contactsListDiv.style.display = "none";
+        drawer.classList.remove("open");
+        overlay.classList.remove("visible");
+        loadChatHistory(contact.pubkey);
+    }
+
+    // Чат
+    async function loadChatHistory(contactPubkey) {
+        const messages = await getMessages(0);
+        const filtered = messages.filter(m => m.sender === contactPubkey || m.recipient === contactPubkey);
+        filtered.forEach(m => {
+            const text = m.decrypted || m.content;
+            const senderName = m.sender === myPubkey ? 'Вы' : (activeContact?.name || m.sender.slice(0,8));
+            const avatar = m.sender === myPubkey ? profileAvatar.src : (activeContact?.avatar || 'assets/avatars/001-.png');
+            appendMessage(senderName, text, avatar, new Date(m.timestamp).toLocaleTimeString());
+        });
+    }
+
+    async function sendMessageHandler() {
+        const text = msgInput.value.trim();
+        if (!text || !activeContact) return;
+        await sendMessage(text, activeContact.pubkey);
+        appendMessage('Вы', text, profileAvatar.src);
+        msgInput.value = '';
+        if (toggleSound.checked) playSound('bow_shot.wav');
+    }
+
+    sendBtn.addEventListener('click', sendMessageHandler);
+    msgInput.addEventListener('keypress', e => { if (e.key === 'Enter') sendBtn.click(); });
+
+    function appendMessage(sender, text, avatarSrc, timeStr = null) {
+        const row = document.createElement('div'); row.className = 'message-row';
+        const finalTime = timeStr || new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+        row.innerHTML = `<img src="${avatarSrc}" class="avatar"><div class="msg-body"><div class="msg-sender">${sender}</div><div>${text}</div><div class="msg-status">${finalTime}</div></div>`;
+        chatBox.appendChild(row); chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    // Очистка истории
+    ddgClearBtn.addEventListener('click', () => {
+        document.querySelectorAll('.message-row:not(#robin-row)').forEach(m => m.remove());
+        updateRobinStatus('Робин Гуд пустил ваши письма на самокрутки !', 5000);
+    });
+
+    // Статус Робин Гуда
+    let robinDefaultText = robinText.textContent; let robinTimer;
+    function updateRobinStatus(text, duration=4000) {
+        clearTimeout(robinTimer);
+        robinText.style.transition = 'none'; robinText.style.opacity = 1;
+        robinText.textContent = text;
+        robinTimer = setTimeout(() => {
+            robinText.style.transition = 'opacity 0.6s ease'; robinText.style.opacity = 0;
+            const onEnd = () => {
+                robinText.removeEventListener('transitionend', onEnd);
+                robinText.style.transition = 'none';
+                robinText.textContent = robinDefaultText;
+                robinText.style.opacity = 1;
+            };
+            robinText.addEventListener('transitionend', onEnd);
+        }, duration);
+    }
+
+    // Звук
+    function playSound(filename) {
+        if (toggleSound.checked) {
+            const audio = new Audio(`assets/sounds/${filename}`);
+            audio.volume = 0.5;
+            audio.play().catch(e=>console.log);
         }
     }
 
-    let touchStartX = 0; document.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; }); document.addEventListener('touchend', e => { const deltaX = e.changedTouches[0].clientX - touchStartX; if (Math.abs(deltaX) > 50) { if (deltaX > 0 && !drawer.classList.contains('open')) { drawer.classList.add('open'); overlay.classList.add('visible'); } else if (deltaX < 0 && drawer.classList.contains('open')) { drawer.classList.remove('open'); overlay.classList.remove('visible'); } } });
+    // Поллинг новых сообщений
+    async function pollMessages() {
+        if (!myPubkey) return;
+        const messages = await getMessages(Date.now() - 60000);
+        messages.forEach(m => {
+            if (m.sender !== myPubkey && activeContact && m.sender === activeContact.pubkey) {
+                decryptMessage(m.content, m.sender).then(text => {
+                    appendMessage(activeContact.name, text, activeContact.avatar, new Date(m.timestamp).toLocaleTimeString());
+                });
+            }
+        });
+    }
+
+    // Инициализация
+    async function init() {
+        await loadKeys();
+        updateRobinStatus('Святые сокеты стабильны !', 3000);
+        processReferral();
+        setInterval(pollMessages, 5000);
+        pollingInterval = setInterval(pollMessages, 5000);
+    }
+
+    window.addEventListener('load', init);
+    window.addEventListener('pagehide', () => clearInterval(pollingInterval));
+
+    // Боковое меню
     openMenuBtn.addEventListener('click', () => { drawer.classList.toggle('open'); overlay.classList.toggle('visible'); });
     overlay.addEventListener('click', () => { drawer.classList.remove('open'); overlay.classList.remove('visible'); });
 
-    function playSound(filename) { if (toggleSound.checked) { const audio = new Audio(`assets/sounds/${filename}`); audio.volume = 0.5; audio.play().catch(e=>console.log); } }
-
-    let robinDefaultText = robinText.textContent; let robinTimer;
-    function updateRobinStatus(text, duration=4000) { clearTimeout(robinTimer); robinText.style.transition = 'none'; robinText.style.opacity = 1; robinText.textContent = text; robinTimer = setTimeout(() => { robinText.style.transition = 'opacity 0.6s ease'; robinText.style.opacity = 0; const onEnd = () => { robinText.removeEventListener('transitionend', onEnd); robinText.style.transition = 'none'; robinText.textContent = robinDefaultText; robinText.style.opacity = 1; }; robinText.addEventListener('transitionend', onEnd); }, duration); }
-
-    function processReferral() {
-        const urlParams = new URLSearchParams(window.location.search);
-        const ref = urlParams.get('ref');
-        if (ref && ref !== myPubkey) {
-            let contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
-            if (!contacts.some(c => c.pubkey === ref)) {
-                const tempName = ref.slice(0,8);
-                contacts.push({ name: tempName, pubkey: ref, avatar: 'assets/avatars/001-.png', status: 'confirmed' });
-                localStorage.setItem('robinhood_contacts', JSON.stringify(contacts));
-                loadContacts();
-                fetchAndUpdateContactMeta(ref);
-                initiateKeyExchange(ref);
-                updateRobinStatus(`Контакт ${tempName} добавлен по ссылке`, 3000);
-                if (pool) {
-                    const friendEvent = { kind: 10000, pubkey: myPubkey, created_at: Math.floor(Date.now()/1000), tags: [['p', ref]], content: JSON.stringify({ name: myNick.textContent, avatar: profileAvatar.src }) };
-                    try { friendEvent.id = nostr.getEventHash(friendEvent); friendEvent.sig = nostr.signEvent(friendEvent, nostr.hexDecode(myPrivkey)); pool.publish(friendEvent, [bestRelay || relays[0]]); } catch(e) {}
-                }
-            }
+    // Аватары и ник (базовые)
+    const savedAvatar = localStorage.getItem('robinhood_avatar'); if (savedAvatar) profileAvatar.src = savedAvatar;
+    const savedNick = localStorage.getItem('robinhood_nick'); if (savedNick) myNick.textContent = savedNick;
+    changeProfileBtn.addEventListener('click', () => profileEditBox.style.display = profileEditBox.style.display === 'block' ? 'none' : 'block');
+    saveProfileBtn.addEventListener('click', () => {
+        const newNick = newNickInput.value.trim();
+        if (newNick) {
+            myNick.textContent = newNick;
+            localStorage.setItem('robinhood_nick', newNick);
+            newNickInput.value = '';
+            profileEditBox.style.display = 'none';
+            updateRobinStatus(`Ник изменён на ${newNick}`);
         }
-    }
+    });
 
-    window.addEventListener('load', () => { loadKeys(); startNostrConnection(); if (toggleHistory.checked) loadHistory(); processReferral(); });
-    window.addEventListener('pagehide', () => { if (!toggleHistory.checked) document.querySelectorAll('.message-row:not(#robin-row)').forEach(m => m.remove()); if (pool) pool.close(); });
-    window.addEventListener('pageshow', () => startNostrConnection());
+    // Список аватаров
+    const avatars = ['assets/avatars/001-.png','assets/avatars/002--1.png','assets/avatars/003-icon-8033085.png','assets/avatars/009--7.png','assets/avatars/010--8.png','assets/avatars/018--16.png','assets/avatars/022--20.png','assets/avatars/037--35.png','assets/avatars/043--41.png','assets/avatars/048--46.png','assets/avatars/050--48.png','assets/avatars/052--50.png','assets/avatars/053--51.png','assets/avatars/056--54.png','assets/avatars/066--64.png','assets/avatars/077-icon-8033092.png','assets/avatars/083-icon-11885568.png','assets/avatars/094-icon-18926716.png','assets/avatars/108--83.png','assets/avatars/147-icon-6081840.png','assets/avatars/148-icon-5532632.png','assets/avatars/149-icon-4132697.png','assets/avatars/150-icon-10756654.png','assets/avatars/153-icon-4964924.png','assets/avatars/154-icon-4261075.png','assets/avatars/156-icon-4132828.png','assets/avatars/158--116.png','assets/avatars/160-icon-2332597.png','assets/avatars/162-icon-6237595.png','assets/avatars/167-icon-1920840.png','assets/avatars/168-icon-228268.png','assets/avatars/169-icon-5613167.png','assets/avatars/173-icon-1615623.png','assets/avatars/183-icon-5840846.png','assets/avatars/186-icon-6237499.png','assets/avatars/188-icon-6267517.png','assets/avatars/203-icon-3516506.png','assets/avatars/216-icon-5504960.png','assets/avatars/221-icon-9530256.png','assets/avatars/226-icon-9669507.png','assets/avatars/227-icon-9623471.png','assets/avatars/229-icon-10032172.png','assets/avatars/230-icon-10049316.png','assets/avatars/232-icon-11434002.png','assets/avatars/234-icon-10756328.png','assets/avatars/245-icon-16150697.png','assets/avatars/246-icon-16150730.png','assets/avatars/249-icon-17159913.png','assets/avatars/250-icon-17159758.png','assets/avatars/251-icon-17159744.png','assets/avatars/253-icon-18426073.png','assets/avatars/254-icon-18621065.png','assets/avatars/255-icon-18926692.png','assets/avatars/256--120.png'];
+    function loadAvatars() {
+        avatarList.innerHTML = '';
+        avatars.forEach(src => {
+            const img = document.createElement('img'); img.src = src; img.className = 'avatar-option';
+            img.addEventListener('click', () => { profileAvatar.src = src; localStorage.setItem('robinhood_avatar', src); updateRobinStatus('Аватар обновлён'); avatarSelector.style.display = 'none'; });
+            avatarList.appendChild(img);
+        });
+    }
+    profileAvatar.addEventListener('click', () => { avatarSelector.style.display = avatarSelector.style.display === 'block' ? 'none' : 'block'; if (avatarSelector.style.display === 'block') loadAvatars(); });
+
+    // Закрытие бокового меню свайпом
+    let touchStartX = 0;
+    document.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; });
+    document.addEventListener('touchend', e => {
+        const deltaX = e.changedTouches[0].clientX - touchStartX;
+        if (Math.abs(deltaX) > 50) {
+            if (deltaX > 0 && !drawer.classList.contains('open')) { drawer.classList.add('open'); overlay.classList.add('visible'); }
+            else if (deltaX < 0 && drawer.classList.contains('open')) { drawer.classList.remove('open'); overlay.classList.remove('visible'); }
+        }
+    });
 </script>
 </body>
 </html>
