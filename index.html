@@ -85,9 +85,10 @@
 </head>
 <body>
 <div class="header">
-    <button id="open-menu">☰</button>
-    <div style="flex:1;"></div>
-    <div id="ddg-clear">🔥</div>
+    <button id="open-menu" style="font-size: 26px; cursor: pointer; background: none; border: none; color: inherit; outline: none; margin-right: 10px;">☰</button>
+    <h2 style="margin: 0; font-size: 1.3em; flex: 1;" id="header-title">RobinHood P2P</h2>
+    <button id="chat-switcher-btn" class="switch-chat-btn" style="display:none;">▼</button>
+    <div id="ddg-clear" style="font-size: 26px; cursor: pointer; user-select: none;">🔥</div>
 </div>
 <div class="chat-area" id="chat-box">
     <div class="message-row" id="robin-row">
@@ -469,7 +470,7 @@
     async function loadChatHistory(contactPubkey) {
         const messages = await getMessages(0);
         const filtered = messages.filter(m => m.sender === contactPubkey || m.recipient === contactPubkey);
-        filtered.forEach(m => {
+        filtered.forEach(async (m) => {
             if (processedMessageIds.has(m.id)) return;
             processedMessageIds.add(m.id);
             let text = m.content;
