@@ -83,7 +83,7 @@
             <div class="msg-sender" id="robin-title">Robin Hood</div>
             <div id="robin-text">Святые сокеты стабильны !</div>
         </div>
-        <div class="online-indicator" id="network-status-dot"></div>
+        <div class="online-indicator" id="network-status-dot">🛡️</div>
     </div>
 </div>
 <div class="input-area">
@@ -260,9 +260,14 @@
                 candidates.forEach(c => stream.pc.addIceCandidate(c).catch(()=>{}));
             }
         };
-        setInterval(check, 2000);
+                const pollInterval = setInterval(check, 2000);
         check();
-    }
+        const stopPoll = () => clearInterval(pollInterval);
+        if (stream.pc) {
+            stream.pc.addEventListener('connectionstatechange', () => {
+                if (stream.pc.connectionState === 'connected' || stream.pc.connectionState === 'failed') stopPoll();
+            });
+        }
 
     async function acceptOfferForContact(contactPubkey, sessionId) {
         if (activeStreams[contactPubkey]) return;
@@ -287,7 +292,7 @@
                 candidates.forEach(c => pc.addIceCandidate(c).catch(()=>{}));
             }
         };
-        setInterval(checkIce, 2000);
+        const iceInterval = setInterval(checkIce, 2000);
         checkIce();
     }
 
@@ -367,7 +372,7 @@
     document.getElementById('add-friend-btn').addEventListener('click', addFriendManually);
     document.getElementById('friend-input').addEventListener('keypress', (e) => { if (e.key === 'Enter') addFriendManually(); });
 
-    function processReferral() {
+        function processReferral() {
         const urlParams = new URLSearchParams(window.location.search);
         const ref = urlParams.get('ref');
         const sid = urlParams.get('sid');
@@ -379,12 +384,15 @@
                 loadContacts();
                 updateRobinStatus('Лучник добавлен по реф. стреле', 3000);
             }
-            if (sid) acceptOfferForContact(ref, sid);
-        }
-        if (activeStreams['_pending_'] && ref) {
-            activeStreams[ref] = activeStreams['_pending_'];
-            delete activeStreams['_pending_'];
-            pollForAnswerAndIce(ref);
+            if (sid) {
+                acceptOfferForContact(ref, sid);
+                // Перенос pending-сессии на реальный контакт
+                if (activeStreams['_pending_']) {
+                    activeStreams[ref] = activeStreams['_pending_'];
+                    delete activeStreams['_pending_'];
+                    pollForAnswerAndIce(ref);
+                }
+            }
         }
     }
 
