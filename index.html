@@ -469,7 +469,7 @@
     async function loadChatHistory(contactPubkey) {
         const messages = await getMessages(0);
         const filtered = messages.filter(m => m.sender === contactPubkey || m.recipient === contactPubkey);
-        filtered.forEach(m => {
+            filtered.forEach(async (m) => {
             if (processedMessageIds.has(m.id)) return;
             processedMessageIds.add(m.id);
             let text = m.content;
