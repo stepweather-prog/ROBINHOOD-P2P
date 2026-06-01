@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>RobinHood P2P</title>
     <link rel="manifest" href="manifest.json">
-    <script src="assets/js/webtorrent.min.js"></script>
     <style>
         html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; -webkit-text-size-adjust: 100%; touch-action: manipulation; }
         body { background-color: #121212; color: #E0E0E0; font-family: sans-serif; display: flex; flex-direction: column; height: 100vh; background-image: url('assets/Front/background.png'); background-size: cover; background-attachment: fixed; background-position: center 30%; background-repeat: no-repeat; }
@@ -22,12 +21,6 @@
         .message-row { display: flex; align-items: center; gap: 10px; background: rgba(31,31,31,0.9); padding: 10px; border-radius: 8px; backdrop-filter: blur(5px); }
         .input-area { background-color: rgba(31,31,31,0.95); padding: 10px; padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)); display: flex; gap: 10px; align-items: center; border-top: 1px solid #333; backdrop-filter: blur(5px); }
         input { flex: 1; background: rgba(42,42,42,0.9); border: 1px solid #444; padding: 12px; color: white; border-radius: 6px; font-size: 16px; outline: none; }
-        .drawer { background-color: rgba(31,31,31,0.95); border-right-color: #2E7D32; backdrop-filter: blur(10px); }
-        .drawer-header { background-color: #2E7D32; color: white; }
-        .drawer-content { background: transparent; }
-        .menu-link, .menu-item { color: #E0E0E0; border-bottom-color: rgba(255,255,255,0.05); }
-        .drawer-footer { background: rgba(0,0,0,0.15); color: #888; border-top-color: rgba(255,255,255,0.05); }
-        .avatar-selector, .contacts-list { background: rgba(255,255,255,0.05); scrollbar-width: none; }
         .online-indicator { width: 12px; height: 12px; background-color: #4CAF50; border-radius: 50%; box-shadow: 0 0 8px #4CAF50; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #121212; }
         .online-indicator.offline { background-color: #f44336; box-shadow: 0 0 8px #f44336; }
         .bow-button { width: 50px; height: 50px; cursor: pointer; }
@@ -162,12 +155,14 @@
 </div>
 
 <script>
+    // ---------- СИГНАЛЬНЫЙ СЕРВЕР ----------
+    const SIGNALING = 'https://pinball-signal.stephanclaps.workers.dev';
+
     // ---------- ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ----------
-    const torrentClient = new WebTorrent();
     let myPrivkey, myPubkey, activeContact;
-    let pollingInterval;
     const processedMessageIds = new Set();
-    const activeTorrents = {}; // pubkey -> torrent
+    let peerConnection, dataChannel, sessionId;
+    const activeStreams = {}; // pubkey -> { pc, dc }
 
     // ---------- КРИПТОГРАФИЯ ----------
     async function generateKeyPair() {
@@ -193,93 +188,6 @@
         } else {
             await generateKeyPair();
         }
-    }
-    
-    async function encryptMessage(text, recipientPubkey) {
-        const aesKey = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, true, ["encrypt"]);
-        const iv = crypto.getRandomValues(new Uint8Array(12));
-        const encrypted = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, aesKey, new TextEncoder().encode(text));
-        const rawKey = await crypto.subtle.exportKey("raw", aesKey);
-        const payload = { key: btoa(String.fromCharCode(...new Uint8Array(rawKey))), iv: btoa(String.fromCharCode(...iv)), data: btoa(String.fromCharCode(...new Uint8Array(encrypted))) };
-        return JSON.stringify(payload);
-    }
-    
-    async function decryptMessage(payloadStr, senderPubkey) {
-        try {
-            const payload = JSON.parse(payloadStr);
-            const rawKey = Uint8Array.from(atob(payload.key), c => c.charCodeAt(0));
-            const iv = Uint8Array.from(atob(payload.iv), c => c.charCodeAt(0));
-            const encryptedData = Uint8Array.from(atob(payload.data), c => c.charCodeAt(0));
-            const aesKey = await crypto.subtle.importKey("raw", rawKey, { name: "AES-GCM" }, false, ["decrypt"]);
-            const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, aesKey, encryptedData);
-            return new TextDecoder().decode(decrypted);
-        } catch(e) {
-            return "[Ошибка расшифровки]";
-        }
-    }
-    
-    // ---------- P2P КОЛЧАНЫ (WebTorrent) ----------
-    function getOrCreateTorrent(magnetURI, callback) {
-        if (activeTorrents[magnetURI]) {
-            callback(activeTorrents[magnetURI]);
-            return;
-        }
-        const torrent = torrentClient.add(magnetURI, { announce: [] }, (tor) => {
-            activeTorrents[magnetURI] = tor;
-            tor.on('download', () => {
-                tor.files.forEach(file => {
-                    file.getBuffer((err, buf) => {
-                        if (err) return;
-                        try {
-                            const msg = JSON.parse(new TextDecoder().decode(buf));
-                            if (msg && msg.text && msg.timestamp) {
-                                processIncomingMessage(msg);
-                            }
-                        } catch(e) {}
-                    });
-                });
-            });
-            callback(tor);
-        });
-    }
-
-    function processIncomingMessage(msg) {
-        if (processedMessageIds.has(msg.timestamp)) return;
-        processedMessageIds.add(msg.timestamp);
-        if (msg.sender === myPubkey) return;
-        decryptMessage(msg.content, msg.sender).then(text => {
-            const senderName = msg.senderName || msg.sender.slice(0,8);
-            const senderAvatar = msg.senderAvatar || 'assets/avatars/001-.png';
-            if (activeContact && msg.sender === activeContact.pubkey) {
-                appendMessage(senderName, text, senderAvatar, new Date(msg.timestamp).toLocaleTimeString());
-                if (toggleHistory.checked) {
-                    loadEncryptedHistory().then(history => {
-                        history.push({ text, sender: msg.sender, recipient: myPubkey, senderName, avatar: senderAvatar, time: new Date(msg.timestamp).toLocaleTimeString() });
-                        saveEncryptedHistory(history);
-                    });
-                }
-            }
-        });
-    }
-
-    async function sendMessageViaTorrent(text, recipientPubkey, senderName, senderAvatar) {
-        const contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
-        const contact = contacts.find(c => c.pubkey === recipientPubkey);
-        if (!contact || !contact.magnet) return;
-        const encrypted = await encryptMessage(text, recipientPubkey);
-        const msgObj = {
-            sender: myPubkey,
-            recipient: recipientPubkey,
-            content: encrypted,
-            timestamp: Date.now(),
-            senderName,
-            senderAvatar
-        };
-        const jsonStr = JSON.stringify(msgObj);
-        const buf = new TextEncoder().encode(jsonStr);
-        getOrCreateTorrent(contact.magnet, (torrent) => {
-            torrent.addFile(buf, `${msgObj.timestamp}.json`);
-        });
     }
 
     // ---------- ИСТОРИЯ С ШИФРОВАНИЕМ ----------
@@ -324,7 +232,132 @@
             return [];
         }
     }
-    
+
+    // ---------- P2P КОЛЧАНЫ (WebRTC) ----------
+    function setupDataChannel(channel, contactPubkey) {
+        channel.onopen = () => {
+            updateRobinStatus('Колчан с ' + (activeContact?.name || contactPubkey.slice(0,8)) + ' открыт!', 3000);
+        };
+        channel.onmessage = (e) => {
+            const senderName = activeContact?.name || contactPubkey.slice(0,8);
+            appendMessage(senderName, e.data, activeContact?.avatar || 'assets/avatars/001-.png');
+            if (toggleHistory.checked) {
+                loadEncryptedHistory().then(history => {
+                    history.push({ text: e.data, sender: contactPubkey, recipient: myPubkey, senderName, avatar: activeContact?.avatar || 'assets/avatars/001-.png', time: new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' }) });
+                    saveEncryptedHistory(history);
+                });
+            }
+        };
+    }
+
+    async function createP2POffer(contactPubkey) {
+        const pc = new RTCPeerConnection();
+        const dc = pc.createDataChannel('chat');
+        setupDataChannel(dc, contactPubkey);
+
+        pc.onicecandidate = e => {
+            if (e.candidate) {
+                fetch(SIGNALING + '/ice', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: sessionId, candidate: e.candidate })
+                });
+            }
+        };
+
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+
+        const res = await fetch(SIGNALING + '/offer', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sdp: pc.localDescription })
+        });
+        const data = await res.json();
+        sessionId = data.id;
+
+        // Сохраняем в контакт
+        let contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
+        const contact = contacts.find(c => c.pubkey === contactPubkey);
+        if (contact) {
+            contact.sessionId = sessionId;
+            localStorage.setItem('robinhood_contacts', JSON.stringify(contacts));
+        }
+
+        activeStreams[contactPubkey] = { pc, dc };
+        pollForAnswerAndIce(pc, sessionId);
+    }
+
+    async function pollForAnswerAndIce(pc, sessionId) {
+        const check = async () => {
+            const answerRes = await fetch(SIGNALING + '/answer?id=' + sessionId);
+            if (answerRes.ok) {
+                const data = await answerRes.json();
+                if (!pc.currentRemoteDescription) {
+                    await pc.setRemoteDescription(data.sdp);
+                }
+            }
+            const iceRes = await fetch(SIGNALING + '/ice?id=' + sessionId);
+            if (iceRes.ok) {
+                const candidates = await iceRes.json();
+                for (const c of candidates) {
+                    try { await pc.addIceCandidate(c); } catch(e) {}
+                }
+            }
+        };
+        setInterval(check, 2000);
+        check();
+    }
+
+    async function acceptP2POffer(contactPubkey, sessionId) {
+        const res = await fetch(SIGNALING + '/offer?id=' + sessionId);
+        if (!res.ok) return;
+        const data = await res.json();
+
+        const pc = new RTCPeerConnection();
+        pc.ondatachannel = (e) => {
+            const dc = e.channel;
+            setupDataChannel(dc, contactPubkey);
+            activeStreams[contactPubkey] = { pc, dc };
+        };
+
+        pc.onicecandidate = e => {
+            if (e.candidate) {
+                fetch(SIGNALING + '/ice', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: sessionId, candidate: e.candidate })
+                });
+            }
+        };
+
+        await pc.setRemoteDescription(data.sdp);
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+
+        await fetch(SIGNALING + '/answer', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: sessionId, sdp: pc.localDescription })
+        });
+
+        pollForIceOnly(pc, sessionId);
+    }
+
+    async function pollForIceOnly(pc, sessionId) {
+        const check = async () => {
+            const res = await fetch(SIGNALING + '/ice?id=' + sessionId);
+            if (res.ok) {
+                const candidates = await res.json();
+                for (const c of candidates) {
+                    try { await pc.addIceCandidate(c); } catch(e) {}
+                }
+            }
+        };
+        setInterval(check, 2000);
+        check();
+    }
+
     // ---------- ИНТЕРФЕЙС ----------
     const openMenuBtn = document.getElementById('open-menu');
     const drawer = document.getElementById('drawer');
@@ -363,19 +396,44 @@
         }
     });
 
-    // Реферальная стрела (создание колчана)
+    // Реферальная стрела
     async function generateReferralLink() {
         if (!myPubkey) return '';
-        return new Promise((resolve) => {
-                    const inviteBlob = new Blob(['Join RobinHood P2P'], {type: 'text/plain'});
-    inviteBlob.name = 'invite.txt';
-    torrentClient.seed(inviteBlob, { name: 'robinhood-invite' }, (torrent) => {
-                const magnet = torrent.magnetURI;
-                const basePath = window.location.pathname.replace(/\/[^/]*$/, '/');
-                const fullOrigin = window.location.origin + basePath;
-                resolve(fullOrigin + "?ref=" + encodeURIComponent(myPubkey) + "&magnet=" + encodeURIComponent(magnet));
-            });
+        // Создаём offer для будущего соединения
+        const pc = new RTCPeerConnection();
+        const dc = pc.createDataChannel('chat');
+        const contactPubkey = 'pending'; // временный ключ для стрелы
+        setupDataChannel(dc, contactPubkey);
+
+        pc.onicecandidate = e => {
+            if (e.candidate) {
+                fetch(SIGNALING + '/ice', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: sessionId, candidate: e.candidate })
+                });
+            }
+        };
+
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+
+        const res = await fetch(SIGNALING + '/offer', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sdp: pc.localDescription })
         });
+        const data = await res.json();
+        sessionId = data.id;
+
+        // Сохраняем временно
+        window._pendingPC = pc;
+        window._pendingDC = dc;
+        window._pendingSessionId = sessionId;
+
+        const basePath = window.location.pathname.replace(/\/[^/]*$/, '/');
+        const fullOrigin = window.location.origin + basePath;
+        return fullOrigin + "?ref=" + encodeURIComponent(myPubkey) + "&sid=" + sessionId;
     }
 
     document.getElementById('ref-link-btn').addEventListener('click', async () => {
@@ -404,7 +462,6 @@
             updateRobinStatus('Выделите и метните', 2000);
         }
     });
-
     document.getElementById('share-ref-link-btn').addEventListener('click', () => {
         const link = document.getElementById('ref-link-display').textContent;
         if (!link) return;
@@ -435,19 +492,6 @@
         loadContacts();
         input.value = '';
         document.getElementById('ref-modal').classList.remove('active');
-        // Создаём колчан для друга (если у него нет магнита)
-                        const initBlob = new Blob(['Chat started'], {type: 'text/plain'});
-        initBlob.name = 'init.txt';
-        torrentClient.seed(initBlob, { name: 'robinhood-chat' }, (torrent) => {
-            const magnet = torrent.magnetURI;
-            contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
-            const c = contacts.find(cc => cc.pubkey === ref);
-            if (c) {
-                c.magnet = magnet;
-                localStorage.setItem('robinhood_contacts', JSON.stringify(contacts));
-            }
-            activeTorrents[ref] = torrent;
-        });
     }
     document.getElementById('add-friend-btn').addEventListener('click', addFriendManually);
     document.getElementById('friend-input').addEventListener('keypress', (e) => { if (e.key === 'Enter') addFriendManually(); });
@@ -456,19 +500,19 @@
     function processReferral() {
         const urlParams = new URLSearchParams(window.location.search);
         const ref = urlParams.get('ref');
-        const magnet = urlParams.get('magnet');
+        const sid = urlParams.get('sid');
         if (ref && ref !== myPubkey) {
             let contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
             if (!contacts.some(c => c.pubkey === ref)) {
                 const tempName = 'Лучник';
                 const newContact = { name: tempName, pubkey: ref, avatar: 'assets/avatars/001-.png', status: 'confirmed' };
-                if (magnet) newContact.magnet = magnet;
+                if (sid) newContact.sessionId = sid;
                 contacts.push(newContact);
                 localStorage.setItem('robinhood_contacts', JSON.stringify(contacts));
                 loadContacts();
                 updateRobinStatus(`Лучник добавлен по реф. стреле`, 3000);
-                if (magnet) {
-                    getOrCreateTorrent(magnet, () => {});
+                if (sid) {
+                    acceptP2POffer(ref, sid);
                 }
             }
         }
@@ -516,10 +560,13 @@
         contactsListDiv.style.display = "none";
         drawer.classList.remove("open");
         overlay.classList.remove("visible");
-        if (contact.magnet) {
-            getOrCreateTorrent(contact.magnet, () => {});
-        }
         loadChatHistory(contact.pubkey);
+        // Если есть активный поток, не создаём новый
+        if (!activeStreams[contact.pubkey] && contact.sessionId) {
+            acceptP2POffer(contact.pubkey, contact.sessionId);
+        } else if (!activeStreams[contact.pubkey]) {
+            createP2POffer(contact.pubkey);
+        }
     }
 
     // Шторка чатов
@@ -553,7 +600,7 @@
         });
     }
 
-    // Чат (история только локальная)
+    // Чат
     async function loadChatHistory(contactPubkey) {
         if (toggleHistory.checked) {
             const localHistory = await loadEncryptedHistory();
@@ -565,23 +612,27 @@
         }
     }
 
-    async function sendMessageHandler() {
+    function sendMessageHandler() {
         const text = msgInput.value.trim();
         if (!text) return;
         if (!activeContact) {
             updateRobinStatus('Сначала выберите стрелка в Шервудских письмах!', 3000);
             return;
         }
-        const senderName = myNick.textContent;
-        const senderAvatar = profileAvatar.src;
-        await sendMessageViaTorrent(text, activeContact.pubkey, senderName, senderAvatar);
-        appendMessage('Вы', text, profileAvatar.src);
-        msgInput.value = '';
-        if (toggleSound.checked) playSound('bow_shot.wav');
-        if (toggleHistory.checked) {
-            const history = await loadEncryptedHistory();
-            history.push({ text, sender: myPubkey, recipient: activeContact.pubkey, senderName, avatar: senderAvatar, time: new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' }) });
-            await saveEncryptedHistory(history);
+        const stream = activeStreams[activeContact.pubkey];
+        if (stream && stream.dc && stream.dc.readyState === 'open') {
+            stream.dc.send(text);
+            appendMessage('Вы', text, profileAvatar.src);
+            msgInput.value = '';
+            if (toggleSound.checked) playSound('bow_shot.wav');
+            if (toggleHistory.checked) {
+                loadEncryptedHistory().then(history => {
+                    history.push({ text, sender: myPubkey, recipient: activeContact.pubkey, senderName: myNick.textContent, avatar: profileAvatar.src, time: new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' }) });
+                    saveEncryptedHistory(history);
+                });
+            }
+        } else {
+            updateRobinStatus('Колчан ещё не открыт. Ждите соединения.', 2000);
         }
     }
 
@@ -633,7 +684,7 @@
         }
     }
 
-    // Поллинг больше не нужен, удаляем setInterval
+    // Инициализация
     async function init() {
         await loadKeys();
         updateRobinStatus('Святые сокеты стабильны !', 3000);
@@ -641,7 +692,6 @@
     }
 
     window.addEventListener('load', init);
-    window.addEventListener('pagehide', () => {});
 
     // Боковое меню
     openMenuBtn.addEventListener('click', () => { drawer.classList.toggle('open'); overlay.classList.toggle('visible'); });
