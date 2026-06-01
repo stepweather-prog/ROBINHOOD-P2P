@@ -522,7 +522,7 @@
     const basePath = window.location.pathname.replace(/\/[^/]*$/, '/'); // убираем index.html, если есть
     const fullOrigin = window.location.origin + basePath;
     return fullOrigin + "?ref=" + encodeURIComponent(myPubkey);
-} }
+} 
     document.getElementById('ref-link-btn').addEventListener('click', () => { const link = generateReferralLink(); if (link) { document.getElementById('ref-link-display').textContent = link; document.getElementById('ref-modal').classList.add('active'); } });
     document.getElementById('copy-ref-link-btn').addEventListener('click', function() {
         const link = document.getElementById('ref-link-display').textContent;
