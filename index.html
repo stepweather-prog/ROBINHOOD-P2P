@@ -144,12 +144,12 @@
 
 <script>
     // ---------- КОНФИГУРАЦИЯ ----------
-    const API_URL = 'https://robinhood-final-site.stephanclaps.workers.dev';
+    const SIGNALING = 'https://pinball-signal.stephanclaps.workers.dev';
     
     // ---------- ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ----------
     let myPrivkey, myPubkey, activeContact;
-    let pollingInterval;
-    const processedMessageIds = new Set(); // для предотвращения дублирования
+    const processedMessageIds = new Set();
+    const activeStreams = {}; // pubkey -> { pc, dc, sessionId }
     
     // ---------- КРИПТОГРАФИЯ ----------
     async function generateKeyPair() {
@@ -175,43 +175,6 @@
         } else {
             await generateKeyPair();
         }
-    }
-    
-    // Шифрование сообщения (AES-GCM с случайным ключом, ключ шифруется публичным ключом получателя? В данной реализации просто симметричное шифрование, так как получатель сам расшифрует через общий секрет? Нет, мы используем гибридное: генерируем AES-ключ, шифруем текст, ключ прилагаем к сообщению, но для безопасности нужно, чтобы ключ мог расшифровать только получатель. Упростим: будем использовать общий симметричный ключ, который хранится в контакте (sharedKey). Но у нас его нет. Пока используем простое симметричное шифрование с ключом, передаваемым в открытом виде? Это небезопасно. Но для MVP оставим как есть, или применим асимметричное шифрование через публичный ключ получателя. Однако мы не храним публичные ключи получателя в формате CryptoKey. Чтобы не усложнять, будем передавать сообщение в открытом виде, но подписанное? Пользователь ранее говорил о шифровании, но сейчас главное – функционал. Я оставлю текущий вариант с симметричным ключом в payload, но помечу, что это нужно будет улучшить. Но чтобы не было претензий, просто зашифруем с помощью общего пароля "robinhood" – плохо. Лучше использовать ключ, сохраненный в localStorage, и если его нет, сгенерировать. Для простоты оставлю как есть (передаю key, iv, data). В реальном приложении нужно применять асимметричное шифрование, но сейчас это не главное.
-    async function encryptMessage(text, recipientPubkey) {
-        const aesKey = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, true, ["encrypt"]);
-        const iv = crypto.getRandomValues(new Uint8Array(12));
-        const encrypted = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, aesKey, new TextEncoder().encode(text));
-        const rawKey = await crypto.subtle.exportKey("raw", aesKey);
-        const payload = { key: btoa(String.fromCharCode(...new Uint8Array(rawKey))), iv: btoa(String.fromCharCode(...iv)), data: btoa(String.fromCharCode(...new Uint8Array(encrypted))) };
-        return JSON.stringify(payload);
-    }
-    
-    async function decryptMessage(payloadStr, senderPubkey) {
-        try {
-            const payload = JSON.parse(payloadStr);
-            const rawKey = Uint8Array.from(atob(payload.key), c => c.charCodeAt(0));
-            const iv = Uint8Array.from(atob(payload.iv), c => c.charCodeAt(0));
-            const encryptedData = Uint8Array.from(atob(payload.data), c => c.charCodeAt(0));
-            const aesKey = await crypto.subtle.importKey("raw", rawKey, { name: "AES-GCM" }, false, ["decrypt"]);
-            const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, aesKey, encryptedData);
-            return new TextDecoder().decode(decrypted);
-        } catch(e) {
-            return "[Ошибка расшифровки]";
-        }
-    }
-    
-    // ---------- API (WORKERS) ----------
-    async function sendMessage(text, recipientPubkey, senderName, senderAvatar) {
-        const encrypted = await encryptMessage(text, recipientPubkey);
-        const body = { sender: myPubkey, recipient: recipientPubkey, content: encrypted, timestamp: Date.now(), senderName, senderAvatar };
-        await fetch(API_URL + '/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-    }
-    
-    async function getMessages(since = 0) {
-        const res = await fetch(API_URL + '/messages?pubkey=' + encodeURIComponent(myPubkey) + '&since=' + since);
-        if (!res.ok) return [];
-        return await res.json();
     }
     
     // ---------- ИСТОРИЯ С ШИФРОВАНИЕМ ----------
@@ -257,6 +220,121 @@
         }
     }
     
+    // ---------- P2P КОЛЧАНЫ (механика Pinball) ----------
+    function setupDataChannel(channel, contactPubkey) {
+        channel.onopen = () => {
+            updateRobinStatus('Колчан с ' + (activeContact?.name || contactPubkey.slice(0,8)) + ' открыт!', 3000);
+        };
+        channel.onmessage = (e) => {
+            const senderName = activeContact?.name || contactPubkey.slice(0,8);
+            appendMessage(senderName, e.data, activeContact?.avatar || 'assets/avatars/001-.png');
+            if (toggleHistory.checked) {
+                loadEncryptedHistory().then(history => {
+                    history.push({ text: e.data, sender: contactPubkey, recipient: myPubkey, senderName, avatar: activeContact?.avatar || 'assets/avatars/001-.png', time: new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' }) });
+                    saveEncryptedHistory(history);
+                });
+            }
+        };
+    }
+
+    async function createOfferForContact(contactPubkey) {
+        if (activeStreams[contactPubkey]) return activeStreams[contactPubkey].sessionId;
+        const pc = new RTCPeerConnection();
+        const dc = pc.createDataChannel('chat');
+        const stream = { pc, dc, sessionId: null };
+        activeStreams[contactPubkey] = stream;
+        setupDataChannel(dc, contactPubkey);
+
+        pc.onicecandidate = e => {
+            if (e.candidate && stream.sessionId) {
+                fetch(SIGNALING + '/ice', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: stream.sessionId, candidate: e.candidate })
+                });
+            }
+        };
+
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+
+        const res = await fetch(SIGNALING + '/offer', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sdp: pc.localDescription })
+        });
+        const data = await res.json();
+        stream.sessionId = data.id;
+
+        pollForAnswerAndIce(contactPubkey);
+        return data.id;
+    }
+
+    function pollForAnswerAndIce(contactPubkey) {
+        const stream = activeStreams[contactPubkey];
+        if (!stream) return;
+        const check = async () => {
+            if (!stream.sessionId) return;
+            const answerRes = await fetch(SIGNALING + '/answer?id=' + stream.sessionId);
+            if (answerRes.ok && !stream.pc.currentRemoteDescription) {
+                const data = await answerRes.json();
+                await stream.pc.setRemoteDescription(data.sdp);
+            }
+            const iceRes = await fetch(SIGNALING + '/ice?id=' + stream.sessionId);
+            if (iceRes.ok) {
+                const candidates = await iceRes.json();
+                candidates.forEach(c => stream.pc.addIceCandidate(c).catch(()=>{}));
+            }
+        };
+        setInterval(check, 2000);
+        check();
+    }
+
+    async function acceptOfferForContact(contactPubkey, sessionId) {
+        if (activeStreams[contactPubkey]) return;
+        const res = await fetch(SIGNALING + '/offer?id=' + sessionId);
+        if (!res.ok) return;
+        const data = await res.json();
+
+        const pc = new RTCPeerConnection();
+        const stream = { pc, dc: null, sessionId };
+        activeStreams[contactPubkey] = stream;
+
+        pc.ondatachannel = (e) => {
+            stream.dc = e.channel;
+            setupDataChannel(e.channel, contactPubkey);
+        };
+        pc.onicecandidate = e => {
+            if (e.candidate) {
+                fetch(SIGNALING + '/ice', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: sessionId, candidate: e.candidate })
+                });
+            }
+        };
+
+        await pc.setRemoteDescription(data.sdp);
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+
+        await fetch(SIGNALING + '/answer', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: sessionId, sdp: pc.localDescription })
+        });
+
+        const checkIce = async () => {
+            const iceRes = await fetch(SIGNALING + '/ice?id=' + sessionId);
+            if (iceRes.ok) {
+                const candidates = await iceRes.json();
+                candidates.forEach(c => pc.addIceCandidate(c).catch(()=>{}));
+            }
+        };
+        setInterval(checkIce, 2000);
+        checkIce();
+    }
+
     // ---------- ИНТЕРФЕЙС ----------
     const openMenuBtn = document.getElementById('open-menu');
     const drawer = document.getElementById('drawer');
@@ -294,20 +372,53 @@
         }
     });
 
-    // Реферальная стрела
-    function generateReferralLink() {
+    // Реферальная стрела (создание P2P-сессии и ожидание ответа)
+    async function generateReferralLink() {
         if (!myPubkey) return '';
+        // Создаём временный контакт-заглушку для хранения pending-сессии
+        const pendingPubkey = '_pending_';
+        const pc = new RTCPeerConnection();
+        const dc = pc.createDataChannel('chat');
+        activeStreams[pendingPubkey] = { pc, dc, sessionId: null };
+        setupDataChannel(dc, pendingPubkey);
+
+        pc.onicecandidate = e => {
+            if (e.candidate && activeStreams[pendingPubkey].sessionId) {
+                fetch(SIGNALING + '/ice', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: activeStreams[pendingPubkey].sessionId, candidate: e.candidate })
+                });
+            }
+        };
+
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+
+        const res = await fetch(SIGNALING + '/offer', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sdp: pc.localDescription })
+        });
+        const data = await res.json();
+        activeStreams[pendingPubkey].sessionId = data.id;
+
+        // Запускаем опрос ответа и ICE для этой сессии
+        pollForAnswerAndIce(pendingPubkey);
+
         const basePath = window.location.pathname.replace(/\/[^/]*$/, '/');
         const fullOrigin = window.location.origin + basePath;
-        return fullOrigin + "?ref=" + encodeURIComponent(myPubkey);
+        return fullOrigin + "?ref=" + encodeURIComponent(myPubkey) + "&sid=" + data.id;
     }
-    document.getElementById('ref-link-btn').addEventListener('click', () => {
-        const link = generateReferralLink();
+
+    document.getElementById('ref-link-btn').addEventListener('click', async () => {
+        const link = await generateReferralLink();
         if (link) {
             document.getElementById('ref-link-display').textContent = link;
             document.getElementById('ref-modal').classList.add('active');
         }
     });
+
     document.getElementById('copy-ref-link-btn').addEventListener('click', function() {
         const link = document.getElementById('ref-link-display').textContent;
         if (!link) return;
@@ -335,7 +446,7 @@
         document.getElementById('ref-modal').classList.remove('active');
     });
 
-    // Добавление друга
+    // Добавление друга вручную (без P2P, просто контакт)
     function addFriendManually() {
         const input = document.getElementById('friend-input');
         let value = input.value.trim();
@@ -349,10 +460,9 @@
         if (ref === myPubkey) { updateRobinStatus('Это ваш собственный колчан', 2000); return; }
         let contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
         if (contacts.some(c => c.pubkey === ref)) { updateRobinStatus('Стрелок уже есть', 2000); return; }
-        const tempName = 'Стрелок-' + ref.slice(-4);
-        contacts.push({ name: tempName, pubkey: ref, avatar: 'assets/avatars/001-.png', status: 'confirmed' });
+        contacts.push({ name: 'Лучник', pubkey: ref, avatar: 'assets/avatars/001-.png', status: 'confirmed' });
         localStorage.setItem('robinhood_contacts', JSON.stringify(contacts));
-        updateRobinStatus(`Стрелок ${tempName} добавлен`, 3000);
+        updateRobinStatus('Стрелок добавлен', 3000);
         loadContacts();
         input.value = '';
         document.getElementById('ref-modal').classList.remove('active');
@@ -360,19 +470,29 @@
     document.getElementById('add-friend-btn').addEventListener('click', addFriendManually);
     document.getElementById('friend-input').addEventListener('keypress', (e) => { if (e.key === 'Enter') addFriendManually(); });
 
-    // Обработка перехода по реферальной ссылке
+    // Обработка перехода по реферальной ссылке (принятие сессии)
     function processReferral() {
         const urlParams = new URLSearchParams(window.location.search);
         const ref = urlParams.get('ref');
+        const sid = urlParams.get('sid');
         if (ref && ref !== myPubkey) {
             let contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
             if (!contacts.some(c => c.pubkey === ref)) {
-                const tempName = 'Стрелок-' + ref.slice(-4);
-                contacts.push({ name: tempName, pubkey: ref, avatar: 'assets/avatars/001-.png', status: 'confirmed' });
+                contacts.push({ name: 'Лучник', pubkey: ref, avatar: 'assets/avatars/001-.png', status: 'confirmed' });
                 localStorage.setItem('robinhood_contacts', JSON.stringify(contacts));
                 loadContacts();
-                updateRobinStatus(`Стрелок ${tempName} добавлен по реф. стреле`, 3000);
+                updateRobinStatus('Лучник добавлен по реф. стреле', 3000);
             }
+            if (sid) {
+                acceptOfferForContact(ref, sid);
+            }
+        }
+        // Перенос pending-сессии отправителя на реальный контакт (если есть)
+        if (activeStreams['_pending_'] && ref) {
+            activeStreams[ref] = activeStreams['_pending_'];
+            delete activeStreams['_pending_'];
+            // Остановить старый опрос, запустить новый для правильного ключа
+            pollForAnswerAndIce(ref);
         }
     }
 
@@ -402,6 +522,7 @@
         contacts = contacts.filter(c => c.pubkey !== pubkey);
         localStorage.setItem('robinhood_contacts', JSON.stringify(contacts));
         if (activeContact && activeContact.pubkey === pubkey) { activeContact = null; headerTitle.textContent = 'RobinHood P2P'; chatSwitcherBtn.style.display = 'none'; }
+        if (activeStreams[pubkey]) { activeStreams[pubkey].pc.close(); delete activeStreams[pubkey]; }
         loadContacts();
         updateRobinStatus('Стрелок уволен', 2000);
     }
@@ -417,6 +538,10 @@
         drawer.classList.remove("open");
         overlay.classList.remove("visible");
         loadChatHistory(contact.pubkey);
+        // Инициируем P2P, если ещё нет соединения (и это не мы создавали стрелу)
+        if (!activeStreams[contact.pubkey]) {
+            createOfferForContact(contact.pubkey);
+        }
     }
 
     // Кнопка переключения чатов ▼
@@ -454,19 +579,8 @@
         });
     }
 
-    // Чат
+    // Чат (только локальная история)
     async function loadChatHistory(contactPubkey) {
-        const messages = await getMessages(0);
-        const filtered = messages.filter(m => m.sender === contactPubkey || m.recipient === contactPubkey);
-        filtered.forEach(m => {
-            if (processedMessageIds.has(m.id)) return;
-            processedMessageIds.add(m.id);
-            const text = m.content.startsWith('{') ? '[зашифровано]' : m.content; // упрощенно
-            const senderName = m.sender === myPubkey ? 'Вы' : (activeContact?.name || m.senderName || m.sender.slice(0,8));
-            const avatar = m.sender === myPubkey ? profileAvatar.src : (activeContact?.avatar || 'assets/avatars/001-.png');
-            appendMessage(senderName, text, avatar, new Date(m.timestamp).toLocaleTimeString());
-        });
-        // Загружаем также локальную историю
         if (toggleHistory.checked) {
             const localHistory = await loadEncryptedHistory();
             localHistory.forEach(msg => {
@@ -480,24 +594,28 @@
         }
     }
 
-    async function sendMessageHandler() {
+    function sendMessageHandler() {
         const text = msgInput.value.trim();
         if (!text) return;
         if (!activeContact) {
             updateRobinStatus('Сначала выберите стрелка в Шервудских письмах!', 3000);
             return;
         }
-        const senderName = myNick.textContent;
-        const senderAvatar = profileAvatar.src;
-        await sendMessage(text, activeContact.pubkey, senderName, senderAvatar);
-        appendMessage('Вы', text, profileAvatar.src);
-        msgInput.value = '';
-        if (toggleSound.checked) playSound('bow_shot.wav');
-        // Сохраняем в зашифрованную историю, если включено
-        if (toggleHistory.checked) {
-            const history = await loadEncryptedHistory();
-            history.push({ text, sender: myPubkey, recipient: activeContact.pubkey, senderName, avatar: senderAvatar, time: new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' }) });
-            await saveEncryptedHistory(history);
+        const stream = activeStreams[activeContact.pubkey];
+        if (stream && stream.dc && stream.dc.readyState === 'open') {
+            stream.dc.send(text);
+            appendMessage('Вы', text, profileAvatar.src);
+            msgInput.value = '';
+            if (toggleSound.checked) playSound('bow_shot.wav');
+            if (toggleHistory.checked) {
+                loadEncryptedHistory().then(history => {
+                    history.push({ text, sender: myPubkey, recipient: activeContact.pubkey, senderName: myNick.textContent, avatar: profileAvatar.src, time: new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' }) });
+                    saveEncryptedHistory(history);
+                });
+            }
+        } else {
+            updateRobinStatus('Колчан ещё не открыт. Ждите соединения.', 2000);
+            if (!stream) createOfferForContact(activeContact.pubkey);
         }
     }
 
@@ -549,55 +667,14 @@
         }
     }
 
-    // Поллинг новых сообщений
-    async function pollMessages() {
-        if (!myPubkey) return;
-        const messages = await getMessages(Date.now() - 60000);
-        messages.forEach(async (m) => {
-            if (processedMessageIds.has(m.id)) return;
-            processedMessageIds.add(m.id);
-            if (m.sender !== myPubkey && activeContact && m.sender === activeContact.pubkey) {
-                let text = m.content;
-                try { text = await decryptMessage(m.content, m.sender); } catch(e) {}
-                const senderName = m.senderName || activeContact.name;
-                const senderAvatar = m.senderAvatar || activeContact.avatar;
-                // Обновляем контакт
-                if (m.senderName || m.senderAvatar) {
-                    let contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
-                    const contact = contacts.find(c => c.pubkey === m.sender);
-                    if (contact) {
-                        if (m.senderName && contact.name !== m.senderName) { contact.name = m.senderName; }
-                        if (m.senderAvatar && contact.avatar !== m.senderAvatar) { contact.avatar = m.senderAvatar; }
-                        localStorage.setItem('robinhood_contacts', JSON.stringify(contacts));
-                        loadContacts();
-                    }
-                }
-                appendMessage(senderName, text, senderAvatar, new Date(m.timestamp).toLocaleTimeString());
-                if (toggleHistory.checked) {
-                    const history = await loadEncryptedHistory();
-                    history.push({ text, sender: m.sender, recipient: myPubkey, senderName, avatar: senderAvatar, time: new Date(m.timestamp).toLocaleTimeString() });
-                    await saveEncryptedHistory(history);
-                }
-            }
-        });
-    }
-
     // Инициализация
     async function init() {
         await loadKeys();
-        if (toggleHistory.checked) {
-            const history = await loadEncryptedHistory();
-            if (history.length > 0) {
-                // пока не выводим, только при открытии чата
-            }
-        }
         updateRobinStatus('Святые сокеты стабильны !', 3000);
         processReferral();
-        pollingInterval = setInterval(pollMessages, 5000);
     }
 
     window.addEventListener('load', init);
-    window.addEventListener('pagehide', () => clearInterval(pollingInterval));
 
     // Боковое меню
     openMenuBtn.addEventListener('click', () => { drawer.classList.toggle('open'); overlay.classList.toggle('visible'); });
@@ -644,13 +721,12 @@
     // Обработчик тумблера истории
     toggleHistory.addEventListener('change', async function() {
         if (!this.checked) {
-            // Выключен – удаляем ключ и историю
             localStorage.removeItem('robinhood_history_key');
             localStorage.removeItem('robinhood_chat_history');
             historyEncryptionKey = null;
-            updateRobinStatus('История больше не сохраняется');
+            updateRobinStatus('Этот стрелок отдаёт все письма Робин Гуду на самокрутки', 4000);
         } else {
-            updateRobinStatus('История сохраняется зашифрованной');
+            updateRobinStatus('Этот стрелок хранит ваши письма', 4000);
         }
         localStorage.setItem('robinhood_history', this.checked);
     });
