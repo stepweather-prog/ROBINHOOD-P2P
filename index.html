@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>RobinHood P2P</title>
     <link rel="manifest" href="manifest.json">
+    <script src="assets/js/webtorrent.min.js"></script>
     <style>
         html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; -webkit-text-size-adjust: 100%; touch-action: manipulation; }
         body { background-color: #121212; color: #E0E0E0; font-family: sans-serif; display: flex; flex-direction: column; height: 100vh; background-image: url('assets/Front/background.png'); background-size: cover; background-attachment: fixed; background-position: center 30%; background-repeat: no-repeat; }
@@ -161,14 +162,13 @@
 </div>
 
 <script>
-    // ---------- КОНФИГУРАЦИЯ ----------
-    const API_URL = ''; // временно отключено
-    
     // ---------- ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ----------
+    const torrentClient = new WebTorrent();
     let myPrivkey, myPubkey, activeContact;
     let pollingInterval;
     const processedMessageIds = new Set();
-    
+    const activeTorrents = {}; // pubkey -> torrent
+
     // ---------- КРИПТОГРАФИЯ ----------
     async function generateKeyPair() {
         const keyPair = await crypto.subtle.generateKey(
@@ -218,19 +218,70 @@
         }
     }
     
-    // ---------- API (WORKERS) ----------
-    async function sendMessage(text, recipientPubkey, senderName, senderAvatar) {
+    // ---------- P2P КОЛЧАНЫ (WebTorrent) ----------
+    function getOrCreateTorrent(magnetURI, callback) {
+        if (activeTorrents[magnetURI]) {
+            callback(activeTorrents[magnetURI]);
+            return;
+        }
+        const torrent = torrentClient.add(magnetURI, { announce: [] }, (tor) => {
+            activeTorrents[magnetURI] = tor;
+            tor.on('download', () => {
+                tor.files.forEach(file => {
+                    file.getBuffer((err, buf) => {
+                        if (err) return;
+                        try {
+                            const msg = JSON.parse(new TextDecoder().decode(buf));
+                            if (msg && msg.text && msg.timestamp) {
+                                processIncomingMessage(msg);
+                            }
+                        } catch(e) {}
+                    });
+                });
+            });
+            callback(tor);
+        });
+    }
+
+    function processIncomingMessage(msg) {
+        if (processedMessageIds.has(msg.timestamp)) return;
+        processedMessageIds.add(msg.timestamp);
+        if (msg.sender === myPubkey) return;
+        decryptMessage(msg.content, msg.sender).then(text => {
+            const senderName = msg.senderName || msg.sender.slice(0,8);
+            const senderAvatar = msg.senderAvatar || 'assets/avatars/001-.png';
+            if (activeContact && msg.sender === activeContact.pubkey) {
+                appendMessage(senderName, text, senderAvatar, new Date(msg.timestamp).toLocaleTimeString());
+                if (toggleHistory.checked) {
+                    loadEncryptedHistory().then(history => {
+                        history.push({ text, sender: msg.sender, recipient: myPubkey, senderName, avatar: senderAvatar, time: new Date(msg.timestamp).toLocaleTimeString() });
+                        saveEncryptedHistory(history);
+                    });
+                }
+            }
+        });
+    }
+
+    async function sendMessageViaTorrent(text, recipientPubkey, senderName, senderAvatar) {
+        const contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
+        const contact = contacts.find(c => c.pubkey === recipientPubkey);
+        if (!contact || !contact.magnet) return;
         const encrypted = await encryptMessage(text, recipientPubkey);
-        const body = { sender: myPubkey, recipient: recipientPubkey, content: encrypted, timestamp: Date.now(), senderName, senderAvatar };
-        await fetch(API_URL + '/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        const msgObj = {
+            sender: myPubkey,
+            recipient: recipientPubkey,
+            content: encrypted,
+            timestamp: Date.now(),
+            senderName,
+            senderAvatar
+        };
+        const jsonStr = JSON.stringify(msgObj);
+        const buf = new TextEncoder().encode(jsonStr);
+        getOrCreateTorrent(contact.magnet, (torrent) => {
+            torrent.addFile(buf, `${msgObj.timestamp}.json`);
+        });
     }
-    
-    async function getMessages(since = 0) {
-        const res = await fetch(API_URL + '/messages?pubkey=' + encodeURIComponent(myPubkey) + '&since=' + since);
-        if (!res.ok) return [];
-        return await res.json();
-    }
-    
+
     // ---------- ИСТОРИЯ С ШИФРОВАНИЕМ ----------
     let historyEncryptionKey = null;
     async function getHistoryKey() {
@@ -312,20 +363,27 @@
         }
     });
 
-    // Реферальная стрела
-    function generateReferralLink() {
+    // Реферальная стрела (создание колчана)
+    async function generateReferralLink() {
         if (!myPubkey) return '';
-        const basePath = window.location.pathname.replace(/\/[^/]*$/, '/');
-        const fullOrigin = window.location.origin + basePath;
-        return fullOrigin + "?ref=" + encodeURIComponent(myPubkey);
+        return new Promise((resolve) => {
+            torrentClient.seed([], { name: 'robinhood-invite' }, (torrent) => {
+                const magnet = torrent.magnetURI;
+                const basePath = window.location.pathname.replace(/\/[^/]*$/, '/');
+                const fullOrigin = window.location.origin + basePath;
+                resolve(fullOrigin + "?ref=" + encodeURIComponent(myPubkey) + "&magnet=" + encodeURIComponent(magnet));
+            });
+        });
     }
-    document.getElementById('ref-link-btn').addEventListener('click', () => {
-        const link = generateReferralLink();
+
+    document.getElementById('ref-link-btn').addEventListener('click', async () => {
+        const link = await generateReferralLink();
         if (link) {
             document.getElementById('ref-link-display').textContent = link;
             document.getElementById('ref-modal').classList.add('active');
         }
     });
+
     document.getElementById('copy-ref-link-btn').addEventListener('click', function() {
         const link = document.getElementById('ref-link-display').textContent;
         if (!link) return;
@@ -344,6 +402,7 @@
             updateRobinStatus('Выделите и метните', 2000);
         }
     });
+
     document.getElementById('share-ref-link-btn').addEventListener('click', () => {
         const link = document.getElementById('ref-link-display').textContent;
         if (!link) return;
@@ -374,6 +433,17 @@
         loadContacts();
         input.value = '';
         document.getElementById('ref-modal').classList.remove('active');
+        // Создаём колчан для друга (если у него нет магнита)
+        torrentClient.seed([], { name: 'robinhood-chat' }, (torrent) => {
+            const magnet = torrent.magnetURI;
+            contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
+            const c = contacts.find(cc => cc.pubkey === ref);
+            if (c) {
+                c.magnet = magnet;
+                localStorage.setItem('robinhood_contacts', JSON.stringify(contacts));
+            }
+            activeTorrents[ref] = torrent;
+        });
     }
     document.getElementById('add-friend-btn').addEventListener('click', addFriendManually);
     document.getElementById('friend-input').addEventListener('keypress', (e) => { if (e.key === 'Enter') addFriendManually(); });
@@ -382,14 +452,20 @@
     function processReferral() {
         const urlParams = new URLSearchParams(window.location.search);
         const ref = urlParams.get('ref');
+        const magnet = urlParams.get('magnet');
         if (ref && ref !== myPubkey) {
             let contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
             if (!contacts.some(c => c.pubkey === ref)) {
                 const tempName = 'Лучник';
-                contacts.push({ name: tempName, pubkey: ref, avatar: 'assets/avatars/001-.png', status: 'confirmed' });
+                const newContact = { name: tempName, pubkey: ref, avatar: 'assets/avatars/001-.png', status: 'confirmed' };
+                if (magnet) newContact.magnet = magnet;
+                contacts.push(newContact);
                 localStorage.setItem('robinhood_contacts', JSON.stringify(contacts));
                 loadContacts();
                 updateRobinStatus(`Лучник добавлен по реф. стреле`, 3000);
+                if (magnet) {
+                    getOrCreateTorrent(magnet, () => {});
+                }
             }
         }
     }
@@ -408,16 +484,11 @@
                 const delBtn = div.querySelector('.delete-contact');
                 delBtn.addEventListener('click', (e) => { e.stopPropagation(); deleteContact(c.pubkey, e); });
                 
-                // Длинное нажатие
                 let pressTimer;
                 const startPress = (e) => {
-                    pressTimer = setTimeout(() => {
-                        showContactMenu(c, div);
-                    }, 600);
+                    pressTimer = setTimeout(() => { showContactMenu(c, div); }, 600);
                 };
-                const cancelPress = () => {
-                    clearTimeout(pressTimer);
-                };
+                const cancelPress = () => { clearTimeout(pressTimer); };
                 div.addEventListener('mousedown', startPress);
                 div.addEventListener('mouseup', cancelPress);
                 div.addEventListener('mouseleave', cancelPress);
@@ -441,10 +512,13 @@
         contactsListDiv.style.display = "none";
         drawer.classList.remove("open");
         overlay.classList.remove("visible");
+        if (contact.magnet) {
+            getOrCreateTorrent(contact.magnet, () => {});
+        }
         loadChatHistory(contact.pubkey);
     }
 
-    // Шторка чатов ▼
+    // Шторка чатов
     chatSwitcherBtn.addEventListener('click', () => {
         if (chatSwitcher.classList.contains('open')) {
             chatSwitcher.classList.remove('open');
@@ -475,21 +549,8 @@
         });
     }
 
-    // Чат
+    // Чат (история только локальная)
     async function loadChatHistory(contactPubkey) {
-        const messages = await getMessages(0);
-        const filtered = messages.filter(m => m.sender === contactPubkey || m.recipient === contactPubkey);
-        filtered.forEach(async (m) => {
-            if (processedMessageIds.has(m.id)) return;
-            processedMessageIds.add(m.id);
-            let text = m.content;
-            if (text.startsWith('{')) {
-                try { text = await decryptMessage(text, m.sender); } catch(e) {}
-            }
-            const senderName = m.sender === myPubkey ? 'Вы' : (m.senderName || m.sender.slice(0,8));
-            const avatar = m.sender === myPubkey ? profileAvatar.src : (m.senderAvatar || 'assets/avatars/001-.png');
-            appendMessage(senderName, text, avatar, new Date(m.timestamp).toLocaleTimeString());
-        });
         if (toggleHistory.checked) {
             const localHistory = await loadEncryptedHistory();
             localHistory.forEach(msg => {
@@ -509,7 +570,7 @@
         }
         const senderName = myNick.textContent;
         const senderAvatar = profileAvatar.src;
-        await sendMessage(text, activeContact.pubkey, senderName, senderAvatar);
+        await sendMessageViaTorrent(text, activeContact.pubkey, senderName, senderAvatar);
         appendMessage('Вы', text, profileAvatar.src);
         msgInput.value = '';
         if (toggleSound.checked) playSound('bow_shot.wav');
@@ -568,51 +629,15 @@
         }
     }
 
-    // Поллинг новых сообщений
-    async function pollMessages() {if (!API_URL) return;
-         if (!myPubkey) return;
-        const messages = await getMessages(Date.now() - 60000);
-        messages.forEach(async (m) => {
-            if (processedMessageIds.has(m.id)) return;
-            processedMessageIds.add(m.id);
-            if (m.sender !== myPubkey) {
-                let text = m.content;
-                if (text.startsWith('{')) {
-                    try { text = await decryptMessage(text, m.sender); } catch(e) {}
-                }
-                const senderName = m.senderName || m.sender.slice(0,8);
-                const senderAvatar = m.senderAvatar || 'assets/avatars/001-.png';
-                // Обновляем контакт
-                let contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
-                const contact = contacts.find(c => c.pubkey === m.sender);
-                if (contact) {
-                    if (m.senderName && contact.name !== m.senderName) { contact.name = m.senderName; }
-                    if (m.senderAvatar && contact.avatar !== m.senderAvatar) { contact.avatar = m.senderAvatar; }
-                    localStorage.setItem('robinhood_contacts', JSON.stringify(contacts));
-                    loadContacts();
-                }
-                if (activeContact && m.sender === activeContact.pubkey) {
-                    appendMessage(senderName, text, senderAvatar, new Date(m.timestamp).toLocaleTimeString());
-                    if (toggleHistory.checked) {
-                        const history = await loadEncryptedHistory();
-                        history.push({ text, sender: m.sender, recipient: myPubkey, senderName, avatar: senderAvatar, time: new Date(m.timestamp).toLocaleTimeString() });
-                        await saveEncryptedHistory(history);
-                    }
-                }
-            }
-        });
-    }
-
-    // Инициализация
+    // Поллинг больше не нужен, удаляем setInterval
     async function init() {
         await loadKeys();
         updateRobinStatus('Святые сокеты стабильны !', 3000);
         processReferral();
-        pollingInterval = setInterval(pollMessages, 5000);
     }
 
     window.addEventListener('load', init);
-    window.addEventListener('pagehide', () => clearInterval(pollingInterval));
+    window.addEventListener('pagehide', () => {});
 
     // Боковое меню
     openMenuBtn.addEventListener('click', () => { drawer.classList.toggle('open'); overlay.classList.toggle('visible'); });
@@ -762,10 +787,8 @@
 
         document.getElementById('menu-cancel').onclick = hideContactMenu;
 
-        // Закрывать меню только по клику вне его, но не сразу после открытия
         setTimeout(() => {
             const closeHandler = (e) => {
-                // Игнорируем клики, произошедшие в течение 500 мс после открытия меню
                 if (Date.now() - menuOpenTime < 500) return;
                 if (!menu.contains(e.target)) {
                     hideContactMenu();
