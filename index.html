@@ -294,7 +294,9 @@
     const chatSwitcherBtn = document.getElementById('chat-switcher-btn');
     const chatSwitcherLabel = document.getElementById('chat-switcher-label');
     const chatSwitcher = document.getElementById('chat-switcher');
-    const chatSwitcherList = document.getElementById('chat-switcher-list');
+    const chatSwitcherList = document.getElementById('chat-switcher-list'); 
+    const headerTitleBtn = document.getElementById('chat-switcher-btn');
+    const headerTitleText = document.getElementById('chat-switcher-label');
 
     // Кнопка "Шервудские письма"
     sherwoodBtn.addEventListener('click', () => {
@@ -466,26 +468,18 @@
         });
     }
 
-    // Чат
+        // Чат (только локальная история)
     async function loadChatHistory(contactPubkey) {
-        const messages = await getMessages(0);
-        const filtered = messages.filter(m => m.sender === contactPubkey || m.recipient === contactPubkey);
-        filtered.forEach(async (m) => {
-            if (processedMessageIds.has(m.id)) return;
-            processedMessageIds.add(m.id);
-            let text = m.content;
-            if (text.startsWith('{')) {
-                try { text = await decryptMessage(text, m.sender); } catch(e) {}
-            }
-            const senderName = m.sender === myPubkey ? 'Вы' : (m.senderName || m.sender.slice(0,8));
-            const avatar = m.sender === myPubkey ? profileAvatar.src : (m.senderAvatar || 'assets/avatars/001-.png');
-            appendMessage(senderName, text, avatar, new Date(m.timestamp).toLocaleTimeString());
-        });
         if (toggleHistory.checked) {
             const localHistory = await loadEncryptedHistory();
             localHistory.forEach(msg => {
                 if (msg.sender === contactPubkey || msg.recipient === contactPubkey) {
-                    appendMessage(msg.sender === myPubkey ? 'Вы' : (msg.senderName || msg.sender.slice(0,8)), msg.text, msg.avatar || 'assets/avatars/001-.png', msg.time);
+                    appendMessage(
+                        msg.sender === myPubkey ? 'Вы' : (msg.senderName || msg.sender.slice(0,8)),
+                        msg.text,
+                        msg.avatar || 'assets/avatars/001-.png',
+                        msg.time
+                    );
                 }
             });
         }
@@ -498,15 +492,19 @@
             updateRobinStatus('Сначала выберите стрелка в Шервудских письмах!', 3000);
             return;
         }
-        const senderName = myNick.textContent;
-        const senderAvatar = profileAvatar.src;
-        await sendMessage(text, activeContact.pubkey, senderName, senderAvatar);
         appendMessage('Вы', text, profileAvatar.src);
         msgInput.value = '';
         if (toggleSound.checked) playSound('bow_shot.wav');
         if (toggleHistory.checked) {
             const history = await loadEncryptedHistory();
-            history.push({ text, sender: myPubkey, recipient: activeContact.pubkey, senderName, avatar: senderAvatar, time: new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' }) });
+            history.push({
+                text: text,
+                sender: myPubkey,
+                recipient: activeContact.pubkey,
+                senderName: myNick.textContent,
+                avatar: profileAvatar.src,
+                time: new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' })
+            });
             await saveEncryptedHistory(history);
         }
     }
@@ -599,7 +597,7 @@
         await loadKeys();
         updateRobinStatus('Святые сокеты стабильны !', 3000);
         processReferral();
-        pollingInterval = setInterval(pollMessages, 5000);
+        // polling отключён
     }
 
     window.addEventListener('load', init);
