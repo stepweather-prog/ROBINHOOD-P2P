@@ -86,12 +86,12 @@
 <body>
 <div class="header">
     <button id="open-menu">☰</button>
-    <div class="header-left">
-        <button class="header-title-btn" id="header-title-btn">
-            <span id="header-title-text">Перестрелки</span>
-            <span class="arrow">▼</span>
-        </button>
-    </div>
+<h2 id="header-title" style="margin:0; font-size:1.3em; flex:1;">RobinHood P2P</h2>
+<button class="header-title-btn" id="chat-switcher-btn" style="margin-left:8px;">
+        <span id="chat-switcher-label">Перестрелки</span>
+        <span class="arrow">▼</span>
+    </button>
+    <div style="flex:1;"></div>
     <div id="ddg-clear">🔥</div>
 </div>
 <div class="chat-area" id="chat-box">
@@ -294,8 +294,9 @@
     const toggleHistory = document.getElementById('toggle-history');
     const toggleSound = document.getElementById('toggle-sound');
     const contactsListInner = document.getElementById('contacts-list-inner');
-    const headerTitleBtn = document.getElementById('header-title-btn');
-    const headerTitleText = document.getElementById('header-title-text');
+    const headerTitle = document.getElementById('header-title');
+    const chatSwitcherBtn = document.getElementById('chat-switcher-btn');
+    const chatSwitcherLabel = document.getElementById('chat-switcher-label');
     const chatSwitcher = document.getElementById('chat-switcher');
     const chatSwitcherList = document.getElementById('chat-switcher-list');
 
