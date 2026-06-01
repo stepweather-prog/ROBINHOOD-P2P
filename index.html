@@ -6,153 +6,69 @@
     <title>RobinHood P2P</title>
     <link rel="manifest" href="manifest.json">
     <style>
-        body {
-            background-color: #121212; color: #E0E0E0; font-family: sans-serif;
-            margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden;
-            background-image: url('assets/Front/background.png'); background-size: cover; background-attachment: fixed;
-            background-position: center 30%; background-repeat: no-repeat; touch-action: manipulation;
-        }
-        body::before {
-            content: ""; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.7); z-index: -1;
-        }
-        .header {
-            background-color: rgba(31,31,31,0.95); padding: 15px; display: flex; justify-content: space-between;
-            align-items: center; border-bottom: 2px solid #2E7D32; backdrop-filter: blur(5px); z-index: 10;
-        }
-        .chat-area {
-            flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px;
-            background: transparent; scrollbar-width: none;
-        }
+        body { background-color: #121212; color: #E0E0E0; font-family: sans-serif; margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; background-image: url('assets/Front/background.png'); background-size: cover; background-attachment: fixed; background-position: center 30%; background-repeat: no-repeat; touch-action: manipulation; }
+        body::before { content: ""; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: -1; }
+        .header { background-color: rgba(31,31,31,0.95); padding: 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #2E7D32; backdrop-filter: blur(5px); z-index: 10; }
+        .chat-area { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; background: transparent; scrollbar-width: none; }
         .chat-area::-webkit-scrollbar { display: none; }
-        .message-row {
-            display: flex; align-items: center; gap: 10px; background: rgba(31,31,31,0.9); padding: 10px;
-            border-radius: 8px; backdrop-filter: blur(5px);
-        }
-        .input-area {
-            background-color: rgba(31,31,31,0.95); padding: 10px; padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
-            display: flex; gap: 10px; align-items: center; border-top: 1px solid #333; backdrop-filter: blur(5px);
-        }
-        input {
-            flex: 1; background: rgba(42,42,42,0.9); border: 1px solid #444; padding: 12px; color: white;
-            border-radius: 6px; font-size: 16px; outline: none;
-        }
-        /* Объединённый .drawer */
-        .drawer {
-            position: fixed; top: 0; left: -280px; width: 280px; height: 100vh;
-            background-color: rgba(31,31,31,0.95); z-index: 100; transition: left 0.3s ease;
-            display: flex; flex-direction: column; box-shadow: 4px 0 10px rgba(0,0,0,0.4);
-            border-right: 1px solid #2E7D32; backdrop-filter: blur(10px);
-        }
-        .drawer.open { left: 0; }
-        .drawer-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.6); display: none; z-index: 90;
-        }
-        .drawer-overlay.visible { display: block; }
-        /* Объединённый .drawer-header */
-        .drawer-header {
-            padding: 24px 16px; background-color: #2E7D32; color: white;
-            display: flex; flex-direction: column; gap: 12px; align-items: center; text-align: center;
-        }
-        .drawer-avatar { width: 75px; height: 75px; border-radius: 50%; border: 3px solid white; object-fit: cover; cursor: pointer; }
-        .drawer-nick { font-size: 18px; font-weight: bold; }
-        .change-name-btn {
-            background: rgba(255,255,255,0.25); border: none; padding: 5px 14px; color: white;
-            border-radius: 20px; cursor: pointer; font-size: 11px; font-weight: bold;
-        }
-        .drawer-content {
-            flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column;
-            gap: 16px; background: transparent;
-        }
-        .menu-link {
-            display: flex; align-items: center; padding: 12px 4px; color: #E0E0E0; text-decoration: none;
-            font-weight: 600; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 15px;
-        }
-        .menu-link img { width: 24px; height: 24px; margin-right: 10px; object-fit: contain; }
-        .menu-item {
-            display: flex; align-items: center; justify-content: space-between; padding: 12px 4px;
-            border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 14px; color: #E0E0E0;
-        }
-        .switch { position: relative; display: inline-block; width: 42px; height: 22px; flex-shrink: 0; }
-        .switch input { opacity: 0; width: 0; height: 0; }
-        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #555; transition: .3s; border-radius: 22px; }
-        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; }
-        input:checked + .slider { background-color: #2E7D32; }
-        input:checked + .slider:before { transform: translateX(20px); }
-        .profile-edit {
-            background: rgba(255,255,255,0.1); padding: 12px; border-radius: 8px; display: none;
-            margin-top: 5px; width: 100%; box-sizing: border-box;
-        }
-        .profile-edit input {
-            width: 100%; padding: 8px 12px; background: #121212; border: 1px solid #444;
-            color: white; border-radius: 6px; margin-bottom: 8px; outline: none; box-sizing: border-box;
-        }
-        .invite-modal {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.8); z-index: 200; justify-content: center; align-items: center;
-        }
-        .invite-modal.active { display: flex; }
-        .invite-dialog {
-            background: #1F1F1F; padding: 20px; border-radius: 12px; width: 80%; max-width: 320px;
-            text-align: center; border: 1px solid #2E7D32; max-height: 80vh; overflow-y: auto;
-        }
-        .invite-dialog h3 { color: #4CAF50; margin: 0 0 10px; }
-        .invite-dialog button {
-            width: 100%; padding: 10px; margin-top: 5px; background: #2E7D32; color: white;
-            border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer;
-        }
-        .code-display {
-            background: #121212; border: 1px solid #444; color: white; border-radius: 6px;
-            padding: 10px; font-size: 0.9em; word-break: break-all; margin: 10px 0;
-            text-align: center; user-select: all;
-        }
-        .avatar-selector, .contacts-list {
-            display: none; margin-top: 10px; text-align: center; max-height: 300px;
-            overflow-y: auto; padding: 5px; background: rgba(255,255,255,0.05); border-radius: 8px;
-            scrollbar-width: none;
-        }
-        .avatar-option {
-            width: 50px; height: 50px; border-radius: 50%; object-fit: cover; margin: 5px;
-            cursor: pointer; border: 2px solid transparent; transition: border 0.2s;
-        }
-        .avatar-option:hover { border-color: #FFA000; }
-        .contact-item {
-            display: flex; align-items: center; justify-content: space-between; padding: 8px;
-            border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer; color: #E0E0E0;
-        }
-        .contact-info { display: flex; align-items: center; gap: 10px; flex: 1; }
-        .contact-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
-        .contact-name { font-weight: 600; }
-        .delete-contact {
-            background: none; border: none; color: #f44336; font-size: 20px; cursor: pointer;
-            padding: 0 10px; opacity: 0.7;
-        }
-        .delete-contact:hover { opacity: 1; }
-        .drawer-footer {
-            padding: 16px; font-size: 11px; text-align: center; border-top: 1px solid rgba(255,255,255,0.05);
-            background: rgba(0,0,0,0.15); color: #888;
-        }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-        .switch-chat-btn { background: none; border: none; color: white; font-size: 20px; cursor: pointer; margin-left: 10px; }
-        .chat-switcher {
-            position: fixed; bottom: 0; left: 0; right: 0; max-height: 50vh;
-            background: rgba(31,31,31,0.98); z-index: 150; overflow-y: auto;
-            border-top: 1px solid #2E7D32; display: none;
-        }
-        .chat-switcher.open { display: block; }
-        #robin-row { background: rgba(46,125,50,0.2); border-left: 3px solid #2E7D32; }
-        #robin-text { transition: opacity 0.6s ease; opacity: 1; }
-        .online-indicator {
-            width: 12px; height: 12px; background-color: #4CAF50; border-radius: 50%;
-            box-shadow: 0 0 8px #4CAF50;
-        }
+        .message-row { display: flex; align-items: center; gap: 10px; background: rgba(31,31,31,0.9); padding: 10px; border-radius: 8px; backdrop-filter: blur(5px); }
+        .input-area { background-color: rgba(31,31,31,0.95); padding: 10px; padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)); display: flex; gap: 10px; align-items: center; border-top: 1px solid #333; backdrop-filter: blur(5px); }
+        input { flex: 1; background: rgba(42,42,42,0.9); border: 1px solid #444; padding: 12px; color: white; border-radius: 6px; font-size: 16px; outline: none; }
+        .drawer { background-color: rgba(31,31,31,0.95); border-right-color: #2E7D32; backdrop-filter: blur(10px); }
+        .drawer-header { background-color: #2E7D32; color: white; }
+        .drawer-content { background: transparent; }
+        .menu-link, .menu-item { color: #E0E0E0; border-bottom-color: rgba(255,255,255,0.05); }
+        .drawer-footer { background: rgba(0,0,0,0.15); color: #888; border-top-color: rgba(255,255,255,0.05); }
+        .avatar-selector, .contacts-list { background: rgba(255,255,255,0.05); scrollbar-width: none; }
+        .online-indicator { width: 12px; height: 12px; background-color: #4CAF50; border-radius: 50%; box-shadow: 0 0 8px #4CAF50; }
         .online-indicator.offline { background-color: #f44336; box-shadow: 0 0 8px #f44336; }
         .bow-button { width: 50px; height: 50px; cursor: pointer; }
         .avatar { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; background-color: #333; flex-shrink: 0; }
         .msg-body { flex: 1; min-width: 0; }
         .msg-sender { font-weight: bold; color: #4CAF50; font-size: 0.9em; }
         .msg-status { font-size: 0.7em; color: #888; text-align: right; }
+        #robin-row { background: rgba(46,125,50,0.2); border-left: 3px solid #2E7D32; }
+        #robin-text { transition: opacity 0.6s ease; opacity: 1; }
+        .drawer-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: none; z-index: 90; }
+        .drawer { position: fixed; top: 0; left: -280px; width: 280px; height: 100vh; background-color: rgba(31,31,31,0.95); z-index: 100; transition: left 0.3s ease; display: flex; flex-direction: column; box-shadow: 4px 0 10px rgba(0,0,0,0.4); border-right: 1px solid #2E7D32; backdrop-filter: blur(10px); }
+        .drawer.open { left: 0; }
+        .drawer-overlay.visible { display: block; }
+        .drawer-header { padding: 24px 16px; background-color: #2E7D32; color: white; display: flex; flex-direction: column; gap: 12px; align-items: center; text-align: center; }
+        .drawer-avatar { width: 75px; height: 75px; border-radius: 50%; border: 3px solid white; object-fit: cover; cursor: pointer; }
+        .drawer-nick { font-size: 18px; font-weight: bold; }
+        .change-name-btn { background: rgba(255,255,255,0.25); border: none; padding: 5px 14px; color: white; border-radius: 20px; cursor: pointer; font-size: 11px; font-weight: bold; }
+        .drawer-content { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 16px; background: transparent; }
+        .menu-link { display: flex; align-items: center; padding: 12px 4px; color: #E0E0E0; text-decoration: none; font-weight: 600; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 15px; }
+        .menu-link img { width: 24px; height: 24px; margin-right: 10px; object-fit: contain; }
+        .menu-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 4px; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 14px; color: #E0E0E0; }
+        .switch { position: relative; display: inline-block; width: 42px; height: 22px; flex-shrink: 0; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #555; transition: .3s; border-radius: 22px; }
+        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; }
+        input:checked + .slider { background-color: #2E7D32; }
+        input:checked + .slider:before { transform: translateX(20px); }
+        .profile-edit { background: rgba(255,255,255,0.1); padding: 12px; border-radius: 8px; display: none; margin-top: 5px; width: 100%; box-sizing: border-box; }
+        .profile-edit input { width: 100%; padding: 8px 12px; background: #121212; border: 1px solid #444; color: white; border-radius: 6px; margin-bottom: 8px; outline: none; box-sizing: border-box; }
+        .invite-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 200; justify-content: center; align-items: center; }
+        .invite-modal.active { display: flex; }
+        .invite-dialog { background: #1F1F1F; padding: 20px; border-radius: 12px; width: 80%; max-width: 320px; text-align: center; border: 1px solid #2E7D32; max-height: 80vh; overflow-y: auto; }
+        .invite-dialog h3 { color: #4CAF50; margin: 0 0 10px; }
+        .invite-dialog button { width: 100%; padding: 10px; margin-top: 5px; background: #2E7D32; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; }
+        .code-display { background: #121212; border: 1px solid #444; color: white; border-radius: 6px; padding: 10px; font-size: 0.9em; word-break: break-all; margin: 10px 0; text-align: center; user-select: all; }
+        .avatar-selector, .contacts-list { display: none; margin-top: 10px; text-align: center; max-height: 300px; overflow-y: auto; padding: 5px; background: rgba(255,255,255,0.05); border-radius: 8px; }
+        .avatar-option { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; margin: 5px; cursor: pointer; border: 2px solid transparent; transition: border 0.2s; }
+        .avatar-option:hover { border-color: #FFA000; }
+        .contact-item { display: flex; align-items: center; justify-content: space-between; padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer; color: #E0E0E0; }
+        .contact-info { display: flex; align-items: center; gap: 10px; flex: 1; }
+        .contact-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
+        .contact-name { font-weight: 600; }
+        .delete-contact { background: none; border: none; color: #f44336; font-size: 20px; cursor: pointer; padding: 0 10px; opacity: 0.7; }
+        .delete-contact:hover { opacity: 1; }
+        .drawer-footer { padding: 16px; font-size: 11px; text-align: center; border-top: 1px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.15); color: #888; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        .switch-chat-btn { background: none; border: none; color: white; font-size: 20px; cursor: pointer; margin-left: 10px; }
+        .chat-switcher { position: fixed; bottom: 0; left: 0; right: 0; max-height: 50vh; background: rgba(31,31,31,0.98); z-index: 150; overflow-y: auto; border-top: 1px solid #2E7D32; display: none; }
+        .chat-switcher.open { display: block; }
     </style>
 </head>
 <body>
@@ -225,21 +141,13 @@
 </div>
 
 <script>
-    // ---------- КОНФИГУРАЦИЯ ----------
     const SIGNALING = 'https://pinball-signal.stephanclaps.workers.dev';
-
-    // ---------- ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ----------
     let myPrivkey, myPubkey, activeContact;
     const processedMessageIds = new Set();
     const activeStreams = {};
 
-    // ---------- КРИПТОГРАФИЯ ----------
     async function generateKeyPair() {
-        const keyPair = await crypto.subtle.generateKey(
-            { name: "ECDSA", namedCurve: "P-256" },
-            true,
-            ["sign", "verify"]
-        );
+        const keyPair = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]);
         const pubKeyBuffer = await crypto.subtle.exportKey("spki", keyPair.publicKey);
         const privKeyBuffer = await crypto.subtle.exportKey("pkcs8", keyPair.privateKey);
         myPubkey = btoa(String.fromCharCode(...new Uint8Array(pubKeyBuffer)));
@@ -247,19 +155,13 @@
         localStorage.setItem('robinhood_pubkey', myPubkey);
         localStorage.setItem('robinhood_privkey', myPrivkey);
     }
-
     async function loadKeys() {
         const storedPub = localStorage.getItem('robinhood_pubkey');
         const storedPriv = localStorage.getItem('robinhood_privkey');
-        if (storedPub && storedPriv) {
-            myPubkey = storedPub;
-            myPrivkey = storedPriv;
-        } else {
-            await generateKeyPair();
-        }
+        if (storedPub && storedPriv) { myPubkey = storedPub; myPrivkey = storedPriv; }
+        else await generateKeyPair();
     }
 
-    // ---------- ИСТОРИЯ С ШИФРОВАНИЕМ ----------
     let historyEncryptionKey = null;
     async function getHistoryKey() {
         const stored = localStorage.getItem('robinhood_history_key');
@@ -273,7 +175,6 @@
             historyEncryptionKey = key;
         }
     }
-
     async function saveEncryptedHistory(messages) {
         if (!toggleHistory.checked) return;
         if (!historyEncryptionKey) await getHistoryKey();
@@ -283,7 +184,6 @@
         const payload = { iv: btoa(String.fromCharCode(...iv)), data: btoa(String.fromCharCode(...new Uint8Array(encrypted))) };
         localStorage.setItem('robinhood_chat_history', JSON.stringify(payload));
     }
-
     async function loadEncryptedHistory() {
         if (!toggleHistory.checked) return [];
         const stored = localStorage.getItem('robinhood_chat_history');
@@ -297,26 +197,17 @@
             const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, historyEncryptionKey, data);
             const json = new TextDecoder().decode(decrypted);
             return JSON.parse(json);
-        } catch(e) {
-            return [];
-        }
+        } catch(e) { return []; }
     }
 
-    // ---------- P2P КОЛЧАНЫ ----------
     function setupDataChannel(channel, contactPubkey) {
-        channel.onopen = () => {
-            updateRobinStatus('Колчан с ' + (activeContact?.name || contactPubkey.slice(0,8)) + ' открыт!', 3000);
-        };
+        channel.onopen = () => updateRobinStatus('Колчан с ' + (activeContact?.name || contactPubkey.slice(0,8)) + ' открыт!', 3000);
         channel.onmessage = (e) => {
             const senderName = activeContact?.name || contactPubkey.slice(0,8);
             appendMessage(senderName, e.data, activeContact?.avatar || 'assets/avatars/001-.png');
             if (toggleHistory.checked) {
                 loadEncryptedHistory().then(history => {
-                    history.push({
-                        text: e.data, sender: contactPubkey, recipient: myPubkey,
-                        senderName, avatar: activeContact?.avatar || 'assets/avatars/001-.png',
-                        time: new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' })
-                    });
+                    history.push({ text: e.data, sender: contactPubkey, recipient: myPubkey, senderName, avatar: activeContact?.avatar || 'assets/avatars/001-.png', time: new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' }) });
                     saveEncryptedHistory(history);
                 });
             }
@@ -327,35 +218,24 @@
         if (activeStreams[contactPubkey]) return activeStreams[contactPubkey].sessionId;
         const pc = new RTCPeerConnection();
         const dc = pc.createDataChannel('chat');
-        activeStreams[contactPubkey] = { pc, dc, sessionId: null };
+        const stream = { pc, dc, sessionId: null };
+        activeStreams[contactPubkey] = stream;
         setupDataChannel(dc, contactPubkey);
-
         pc.onicecandidate = e => {
-            if (e.candidate && activeStreams[contactPubkey].sessionId) {
-                fetch(SIGNALING + '/ice', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id: activeStreams[contactPubkey].sessionId, candidate: e.candidate })
-                });
+            if (e.candidate && stream.sessionId) {
+                fetch(SIGNALING + '/ice', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id: stream.sessionId, candidate: e.candidate }) });
             }
         };
-
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
-
-        const res = await fetch(SIGNALING + '/offer', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ sdp: pc.localDescription })
-        });
+        const res = await fetch(SIGNALING + '/offer', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ sdp: pc.localDescription }) });
         const data = await res.json();
-        activeStreams[contactPubkey].sessionId = data.id;
-
+        stream.sessionId = data.id;
         pollForAnswerAndIce(contactPubkey);
         return data.id;
     }
 
-    async function pollForAnswerAndIce(contactPubkey) {
+    function pollForAnswerAndIce(contactPubkey) {
         const stream = activeStreams[contactPubkey];
         if (!stream) return;
         const check = async () => {
@@ -380,35 +260,17 @@
         const res = await fetch(SIGNALING + '/offer?id=' + sessionId);
         if (!res.ok) return;
         const data = await res.json();
-
         const pc = new RTCPeerConnection();
         const stream = { pc, dc: null, sessionId };
         activeStreams[contactPubkey] = stream;
-
-        pc.ondatachannel = (e) => {
-            stream.dc = e.channel;
-            setupDataChannel(e.channel, contactPubkey);
-        };
+        pc.ondatachannel = (e) => { stream.dc = e.channel; setupDataChannel(e.channel, contactPubkey); };
         pc.onicecandidate = e => {
-            if (e.candidate) {
-                fetch(SIGNALING + '/ice', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id: sessionId, candidate: e.candidate })
-                });
-            }
+            if (e.candidate) fetch(SIGNALING + '/ice', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id: sessionId, candidate: e.candidate }) });
         };
-
         await pc.setRemoteDescription(data.sdp);
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
-
-        await fetch(SIGNALING + '/answer', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: sessionId, sdp: pc.localDescription })
-        });
-
+        await fetch(SIGNALING + '/answer', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id: sessionId, sdp: pc.localDescription }) });
         const checkIce = async () => {
             const iceRes = await fetch(SIGNALING + '/ice?id=' + sessionId);
             if (iceRes.ok) {
@@ -420,137 +282,78 @@
         checkIce();
     }
 
-    // ---------- ИНТЕРФЕЙС ----------
-    const openMenuBtn = document.getElementById('open-menu');
-    const drawer = document.getElementById('drawer');
-    const overlay = document.getElementById('drawer-overlay');
-    const ddgClearBtn = document.getElementById('ddg-clear');
-    const changeProfileBtn = document.getElementById('change-profile-btn');
-    const profileEditBox = document.getElementById('profile-edit-box');
-    const saveProfileBtn = document.getElementById('save-profile-btn');
-    const newNickInput = document.getElementById('new-nick-input');
-    const myNick = document.getElementById('my-nick');
-    const msgInput = document.getElementById('msg-input');
-    const sendBtn = document.getElementById('send-btn');
-    const chatBox = document.getElementById('chat-box');
-    const robinText = document.getElementById('robin-text');
-    const profileAvatar = document.getElementById('profile-avatar');
-    const avatarSelector = document.getElementById('avatar-selector');
-    const avatarList = document.getElementById('avatar-list');
-    const sherwoodBtn = document.getElementById('sherwood-letters-btn');
-    const contactsListDiv = document.getElementById('contacts-list');
-    const toggleHistory = document.getElementById('toggle-history');
-    const toggleSound = document.getElementById('toggle-sound');
-    const contactsListInner = document.getElementById('contacts-list-inner');
-    const headerTitle = document.getElementById('header-title');
-    const chatSwitcherBtn = document.getElementById('chat-switcher-btn');
-    const chatSwitcher = document.getElementById('chat-switcher');
-    const chatSwitcherList = document.getElementById('chat-switcher-list');
+    const openMenuBtn = document.getElementById('open-menu'), drawer = document.getElementById('drawer'), overlay = document.getElementById('drawer-overlay');
+    const ddgClearBtn = document.getElementById('ddg-clear'), changeProfileBtn = document.getElementById('change-profile-btn'), profileEditBox = document.getElementById('profile-edit-box');
+    const saveProfileBtn = document.getElementById('save-profile-btn'), newNickInput = document.getElementById('new-nick-input'), myNick = document.getElementById('my-nick');
+    const msgInput = document.getElementById('msg-input'), sendBtn = document.getElementById('send-btn'), chatBox = document.getElementById('chat-box');
+    const robinText = document.getElementById('robin-text'), profileAvatar = document.getElementById('profile-avatar'), avatarSelector = document.getElementById('avatar-selector'), avatarList = document.getElementById('avatar-list');
+    const sherwoodBtn = document.getElementById('sherwood-letters-btn'), contactsListDiv = document.getElementById('contacts-list'), toggleHistory = document.getElementById('toggle-history'), toggleSound = document.getElementById('toggle-sound');
+    const contactsListInner = document.getElementById('contacts-list-inner'), headerTitle = document.getElementById('header-title'), chatSwitcherBtn = document.getElementById('chat-switcher-btn'), chatSwitcher = document.getElementById('chat-switcher'), chatSwitcherList = document.getElementById('chat-switcher-list');
 
     sherwoodBtn.addEventListener('click', () => {
-        if (contactsListDiv.style.display === 'block') {
-            contactsListDiv.style.display = 'none';
-        } else {
-            loadContacts();
-            contactsListDiv.style.display = 'block';
-        }
+        if (contactsListDiv.style.display === 'block') contactsListDiv.style.display = 'none';
+        else { loadContacts(); contactsListDiv.style.display = 'block'; }
     });
 
     async function generateReferralLink() {
         if (!myPubkey) return '';
+        const pendingPubkey = '_pending_';
         const pc = new RTCPeerConnection();
         const dc = pc.createDataChannel('chat');
-        let sessionId = null;
-
+        activeStreams[pendingPubkey] = { pc, dc, sessionId: null };
+        setupDataChannel(dc, pendingPubkey);
         pc.onicecandidate = e => {
-            if (e.candidate && sessionId) {
-                fetch(SIGNALING + '/ice', {
-                    method:'POST',
-                    headers:{'Content-Type':'application/json'},
-                    body: JSON.stringify({ id: sessionId, candidate: e.candidate })
-                });
+            if (e.candidate && activeStreams[pendingPubkey].sessionId) {
+                fetch(SIGNALING + '/ice', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id: activeStreams[pendingPubkey].sessionId, candidate: e.candidate }) });
             }
         };
-
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
-        const res = await fetch(SIGNALING + '/offer', {
-            method:'POST',
-            headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({ sdp: pc.localDescription })
-        });
+        const res = await fetch(SIGNALING + '/offer', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ sdp: pc.localDescription }) });
         const data = await res.json();
-        sessionId = data.id;
-
+        activeStreams[pendingPubkey].sessionId = data.id;
+        pollForAnswerAndIce(pendingPubkey);
         const basePath = window.location.pathname.replace(/\/[^/]*$/, '/');
         const fullOrigin = window.location.origin + basePath;
-        return fullOrigin + "?ref=" + encodeURIComponent(myPubkey) + "&sid=" + sessionId;
+        return fullOrigin + "?ref=" + encodeURIComponent(myPubkey) + "&sid=" + data.id;
     }
 
     document.getElementById('ref-link-btn').addEventListener('click', async () => {
         const link = await generateReferralLink();
-        if (link) {
-            document.getElementById('ref-link-display').textContent = link;
-            document.getElementById('ref-modal').classList.add('active');
-        }
+        if (link) { document.getElementById('ref-link-display').textContent = link; document.getElementById('ref-modal').classList.add('active'); }
     });
-
     document.getElementById('copy-ref-link-btn').addEventListener('click', function() {
         const link = document.getElementById('ref-link-display').textContent;
         if (!link) return;
         const btn = this;
         if (navigator.clipboard?.writeText) {
-            navigator.clipboard.writeText(link).then(() => {
-                btn.textContent = '✔ Заряжено!';
-                btn.style.background = '#388E3C';
-                setTimeout(() => { btn.textContent = 'Зарядить'; btn.style.background = '#2E7D32'; }, 2000);
-            });
-        } else {
-            const range = document.createRange();
-            range.selectNode(document.getElementById('ref-link-display'));
-            window.getSelection().removeAllRanges();
-            window.getSelection().addRange(range);
-            updateRobinStatus('Выделите и метните', 2000);
-        }
+            navigator.clipboard.writeText(link).then(() => { btn.textContent = '✔ Заряжено!'; btn.style.background = '#388E3C'; setTimeout(() => { btn.textContent = 'Зарядить'; btn.style.background = '#2E7D32'; }, 2000); });
+        } else updateRobinStatus('Выделите и метните', 2000);
     });
-
     document.getElementById('share-ref-link-btn').addEventListener('click', () => {
         const link = document.getElementById('ref-link-display').textContent;
         if (!link) return;
         if (navigator.share) navigator.share({ title: 'RobinHood P2P', text: 'Присоединяйся!', url: link }).catch(()=>{});
     });
-
-    document.getElementById('close-ref-modal-btn').addEventListener('click', () => {
-        document.getElementById('ref-modal').classList.remove('active');
-    });
+    document.getElementById('close-ref-modal-btn').addEventListener('click', () => document.getElementById('ref-modal').classList.remove('active'));
 
     function addFriendManually() {
         const input = document.getElementById('friend-input');
         let value = input.value.trim();
         if (!value) return;
         let ref = value;
-        if (value.includes('?ref=')) {
-            try {
-                const url = new URL(value);
-                ref = url.searchParams.get('ref') || ref;
-            } catch (e) {
-                updateRobinStatus('Неверный формат ссылки', 2000);
-                return;
-            }
-        }
+        if (value.includes('?ref=')) { const url = new URL(value); ref = url.searchParams.get('ref') || ref; }
         if (!ref) { updateRobinStatus('Неверный формат стрелы или колчана', 2000); return; }
         if (ref === myPubkey) { updateRobinStatus('Это ваш собственный колчан', 2000); return; }
         let contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
         if (contacts.some(c => c.pubkey === ref)) { updateRobinStatus('Стрелок уже есть', 2000); return; }
-        const tempName = 'Лучник';
-        contacts.push({ name: tempName, pubkey: ref, avatar: 'assets/avatars/001-.png', status: 'confirmed' });
+        contacts.push({ name: 'Лучник', pubkey: ref, avatar: 'assets/avatars/001-.png', status: 'confirmed' });
         localStorage.setItem('robinhood_contacts', JSON.stringify(contacts));
-        updateRobinStatus(`Стрелок ${tempName} добавлен`, 3000);
+        updateRobinStatus('Стрелок добавлен', 3000);
         loadContacts();
         input.value = '';
         document.getElementById('ref-modal').classList.remove('active');
     }
-
     document.getElementById('add-friend-btn').addEventListener('click', addFriendManually);
     document.getElementById('friend-input').addEventListener('keypress', (e) => { if (e.key === 'Enter') addFriendManually(); });
 
@@ -566,9 +369,12 @@
                 loadContacts();
                 updateRobinStatus('Лучник добавлен по реф. стреле', 3000);
             }
-            if (sid) {
-                acceptOfferForContact(ref, sid);
-            }
+            if (sid) acceptOfferForContact(ref, sid);
+        }
+        if (activeStreams['_pending_'] && ref) {
+            activeStreams[ref] = activeStreams['_pending_'];
+            delete activeStreams['_pending_'];
+            pollForAnswerAndIce(ref);
         }
     }
 
@@ -578,13 +384,10 @@
         contactsListInner.innerHTML = '';
         if (confirmed.length) {
             confirmed.forEach(c => {
-                const div = document.createElement('div');
-                div.className = 'contact-item';
+                const div = document.createElement('div'); div.className = 'contact-item';
                 div.innerHTML = `<div class="contact-info"><img src="${c.avatar || 'assets/avatars/001-.png'}" class="contact-avatar"><span class="contact-name">${c.name}</span></div><button class="delete-contact" data-pubkey="${c.pubkey}">✖</button>`;
-                const infoDiv = div.querySelector('.contact-info');
-                infoDiv.addEventListener('click', () => openChatWithContact(c));
-                const delBtn = div.querySelector('.delete-contact');
-                delBtn.addEventListener('click', (e) => deleteContact(c.pubkey, e));
+                div.querySelector('.contact-info').addEventListener('click', () => openChatWithContact(c));
+                div.querySelector('.delete-contact').addEventListener('click', (e) => deleteContact(c.pubkey, e));
                 contactsListInner.appendChild(div);
             });
         } else {
@@ -597,11 +400,8 @@
         let contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
         contacts = contacts.filter(c => c.pubkey !== pubkey);
         localStorage.setItem('robinhood_contacts', JSON.stringify(contacts));
-        if (activeContact && activeContact.pubkey === pubkey) {
-            activeContact = null;
-            headerTitle.textContent = 'RobinHood P2P';
-            chatSwitcherBtn.style.display = 'none';
-        }
+        if (activeContact && activeContact.pubkey === pubkey) { activeContact = null; headerTitle.textContent = 'RobinHood P2P'; chatSwitcherBtn.style.display = 'none'; }
+        if (activeStreams[pubkey]) { activeStreams[pubkey].pc.close(); delete activeStreams[pubkey]; }
         loadContacts();
         updateRobinStatus('Стрелок уволен', 2000);
     }
@@ -614,45 +414,23 @@
         document.querySelectorAll(".message-row:not(#robin-row)").forEach(m => m.remove());
         updateRobinStatus("Перестрелка с " + contact.name + " открыта", 3000);
         contactsListDiv.style.display = "none";
-        drawer.classList.remove("open");
-        overlay.classList.remove("visible");
+        drawer.classList.remove("open"); overlay.classList.remove("visible");
         loadChatHistory(contact.pubkey);
-        if (!activeStreams[contact.pubkey]) {
-            createOfferForContact(contact.pubkey);
-        }
+        if (!activeStreams[contact.pubkey]) createOfferForContact(contact.pubkey);
     }
 
     chatSwitcherBtn.addEventListener('click', () => {
-        if (chatSwitcher.classList.contains('open')) {
-            chatSwitcher.classList.remove('open');
-        } else {
-            populateChatSwitcher();
-            chatSwitcher.classList.add('open');
-        }
+        if (chatSwitcher.classList.contains('open')) { chatSwitcher.classList.remove('open'); }
+        else { populateChatSwitcher(); chatSwitcher.classList.add('open'); }
     });
-
     async function populateChatSwitcher() {
         chatSwitcherList.innerHTML = '';
         const contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]').filter(c => c.status === 'confirmed');
-        const history = toggleHistory.checked ? await loadEncryptedHistory() : [];
-        const contactKeys = new Set();
-        history.forEach(msg => {
-            if (msg.sender !== myPubkey) contactKeys.add(msg.sender);
-            if (msg.recipient !== myPubkey) contactKeys.add(msg.recipient);
-        });
-        const activeContacts = contacts.filter(c => contactKeys.has(c.pubkey) || (activeContact && c.pubkey === activeContact.pubkey));
-        if (activeContacts.length === 0) {
-            chatSwitcherList.innerHTML = '<div style="padding:10px;color:#888;">Нет активных чатов</div>';
-            return;
-        }
-        activeContacts.forEach(c => {
-            const div = document.createElement('div');
-            div.className = 'contact-item';
-            div.innerHTML = `<div class="contact-info"><img src="${c.avatar || 'assets/avatars/001-.png'}" class="contact-avatar"><span class="contact-name">${c.name}</span></div>`;
-            div.addEventListener('click', () => {
-                chatSwitcher.classList.remove('open');
-                openChatWithContact(c);
-            });
+        if (!contacts.length) { chatSwitcherList.innerHTML = '<div style="padding:10px;color:#888;">Нет контактов</div>'; return; }
+        contacts.forEach(c => {
+            const div = document.createElement('div'); div.className = 'contact-item';
+            div.innerHTML = `<img src="${c.avatar || 'assets/avatars/001-.png'}" class="contact-avatar"><span class="contact-name">${c.name}</span>`;
+            div.addEventListener('click', () => { chatSwitcher.classList.remove('open'); openChatWithContact(c); });
             chatSwitcherList.appendChild(div);
         });
     }
@@ -662,10 +440,7 @@
             const localHistory = await loadEncryptedHistory();
             localHistory.forEach(msg => {
                 if (msg.sender === contactPubkey || msg.recipient === contactPubkey) {
-                    const text = msg.text;
-                    const senderName = msg.sender === myPubkey ? 'Вы' : (msg.senderName || msg.sender.slice(0,8));
-                    const avatar = msg.sender === myPubkey ? profileAvatar.src : (msg.avatar || 'assets/avatars/001-.png');
-                    appendMessage(senderName, text, avatar, msg.time);
+                    appendMessage(msg.sender === myPubkey ? 'Вы' : (msg.senderName || msg.sender.slice(0,8)), msg.text, msg.avatar || 'assets/avatars/001-.png', msg.time);
                 }
             });
         }
@@ -674,10 +449,7 @@
     function sendMessageHandler() {
         const text = msgInput.value.trim();
         if (!text) return;
-        if (!activeContact) {
-            updateRobinStatus('Сначала выберите стрелка в Шервудских письмах!', 3000);
-            return;
-        }
+        if (!activeContact) { updateRobinStatus('Сначала выберите стрелка в Шервудских письмах!', 3000); return; }
         const stream = activeStreams[activeContact.pubkey];
         if (stream && stream.dc && stream.dc.readyState === 'open') {
             stream.dc.send(text);
@@ -686,11 +458,7 @@
             if (toggleSound.checked) playSound('bow_shot.wav');
             if (toggleHistory.checked) {
                 loadEncryptedHistory().then(history => {
-                    history.push({
-                        text, sender: myPubkey, recipient: activeContact.pubkey,
-                        senderName: myNick.textContent, avatar: profileAvatar.src,
-                        time: new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' })
-                    });
+                    history.push({ text, sender: myPubkey, recipient: activeContact.pubkey, senderName: myNick.textContent, avatar: profileAvatar.src, time: new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' }) });
                     saveEncryptedHistory(history);
                 });
             }
@@ -699,178 +467,77 @@
             if (!stream) createOfferForContact(activeContact.pubkey);
         }
     }
-
     sendBtn.addEventListener('click', sendMessageHandler);
     msgInput.addEventListener('keypress', e => { if (e.key === 'Enter') sendBtn.click(); });
 
     function appendMessage(sender, text, avatarSrc, timeStr = null) {
-        const row = document.createElement('div');
-        row.className = 'message-row';
+        const row = document.createElement('div'); row.className = 'message-row';
         const finalTime = timeStr || new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
         row.innerHTML = `<img src="${avatarSrc}" class="avatar"><div class="msg-body"><div class="msg-sender">${sender}</div><div>${text}</div><div class="msg-status">${finalTime}</div></div>`;
-        chatBox.appendChild(row);
-        chatBox.scrollTop = chatBox.scrollHeight;
+        chatBox.appendChild(row); chatBox.scrollTop = chatBox.scrollHeight;
     }
 
     ddgClearBtn.addEventListener('click', async () => {
         document.querySelectorAll('.message-row:not(#robin-row)').forEach(m => m.remove());
-        if (toggleHistory.checked) {
-            await saveEncryptedHistory([]);
-        } else {
-            localStorage.removeItem('robinhood_chat_history');
-        }
+        if (toggleHistory.checked) await saveEncryptedHistory([]); else localStorage.removeItem('robinhood_chat_history');
         updateRobinStatus('Робин Гуд пустил ваши письма на самокрутки !', 5000);
     });
 
-    let robinDefaultText = robinText.textContent;
-    let robinTimer;
+    let robinDefaultText = robinText.textContent, robinTimer;
     function updateRobinStatus(text, duration=4000) {
-        clearTimeout(robinTimer);
-        robinText.style.transition = 'none';
-        robinText.style.opacity = 1;
-        robinText.textContent = text;
+        clearTimeout(robinTimer); robinText.style.transition = 'none'; robinText.style.opacity = 1; robinText.textContent = text;
         robinTimer = setTimeout(() => {
-            robinText.style.transition = 'opacity 0.6s ease';
-            robinText.style.opacity = 0;
-            const onEnd = () => {
-                robinText.removeEventListener('transitionend', onEnd);
-                robinText.style.transition = 'none';
-                robinText.textContent = robinDefaultText;
-                robinText.style.opacity = 1;
-            };
+            robinText.style.transition = 'opacity 0.6s ease'; robinText.style.opacity = 0;
+            const onEnd = () => { robinText.removeEventListener('transitionend', onEnd); robinText.style.transition = 'none'; robinText.textContent = robinDefaultText; robinText.style.opacity = 1; };
             robinText.addEventListener('transitionend', onEnd);
         }, duration);
     }
 
-    function playSound(filename) {
-        if (toggleSound.checked) {
-            const audio = new Audio(`assets/sounds/${filename}`);
-            audio.volume = 0.5;
-            audio.play().catch(e=>console.log);
-        }
-    }
+    function playSound(filename) { if (toggleSound.checked) { const a = new Audio(`assets/sounds/${filename}`); a.volume=0.5; a.play().catch(()=>{}); } }
 
-    async function init() {
-        await loadKeys();
-        updateRobinStatus('Святые сокеты стабильны !', 3000);
-        processReferral();
-    }
-
+    async function init() { await loadKeys(); updateRobinStatus('Святые сокеты стабильны !', 3000); processReferral(); }
     window.addEventListener('load', init);
 
-    openMenuBtn.addEventListener('click', () => {
-        drawer.classList.toggle('open');
-        overlay.classList.toggle('visible');
-    });
-    overlay.addEventListener('click', () => {
-        drawer.classList.remove('open');
-        overlay.classList.remove('visible');
-    });
+    openMenuBtn.addEventListener('click', () => { drawer.classList.toggle('open'); overlay.classList.toggle('visible'); });
+    overlay.addEventListener('click', () => { drawer.classList.remove('open'); overlay.classList.remove('visible'); });
 
-    const savedAvatar = localStorage.getItem('robinhood_avatar');
-    if (savedAvatar) profileAvatar.src = savedAvatar;
-    const savedNick = localStorage.getItem('robinhood_nick');
-    if (savedNick) myNick.textContent = savedNick;
-
-    changeProfileBtn.addEventListener('click', () => {
-        profileEditBox.style.display = profileEditBox.style.display === 'block' ? 'none' : 'block';
-    });
-
+    const savedAvatar = localStorage.getItem('robinhood_avatar'); if (savedAvatar) profileAvatar.src = savedAvatar;
+    const savedNick = localStorage.getItem('robinhood_nick'); if (savedNick) myNick.textContent = savedNick;
+    changeProfileBtn.addEventListener('click', () => profileEditBox.style.display = profileEditBox.style.display === 'block' ? 'none' : 'block');
     saveProfileBtn.addEventListener('click', () => {
         const newNick = newNickInput.value.trim();
-        if (newNick) {
-            myNick.textContent = newNick;
-            localStorage.setItem('robinhood_nick', newNick);
-            newNickInput.value = '';
-            profileEditBox.style.display = 'none';
-            updateRobinStatus(`Ник изменён на ${newNick}`);
-        }
+        if (newNick) { myNick.textContent = newNick; localStorage.setItem('robinhood_nick', newNick); newNickInput.value = ''; profileEditBox.style.display = 'none'; updateRobinStatus(`Ник изменён на ${newNick}`); }
     });
 
-    const avatars = [
-        'assets/avatars/001-.png','assets/avatars/002--1.png','assets/avatars/003-icon-8033085.png',
-        'assets/avatars/009--7.png','assets/avatars/010--8.png','assets/avatars/018--16.png',
-        'assets/avatars/022--20.png','assets/avatars/037--35.png','assets/avatars/043--41.png',
-        'assets/avatars/048--46.png','assets/avatars/050--48.png','assets/avatars/052--50.png',
-        'assets/avatars/053--51.png','assets/avatars/056--54.png','assets/avatars/066--64.png',
-        'assets/avatars/077-icon-8033092.png','assets/avatars/083-icon-11885568.png',
-        'assets/avatars/094-icon-18926716.png','assets/avatars/108--83.png','assets/avatars/147-icon-6081840.png',
-        'assets/avatars/148-icon-5532632.png','assets/avatars/149-icon-4132697.png',
-        'assets/avatars/150-icon-10756654.png','assets/avatars/153-icon-4964924.png',
-        'assets/avatars/154-icon-4261075.png','assets/avatars/156-icon-4132828.png',
-        'assets/avatars/158--116.png','assets/avatars/160-icon-2332597.png','assets/avatars/162-icon-6237595.png',
-        'assets/avatars/167-icon-1920840.png','assets/avatars/168-icon-228268.png',
-        'assets/avatars/169-icon-5613167.png','assets/avatars/173-icon-1615623.png',
-        'assets/avatars/183-icon-5840846.png','assets/avatars/186-icon-6237499.png',
-        'assets/avatars/188-icon-6267517.png','assets/avatars/203-icon-3516506.png',
-        'assets/avatars/216-icon-5504960.png','assets/avatars/221-icon-9530256.png',
-        'assets/avatars/226-icon-9669507.png','assets/avatars/227-icon-9623471.png',
-        'assets/avatars/229-icon-10032172.png','assets/avatars/230-icon-10049316.png',
-        'assets/avatars/232-icon-11434002.png','assets/avatars/234-icon-10756328.png',
-        'assets/avatars/245-icon-16150697.png','assets/avatars/246-icon-16150730.png',
-        'assets/avatars/249-icon-17159913.png','assets/avatars/250-icon-17159758.png',
-        'assets/avatars/251-icon-17159744.png','assets/avatars/253-icon-18426073.png',
-        'assets/avatars/254-icon-18621065.png','assets/avatars/255-icon-18926692.png',
-        'assets/avatars/256--120.png'
-    ];
-
+    const avatars = ['assets/avatars/001-.png','assets/avatars/002--1.png','assets/avatars/003-icon-8033085.png','assets/avatars/009--7.png','assets/avatars/010--8.png','assets/avatars/018--16.png','assets/avatars/022--20.png','assets/avatars/037--35.png','assets/avatars/043--41.png','assets/avatars/048--46.png','assets/avatars/050--48.png','assets/avatars/052--50.png','assets/avatars/053--51.png','assets/avatars/056--54.png','assets/avatars/066--64.png','assets/avatars/077-icon-8033092.png','assets/avatars/083-icon-11885568.png','assets/avatars/094-icon-18926716.png','assets/avatars/108--83.png','assets/avatars/147-icon-6081840.png','assets/avatars/148-icon-5532632.png','assets/avatars/149-icon-4132697.png','assets/avatars/150-icon-10756654.png','assets/avatars/153-icon-4964924.png','assets/avatars/154-icon-4261075.png','assets/avatars/156-icon-4132828.png','assets/avatars/158--116.png','assets/avatars/160-icon-2332597.png','assets/avatars/162-icon-6237595.png','assets/avatars/167-icon-1920840.png','assets/avatars/168-icon-228268.png','assets/avatars/169-icon-5613167.png','assets/avatars/173-icon-1615623.png','assets/avatars/183-icon-5840846.png','assets/avatars/186-icon-6237499.png','assets/avatars/188-icon-6267517.png','assets/avatars/203-icon-3516506.png','assets/avatars/216-icon-5504960.png','assets/avatars/221-icon-9530256.png','assets/avatars/226-icon-9669507.png','assets/avatars/227-icon-9623471.png','assets/avatars/229-icon-10032172.png','assets/avatars/230-icon-10049316.png','assets/avatars/232-icon-11434002.png','assets/avatars/234-icon-10756328.png','assets/avatars/245-icon-16150697.png','assets/avatars/246-icon-16150730.png','assets/avatars/249-icon-17159913.png','assets/avatars/250-icon-17159758.png','assets/avatars/251-icon-17159744.png','assets/avatars/253-icon-18426073.png','assets/avatars/254-icon-18621065.png','assets/avatars/255-icon-18926692.png','assets/avatars/256--120.png'];
     function loadAvatars() {
         avatarList.innerHTML = '';
         avatars.forEach(src => {
-            const img = document.createElement('img');
-            img.src = src;
-            img.className = 'avatar-option';
-            img.addEventListener('click', () => {
-                profileAvatar.src = src;
-                localStorage.setItem('robinhood_avatar', src);
-                updateRobinStatus('Аватар обновлён');
-                avatarSelector.style.display = 'none';
-            });
+            const img = document.createElement('img'); img.src = src; img.className = 'avatar-option';
+            img.addEventListener('click', () => { profileAvatar.src = src; localStorage.setItem('robinhood_avatar', src); updateRobinStatus('Аватар обновлён'); avatarSelector.style.display = 'none'; });
             avatarList.appendChild(img);
         });
     }
-
-    profileAvatar.addEventListener('click', () => {
-        avatarSelector.style.display = avatarSelector.style.display === 'block' ? 'none' : 'block';
-        if (avatarSelector.style.display === 'block') loadAvatars();
-    });
+    profileAvatar.addEventListener('click', () => { avatarSelector.style.display = avatarSelector.style.display === 'block' ? 'none' : 'block'; if (avatarSelector.style.display === 'block') loadAvatars(); });
 
     let touchStartX = 0;
     document.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; });
     document.addEventListener('touchend', e => {
         const deltaX = e.changedTouches[0].clientX - touchStartX;
         if (Math.abs(deltaX) > 50) {
-            if (deltaX > 0 && !drawer.classList.contains('open')) {
-                drawer.classList.add('open');
-                overlay.classList.add('visible');
-            } else if (deltaX < 0 && drawer.classList.contains('open')) {
-                drawer.classList.remove('open');
-                overlay.classList.remove('visible');
-            }
+            if (deltaX > 0 && !drawer.classList.contains('open')) { drawer.classList.add('open'); overlay.classList.add('visible'); }
+            else if (deltaX < 0 && drawer.classList.contains('open')) { drawer.classList.remove('open'); overlay.classList.remove('visible'); }
         }
     });
 
     toggleHistory.addEventListener('change', async function() {
-        if (!this.checked) {
-            localStorage.removeItem('robinhood_history_key');
-            localStorage.removeItem('robinhood_chat_history');
-            historyEncryptionKey = null;
-            updateRobinStatus('Этот стрелок отдаёт все письма Робин Гуду на самокрутки', 4000);
-        } else {
-            updateRobinStatus('Этот стрелок хранит ваши письма', 4000);
-        }
+        if (!this.checked) { localStorage.removeItem('robinhood_history_key'); localStorage.removeItem('robinhood_chat_history'); historyEncryptionKey = null; updateRobinStatus('Этот стрелок отдаёт все письма Робин Гуду на самокрутки', 4000); }
+        else updateRobinStatus('Этот стрелок хранит ваши письма', 4000);
         localStorage.setItem('robinhood_history', this.checked);
     });
-
-    toggleSound.addEventListener('change', function() {
-        localStorage.setItem('robinhood_sound', this.checked);
-        updateRobinStatus(this.checked ? 'Звук включён' : 'Выключен');
-    });
-
-    const savedHistory = localStorage.getItem('robinhood_history');
-    if (savedHistory !== null) toggleHistory.checked = savedHistory === 'true';
-    const savedSound = localStorage.getItem('robinhood_sound');
-    if (savedSound !== null) toggleSound.checked = savedSound === 'true';
+    toggleSound.addEventListener('change', function() { localStorage.setItem('robinhood_sound', this.checked); updateRobinStatus(this.checked ? 'Звук включён' : 'Выключен'); });
+    const savedHistory = localStorage.getItem('robinhood_history'); if (savedHistory !== null) toggleHistory.checked = savedHistory === 'true';
+    const savedSound = localStorage.getItem('robinhood_sound'); if (savedSound !== null) toggleSound.checked = savedSound === 'true';
 </script>
 </body>
 </html>
