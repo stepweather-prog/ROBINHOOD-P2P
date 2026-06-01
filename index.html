@@ -414,7 +414,7 @@
         localStorage.setItem('robinhood_contacts', JSON.stringify(contacts));
         if (activeContact && activeContact.pubkey === pubkey) { 
             activeContact = null; 
-            headerTitleText.textContent = 'Перестрелки';
+            chatSwitcherLabel.textContent = 'Перестрелки';
             chatSwitcherBtn.classList.remove('open');
             chatSwitcher.classList.remove('open');
         }
@@ -424,7 +424,7 @@
 
     function openChatWithContact(contact) {
         activeContact = contact;
-        headerTitleText.textContent = contact.name;
+        chatSwitcherLabel.textContent = contact.name;
         msgInput.placeholder = "Выпустить стрелу " + contact.name + "...";
         document.querySelectorAll(".message-row:not(#robin-row)").forEach(m => m.remove());
         updateRobinStatus("Перестрелка с " + contact.name + " открыта", 3000);
