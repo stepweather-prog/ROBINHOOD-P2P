@@ -569,8 +569,8 @@
     }
 
     // Поллинг новых сообщений
-    async function pollMessages() {
-        if (!myPubkey) return;
+    async function pollMessages() {if (!API_URL) return;
+         if (!myPubkey) return;
         const messages = await getMessages(Date.now() - 60000);
         messages.forEach(async (m) => {
             if (processedMessageIds.has(m.id)) return;
