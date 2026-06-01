@@ -415,7 +415,7 @@
         if (activeContact && activeContact.pubkey === pubkey) { 
             activeContact = null; 
             headerTitleText.textContent = 'Перестрелки';
-            headerTitleBtn.classList.remove('open');
+            chatSwitcherBtn.classList.remove('open');
             chatSwitcher.classList.remove('open');
         }
         loadContacts();
@@ -435,7 +435,7 @@
     }
 
     // Шторка чатов ▼
-    headerTitleBtn.addEventListener('click', () => {
+    chatSwitcherBtn.addEventListener('click', () => {
         if (chatSwitcher.classList.contains('open')) {
             chatSwitcher.classList.remove('open');
             headerTitleBtn.classList.remove('open');
