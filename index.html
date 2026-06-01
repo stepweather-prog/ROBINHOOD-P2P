@@ -510,7 +510,19 @@
     const contactsListInner = document.getElementById('contacts-list-inner');
     const headerTitle = document.getElementById('header-title');
 
-    function generateReferralLink() { if (!myPubkey) loadKeys(); return window.location.origin + "/?ref=" + encodeURIComponent(myPubkey); }
+    function generateReferralLink() {
+    if (!myPubkey || myPubkey === 'fallback_pub') {
+        loadKeys();
+        if (!myPubkey || myPubkey === 'fallback_pub') {
+            updateRobinStatus('Ключ не готов. Попробуйте позже.', 3000);
+            return '';
+        }
+    }
+    // Правильный путь для GitHub Pages (или другой поддиректории)
+    const basePath = window.location.pathname.replace(/\/[^/]*$/, '/'); // убираем index.html, если есть
+    const fullOrigin = window.location.origin + basePath;
+    return fullOrigin + "?ref=" + encodeURIComponent(myPubkey);
+} }
     document.getElementById('ref-link-btn').addEventListener('click', () => { const link = generateReferralLink(); if (link) { document.getElementById('ref-link-display').textContent = link; document.getElementById('ref-modal').classList.add('active'); } });
     document.getElementById('copy-ref-link-btn').addEventListener('click', function() {
         const link = document.getElementById('ref-link-display').textContent;
