@@ -131,6 +131,7 @@
         </div>
     </div>
     <div class="drawer-content">
+        <div class="menu-link" id="create-auto-btn"><span>🎯</span> Создать стрелу</div>
         <div class="menu-link" id="sherwood-letters-btn"><span>📖</span> Шервудские письма</div>
         <div class="contacts-list" id="contacts-list">
             <div id="contacts-list-inner"></div>
@@ -155,7 +156,6 @@
 </div>
 
 <script>
-    // ---------- ОБУЧАЕМЫЙ РОУТЕР (как в P2PPong) ----------
     const CORS_PROXY = 'https://corsproxy.io/?';
     const STORAGES = [
         { name: "0x0.st", url: "https://0x0.st" },
@@ -211,7 +211,7 @@
                         let url = (await res.text()).trim();
                         if (!url.startsWith("http")) url = store.url.replace(/\/?$/, '/') + url;
                         nodeStats.success(store.name);
-                        return { store: store.name, url };
+                        return { store: store.name, fileUrl: url, baseUrl: store.url };
                     } else nodeStats.fail(store.name);
                 } catch(e) { nodeStats.fail(store.name); }
                 return null;
@@ -223,22 +223,30 @@
     }
 
     async function downloadText(url) {
-        try { const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 4000); const res = await fetch(url, { signal:ctrl.signal }); clearTimeout(to); return res.ok ? await res.text() : null; } catch(e) { return null; }
+        try {
+            const ctrl = new AbortController();
+            const to = setTimeout(() => ctrl.abort(), 4000);
+            const proxyUrl = CORS_PROXY + encodeURIComponent(url);
+            const res = await fetch(proxyUrl, { signal: ctrl.signal });
+            clearTimeout(to);
+            if (res.ok) return await res.text();
+        } catch(e) {}
+        return null;
     }
 
     async function findFileById(uuid, type) {
         const filename = `p2p_${uuid}.${type}.txt`;
         for (const store of STORAGES) {
-            const proxyUrl = CORS_PROXY + encodeURIComponent(store.url.replace(/\/?$/, '/') + filename);
-            const content = await downloadText(proxyUrl);
-            if (content && content.trim().startsWith("v=")) return { content, store: store.name };
+            const baseUrl = store.url.replace(/\/?$/, '/') + filename;
+            const content = await downloadText(baseUrl);
+            if (content && content.trim().startsWith("v=")) {
+                return { content, store: store.name, baseUrl: store.url };
+            }
         }
         return null;
     }
 
-    // ---------- WebRTC + ИНТЕРФЕЙС ----------
     let myPrivkey, myPubkey, activeContact;
-    const processedMessageIds = new Set();
     let peerConnection = null, dataChannel = null, currentUUID = null, pollingInterval = null;
 
     async function generateKeyPair() {
@@ -287,7 +295,6 @@
         } catch(e) { return []; }
     }
 
-    // DOM элементы
     const openMenuBtn = document.getElementById('open-menu'), drawer = document.getElementById('drawer'), overlay = document.getElementById('drawer-overlay');
     const ddgClearBtn = document.getElementById('ddg-clear'), changeProfileBtn = document.getElementById('change-profile-btn'), profileEditBox = document.getElementById('profile-edit-box');
     const saveProfileBtn = document.getElementById('save-profile-btn'), newNickInput = document.getElementById('new-nick-input'), myNick = document.getElementById('my-nick');
@@ -302,58 +309,30 @@
         else { loadContacts(); contactsListDiv.style.display = 'block'; }
     });
 
-    // Создание авто-стрелы
-    async function createAutoOffer() {
-        if (peerConnection) peerConnection.close();
-        peerConnection = new RTCPeerConnection();
-        dataChannel = peerConnection.createDataChannel('chat');
-        setupDataChannel(dataChannel);
-        const offer = await peerConnection.createOffer();
-        await peerConnection.setLocalDescription(offer);
-        const uuid = Math.random().toString(36).substring(2,10) + Date.now().toString(36);
-        currentUUID = uuid;
-        const result = await uploadToAny(`p2p_${uuid}.offer.txt`, peerConnection.localDescription.sdp);
-        if (!result) { updateRobinStatus('Авто-стрела не удалась. Используйте ручной режим.', 3000); return null; }
-        const link = `${window.location.origin}${window.location.pathname}?id=${uuid}`;
-        document.getElementById('ref-link-display').textContent = link;
-        document.getElementById('ref-modal').classList.add('active');
-        // опрос ответа
-        const answerUrl = result.url.replace(/\.offer\.txt$/, '.answer.txt');
-        if (pollingInterval) clearInterval(pollingInterval);
-        pollingInterval = setInterval(async () => {
-            const sdp = await downloadText(answerUrl);
-            if (sdp && sdp.trim().startsWith('v=')) {
-                clearInterval(pollingInterval);
-                pollingInterval = null;
-                await peerConnection.setRemoteDescription({ type:'answer', sdp });
-                updateRobinStatus('✅ Колчан открыт!', 3000);
-            }
-        }, 2000);
-        setTimeout(() => { if (pollingInterval) { clearInterval(pollingInterval); pollingInterval = null; updateRobinStatus('⏱️ Таймаут ответа.', 2000); } }, 90000);
-        return link;
-    }
-
-    document.getElementById('ref-link-btn')?.addEventListener('click', async () => {
+    document.getElementById('create-auto-btn').addEventListener('click', async () => {
         updateRobinStatus('Создаю стрелу...', 2000);
-        await createAutoOffer();
+        const link = await createAutoOffer();
+        if (link) {
+            document.getElementById('ref-link-display').textContent = link;
+            document.getElementById('ref-modal').classList.add('active');
+        }
     });
 
-    document.getElementById('copy-ref-link-btn')?.addEventListener('click', () => {
+    document.getElementById('copy-ref-link-btn').addEventListener('click', () => {
         const link = document.getElementById('ref-link-display').textContent;
         if (link) navigator.clipboard.writeText(link).then(() => updateRobinStatus('Ссылка скопирована!', 2000));
     });
 
-    document.getElementById('share-ref-link-btn')?.addEventListener('click', () => {
+    document.getElementById('share-ref-link-btn').addEventListener('click', () => {
         const link = document.getElementById('ref-link-display').textContent;
         if (link && navigator.share) navigator.share({ title:'RobinHood P2P', url: link });
     });
 
-    document.getElementById('close-ref-modal-btn')?.addEventListener('click', () => {
+    document.getElementById('close-ref-modal-btn').addEventListener('click', () => {
         document.getElementById('ref-modal').classList.remove('active');
     });
 
-    // Ручной режим
-    document.getElementById('apply-sdp-btn')?.addEventListener('click', async () => {
+    document.getElementById('apply-sdp-btn').addEventListener('click', async () => {
         const sdpText = document.getElementById('manual-sdp').value.trim();
         if (!sdpText) return;
         try {
@@ -387,7 +366,33 @@
         };
     }
 
-    // Обработка ?id= в URL (авто-приём)
+    async function createAutoOffer() {
+        if (peerConnection) peerConnection.close();
+        peerConnection = new RTCPeerConnection();
+        dataChannel = peerConnection.createDataChannel('chat');
+        setupDataChannel(dataChannel);
+        const offer = await peerConnection.createOffer();
+        await peerConnection.setLocalDescription(offer);
+        const uuid = Math.random().toString(36).substring(2,10) + Date.now().toString(36);
+        currentUUID = uuid;
+        const result = await uploadToAny(`p2p_${uuid}.offer.txt`, peerConnection.localDescription.sdp);
+        if (!result) { updateRobinStatus('Авто-стрела не удалась. Используйте ручной режим.', 3000); return null; }
+        const link = `${window.location.origin}${window.location.pathname}?id=${uuid}`;
+        const answerUrl = (result.baseUrl.endsWith('/') ? result.baseUrl : result.baseUrl + '/') + `p2p_${uuid}.answer.txt`;
+        if (pollingInterval) clearInterval(pollingInterval);
+        pollingInterval = setInterval(async () => {
+            const sdp = await downloadText(answerUrl);
+            if (sdp && sdp.trim().startsWith('v=')) {
+                clearInterval(pollingInterval);
+                pollingInterval = null;
+                await peerConnection.setRemoteDescription({ type:'answer', sdp });
+                updateRobinStatus('✅ Колчан открыт!', 3000);
+            }
+        }, 2000);
+        setTimeout(() => { if (pollingInterval) { clearInterval(pollingInterval); pollingInterval = null; updateRobinStatus('⏱️ Таймаут ответа.', 2000); } }, 90000);
+        return link;
+    }
+
     async function processAutoAccept() {
         const urlParams = new URLSearchParams(window.location.search);
         const id = urlParams.get('id');
@@ -400,9 +405,12 @@
         await peerConnection.setRemoteDescription({ type:'offer', sdp: found.content });
         const answer = await peerConnection.createAnswer();
         await peerConnection.setLocalDescription(answer);
-        const answerRes = await uploadToAny(`p2p_${id}.answer.txt`, peerConnection.localDescription.sdp);
-        if (answerRes) updateRobinStatus('Ответ отправлен через ' + answerRes.store, 3000);
+        const answerBase = found.baseUrl || found.store;
+        const answerFilename = `p2p_${id}.answer.txt`;
+        const answerResult = await uploadToAny(answerFilename, peerConnection.localDescription.sdp);
+        if (answerResult) updateRobinStatus('Ответ отправлен через ' + answerResult.store, 3000);
         else updateRobinStatus('Ответ не удалось загрузить.', 2000);
+        window.history.replaceState({}, document.title, window.location.pathname);
     }
 
     function loadContacts() {
@@ -413,204 +421,4 @@
             confirmed.forEach(c => {
                 const div = document.createElement('div'); div.className = 'contact-item';
                 div.innerHTML = `<div class="contact-info"><img src="${c.avatar || 'assets/avatars/001-.png'}" class="contact-avatar"><span class="contact-name">${c.name}</span></div><button class="delete-contact" data-pubkey="${c.pubkey}">✖</button>`;
-                div.querySelector('.contact-info').addEventListener('click', () => openChatWithContact(c));
-                div.querySelector('.delete-contact').addEventListener('click', (e) => { e.stopPropagation(); deleteContact(c.pubkey, e); });
-                let pressTimer;
-                div.addEventListener('mousedown', () => { pressTimer = setTimeout(() => showContactMenu(c, div), 600); });
-                div.addEventListener('mouseup', () => clearTimeout(pressTimer));
-                div.addEventListener('mouseleave', () => clearTimeout(pressTimer));
-                div.addEventListener('touchstart', () => { pressTimer = setTimeout(() => showContactMenu(c, div), 600); }, { passive: true });
-                div.addEventListener('touchend', () => clearTimeout(pressTimer));
-                div.addEventListener('touchmove', () => clearTimeout(pressTimer));
-                contactsListInner.appendChild(div);
-            });
-        } else {
-            contactsListInner.innerHTML = '<div style="padding:10px;color:#888;">Воспользуйся реферальной стрелой!</div>';
-        }
-    }
-
-    function deleteContact(pubkey, event) {
-        event.stopPropagation();
-        let contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
-        contacts = contacts.filter(c => c.pubkey !== pubkey);
-        localStorage.setItem('robinhood_contacts', JSON.stringify(contacts));
-        if (activeContact && activeContact.pubkey === pubkey) { activeContact = null; chatSwitcherBtn.style.display = 'none'; }
-        loadContacts();
-        updateRobinStatus('Стрелок уволен', 2000);
-    }
-
-    function openChatWithContact(contact) {
-        activeContact = contact;
-        chatSwitcherLabel.textContent = contact.name;
-        chatSwitcherBtn.style.display = 'inline-flex';
-        msgInput.placeholder = "Выпустить стрелу " + contact.name + "...";
-        document.querySelectorAll(".message-row:not(#robin-row)").forEach(m => m.remove());
-        updateRobinStatus("Перестрелка с " + contact.name + " открыта", 3000);
-        contactsListDiv.style.display = "none";
-        drawer.classList.remove("open"); overlay.classList.remove("visible");
-        loadChatHistory(contact.pubkey);
-    }
-
-    chatSwitcherBtn.addEventListener('click', () => {
-        if (chatSwitcher.classList.contains('open')) chatSwitcher.classList.remove('open');
-        else { populateChatSwitcher(); chatSwitcher.classList.add('open'); }
-    });
-
-    async function populateChatSwitcher() {
-        chatSwitcherList.innerHTML = '';
-        const contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]').filter(c => c.status === 'confirmed');
-        if (!contacts.length) { chatSwitcherList.innerHTML = '<div style="padding:10px;color:#888;">Нет контактов</div>'; return; }
-        contacts.forEach(c => {
-            const div = document.createElement('div'); div.className = 'chat-switcher-item';
-            div.innerHTML = `<img src="${c.avatar || 'assets/avatars/001-.png'}" class="contact-avatar"><span class="contact-name">${c.name}</span>`;
-            div.addEventListener('click', () => { chatSwitcher.classList.remove('open'); openChatWithContact(c); });
-            chatSwitcherList.appendChild(div);
-        });
-    }
-
-    async function loadChatHistory(contactPubkey) {
-        if (toggleHistory.checked) {
-            const hist = await loadEncryptedHistory();
-            hist.forEach(msg => {
-                if (msg.sender === contactPubkey || msg.recipient === contactPubkey)
-                    appendMessage(msg.sender === myPubkey ? 'Вы' : (msg.senderName || msg.sender.slice(0,8)), msg.text, msg.avatar || 'assets/avatars/001-.png', msg.time);
-            });
-        }
-    }
-
-    function sendMessageHandler() {
-        const text = msgInput.value.trim();
-        if (!text) return;
-        if (!activeContact) { updateRobinStatus('Выберите стрелка.', 2000); return; }
-        if (dataChannel && dataChannel.readyState === 'open') {
-            dataChannel.send(text);
-        } else {
-            updateRobinStatus('Колчан не готов. Используйте ручной SDP.', 2000);
-            return;
-        }
-        appendMessage('Вы', text, profileAvatar.src);
-        msgInput.value = '';
-        if (toggleSound.checked) playSound('bow_shot.wav');
-        if (toggleHistory.checked) {
-            loadEncryptedHistory().then(hist => {
-                hist.push({ text, sender: myPubkey, recipient: activeContact.pubkey, senderName: myNick.textContent, avatar: profileAvatar.src, time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) });
-                saveEncryptedHistory(hist);
-            });
-        }
-    }
-
-    sendBtn.addEventListener('click', sendMessageHandler);
-    msgInput.addEventListener('keypress', e => { if (e.key === 'Enter') sendBtn.click(); });
-
-    function appendMessage(sender, text, avatarSrc, timeStr = null) {
-        const row = document.createElement('div'); row.className = 'message-row';
-        const finalTime = timeStr || new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-        row.innerHTML = `<img src="${avatarSrc}" class="avatar"><div class="msg-body"><div class="msg-sender">${sender}</div><div>${text}</div><div class="msg-status">${finalTime}</div></div>`;
-        chatBox.appendChild(row); chatBox.scrollTop = chatBox.scrollHeight;
-    }
-
-    ddgClearBtn.addEventListener('click', async () => {
-        document.querySelectorAll('.message-row:not(#robin-row)').forEach(m => m.remove());
-        if (toggleHistory.checked) await saveEncryptedHistory([]); else localStorage.removeItem('robinhood_chat_history');
-        updateRobinStatus('Письма пущены на самокрутки!', 3000);
-    });
-
-    let robinDefaultText = robinText.textContent, robinTimer;
-    function updateRobinStatus(text, duration=4000) {
-        clearTimeout(robinTimer); robinText.style.transition = 'none'; robinText.style.opacity = 1; robinText.textContent = text;
-        robinTimer = setTimeout(() => {
-            robinText.style.transition = 'opacity 0.6s ease'; robinText.style.opacity = 0;
-            const onEnd = () => { robinText.removeEventListener('transitionend', onEnd); robinText.style.transition = 'none'; robinText.textContent = robinDefaultText; robinText.style.opacity = 1; };
-            robinText.addEventListener('transitionend', onEnd);
-        }, duration);
-    }
-
-    function playSound(filename) { if (toggleSound.checked) { const a = new Audio(`assets/sounds/${filename}`); a.volume=0.5; a.play().catch(()=>{}); } }
-
-    async function init() {
-        await loadKeys();
-        updateRobinStatus('Святые сокеты стабильны !', 3000);
-        await processAutoAccept();
-    }
-    window.addEventListener('load', init);
-
-    openMenuBtn.addEventListener('click', () => { drawer.classList.toggle('open'); overlay.classList.toggle('visible'); });
-    overlay.addEventListener('click', () => { drawer.classList.remove('open'); overlay.classList.remove('visible'); });
-
-    const savedAvatar = localStorage.getItem('robinhood_avatar'); if (savedAvatar) profileAvatar.src = savedAvatar;
-    const savedNick = localStorage.getItem('robinhood_nick'); if (savedNick) myNick.textContent = savedNick;
-    changeProfileBtn.addEventListener('click', () => profileEditBox.style.display = profileEditBox.style.display === 'block' ? 'none' : 'block');
-    saveProfileBtn.addEventListener('click', () => {
-        const newNick = newNickInput.value.trim();
-        if (newNick) { myNick.textContent = newNick; localStorage.setItem('robinhood_nick', newNick); newNickInput.value = ''; profileEditBox.style.display = 'none'; updateRobinStatus(`Ник изменён на ${newNick}`); }
-    });
-
-    const avatars = ['assets/avatars/001-.png','assets/avatars/002--1.png','assets/avatars/003-icon-8033085.png','assets/avatars/009--7.png','assets/avatars/010--8.png','assets/avatars/018--16.png','assets/avatars/022--20.png','assets/avatars/037--35.png','assets/avatars/043--41.png','assets/avatars/048--46.png','assets/avatars/050--48.png','assets/avatars/052--50.png','assets/avatars/053--51.png','assets/avatars/056--54.png','assets/avatars/066--64.png','assets/avatars/077-icon-8033092.png','assets/avatars/083-icon-11885568.png','assets/avatars/094-icon-18926716.png','assets/avatars/108--83.png','assets/avatars/147-icon-6081840.png','assets/avatars/148-icon-5532632.png','assets/avatars/149-icon-4132697.png','assets/avatars/150-icon-10756654.png','assets/avatars/153-icon-4964924.png','assets/avatars/154-icon-4261075.png','assets/avatars/156-icon-4132828.png','assets/avatars/158--116.png','assets/avatars/160-icon-2332597.png','assets/avatars/162-icon-6237595.png','assets/avatars/167-icon-1920840.png','assets/avatars/168-icon-228268.png','assets/avatars/169-icon-5613167.png','assets/avatars/173-icon-1615623.png','assets/avatars/183-icon-5840846.png','assets/avatars/186-icon-6237499.png','assets/avatars/188-icon-6267517.png','assets/avatars/203-icon-3516506.png','assets/avatars/216-icon-5504960.png','assets/avatars/221-icon-9530256.png','assets/avatars/226-icon-9669507.png','assets/avatars/227-icon-9623471.png','assets/avatars/229-icon-10032172.png','assets/avatars/230-icon-10049316.png','assets/avatars/232-icon-11434002.png','assets/avatars/234-icon-10756328.png','assets/avatars/245-icon-16150697.png','assets/avatars/246-icon-16150730.png','assets/avatars/249-icon-17159913.png','assets/avatars/250-icon-17159758.png','assets/avatars/251-icon-17159744.png','assets/avatars/253-icon-18426073.png','assets/avatars/254-icon-18621065.png','assets/avatars/255-icon-18926692.png','assets/avatars/256--120.png'];
-    function loadAvatars() {
-        avatarList.innerHTML = '';
-        avatars.forEach(src => {
-            const img = document.createElement('img'); img.src = src; img.className = 'avatar-option';
-            img.addEventListener('click', () => { profileAvatar.src = src; localStorage.setItem('robinhood_avatar', src); updateRobinStatus('Аватар обновлён'); avatarSelector.style.display = 'none'; });
-            avatarList.appendChild(img);
-        });
-    }
-    profileAvatar.addEventListener('click', () => { avatarSelector.style.display = avatarSelector.style.display === 'block' ? 'none' : 'block'; if (avatarSelector.style.display === 'block') loadAvatars(); });
-
-    let touchStartX = 0;
-    document.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; });
-    document.addEventListener('touchend', e => {
-        const deltaX = e.changedTouches[0].clientX - touchStartX;
-        if (Math.abs(deltaX) > 50) {
-            if (deltaX > 0 && !drawer.classList.contains('open')) { drawer.classList.add('open'); overlay.classList.add('visible'); }
-            else if (deltaX < 0 && drawer.classList.contains('open')) { drawer.classList.remove('open'); overlay.classList.remove('visible'); }
-        }
-    });
-
-    toggleHistory.addEventListener('change', async function() {
-        if (!this.checked) { localStorage.removeItem('robinhood_history_key'); localStorage.removeItem('robinhood_chat_history'); historyEncryptionKey = null; updateRobinStatus('Письма больше не хранятся.', 2000); }
-        else updateRobinStatus('Письма сохраняются.', 2000);
-        localStorage.setItem('robinhood_history', this.checked);
-    });
-    toggleSound.addEventListener('change', function() { localStorage.setItem('robinhood_sound', this.checked); });
-    const savedHistory = localStorage.getItem('robinhood_history'); if (savedHistory !== null) toggleHistory.checked = savedHistory === 'true';
-    const savedSound = localStorage.getItem('robinhood_sound'); if (savedSound !== null) toggleSound.checked = savedSound === 'true';
-
-    // Контекстное меню (без изменений)
-    let currentMenuContact = null;
-    function showDeleteConfirmation(pubkey, name) {
-        const confirmDiv = document.createElement('div');
-        confirmDiv.style = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#1F1F1F;border:1px solid #f44336;border-radius:12px;padding:20px;z-index:400;text-align:center;';
-        confirmDiv.innerHTML = `<p style="margin-bottom:15px;">Уверены, что хотите сжечь колчан с ${name}?</p>`;
-        const btnContainer = document.createElement('div'); btnContainer.style.display='flex'; btnContainer.style.justifyContent='center'; btnContainer.style.gap='15px';
-        const yesBtn = document.createElement('button'); yesBtn.textContent='✓ Да'; yesBtn.style.background='#2E7D32'; yesBtn.style.color='white'; yesBtn.style.border='none'; yesBtn.style.padding='10px 20px'; yesBtn.style.borderRadius='6px'; yesBtn.style.cursor='pointer';
-        yesBtn.addEventListener('click', () => { document.body.removeChild(confirmDiv); deleteContactAfterConfirm(pubkey, name); });
-        const noBtn = document.createElement('button'); noBtn.textContent='✕ Нет'; noBtn.style.background='#f44336'; noBtn.style.color='white'; noBtn.style.border='none'; noBtn.style.padding='10px 20px'; noBtn.style.borderRadius='6px'; noBtn.style.cursor='pointer';
-        noBtn.addEventListener('click', () => document.body.removeChild(confirmDiv));
-        btnContainer.appendChild(yesBtn); btnContainer.appendChild(noBtn);
-        confirmDiv.appendChild(btnContainer); document.body.appendChild(confirmDiv);
-    }
-    function showContactMenu(contact, element) {
-        const menuOpenTime = Date.now(); currentMenuContact = contact;
-        const menu = document.getElementById('contact-menu'); menu.style.display = 'block';
-        document.getElementById('menu-rename').onclick = () => { hideContactMenu(); const newName = prompt('Новое имя:', contact.name); if (newName && newName.trim()) { let contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]'); const c = contacts.find(c => c.pubkey === contact.pubkey); if (c) { c.name = newName.trim(); localStorage.setItem('robinhood_contacts', JSON.stringify(contacts)); loadContacts(); updateRobinStatus('Имя изменено!', 2000); } } };
-        document.getElementById('menu-avatar').onclick = () => { hideContactMenu(); /* аватар-пикер */ };
-        document.getElementById('menu-delete').onclick = () => { hideContactMenu(); showDeleteConfirmation(contact.pubkey, contact.name); };
-        document.getElementById('menu-cancel').onclick = hideContactMenu;
-        setTimeout(() => {
-            const closeHandler = (e) => { if (Date.now() - menuOpenTime < 500) return; if (!menu.contains(e.target)) { hideContactMenu(); document.removeEventListener('click', closeHandler); } };
-            document.addEventListener('click', closeHandler);
-        }, 100);
-    }
-    function hideContactMenu() { document.getElementById('contact-menu').style.display = 'none'; currentMenuContact = null; }
-    function deleteContactAfterConfirm(pubkey, name) {
-        let contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
-        contacts = contacts.filter(c => c.pubkey !== pubkey);
-        localStorage.setItem('robinhood_contacts', JSON.stringify(contacts));
-        if (activeContact && activeContact.pubkey === pubkey) { activeContact = null; chatSwitcherBtn.style.display = 'none'; }
-        loadContacts();
-        updateRobinStatus(`Колчан с ${name} сожжён`, 3000);
-    }
-    function deleteContact(pubkey, event) { event.stopPropagation(); const contact = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]').find(c => c.pubkey === pubkey); if (contact) showDeleteConfirmation(pubkey, contact.name); }
-</script>
-</body>
-</html>
+                div.querySelector('.contact-info').addEventListener('click', () =>
