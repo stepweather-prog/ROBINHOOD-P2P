@@ -226,27 +226,6 @@
         { name: "file.io", url: "https://file.io" },
         { name: "transfer.sh", url: "https://transfer.sh" }
     ];
-    const tasks = STORAGES.map(async (store) => {
-        try {
-            const ctrl = new AbortController();
-            const to = setTimeout(() => ctrl.abort(), 3000);
-            const fd = new FormData();
-            fd.append("file", new Blob([content], {type:"text/plain"}), filename);
-            const res = await fetch(CORS_PROXY + encodeURIComponent(store.url), { method:"POST", body:fd, signal:ctrl.signal, mode:"cors" });
-            clearTimeout(to);
-            if (res.ok) {
-                let url = (await res.text()).trim();
-                if (!url.startsWith("http")) url = store.url.replace(/\/?$/, '/') + url;
-                return { store: store.name, fileUrl: url, baseUrl: store.url };
-            }
-        } catch(e) {}
-        return null;
-    });
-    const results = await Promise.allSettled(tasks);
-    for (const r of results) if (r.status === "fulfilled" && r.value) return r.value;
-    return null;
-}
-        
         
     async function downloadText(url) {
         if (!url.startsWith('http')) return null;
@@ -439,7 +418,8 @@
         const uuid = Math.random().toString(36).substring(2,10) + Date.now().toString(36);
         currentUUID = uuid;
         const result = await uploadToAny(`p2p_${uuid}.offer.txt`, peerConnection.localDescription.sdp);
-        if (!result) { updateRobinStatus('Авто-стрела не удалась. Используйте ручной режим.', 3000); return null; }
+        if (!result) { updateRobinStatus('Авто-стрела не удалась. Используйте ручной режим.', 3000); 
+        return null; }
         const link = `${window.location.origin}${window.location.pathname}?id=${uuid}`;
         const answerUrl = result.store === 'Render'
             ? RENDER_SERVER + '/offer?id=' + uuid
