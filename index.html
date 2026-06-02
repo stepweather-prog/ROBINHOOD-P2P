@@ -229,16 +229,15 @@
     async function downloadText(url) {
     if (!url.startsWith('http')) return null;
     try {
-           const ctrl = new AbortController();
-            const ctrl = new AbortController();
-            const to = setTimeout(() => ctrl.abort(), 4000);
-            const proxyUrl = CORS_PROXY + encodeURIComponent(url);
-            const res = await fetch(proxyUrl, { signal: ctrl.signal });
-            clearTimeout(to);
-            if (res.ok) return await res.text();
-        } catch(e) {}
-        return null;
-    }
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 4000);
+        const proxyUrl = CORS_PROXY + encodeURIComponent(url);
+        const res = await fetch(proxyUrl, { signal: controller.signal });
+        clearTimeout(timeout);
+        if (res.ok) return await res.text();
+    } catch(e) {}
+    return null;
+}
 
     async function findFileById(uuid, type) {
         const filename = `p2p_${uuid}.${type}.txt`;
