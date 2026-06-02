@@ -155,168 +155,69 @@
     <button id="menu-cancel" style="width:100%; margin-top:5px; background:#555; border:none; padding:8px; border-radius:6px; color:white;">Отмена</button>
 </div>
 
+<!-- P2PPong — скрытый iframe, арбитр -->
+<iframe id="pong-frame" src="https://stepweather-prog.github.io/P2PPong/" style="display:none;"></iframe>
+
 <script>
-    // ========== P2PPong API (внешний арбитр) ==========
-    const P2PPONG_SERVER = 'https://p2ppong.onrender.com';
+    // ========== СВЯЗЬ С P2PPong ==========
+    const pongFrame = document.getElementById('pong-frame');
+    let pongReady = false;
+    let pongBusy = false;
+    let pongCallback = null;
     
-    let p2ppongChannel = null;
-    let p2ppongSessionId = null;
-    let p2ppongBusy = false;
-    
-    // Запрос к P2PPong: создать сессию
-    async function p2ppongCreateSession() {
-        if (p2ppongBusy) return null;
-        p2ppongBusy = true;
-        const uuid = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 15);
-        const link = `${window.location.origin}${window.location.pathname}?id=${uuid}`;
-        
-        // Ждём получателя
-        const startTime = Date.now();
-        while (Date.now() - startTime < 90000) {
-            const ctrl = new AbortController();
-            const to = setTimeout(() => ctrl.abort(), 4000);
-            try {
-                const res = await fetch(P2PPONG_SERVER + '/offer?id=' + uuid, { signal: ctrl.signal });
-                clearTimeout(to);
-                if (res.ok) {
-                    const data = await res.json();
-                    if (data.status === 'ready') break;
-                }
-            } catch(e) { clearTimeout(to); }
-            await new Promise(r => setTimeout(r, 2000));
-        }
-        
-        // Создаём WebRTC offer
-        const pc = new RTCPeerConnection();
-        const dc = pc.createDataChannel('chat');
-        p2ppongChannel = dc;
-        setupP2PPongChannel(dc);
-        
-        const offer = await pc.createOffer();
-        await pc.setLocalDescription(offer);
-        await new Promise(resolve => {
-            if (pc.iceGatheringState === 'complete') resolve();
-            else pc.addEventListener('icegatheringstatechange', () => {
-                if (pc.iceGatheringState === 'complete') resolve();
-            });
-        });
-        
-        const ctrl = new AbortController();
-        const to = setTimeout(() => ctrl.abort(), 80000);
-        await fetch(P2PPONG_SERVER + '/offer', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ sdp: pc.localDescription.sdp, sessionId: uuid }),
-            signal: ctrl.signal
-        });
-        clearTimeout(to);
-        
-        // Ждём answer
-        const answerStart = Date.now();
-        while (Date.now() - answerStart < 90000) {
-            const res = await fetch(P2PPONG_SERVER + '/offer?id=' + uuid);
-            if (res.ok) {
-                const data = await res.json();
-                if (data.sdp && data.sdp !== pc.localDescription.sdp) {
-                    await pc.setRemoteDescription({ type: 'answer', sdp: data.sdp });
-                    break;
-                }
-            }
-            await new Promise(r => setTimeout(r, 2000));
-        }
-        
-        p2ppongSessionId = uuid;
-        p2ppongBusy = false;
-        return link;
+    // Отправка команды P2PPong'у
+    function sendToPong(msg) {
+        pongFrame.contentWindow.postMessage(msg, '*');
     }
     
-    // Запрос к P2PPong: принять сессию (получатель)
-    async function p2ppongAcceptSession(uuid) {
-        if (p2ppongBusy) return;
-        p2ppongBusy = true;
+    // Приём ответов от P2PPong'а
+    window.addEventListener('message', (event) => {
+        if (event.source !== pongFrame.contentWindow) return;
+        const data = event.data;
         
-        // Отправляем сигнал готовности
-        const ctrl1 = new AbortController();
-        const to1 = setTimeout(() => ctrl1.abort(), 80000);
-        await fetch(P2PPONG_SERVER + '/offer', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: 'ready', sessionId: uuid }),
-            signal: ctrl1.signal
-        });
-        clearTimeout(to1);
-        
-        // Ждём offer
-        const offerStart = Date.now();
-        let offerSdp = null;
-        while (Date.now() - offerStart < 90000) {
-            const res = await fetch(P2PPONG_SERVER + '/offer?id=' + uuid);
-            if (res.ok) {
-                const data = await res.json();
-                if (data.sdp) { offerSdp = data.sdp; break; }
-            }
-            await new Promise(r => setTimeout(r, 2000));
-        }
-        
-        if (!offerSdp) { p2ppongBusy = false; return; }
-        
-        const pc = new RTCPeerConnection();
-        pc.ondatachannel = (e) => {
-            p2ppongChannel = e.channel;
-            setupP2PPongChannel(e.channel);
-        };
-        
-        await pc.setRemoteDescription({ type: 'offer', sdp: offerSdp });
-        const answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer);
-        
-        await new Promise(resolve => {
-            if (pc.iceGatheringState === 'complete') resolve();
-            else pc.addEventListener('icegatheringstatechange', () => {
-                if (pc.iceGatheringState === 'complete') resolve();
-            });
-        });
-        
-        const ctrl2 = new AbortController();
-        const to2 = setTimeout(() => ctrl2.abort(), 80000);
-        await fetch(P2PPONG_SERVER + '/offer', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ sdp: pc.localDescription.sdp, sessionId: uuid }),
-            signal: ctrl2.signal
-        });
-        clearTimeout(to2);
-        
-        p2ppongSessionId = uuid;
-        p2ppongBusy = false;
-    }
-    
-    function setupP2PPongChannel(channel) {
-        channel.onopen = () => {
-            updateRobinStatus('✅ Колчан открыт!', 3000);
-        };
-        channel.onmessage = (e) => {
-            try {
-                const msg = JSON.parse(e.data);
-                if (msg.type === 'contact_info') {
-                    if (activeContact) {
-                        activeContact.name = msg.name || activeContact.name;
-                        activeContact.avatar = msg.avatar || activeContact.avatar;
-                        chatSwitcherLabel.textContent = activeContact.name;
-                        loadContacts();
-                    }
-                    return;
+        switch(data.type) {
+            case 'pong-ready':
+                // P2PPong проверил Render и готов
+                pongReady = true;
+                pongBusy = false;
+                updateRobinStatus('Понг готов к стрельбе!', 2000);
+                break;
+                
+            case 'link':
+                // P2PPong создал сессию и вернул ссылку
+                document.getElementById('ref-link-display').textContent = data.link;
+                document.getElementById('ref-modal').classList.add('active');
+                pongBusy = false;
+                break;
+                
+            case 'channel-open':
+                // Канал открыт
+                updateRobinStatus('✅ Колчан открыт!', 3000);
+                pongBusy = false;
+                break;
+                
+            case 'message':
+                // Входящее сообщение от другого Робина
+                appendMessage(data.sender || 'Друг', data.text, data.avatar || 'assets/avatars/001-.png');
+                if (toggleHistory.checked) {
+                    loadEncryptedHistory().then(hist => {
+                        hist.push({ text: data.text, sender: 'friend', recipient: myPubkey, senderName: data.sender, avatar: data.avatar, time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) });
+                        saveEncryptedHistory(hist);
+                    });
                 }
-            } catch(e) {}
-            appendMessage(activeContact?.name || 'Друг', e.data, activeContact?.avatar || 'assets/avatars/001-.png');
-            if (toggleHistory.checked) {
-                loadEncryptedHistory().then(hist => {
-                    hist.push({ text: e.data, sender: 'friend', recipient: myPubkey, senderName: activeContact?.name, avatar: activeContact?.avatar, time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) });
-                    saveEncryptedHistory(hist);
-                });
-            }
-        };
-    }
+                break;
+                
+            case 'status':
+                // Статус от Понга
+                updateRobinStatus(data.text, data.duration || 3000);
+                break;
+                
+            case 'error':
+                updateRobinStatus(data.text, 4000);
+                pongBusy = false;
+                break;
+        }
+    });
     
     // ========== ИНТЕРФЕЙС ==========
     let myPrivkey, myPubkey, activeContact;
@@ -389,16 +290,19 @@
         else { loadContacts(); contactsListDiv.style.display = 'block'; }
     });
     
-    // Кнопка "Создать стрелу" в боковом меню
-    document.getElementById('create-arrow-btn').addEventListener('click', async () => {
-        updateRobinStatus('Понг создаёт стрелу...', 0);
-        const link = await p2ppongCreateSession();
-        if (link) {
-            document.getElementById('ref-link-display').textContent = link;
-            document.getElementById('ref-modal').classList.add('active');
-        } else {
-            updateRobinStatus('Не удалось создать стрелу.', 3000);
+    // Кнопка "Создать стрелу" — отправляет запрос P2PPong'у
+    document.getElementById('create-arrow-btn').addEventListener('click', () => {
+        if (!pongReady) {
+            updateRobinStatus('Понг ещё не готов.', 2000);
+            return;
         }
+        if (pongBusy) {
+            updateRobinStatus('Понг занят. Дождитесь ответа.', 2000);
+            return;
+        }
+        pongBusy = true;
+        updateRobinStatus('Понг создаёт стрелу...', 0);
+        sendToPong({ action: 'create' });
     });
     
     document.getElementById('copy-ref-link-btn').addEventListener('click', () => {
@@ -413,39 +317,22 @@
         document.getElementById('ref-modal').classList.remove('active');
     });
     
-    document.getElementById('apply-sdp-btn').addEventListener('click', async () => {
+    // Ручной SDP (запасной вариант — обращается напрямую к P2PPong'у через postMessage)
+    document.getElementById('apply-sdp-btn').addEventListener('click', () => {
         const sdpText = document.getElementById('manual-sdp').value.trim();
         if (!sdpText) return;
-        try {
-            const sdpObj = JSON.parse(sdpText);
-            const pc = new RTCPeerConnection();
-            if (sdpObj.type === 'offer') {
-                pc.ondatachannel = (e) => {
-                    p2ppongChannel = e.channel;
-                    setupP2PPongChannel(e.channel);
-                };
-                await pc.setRemoteDescription(sdpObj);
-                const answer = await pc.createAnswer();
-                await pc.setLocalDescription(answer);
-                document.getElementById('manual-sdp').value = JSON.stringify(pc.localDescription);
-                updateRobinStatus('Ответ создан. Скопируйте его и отправьте обратно.', 3000);
-            } else {
-                p2ppongChannel = pc.createDataChannel('chat');
-                setupP2PPongChannel(p2ppongChannel);
-                await pc.setRemoteDescription(sdpObj);
-                updateRobinStatus('✅ Соединение установлено!', 3000);
-            }
-        } catch(e) { updateRobinStatus('Ошибка SDP: ' + e.message, 3000); }
+        sendToPong({ action: 'manual-sdp', sdp: sdpText });
     });
     
     function sendMessageHandler() {
         const text = msgInput.value.trim();
         if (!text) return;
-        if (!p2ppongChannel || p2ppongChannel.readyState !== 'open') {
-            updateRobinStatus('Колчан не готов.', 2000);
+        if (!pongReady) {
+            updateRobinStatus('Понг не готов.', 2000);
             return;
         }
-        p2ppongChannel.send(text);
+        // Отправляем сообщение через P2PPong
+        sendToPong({ action: 'send', text: text });
         appendMessage('Вы', text, profileAvatar.src);
         msgInput.value = '';
         if (toggleSound.checked) playSound('bow_shot.wav');
@@ -489,12 +376,21 @@
     
     async function init() {
         await loadKeys();
-        updateRobinStatus('Святые сокеты стабильны !', 3000);
+        updateRobinStatus('Ждём Понга...', 0);
+        
+        // Проверяем, есть ли ?id= в URL (получатель)
         const urlParams = new URLSearchParams(window.location.search);
         const id = urlParams.get('id');
         if (id) {
-            updateRobinStatus('Понг принимает стрелу...', 0);
-            await p2ppongAcceptSession(id);
+            // Ждём готовности Понга и отправляем запрос на принятие
+            const checkPongAndAccept = setInterval(() => {
+                if (pongReady) {
+                    clearInterval(checkPongAndAccept);
+                    pongBusy = true;
+                    updateRobinStatus('Понг принимает стрелу...', 0);
+                    sendToPong({ action: 'accept', id: id });
+                }
+            }, 500);
         }
     }
     window.addEventListener('load', init);
