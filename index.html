@@ -160,6 +160,7 @@
 
 <script>
     // ---------- ОБУЧАЕМЫЙ РОУТЕР (P2P + хранилища) ----------
+    const RENDER_SERVER = 'https://p2ppong.onrender.com';
     const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
     const STORAGES = [
         { name: "0x0.st", url: "https://0x0.st" },
@@ -198,7 +199,24 @@
     }
     const nodeStats = new NodeStats();
 
-    async function uploadToAny(filename, content) {
+    async function uploadToAny(filename, content) {  
+        // Приоритетная попытка через Render
+    try {
+        const ctrl = new AbortController();
+        const to = setTimeout(() => ctrl.abort(), 4000);
+        const res = await fetch(RENDER_SERVER + '/offer', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sdp: content }),
+            signal: ctrl.signal
+        });
+        clearTimeout(to);
+        if (res.ok) {
+            const data = await res.json();
+            updateRobinStatus('✅ Стрела создана через Render', 2000);
+            return { store: 'Render', fileUrl: RENDER_SERVER + '/offer?id=' + data.id, baseUrl: RENDER_SERVER };
+        }
+    } catch(e) {}
         const sorted = nodeStats.getSortedNodes();
         for (let i = 0; i < Math.min(sorted.length, 50); i += 3) {
             const batch = sorted.slice(i, i + 3);
