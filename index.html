@@ -160,7 +160,7 @@
 
 <script>
     // ---------- ОБУЧАЕМЫЙ РОУТЕР (P2P + хранилища) ----------
-    const CORS_PROXY = 'https://corsproxy.io/?';
+    const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
     const STORAGES = [
         { name: "0x0.st", url: "https://0x0.st" },
         { name: "ix.io", url: "https://ix.io" },
@@ -227,7 +227,9 @@
     }
 
     async function downloadText(url) {
-        try {
+    if (!url.startsWith('http')) return null;
+    try {
+           const ctrl = new AbortController();
             const ctrl = new AbortController();
             const to = setTimeout(() => ctrl.abort(), 4000);
             const proxyUrl = CORS_PROXY + encodeURIComponent(url);
