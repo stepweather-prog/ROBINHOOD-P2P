@@ -2,51 +2,161 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>P2PPong — обучаемая стрела</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>RobinHood P2P</title>
+    <link rel="manifest" href="manifest.json">
     <style>
-        body { background: #0a0a0a; color: #eee; font-family: monospace; padding: 20px; max-width: 700px; margin: 0 auto; }
-        button, input, textarea { background: #1e1e1e; border: 1px solid #444; color: #eee; padding: 10px; border-radius: 8px; font-size: 16px; }
-        button { background: #2c5e2c; cursor: pointer; }
-        button:hover { background: #1e4a1e; }
-        .box { border: 1px solid #444; padding: 15px; margin: 15px 0; border-radius: 12px; background: #111; }
-        #chat { border: 1px solid #333; min-height: 150px; padding: 10px; margin: 10px 0; overflow-y: auto; background: #0f0f0f; }
-        .link { word-break: break-all; background: #1a2a1a; padding: 10px; border-radius: 8px; font-size: 14px; }
-        hr { border-color: #333; }
-        .stats { font-size: 12px; color: #888; margin-top: 10px; }
-        .stats span { margin-right: 15px; }
+        html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; -webkit-text-size-adjust: 100%; }
+        body { background-color: #121212; color: #E0E0E0; font-family: sans-serif; display: flex; flex-direction: column; height: 100vh; background-image: url('assets/Front/background.png'); background-size: cover; background-attachment: fixed; background-position: center 30%; background-repeat: no-repeat; }
+        body::before { content: ""; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: -1; }
+        .header { background-color: rgba(31,31,31,0.95); padding: 8px 15px; display: flex; align-items: center; border-bottom: 2px solid #2E7D32; backdrop-filter: blur(5px); z-index: 10; }
+        #open-menu { font-size: 26px; cursor: pointer; background: none; border: none; color: inherit; outline: none; margin-right: 10px; }
+        #header-title { margin: 0; font-size: 1.3em; flex: 1; }
+        .switch-chat-btn { background: none; border: none; color: white; font-size: 16px; cursor: pointer; display: none; align-items: center; gap: 4px; }
+        #ddg-clear { font-size: 22px; cursor: pointer; user-select: none; margin-left: 10px; }
+        .chat-area { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; background: transparent; scrollbar-width: none; }
+        .chat-area::-webkit-scrollbar { display: none; }
+        .message-row { display: flex; align-items: center; gap: 10px; background: rgba(31,31,31,0.9); padding: 10px; border-radius: 8px; backdrop-filter: blur(5px); }
+        .input-area { background-color: rgba(31,31,31,0.95); padding: 10px; padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)); display: flex; gap: 10px; align-items: center; border-top: 1px solid #333; backdrop-filter: blur(5px); }
+        input { flex: 1; background: rgba(42,42,42,0.9); border: 1px solid #444; padding: 12px; color: white; border-radius: 6px; font-size: 16px; outline: none; }
+        textarea { width: 100%; height: 60px; background: #1e1e1e; color: #ccc; border: 1px solid #444; padding: 5px; font-family: monospace; resize: vertical; }
+        .online-indicator { width: 12px; height: 12px; background-color: #4CAF50; border-radius: 50%; box-shadow: 0 0 8px #4CAF50; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #121212; }
+        .online-indicator.offline { background-color: #f44336; box-shadow: 0 0 8px #f44336; }
+        .bow-button { width: 50px; height: 50px; cursor: pointer; }
+        .avatar { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; background-color: #333; flex-shrink: 0; }
+        .msg-body { flex: 1; min-width: 0; }
+        .msg-sender { font-weight: bold; color: #4CAF50; font-size: 0.9em; }
+        .msg-status { font-size: 0.7em; color: #888; text-align: right; }
+        #robin-row { background: rgba(46,125,50,0.2); border-left: 3px solid #2E7D32; }
+        #robin-text { transition: opacity 0.6s ease; opacity: 1; }
+        .drawer-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: none; z-index: 90; }
+        .drawer { position: fixed; top: 0; left: -280px; width: 280px; height: 100vh; background-color: rgba(31,31,31,0.95); z-index: 100; transition: left 0.3s ease; display: flex; flex-direction: column; box-shadow: 4px 0 10px rgba(0,0,0,0.4); border-right: 1px solid #2E7D32; backdrop-filter: blur(10px); }
+        .drawer.open { left: 0; }
+        .drawer-overlay.visible { display: block; }
+        .drawer-header { padding: 24px 16px; background-color: #2E7D32; color: white; display: flex; flex-direction: column; gap: 12px; align-items: center; text-align: center; }
+        .drawer-avatar { width: 75px; height: 75px; border-radius: 50%; border: 3px solid white; object-fit: cover; cursor: pointer; }
+        .drawer-nick { font-size: 18px; font-weight: bold; }
+        .change-name-btn { background: rgba(255,255,255,0.25); border: none; padding: 5px 14px; color: white; border-radius: 20px; cursor: pointer; font-size: 11px; font-weight: bold; }
+        .drawer-content { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 16px; background: transparent; }
+        .menu-link { display: flex; align-items: center; padding: 12px 4px; color: #E0E0E0; text-decoration: none; font-weight: 600; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 15px; }
+        .menu-link img { width: 24px; height: 24px; margin-right: 10px; object-fit: contain; }
+        .menu-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 4px; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 14px; color: #E0E0E0; }
+        .switch { position: relative; display: inline-block; width: 42px; height: 22px; flex-shrink: 0; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #555; transition: .3s; border-radius: 22px; }
+        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; }
+        input:checked + .slider { background-color: #2E7D32; }
+        input:checked + .slider:before { transform: translateX(20px); }
+        .profile-edit { background: rgba(255,255,255,0.1); padding: 12px; border-radius: 8px; display: none; margin-top: 5px; width: 100%; box-sizing: border-box; }
+        .profile-edit input { width: 100%; padding: 8px 12px; background: #121212; border: 1px solid #444; color: white; border-radius: 6px; margin-bottom: 8px; outline: none; box-sizing: border-box; }
+        .invite-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 200; justify-content: center; align-items: center; }
+        .invite-modal.active { display: flex; }
+        .invite-dialog { background: #1F1F1F; padding: 20px; border-radius: 12px; width: 80%; max-width: 320px; text-align: center; border: 1px solid #2E7D32; max-height: 80vh; overflow-y: auto; }
+        .invite-dialog h3 { color: #4CAF50; margin: 0 0 10px; }
+        .invite-dialog button { width: 100%; padding: 10px; margin-top: 5px; background: #2E7D32; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; }
+        .code-display { background: #121212; border: 1px solid #444; color: white; border-radius: 6px; padding: 10px; font-size: 0.9em; word-break: break-all; margin: 10px 0; text-align: center; user-select: all; }
+        .avatar-selector, .contacts-list { display: none; margin-top: 10px; text-align: center; max-height: 300px; overflow-y: auto; padding: 5px; background: rgba(255,255,255,0.05); border-radius: 8px; }
+        .avatar-option { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; margin: 5px; cursor: pointer; border: 2px solid transparent; transition: border 0.2s; }
+        .avatar-option:hover { border-color: #FFA000; }
+        .contact-item { display: flex; align-items: center; justify-content: space-between; padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer; color: #E0E0E0; }
+        .contact-info { display: flex; align-items: center; gap: 10px; flex: 1; }
+        .contact-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
+        .contact-name { font-weight: 600; }
+        .delete-contact { background: none; border: none; color: #f44336; font-size: 20px; cursor: pointer; padding: 0 10px; opacity: 0.7; }
+        .delete-contact:hover { opacity: 1; }
+        .drawer-footer { padding: 16px; font-size: 11px; text-align: center; border-top: 1px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.15); color: #888; }
+        .contact-menu { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); background: #1F1F1F; border: 1px solid #2E7D32; border-radius: 12px; padding: 10px; z-index: 300; min-width: 220px; box-shadow: 0 8px 20px rgba(0,0,0,0.6); }
+        .contact-menu-item { padding: 10px; cursor: pointer; border-radius: 6px; margin-bottom: 4px; }
+        .contact-menu-item:hover { background: rgba(255,255,255,0.1); }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        .chat-switcher { position: fixed; bottom: 0; left: 0; right: 0; max-height: 60vh; background: rgba(20,20,20,0.98); z-index: 150; border-top: 2px solid #2E7D32; border-radius: 16px 16px 0 0; transform: translateY(100%); transition: transform 0.3s ease; overflow-y: auto; padding: 10px 0; }
+        .chat-switcher.open { transform: translateY(0); }
+        .chat-switcher-header { padding: 8px 16px; font-weight: bold; color: #888; border-bottom: 1px solid #333; margin-bottom: 5px; }
+        .chat-switcher-list { padding: 0 16px; }
+        .chat-switcher-item { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer; }
+        .chat-switcher-item:last-child { border-bottom: none; }
     </style>
 </head>
 <body>
-<h2>🏹 P2PPong — стрела с обучением</h2>
-<p style="color:#aaa;">Временные хранилища: 0x0.st, ix.io, paste.rs, file.io, transfer.sh</p>
-
-<div class="box">
-    <button id="createBtn">🎯 Создать стрелу</button>
-    <div id="offerLink" class="link" style="display:none; margin-top:12px;"></div>
+<div class="header">
+    <button id="open-menu">☰</button>
+    <h2 id="header-title">RobinHood P2P</h2>
+    <button id="chat-switcher-btn" class="switch-chat-btn"><span id="chat-switcher-label">Перестрелки</span> ▼</button>
+    <div style="flex:1;"></div>
+    <div id="ddg-clear">🔥</div>
+</div>
+<div class="chat-area" id="chat-box">
+    <div class="message-row" id="robin-row">
+        <img src="assets/avatars/231-icon-11433690.png" class="avatar" id="robin-avatar">
+        <div class="msg-body">
+            <div class="msg-sender" id="robin-title">Robin Hood</div>
+            <div id="robin-text">Святые сокеты стабильны !</div>
+        </div>
+        <div class="online-indicator" id="network-status-dot">🛡️</div>
+    </div>
+</div>
+<div class="input-area">
+    <input type="text" id="msg-input" placeholder="Пустить стрелу">
+    <img src="assets/ui/bow.png" class="bow-button" id="send-btn" alt="Отправить">
 </div>
 
-<div id="acceptSection" class="box" style="display:none;">
-    <input type="text" id="uuidInput" placeholder="Вставьте ID стрелы (например, abc123)" style="width:100%;">
-    <button id="acceptBtn">🔗 Принять стрелу</button>
+<div class="invite-modal" id="ref-modal">
+    <div class="invite-dialog">
+        <h3>🏹 Реферальная стрела</h3>
+        <p style="font-size:0.9em;">Автоматический режим</p>
+        <div class="code-display" id="ref-link-display"></div>
+        <button id="copy-ref-link-btn">Зарядить</button>
+        <button id="share-ref-link-btn">Метнуть...</button>
+        <hr style="border: 0; border-top: 1px solid #444; margin: 15px 0;">
+        <p style="font-size:0.9em;">Ручной режим (если авто не сработал)</p>
+        <textarea id="manual-sdp" placeholder="Вставьте SDP предложение или ответ"></textarea>
+        <button id="apply-sdp-btn">Применить SDP</button>
+        <button id="close-ref-modal-btn" style="background:#555;">Закрыть</button>
+    </div>
 </div>
 
-<div id="chat" style="display:none;"></div>
-<div>
-    <input type="text" id="messageInput" placeholder="Сообщение" disabled style="width:70%;">
-    <button id="sendBtn" disabled>Отправить</button>
+<div class="drawer-overlay" id="drawer-overlay"></div>
+<div class="drawer" id="drawer">
+    <div class="drawer-header">
+        <img src="assets/avatars/001-.png" class="drawer-avatar" id="profile-avatar">
+        <div class="drawer-nick" id="my-nick">Лучник</div>
+        <button class="change-name-btn" id="change-profile-btn">Сменить ник</button>
+        <div class="profile-edit" id="profile-edit-box">
+            <input type="text" id="new-nick-input" placeholder="Новый ник...">
+            <button class="change-name-btn" id="save-profile-btn">Применить</button>
+        </div>
+        <div class="avatar-selector" id="avatar-selector">
+            <p>Выбери лучника</p>
+            <div id="avatar-list"></div>
+        </div>
+    </div>
+    <div class="drawer-content">
+        <div class="menu-link" id="sherwood-letters-btn"><span>📖</span> Шервудские письма</div>
+        <div class="contacts-list" id="contacts-list">
+            <div id="contacts-list-inner"></div>
+            <div id="pending-requests" style="margin-top: 10px; border-top: 1px solid #444; padding-top: 10px;"></div>
+        </div>
+        <div class="menu-item"><span>🗑️ Хранить историю</span><label class="switch"><input type="checkbox" id="toggle-history" checked><span class="slider"></span></label></div>
+        <div class="menu-item"><span>🔊 Звук приложения</span><label class="switch"><input type="checkbox" id="toggle-sound" checked><span class="slider"></span></label></div>
+    </div>
+    <div class="drawer-footer">RobinHood Messenger v2.0</div>
 </div>
-<div id="status" style="color:#aaa; margin-top:10px;">⚡ Готов. Нажми «Создать стрелу».</div>
 
-<!-- Панель статистики роутера -->
-<div class="stats" id="statsPanel" style="display:none;">
-    <strong>Статистика узлов:</strong>
-    <div id="statsContent"></div>
+<div class="chat-switcher" id="chat-switcher">
+    <div class="chat-switcher-header">Активные перестрелки</div>
+    <div class="chat-switcher-list" id="chat-switcher-list"></div>
+</div>
+
+<div id="contact-menu" class="contact-menu" style="display:none;">
+    <div class="contact-menu-item" id="menu-rename">✎ Переименовать</div>
+    <div class="contact-menu-item" id="menu-avatar">🖼 Сменить аватар</div>
+    <div class="contact-menu-item" id="menu-delete">🔥 Сжечь колчан</div>
+    <button id="menu-cancel" style="width:100%; margin-top:5px; background:#555; border:none; padding:8px; border-radius:6px; color:white;">Отмена</button>
 </div>
 
 <script>
-    // ========== 1. САМООБУЧАЮЩИЙСЯ РОУТЕР (статистика + приоритет + прокси) ==========
-    const CORS_PROXY = 'https://corsproxy.io/?';   // публичный CORS-прокси
+    // ---------- ОБУЧАЕМЫЙ РОУТЕР (как в P2PPong) ----------
+    const CORS_PROXY = 'https://corsproxy.io/?';
     const STORAGES = [
         { name: "0x0.st", url: "https://0x0.st" },
         { name: "ix.io", url: "https://ix.io" },
@@ -57,363 +167,450 @@
 
     class NodeStats {
         constructor() {
-            this.stats = JSON.parse(localStorage.getItem('p2ppong_nodes') || '{}');
-            // миграция для новых хранилищ
+            this.stats = JSON.parse(localStorage.getItem('robinhood_nodes') || '{}');
             for (const store of STORAGES) {
-                if (!this.stats[store.name]) {
-                    this.stats[store.name] = { success: 0, fail: 0, lastSeen: 0, penalty: 0 };
-                }
+                if (!this.stats[store.name]) this.stats[store.name] = { success: 0, fail: 0, lastSeen: 0, penalty: 0 };
             }
             this.save();
         }
-        save() {
-            localStorage.setItem('p2ppong_nodes', JSON.stringify(this.stats));
-        }
+        save() { localStorage.setItem('robinhood_nodes', JSON.stringify(this.stats)); }
         success(name) {
-            const s = this.stats[name];
-            if (s) {
-                s.success++;
-                s.fail = 0;
-                s.penalty = 0;
-                s.lastSeen = Date.now();
-                this.save();
-            }
+            const s = this.stats[name]; if (s) { s.success++; s.fail = 0; s.penalty = 0; s.lastSeen = Date.now(); this.save(); }
         }
         fail(name, isCorsBlock = false) {
-            if (isCorsBlock) {
-                this.markNeedsProxy(name);
-                return;
-            }
-            const s = this.stats[name];
-            if (s) {
-                s.fail++;
-                s.lastSeen = Date.now();
-                if (s.fail >= 3) {
-                    s.penalty = Date.now() + 5 * 60 * 1000; // штраф 5 минут
-                }
-                this.save();
-            }
+            if (isCorsBlock) { this.markNeedsProxy(name); return; }
+            const s = this.stats[name]; if (s) { s.fail++; s.lastSeen = Date.now(); if (s.fail >= 3) s.penalty = Date.now() + 5 * 60 * 1000; this.save(); }
         }
-        markNeedsProxy(name) {
-            const s = this.stats[name];
-            if (s) s.needsProxy = true;
-            this.save();
-        }
-        isUsable(name) {
-            const s = this.stats[name];
-            if (!s) return true;
-            if (s.penalty && Date.now() < s.penalty) return false;
-            return true;
-        }
+        markNeedsProxy(name) { const s = this.stats[name]; if (s) s.needsProxy = true; this.save(); }
+        isUsable(name) { const s = this.stats[name]; if (!s) return true; if (s.penalty && Date.now() < s.penalty) return false; return true; }
         getSortedNodes() {
             return [...STORAGES].sort((a, b) => {
-                const sa = this.stats[a.name] || {};
-                const sb = this.stats[b.name] || {};
-                const aUsable = this.isUsable(a.name) ? 0 : 1;
-                const bUsable = this.isUsable(b.name) ? 0 : 1;
+                const sa = this.stats[a.name] || {}, sb = this.stats[b.name] || {};
+                const aUsable = this.isUsable(a.name) ? 0 : 1, bUsable = this.isUsable(b.name) ? 0 : 1;
                 if (aUsable !== bUsable) return aUsable - bUsable;
-                // предпочитаем узлы с большим числом успехов
                 return (sb.success || 0) - (sa.success || 0);
             });
         }
-        getReport() {
-            let html = '';
-            for (const store of STORAGES) {
-                const s = this.stats[store.name] || {};
-                const usable = this.isUsable(store.name) ? '🟢' : '🔴';
-                html += `<span>${usable} ${store.name}: ${s.success||0}✔ ${s.fail||0}✖</span>`;
-            }
-            return html;
-        }
     }
-
     const nodeStats = new NodeStats();
-    setTimeout(() => {
-        document.getElementById('statsPanel').style.display = 'block';
-        document.getElementById('statsContent').innerHTML = nodeStats.getReport();
-        setInterval(() => {
-            document.getElementById('statsContent').innerHTML = nodeStats.getReport();
-        }, 10000);
-    }, 2000);
 
     async function uploadToAny(filename, content) {
-        const sortedNodes = nodeStats.getSortedNodes();
-        const totalAttempts = Math.min(sortedNodes.length, 50);
-        const batchSize = 3;
-        
-        for (let i = 0; i < totalAttempts; i += batchSize) {
-            const batch = sortedNodes.slice(i, i + batchSize);
+        const sorted = nodeStats.getSortedNodes();
+        for (let i = 0; i < Math.min(sorted.length, 50); i += 3) {
+            const batch = sorted.slice(i, i + 3);
             const tasks = batch.map(async (store) => {
                 try {
-                    const controller = new AbortController();
-                    const timeout = setTimeout(() => controller.abort(), 3000);
-                    const formData = new FormData();
-                    formData.append("file", new Blob([content], {type: "text/plain"}), filename);
-                    
-                    const proxyUrl = CORS_PROXY + encodeURIComponent(store.url);
-                    const res = await fetch(proxyUrl, {
-                        method: "POST",
-                        body: formData,
-                        signal: controller.signal,
-                        mode: "cors"
-                    });
-                    clearTimeout(timeout);
-                    
-                    if (res.type === 'opaque') {
-                        // CORS-блокировка, но сервер ответил
-                        nodeStats.markNeedsProxy(store.name);
-                        return null;
-                    }
-                    
+                    const ctrl = new AbortController();
+                    const to = setTimeout(() => ctrl.abort(), 3000);
+                    const fd = new FormData();
+                    fd.append("file", new Blob([content], {type:"text/plain"}), filename);
+                    const res = await fetch(CORS_PROXY + encodeURIComponent(store.url), { method:"POST", body:fd, signal:ctrl.signal, mode:"cors" });
+                    clearTimeout(to);
+                    if (res.type === 'opaque') { nodeStats.markNeedsProxy(store.name); return null; }
                     if (res.ok) {
-                        let fileUrl = await res.text();
-                        fileUrl = fileUrl.trim();
-                        if (!fileUrl.startsWith("http")) {
-                            if (store.url.endsWith("/")) fileUrl = store.url + fileUrl;
-                            else fileUrl = store.url + "/" + fileUrl;
-                        }
+                        let url = (await res.text()).trim();
+                        if (!url.startsWith("http")) url = store.url.replace(/\/?$/, '/') + url;
                         nodeStats.success(store.name);
-                        return { store: store.name, fileUrl };
-                    } else {
-                        nodeStats.fail(store.name);
-                    }
-                } catch(e) {
-                    nodeStats.fail(store.name);
-                }
+                        return { store: store.name, url };
+                    } else nodeStats.fail(store.name);
+                } catch(e) { nodeStats.fail(store.name); }
                 return null;
             });
             const results = await Promise.allSettled(tasks);
-            for (const r of results) {
-                if (r.status === "fulfilled" && r.value) return r.value;
-            }
+            for (const r of results) if (r.status === "fulfilled" && r.value) return r.value;
         }
         return null;
     }
 
     async function downloadText(url) {
-        try {
-            const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), 4000);
-            const res = await fetch(url, { signal: controller.signal, mode: "cors" });
-            clearTimeout(timeout);
-            if (res.ok) return await res.text();
-        } catch(e) {}
-        return null;
+        try { const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 4000); const res = await fetch(url, { signal:ctrl.signal }); clearTimeout(to); return res.ok ? await res.text() : null; } catch(e) { return null; }
     }
 
-    async function findOfferById(uuid) {
-        const filename = `p2p_${uuid}.offer.txt`;
+    async function findFileById(uuid, type) {
+        const filename = `p2p_${uuid}.${type}.txt`;
         for (const store of STORAGES) {
-            const baseUrl = store.url.endsWith("/") ? store.url + filename : store.url + "/" + filename;
-            const proxyUrl = CORS_PROXY + encodeURIComponent(baseUrl);
+            const proxyUrl = CORS_PROXY + encodeURIComponent(store.url.replace(/\/?$/, '/') + filename);
             const content = await downloadText(proxyUrl);
-            if (content && content.trim().startsWith("v=")) {
-                return { content, sourceUrl: proxyUrl, store: store.name };
-            }
+            if (content && content.trim().startsWith("v=")) return { content, store: store.name };
         }
         return null;
     }
 
-    // ========== 2. WebRTC логика (без изменений) ==========
-    let peerConnection = null;
-    let dataChannel = null;
-    let currentUUID = null;
-    let pollingInterval = null;
+    // ---------- WebRTC + ИНТЕРФЕЙС ----------
+    let myPrivkey, myPubkey, activeContact;
+    const processedMessageIds = new Set();
+    let peerConnection = null, dataChannel = null, currentUUID = null, pollingInterval = null;
 
-    const statusDiv = document.getElementById('status');
-    const chatDiv = document.getElementById('chat');
-    const messageInput = document.getElementById('messageInput');
-    const sendBtn = document.getElementById('sendBtn');
-    const createBtn = document.getElementById('createBtn');
-    const acceptBtn = document.getElementById('acceptBtn');
-    const uuidInput = document.getElementById('uuidInput');
-    const offerLinkDiv = document.getElementById('offerLink');
-    const acceptSection = document.getElementById('acceptSection');
-
-    function generateUUID() {
-        return Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
+    async function generateKeyPair() {
+        const kp = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign","verify"]);
+        myPubkey = btoa(String.fromCharCode(...new Uint8Array(await crypto.subtle.exportKey("spki", kp.publicKey))));
+        myPrivkey = btoa(String.fromCharCode(...new Uint8Array(await crypto.subtle.exportKey("pkcs8", kp.privateKey))));
+        localStorage.setItem('robinhood_pubkey', myPubkey);
+        localStorage.setItem('robinhood_privkey', myPrivkey);
+    }
+    async function loadKeys() {
+        const pub = localStorage.getItem('robinhood_pubkey'), priv = localStorage.getItem('robinhood_privkey');
+        if (pub && priv) { myPubkey = pub; myPrivkey = priv; } else await generateKeyPair();
     }
 
-    function setupDataChannel(channel) {
-        channel.onopen = () => {
-            statusDiv.innerHTML = '✅ Канал открыт! Можно общаться.';
-            messageInput.disabled = false;
-            sendBtn.disabled = false;
-            chatDiv.style.display = 'block';
-        };
-        channel.onmessage = (e) => {
-            const msgDiv = document.createElement('div');
-            msgDiv.textContent = `📩 Собеседник: ${e.data}`;
-            chatDiv.appendChild(msgDiv);
-            chatDiv.scrollTop = chatDiv.scrollHeight;
-        };
-        channel.onclose = () => {
-            statusDiv.innerHTML = '⚠️ Канал закрыт.';
-            messageInput.disabled = true;
-            sendBtn.disabled = true;
-        };
+    let historyEncryptionKey = null;
+    async function getHistoryKey() {
+        const stored = localStorage.getItem('robinhood_history_key');
+        if (stored) historyEncryptionKey = await crypto.subtle.importKey("raw", Uint8Array.from(atob(stored), c=>c.charCodeAt(0)), { name:"AES-GCM" }, false, ["encrypt","decrypt"]);
+        else {
+            const key = await crypto.subtle.generateKey({ name:"AES-GCM", length:256 }, true, ["encrypt","decrypt"]);
+            const raw = await crypto.subtle.exportKey("raw", key);
+            localStorage.setItem('robinhood_history_key', btoa(String.fromCharCode(...new Uint8Array(raw))));
+            historyEncryptionKey = key;
+        }
+    }
+    async function saveEncryptedHistory(msgs) {
+        if (!toggleHistory.checked) return;
+        if (!historyEncryptionKey) await getHistoryKey();
+        const iv = crypto.getRandomValues(new Uint8Array(12));
+        const enc = await crypto.subtle.encrypt({ name:"AES-GCM", iv }, historyEncryptionKey, new TextEncoder().encode(JSON.stringify(msgs)));
+        const payload = { iv: btoa(String.fromCharCode(...iv)), data: btoa(String.fromCharCode(...new Uint8Array(enc))) };
+        localStorage.setItem('robinhood_chat_history', JSON.stringify(payload));
+    }
+    async function loadEncryptedHistory() {
+        if (!toggleHistory.checked) return [];
+        const stored = localStorage.getItem('robinhood_chat_history');
+        if (!stored) return [];
+        try {
+            const payload = JSON.parse(stored);
+            if (!payload.iv || !payload.data) return [];
+            if (!historyEncryptionKey) await getHistoryKey();
+            const iv = Uint8Array.from(atob(payload.iv), c=>c.charCodeAt(0));
+            const data = Uint8Array.from(atob(payload.data), c=>c.charCodeAt(0));
+            const dec = await crypto.subtle.decrypt({ name:"AES-GCM", iv }, historyEncryptionKey, data);
+            return JSON.parse(new TextDecoder().decode(dec));
+        } catch(e) { return []; }
     }
 
-    // === СОЗДАНИЕ СТРЕЛЫ ===
-    async function createOffer() {
-        createBtn.disabled = true;
-        statusDiv.innerHTML = '🔄 Создаём offer, загружаем на хранилища...';
+    // DOM элементы
+    const openMenuBtn = document.getElementById('open-menu'), drawer = document.getElementById('drawer'), overlay = document.getElementById('drawer-overlay');
+    const ddgClearBtn = document.getElementById('ddg-clear'), changeProfileBtn = document.getElementById('change-profile-btn'), profileEditBox = document.getElementById('profile-edit-box');
+    const saveProfileBtn = document.getElementById('save-profile-btn'), newNickInput = document.getElementById('new-nick-input'), myNick = document.getElementById('my-nick');
+    const msgInput = document.getElementById('msg-input'), sendBtn = document.getElementById('send-btn'), chatBox = document.getElementById('chat-box');
+    const robinText = document.getElementById('robin-text'), profileAvatar = document.getElementById('profile-avatar'), avatarSelector = document.getElementById('avatar-selector'), avatarList = document.getElementById('avatar-list');
+    const sherwoodBtn = document.getElementById('sherwood-letters-btn'), contactsListDiv = document.getElementById('contacts-list'), toggleHistory = document.getElementById('toggle-history'), toggleSound = document.getElementById('toggle-sound');
+    const contactsListInner = document.getElementById('contacts-list-inner'), headerTitle = document.getElementById('header-title'), chatSwitcherBtn = document.getElementById('chat-switcher-btn'), chatSwitcherLabel = document.getElementById('chat-switcher-label');
+    const chatSwitcher = document.getElementById('chat-switcher'), chatSwitcherList = document.getElementById('chat-switcher-list');
+
+    sherwoodBtn.addEventListener('click', () => {
+        if (contactsListDiv.style.display === 'block') contactsListDiv.style.display = 'none';
+        else { loadContacts(); contactsListDiv.style.display = 'block'; }
+    });
+
+    // Создание авто-стрелы
+    async function createAutoOffer() {
         if (peerConnection) peerConnection.close();
         peerConnection = new RTCPeerConnection();
         dataChannel = peerConnection.createDataChannel('chat');
         setupDataChannel(dataChannel);
-        
         const offer = await peerConnection.createOffer();
         await peerConnection.setLocalDescription(offer);
-        const sdpOffer = peerConnection.localDescription.sdp;
-        const uuid = generateUUID();
+        const uuid = Math.random().toString(36).substring(2,10) + Date.now().toString(36);
         currentUUID = uuid;
-        const filename = `p2p_${uuid}.offer.txt`;
-        
-        // Загружаем offer с новым умным роутером
-        const uploadResult = await uploadToAny(filename, sdpOffer);
-        if (!uploadResult) {
-            statusDiv.innerHTML = '❌ Не удалось загрузить offer ни в одно хранилище. Попробуйте позже.';
-            createBtn.disabled = false;
-            return;
-        }
-        
-        // Формируем ссылку с ID
-        const fullUrl = `${window.location.href.split('?')[0]}?id=${uuid}`;
-        offerLinkDiv.style.display = 'block';
-        offerLinkDiv.innerHTML = `<strong>🔗 Стрела создана! Отправьте ссылку другу:</strong><br>
-                                  <a href="${fullUrl}" target="_blank" style="color:#8bc34a;">${fullUrl}</a><br>
-                                  <small>или передайте ID: <code>${uuid}</code></small>
-                                  <button id="copyBtn" style="margin-left:10px; padding:4px 8px;">📋 Копировать ссылку</button>`;
-        document.getElementById('copyBtn')?.addEventListener('click', () => {
-            navigator.clipboard.writeText(fullUrl);
-            statusDiv.innerHTML = '✅ Ссылка скопирована.';
-        });
-        
-        statusDiv.innerHTML = `✅ Offer загружен (${uploadResult.store}). Ожидаем ответа друга... ID: ${uuid}`;
-        
-        // Polling: ищем файл ответа
-        const answerFilename = `p2p_${uuid}.answer.txt`;
-        const answerCandidateUrl = uploadResult.fileUrl.replace(/\.offer\.txt$/, '.answer.txt');
+        const result = await uploadToAny(`p2p_${uuid}.offer.txt`, peerConnection.localDescription.sdp);
+        if (!result) { updateRobinStatus('Авто-стрела не удалась. Используйте ручной режим.', 3000); return null; }
+        const link = `${window.location.origin}${window.location.pathname}?id=${uuid}`;
+        document.getElementById('ref-link-display').textContent = link;
+        document.getElementById('ref-modal').classList.add('active');
+        // опрос ответа
+        const answerUrl = result.url.replace(/\.offer\.txt$/, '.answer.txt');
         if (pollingInterval) clearInterval(pollingInterval);
         pollingInterval = setInterval(async () => {
-            const answerSdp = await downloadText(answerCandidateUrl);
-            if (answerSdp && answerSdp.trim().startsWith('v=')) {
+            const sdp = await downloadText(answerUrl);
+            if (sdp && sdp.trim().startsWith('v=')) {
                 clearInterval(pollingInterval);
                 pollingInterval = null;
-                statusDiv.innerHTML = '📡 Получен SDP answer, устанавливаем соединение...';
-                try {
-                    await peerConnection.setRemoteDescription({ type: 'answer', sdp: answerSdp });
-                    statusDiv.innerHTML = '✅ Соединение установлено!';
-                } catch (err) {
-                    statusDiv.innerHTML = `❌ Ошибка: ${err.message}`;
-                    createBtn.disabled = false;
-                }
-                return;
+                await peerConnection.setRemoteDescription({ type:'answer', sdp });
+                updateRobinStatus('✅ Колчан открыт!', 3000);
             }
         }, 2000);
-        
-        // Таймаут 90 секунд
-        setTimeout(() => {
-            if (pollingInterval) {
-                clearInterval(pollingInterval);
-                pollingInterval = null;
-                statusDiv.innerHTML = '⏱️ Таймаут: ответ не получен. Попробуйте ещё раз.';
-                createBtn.disabled = false;
-            }
-        }, 90000);
+        setTimeout(() => { if (pollingInterval) { clearInterval(pollingInterval); pollingInterval = null; updateRobinStatus('⏱️ Таймаут ответа.', 2000); } }, 90000);
+        return link;
     }
-    
-    // === ПРИНЯТИЕ СТРЕЛЫ ===
-    async function acceptOffer() {
-        const uuid = uuidInput.value.trim();
-        if (!uuid) {
-            statusDiv.innerHTML = '❌ Введите ID стрелы.';
-            return;
-        }
-        acceptBtn.disabled = true;
-        statusDiv.innerHTML = `🔍 Ищем offer с ID ${uuid}...`;
-        
-        const found = await findOfferById(uuid);
-        if (!found) {
-            statusDiv.innerHTML = '❌ Offer не найден. Проверьте ID или попросите друга создать стрелу заново.';
-            acceptBtn.disabled = false;
-            return;
-        }
-        
-        statusDiv.innerHTML = `✅ Offer найден (${found.store}). Создаём ответ...`;
+
+    document.getElementById('ref-link-btn')?.addEventListener('click', async () => {
+        updateRobinStatus('Создаю стрелу...', 2000);
+        await createAutoOffer();
+    });
+
+    document.getElementById('copy-ref-link-btn')?.addEventListener('click', () => {
+        const link = document.getElementById('ref-link-display').textContent;
+        if (link) navigator.clipboard.writeText(link).then(() => updateRobinStatus('Ссылка скопирована!', 2000));
+    });
+
+    document.getElementById('share-ref-link-btn')?.addEventListener('click', () => {
+        const link = document.getElementById('ref-link-display').textContent;
+        if (link && navigator.share) navigator.share({ title:'RobinHood P2P', url: link });
+    });
+
+    document.getElementById('close-ref-modal-btn')?.addEventListener('click', () => {
+        document.getElementById('ref-modal').classList.remove('active');
+    });
+
+    // Ручной режим
+    document.getElementById('apply-sdp-btn')?.addEventListener('click', async () => {
+        const sdpText = document.getElementById('manual-sdp').value.trim();
+        if (!sdpText) return;
+        try {
+            const sdpObj = JSON.parse(sdpText);
+            if (!peerConnection) {
+                peerConnection = new RTCPeerConnection();
+                peerConnection.ondatachannel = (e) => { dataChannel = e.channel; setupDataChannel(dataChannel); };
+            }
+            await peerConnection.setRemoteDescription(sdpObj);
+            if (sdpObj.type === 'offer') {
+                const answer = await peerConnection.createAnswer();
+                await peerConnection.setLocalDescription(answer);
+                document.getElementById('manual-sdp').value = JSON.stringify(peerConnection.localDescription);
+                updateRobinStatus('Ответ создан. Скопируйте его и отправьте обратно.', 3000);
+            } else {
+                updateRobinStatus('✅ Соединение установлено!', 3000);
+            }
+        } catch(e) { updateRobinStatus('Ошибка SDP: ' + e.message, 3000); }
+    });
+
+    function setupDataChannel(channel) {
+        channel.onopen = () => updateRobinStatus('Колчан с ' + (activeContact?.name || 'другом') + ' открыт!', 3000);
+        channel.onmessage = (e) => {
+            appendMessage(activeContact?.name || 'Друг', e.data, activeContact?.avatar || 'assets/avatars/001-.png');
+            if (toggleHistory.checked) {
+                loadEncryptedHistory().then(hist => {
+                    hist.push({ text: e.data, sender: 'friend', recipient: myPubkey, senderName: activeContact?.name, avatar: activeContact?.avatar, time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) });
+                    saveEncryptedHistory(hist);
+                });
+            }
+        };
+    }
+
+    // Обработка ?id= в URL (авто-приём)
+    async function processAutoAccept() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const id = urlParams.get('id');
+        if (!id) return;
+        const found = await findFileById(id, 'offer');
+        if (!found) { updateRobinStatus('Стрела не найдена.', 3000); return; }
         if (peerConnection) peerConnection.close();
         peerConnection = new RTCPeerConnection();
-        peerConnection.ondatachannel = (e) => {
-            dataChannel = e.channel;
-            setupDataChannel(dataChannel);
-        };
-        
-        try {
-            await peerConnection.setRemoteDescription({ type: 'offer', sdp: found.content });
-            const answer = await peerConnection.createAnswer();
-            await peerConnection.setLocalDescription(answer);
-            const answerSdp = peerConnection.localDescription.sdp;
-            
-            // Загружаем answer с умным роутером
-            const answerFilename = `p2p_${uuid}.answer.txt`;
-            const uploadResult = await uploadToAny(answerFilename, answerSdp);
-            if (uploadResult) {
-                statusDiv.innerHTML = `✅ Ответ отправлен через ${uploadResult.store}. Ожидаем открытия канала...`;
-            } else {
-                statusDiv.innerHTML = '⚠️ Не удалось отправить ответ, но канал может установиться автоматически.';
-            }
-        } catch (err) {
-            statusDiv.innerHTML = `❌ Ошибка WebRTC: ${err.message}`;
-            acceptBtn.disabled = false;
-        }
+        peerConnection.ondatachannel = (e) => { dataChannel = e.channel; setupDataChannel(dataChannel); };
+        await peerConnection.setRemoteDescription({ type:'offer', sdp: found.content });
+        const answer = await peerConnection.createAnswer();
+        await peerConnection.setLocalDescription(answer);
+        const answerRes = await uploadToAny(`p2p_${id}.answer.txt`, peerConnection.localDescription.sdp);
+        if (answerRes) updateRobinStatus('Ответ отправлен через ' + answerRes.store, 3000);
+        else updateRobinStatus('Ответ не удалось загрузить.', 2000);
     }
-    
-    function sendMessage() {
-        if (dataChannel && dataChannel.readyState === 'open') {
-            const text = messageInput.value.trim();
-            if (text) {
-                dataChannel.send(text);
-                const msgDiv = document.createElement('div');
-                msgDiv.textContent = `📤 Я: ${text}`;
-                chatDiv.appendChild(msgDiv);
-                messageInput.value = '';
-                chatDiv.scrollTop = chatDiv.scrollHeight;
-            }
-        } else {
-            statusDiv.innerHTML = '⚠️ Канал не открыт.';
-        }
-    }
-    
-    // === Обработка параметра ?id= в URL ===
-    const urlParams = new URLSearchParams(window.location.search);
-    const idFromUrl = urlParams.get('id');
-    if (idFromUrl) {
-        uuidInput.value = idFromUrl;
-        acceptSection.style.display = 'block';
-        statusDiv.innerHTML = `🔗 ID стрелы: ${idFromUrl}. Нажмите «Принять стрелу».`;
-    } else {
-        acceptSection.style.display = 'block';
-        statusDiv.innerHTML = '⚡ Введите ID стрелы от друга и нажмите «Принять».';
-    }
-    
-    createBtn.addEventListener('click', createOffer);
-    acceptBtn.addEventListener('click', acceptOffer);
-    sendBtn.addEventListener('click', sendMessage);
 
-    // ========== 3. Фоновое обучение (раз в 5 минут проверяем случайный узел) ==========
-    setInterval(() => {
-        const sorted = nodeStats.getSortedNodes();
-        // выбираем случайный узел из тех, у кого мало успехов
-        const candidates = sorted.filter(store => (nodeStats.stats[store.name]?.success || 0) < 2);
-        if (candidates.length === 0) return;
-        const randomStore = candidates[Math.floor(Math.random() * candidates.length)];
-        const testName = `p2ppong_ping_${Date.now()}.txt`;
-        uploadToAny(testName, 'ping').then(result => {
-            if (result) console.log(`Фоновая проверка: ${randomStore.name} жив`);
-            else console.log(`Фоновая проверка: ${randomStore.name} мёртв`);
+    function loadContacts() {
+        const contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
+        const confirmed = contacts.filter(c => c.status === 'confirmed');
+        contactsListInner.innerHTML = '';
+        if (confirmed.length) {
+            confirmed.forEach(c => {
+                const div = document.createElement('div'); div.className = 'contact-item';
+                div.innerHTML = `<div class="contact-info"><img src="${c.avatar || 'assets/avatars/001-.png'}" class="contact-avatar"><span class="contact-name">${c.name}</span></div><button class="delete-contact" data-pubkey="${c.pubkey}">✖</button>`;
+                div.querySelector('.contact-info').addEventListener('click', () => openChatWithContact(c));
+                div.querySelector('.delete-contact').addEventListener('click', (e) => { e.stopPropagation(); deleteContact(c.pubkey, e); });
+                let pressTimer;
+                div.addEventListener('mousedown', () => { pressTimer = setTimeout(() => showContactMenu(c, div), 600); });
+                div.addEventListener('mouseup', () => clearTimeout(pressTimer));
+                div.addEventListener('mouseleave', () => clearTimeout(pressTimer));
+                div.addEventListener('touchstart', () => { pressTimer = setTimeout(() => showContactMenu(c, div), 600); }, { passive: true });
+                div.addEventListener('touchend', () => clearTimeout(pressTimer));
+                div.addEventListener('touchmove', () => clearTimeout(pressTimer));
+                contactsListInner.appendChild(div);
+            });
+        } else {
+            contactsListInner.innerHTML = '<div style="padding:10px;color:#888;">Воспользуйся реферальной стрелой!</div>';
+        }
+    }
+
+    function deleteContact(pubkey, event) {
+        event.stopPropagation();
+        let contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
+        contacts = contacts.filter(c => c.pubkey !== pubkey);
+        localStorage.setItem('robinhood_contacts', JSON.stringify(contacts));
+        if (activeContact && activeContact.pubkey === pubkey) { activeContact = null; chatSwitcherBtn.style.display = 'none'; }
+        loadContacts();
+        updateRobinStatus('Стрелок уволен', 2000);
+    }
+
+    function openChatWithContact(contact) {
+        activeContact = contact;
+        chatSwitcherLabel.textContent = contact.name;
+        chatSwitcherBtn.style.display = 'inline-flex';
+        msgInput.placeholder = "Выпустить стрелу " + contact.name + "...";
+        document.querySelectorAll(".message-row:not(#robin-row)").forEach(m => m.remove());
+        updateRobinStatus("Перестрелка с " + contact.name + " открыта", 3000);
+        contactsListDiv.style.display = "none";
+        drawer.classList.remove("open"); overlay.classList.remove("visible");
+        loadChatHistory(contact.pubkey);
+    }
+
+    chatSwitcherBtn.addEventListener('click', () => {
+        if (chatSwitcher.classList.contains('open')) chatSwitcher.classList.remove('open');
+        else { populateChatSwitcher(); chatSwitcher.classList.add('open'); }
+    });
+
+    async function populateChatSwitcher() {
+        chatSwitcherList.innerHTML = '';
+        const contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]').filter(c => c.status === 'confirmed');
+        if (!contacts.length) { chatSwitcherList.innerHTML = '<div style="padding:10px;color:#888;">Нет контактов</div>'; return; }
+        contacts.forEach(c => {
+            const div = document.createElement('div'); div.className = 'chat-switcher-item';
+            div.innerHTML = `<img src="${c.avatar || 'assets/avatars/001-.png'}" class="contact-avatar"><span class="contact-name">${c.name}</span>`;
+            div.addEventListener('click', () => { chatSwitcher.classList.remove('open'); openChatWithContact(c); });
+            chatSwitcherList.appendChild(div);
         });
-    }, 5 * 60 * 1000);
+    }
+
+    async function loadChatHistory(contactPubkey) {
+        if (toggleHistory.checked) {
+            const hist = await loadEncryptedHistory();
+            hist.forEach(msg => {
+                if (msg.sender === contactPubkey || msg.recipient === contactPubkey)
+                    appendMessage(msg.sender === myPubkey ? 'Вы' : (msg.senderName || msg.sender.slice(0,8)), msg.text, msg.avatar || 'assets/avatars/001-.png', msg.time);
+            });
+        }
+    }
+
+    function sendMessageHandler() {
+        const text = msgInput.value.trim();
+        if (!text) return;
+        if (!activeContact) { updateRobinStatus('Выберите стрелка.', 2000); return; }
+        if (dataChannel && dataChannel.readyState === 'open') {
+            dataChannel.send(text);
+        } else {
+            updateRobinStatus('Колчан не готов. Используйте ручной SDP.', 2000);
+            return;
+        }
+        appendMessage('Вы', text, profileAvatar.src);
+        msgInput.value = '';
+        if (toggleSound.checked) playSound('bow_shot.wav');
+        if (toggleHistory.checked) {
+            loadEncryptedHistory().then(hist => {
+                hist.push({ text, sender: myPubkey, recipient: activeContact.pubkey, senderName: myNick.textContent, avatar: profileAvatar.src, time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) });
+                saveEncryptedHistory(hist);
+            });
+        }
+    }
+
+    sendBtn.addEventListener('click', sendMessageHandler);
+    msgInput.addEventListener('keypress', e => { if (e.key === 'Enter') sendBtn.click(); });
+
+    function appendMessage(sender, text, avatarSrc, timeStr = null) {
+        const row = document.createElement('div'); row.className = 'message-row';
+        const finalTime = timeStr || new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+        row.innerHTML = `<img src="${avatarSrc}" class="avatar"><div class="msg-body"><div class="msg-sender">${sender}</div><div>${text}</div><div class="msg-status">${finalTime}</div></div>`;
+        chatBox.appendChild(row); chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    ddgClearBtn.addEventListener('click', async () => {
+        document.querySelectorAll('.message-row:not(#robin-row)').forEach(m => m.remove());
+        if (toggleHistory.checked) await saveEncryptedHistory([]); else localStorage.removeItem('robinhood_chat_history');
+        updateRobinStatus('Письма пущены на самокрутки!', 3000);
+    });
+
+    let robinDefaultText = robinText.textContent, robinTimer;
+    function updateRobinStatus(text, duration=4000) {
+        clearTimeout(robinTimer); robinText.style.transition = 'none'; robinText.style.opacity = 1; robinText.textContent = text;
+        robinTimer = setTimeout(() => {
+            robinText.style.transition = 'opacity 0.6s ease'; robinText.style.opacity = 0;
+            const onEnd = () => { robinText.removeEventListener('transitionend', onEnd); robinText.style.transition = 'none'; robinText.textContent = robinDefaultText; robinText.style.opacity = 1; };
+            robinText.addEventListener('transitionend', onEnd);
+        }, duration);
+    }
+
+    function playSound(filename) { if (toggleSound.checked) { const a = new Audio(`assets/sounds/${filename}`); a.volume=0.5; a.play().catch(()=>{}); } }
+
+    async function init() {
+        await loadKeys();
+        updateRobinStatus('Святые сокеты стабильны !', 3000);
+        await processAutoAccept();
+    }
+    window.addEventListener('load', init);
+
+    openMenuBtn.addEventListener('click', () => { drawer.classList.toggle('open'); overlay.classList.toggle('visible'); });
+    overlay.addEventListener('click', () => { drawer.classList.remove('open'); overlay.classList.remove('visible'); });
+
+    const savedAvatar = localStorage.getItem('robinhood_avatar'); if (savedAvatar) profileAvatar.src = savedAvatar;
+    const savedNick = localStorage.getItem('robinhood_nick'); if (savedNick) myNick.textContent = savedNick;
+    changeProfileBtn.addEventListener('click', () => profileEditBox.style.display = profileEditBox.style.display === 'block' ? 'none' : 'block');
+    saveProfileBtn.addEventListener('click', () => {
+        const newNick = newNickInput.value.trim();
+        if (newNick) { myNick.textContent = newNick; localStorage.setItem('robinhood_nick', newNick); newNickInput.value = ''; profileEditBox.style.display = 'none'; updateRobinStatus(`Ник изменён на ${newNick}`); }
+    });
+
+    const avatars = ['assets/avatars/001-.png','assets/avatars/002--1.png','assets/avatars/003-icon-8033085.png','assets/avatars/009--7.png','assets/avatars/010--8.png','assets/avatars/018--16.png','assets/avatars/022--20.png','assets/avatars/037--35.png','assets/avatars/043--41.png','assets/avatars/048--46.png','assets/avatars/050--48.png','assets/avatars/052--50.png','assets/avatars/053--51.png','assets/avatars/056--54.png','assets/avatars/066--64.png','assets/avatars/077-icon-8033092.png','assets/avatars/083-icon-11885568.png','assets/avatars/094-icon-18926716.png','assets/avatars/108--83.png','assets/avatars/147-icon-6081840.png','assets/avatars/148-icon-5532632.png','assets/avatars/149-icon-4132697.png','assets/avatars/150-icon-10756654.png','assets/avatars/153-icon-4964924.png','assets/avatars/154-icon-4261075.png','assets/avatars/156-icon-4132828.png','assets/avatars/158--116.png','assets/avatars/160-icon-2332597.png','assets/avatars/162-icon-6237595.png','assets/avatars/167-icon-1920840.png','assets/avatars/168-icon-228268.png','assets/avatars/169-icon-5613167.png','assets/avatars/173-icon-1615623.png','assets/avatars/183-icon-5840846.png','assets/avatars/186-icon-6237499.png','assets/avatars/188-icon-6267517.png','assets/avatars/203-icon-3516506.png','assets/avatars/216-icon-5504960.png','assets/avatars/221-icon-9530256.png','assets/avatars/226-icon-9669507.png','assets/avatars/227-icon-9623471.png','assets/avatars/229-icon-10032172.png','assets/avatars/230-icon-10049316.png','assets/avatars/232-icon-11434002.png','assets/avatars/234-icon-10756328.png','assets/avatars/245-icon-16150697.png','assets/avatars/246-icon-16150730.png','assets/avatars/249-icon-17159913.png','assets/avatars/250-icon-17159758.png','assets/avatars/251-icon-17159744.png','assets/avatars/253-icon-18426073.png','assets/avatars/254-icon-18621065.png','assets/avatars/255-icon-18926692.png','assets/avatars/256--120.png'];
+    function loadAvatars() {
+        avatarList.innerHTML = '';
+        avatars.forEach(src => {
+            const img = document.createElement('img'); img.src = src; img.className = 'avatar-option';
+            img.addEventListener('click', () => { profileAvatar.src = src; localStorage.setItem('robinhood_avatar', src); updateRobinStatus('Аватар обновлён'); avatarSelector.style.display = 'none'; });
+            avatarList.appendChild(img);
+        });
+    }
+    profileAvatar.addEventListener('click', () => { avatarSelector.style.display = avatarSelector.style.display === 'block' ? 'none' : 'block'; if (avatarSelector.style.display === 'block') loadAvatars(); });
+
+    let touchStartX = 0;
+    document.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; });
+    document.addEventListener('touchend', e => {
+        const deltaX = e.changedTouches[0].clientX - touchStartX;
+        if (Math.abs(deltaX) > 50) {
+            if (deltaX > 0 && !drawer.classList.contains('open')) { drawer.classList.add('open'); overlay.classList.add('visible'); }
+            else if (deltaX < 0 && drawer.classList.contains('open')) { drawer.classList.remove('open'); overlay.classList.remove('visible'); }
+        }
+    });
+
+    toggleHistory.addEventListener('change', async function() {
+        if (!this.checked) { localStorage.removeItem('robinhood_history_key'); localStorage.removeItem('robinhood_chat_history'); historyEncryptionKey = null; updateRobinStatus('Письма больше не хранятся.', 2000); }
+        else updateRobinStatus('Письма сохраняются.', 2000);
+        localStorage.setItem('robinhood_history', this.checked);
+    });
+    toggleSound.addEventListener('change', function() { localStorage.setItem('robinhood_sound', this.checked); });
+    const savedHistory = localStorage.getItem('robinhood_history'); if (savedHistory !== null) toggleHistory.checked = savedHistory === 'true';
+    const savedSound = localStorage.getItem('robinhood_sound'); if (savedSound !== null) toggleSound.checked = savedSound === 'true';
+
+    // Контекстное меню (без изменений)
+    let currentMenuContact = null;
+    function showDeleteConfirmation(pubkey, name) {
+        const confirmDiv = document.createElement('div');
+        confirmDiv.style = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#1F1F1F;border:1px solid #f44336;border-radius:12px;padding:20px;z-index:400;text-align:center;';
+        confirmDiv.innerHTML = `<p style="margin-bottom:15px;">Уверены, что хотите сжечь колчан с ${name}?</p>`;
+        const btnContainer = document.createElement('div'); btnContainer.style.display='flex'; btnContainer.style.justifyContent='center'; btnContainer.style.gap='15px';
+        const yesBtn = document.createElement('button'); yesBtn.textContent='✓ Да'; yesBtn.style.background='#2E7D32'; yesBtn.style.color='white'; yesBtn.style.border='none'; yesBtn.style.padding='10px 20px'; yesBtn.style.borderRadius='6px'; yesBtn.style.cursor='pointer';
+        yesBtn.addEventListener('click', () => { document.body.removeChild(confirmDiv); deleteContactAfterConfirm(pubkey, name); });
+        const noBtn = document.createElement('button'); noBtn.textContent='✕ Нет'; noBtn.style.background='#f44336'; noBtn.style.color='white'; noBtn.style.border='none'; noBtn.style.padding='10px 20px'; noBtn.style.borderRadius='6px'; noBtn.style.cursor='pointer';
+        noBtn.addEventListener('click', () => document.body.removeChild(confirmDiv));
+        btnContainer.appendChild(yesBtn); btnContainer.appendChild(noBtn);
+        confirmDiv.appendChild(btnContainer); document.body.appendChild(confirmDiv);
+    }
+    function showContactMenu(contact, element) {
+        const menuOpenTime = Date.now(); currentMenuContact = contact;
+        const menu = document.getElementById('contact-menu'); menu.style.display = 'block';
+        document.getElementById('menu-rename').onclick = () => { hideContactMenu(); const newName = prompt('Новое имя:', contact.name); if (newName && newName.trim()) { let contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]'); const c = contacts.find(c => c.pubkey === contact.pubkey); if (c) { c.name = newName.trim(); localStorage.setItem('robinhood_contacts', JSON.stringify(contacts)); loadContacts(); updateRobinStatus('Имя изменено!', 2000); } } };
+        document.getElementById('menu-avatar').onclick = () => { hideContactMenu(); /* аватар-пикер */ };
+        document.getElementById('menu-delete').onclick = () => { hideContactMenu(); showDeleteConfirmation(contact.pubkey, contact.name); };
+        document.getElementById('menu-cancel').onclick = hideContactMenu;
+        setTimeout(() => {
+            const closeHandler = (e) => { if (Date.now() - menuOpenTime < 500) return; if (!menu.contains(e.target)) { hideContactMenu(); document.removeEventListener('click', closeHandler); } };
+            document.addEventListener('click', closeHandler);
+        }, 100);
+    }
+    function hideContactMenu() { document.getElementById('contact-menu').style.display = 'none'; currentMenuContact = null; }
+    function deleteContactAfterConfirm(pubkey, name) {
+        let contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
+        contacts = contacts.filter(c => c.pubkey !== pubkey);
+        localStorage.setItem('robinhood_contacts', JSON.stringify(contacts));
+        if (activeContact && activeContact.pubkey === pubkey) { activeContact = null; chatSwitcherBtn.style.display = 'none'; }
+        loadContacts();
+        updateRobinStatus(`Колчан с ${name} сожжён`, 3000);
+    }
+    function deleteContact(pubkey, event) { event.stopPropagation(); const contact = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]').find(c => c.pubkey === pubkey); if (contact) showDeleteConfirmation(pubkey, contact.name); }
 </script>
 </body>
 </html>
