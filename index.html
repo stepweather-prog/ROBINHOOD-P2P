@@ -249,8 +249,9 @@
     try {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 4000);
-        const proxyUrl = CORS_PROXY + encodeURIComponent(url);
-        const res = await fetch(proxyUrl, { signal: controller.signal });
+        // Если URL ведёт на наш Render-сервер — стучимся напрямую
+        const fetchUrl = url.includes('p2ppong.onrender.com') ? url : CORS_PROXY + encodeURIComponent(url);
+        const res = await fetch(fetchUrl, { signal: controller.signal });
         clearTimeout(timeout);
         if (res.ok) return await res.text();
     } catch(e) {}
