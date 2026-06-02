@@ -404,11 +404,28 @@
         peerConnection = new RTCPeerConnection();
         dataChannel = peerConnection.createDataChannel('chat');
         setupDataChannel(dataChannel);
-        const offer = await peerConnection.createOffer();
+        const offer = await peerConnection.createOffer(); 
+        // Отправляем offer на Render
+    let renderResult = null;
+    try {
+        const ctrl = new AbortController();
+        const to = setTimeout(() => ctrl.abort(), 4000);
+        const res = await fetch(RENDER_SERVER + '/offer', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sdp: peerConnection.localDescription.sdp }),
+            signal: ctrl.signal
+        });
+        clearTimeout(to);
+        if (res.ok) {
+            const data = await res.json();
+            renderResult = { store: 'Render', fileUrl: RENDER_SERVER + '/offer?id=' + data.id, baseUrl: RENDER_SERVER };
+        }
+    } catch(e) {}
         await peerConnection.setLocalDescription(offer);
         const uuid = Math.random().toString(36).substring(2,10) + Date.now().toString(36);
         currentUUID = uuid;
-        const result = await uploadToAny(`p2p_${uuid}.offer.txt`, peerConnection.localDescription.sdp);
+        const result = renderResult || await uploadToAny(`p2p_${uuid}.offer.txt`, peerConnection.localDescription.sdp);
         if (!result) { updateRobinStatus('Авто-стрела не удалась. Используйте ручной режим.', 3000); return null; }
         const link = `${window.location.origin}${window.location.pathname}?id=${uuid}`;
         const answerUrl = result.store === 'Render'
