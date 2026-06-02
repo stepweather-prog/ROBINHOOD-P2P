@@ -80,7 +80,7 @@
 <body>
 <div class="header">
     <button id="open-menu">☰</button>
-    <h2 id="header-title">RobinHood P2P <span style="font-size: 14px; margin-left: 8px;" title="Защищенный колчан активирован">🛡️</span></h2>
+    <h2 id="header-title">RobinHood P2P <span style="font-size: 14px; margin-left: 8px;" title="Канал защищён сквозным шифрованием">🛡️</span></h2>
     <button id="chat-switcher-btn" class="switch-chat-btn"><span id="chat-switcher-label">Перестрелки</span> ▼</button>
     <div style="flex:1;"></div>
     <div id="ddg-clear">🔥</div>
@@ -106,7 +106,7 @@
 <div class="invite-modal" id="ref-modal">
     <div class="invite-dialog">
         <h3>🏹 Реферальная стрела</h3>
-        <p style="font-size:0.9em;">Ваша стрела для приглашения:</p>
+        <p style="font-size:0.9em;">Ваша ссылка для приглашения:</p>
         <div class="code-display" id="ref-link-display"></div>
         <button id="copy-ref-link-btn">Зарядить</button>
         <button id="share-ref-link-btn">Метнуть...</button>
@@ -140,7 +140,7 @@
             <div id="pending-requests" style="margin-top: 10px; border-top: 1px solid #444; padding-top: 10px;"></div>
         </div>
         <div class="menu-item"><span>🗑️ Хранить историю</span><label class="switch"><input type="checkbox" id="toggle-history" checked><span class="slider"></span></label></div>
-        <div class="menu-item"><span>🔊 Звуки приложения</span><label class="switch"><input type="checkbox" id="toggle-sound" checked><span class="slider"></span></label></div>
+        <div class="menu-item"><span>🔊 Звук приложения</span><label class="switch"><input type="checkbox" id="toggle-sound" checked><span class="slider"></span></label></div>
     </div>
     <div class="drawer-footer">RobinHood Messenger v2.0</div>
 </div>
@@ -158,46 +158,223 @@
 </div>
 
 <script>
-    // ---------- ТОЛЬКО RENDER ----------
+    // ========== P2PPONG API ==========
     const RENDER_SERVER = 'https://p2ppong.onrender.com';
-
-    async function uploadOfferToServer(content) {
+    
+    // Переменные для P2PPong-сессии
+    let p2ppongSession = null;
+    let p2ppongDataChannel = null;
+    
+    // Запуск P2PPong от имени создателя
+    async function startP2PPongAsCreator() {
+        const uuid = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 15);
+        const link = `${window.location.origin}${window.location.pathname}?id=${uuid}`;
+        
+        // Показываем ссылку
+        document.getElementById('ref-link-display').textContent = link;
+        document.getElementById('ref-modal').classList.add('active');
+        
+        // Ждём получателя (опрашиваем Render)
+        const waitForRecipient = async () => {
+            return new Promise((resolve, reject) => {
+                const startTime = Date.now();
+                const interval = setInterval(async () => {
+                    const ctrl = new AbortController();
+                    const to = setTimeout(() => ctrl.abort(), 4000);
+                    try {
+                        const res = await fetch(RENDER_SERVER + '/offer?id=' + uuid, { signal: ctrl.signal });
+                        clearTimeout(to);
+                        if (res.ok) {
+                            const data = await res.json();
+                            if (data.status === 'ready') {
+                                clearInterval(interval);
+                                resolve();
+                            }
+                        }
+                    } catch(e) {}
+                    if (Date.now() - startTime > 90000) {
+                        clearInterval(interval);
+                        reject(new Error('timeout'));
+                    }
+                }, 2000);
+            });
+        };
+        
         try {
+            updateRobinStatus('Ожидаем получателя...', 0);
+            await waitForRecipient();
+            updateRobinStatus('Получатель готов. Создаю канал...', 0);
+            
+            // Создаём WebRTC offer
+            const pc = new RTCPeerConnection();
+            const dc = pc.createDataChannel('chat');
+            p2ppongDataChannel = dc;
+            
+            // Перенаправляем события канала в RobinHood
+            setupP2PPongChannel(dc);
+            
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+            
+            // Ждём ICE
+            await new Promise(resolve => {
+                if (pc.iceGatheringState === 'complete') resolve();
+                else pc.addEventListener('icegatheringstatechange', () => {
+                    if (pc.iceGatheringState === 'complete') resolve();
+                });
+            });
+            
+            // Отправляем offer на Render
             const ctrl = new AbortController();
-            const timeoutId = setTimeout(() => ctrl.abort(), 80000);
+            const to = setTimeout(() => ctrl.abort(), 80000);
             const res = await fetch(RENDER_SERVER + '/offer', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ sdp: content }),
+                body: JSON.stringify({ sdp: pc.localDescription.sdp, sessionId: uuid }),
                 signal: ctrl.signal
             });
-            clearTimeout(timeoutId);
-            if (res.ok) {
-                const data = await res.json();
-                return data.id;
-            }
-        } catch(e) {}
-        return null;
+            clearTimeout(to);
+            
+            if (!res.ok) throw new Error('offer-failed');
+            
+            // Ждём answer
+            const waitForAnswer = async () => {
+                return new Promise((resolve, reject) => {
+                    const startTime = Date.now();
+                    const interval = setInterval(async () => {
+                        const res = await fetch(RENDER_SERVER + '/offer?id=' + uuid);
+                        if (res.ok) {
+                            const data = await res.json();
+                            if (data.sdp && data.sdp !== pc.localDescription.sdp) {
+                                clearInterval(interval);
+                                resolve(data.sdp);
+                            }
+                        }
+                        if (Date.now() - startTime > 90000) {
+                            clearInterval(interval);
+                            reject(new Error('answer-timeout'));
+                        }
+                    }, 2000);
+                });
+            };
+            
+            const answerSdp = await waitForAnswer();
+            await pc.setRemoteDescription({ type: 'answer', sdp: answerSdp });
+            
+            updateRobinStatus('✅ Колчан открыт!', 3000);
+            p2ppongSession = { pc, dc, uuid };
+        } catch(e) {
+            updateRobinStatus('Не удалось установить соединение. Попробуйте ручной режим.', 3000);
+        }
     }
-
-    async function downloadFromServer(id) {
+    
+    // Запуск P2PPong от имени получателя (при переходе по ссылке)
+    async function startP2PPongAsReceiver(uuid) {
         try {
-            const ctrl = new AbortController();
-            const timeoutId = setTimeout(() => ctrl.abort(), 5000);
-            const res = await fetch(RENDER_SERVER + '/offer?id=' + id, { signal: ctrl.signal });
-            clearTimeout(timeoutId);
-            if (res.ok) {
-                const data = await res.json();
-                return data.sdp;
-            }
-        } catch(e) {}
-        return null;
+            updateRobinStatus('Подключаюсь...', 0);
+            
+            // Отправляем сигнал готовности
+            const ctrl1 = new AbortController();
+            const to1 = setTimeout(() => ctrl1.abort(), 80000);
+            await fetch(RENDER_SERVER + '/offer', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: 'ready', sessionId: uuid }),
+                signal: ctrl1.signal
+            });
+            clearTimeout(to1);
+            
+            updateRobinStatus('Ожидаю offer...', 0);
+            
+            // Ждём offer
+            const waitForOffer = async () => {
+                return new Promise((resolve, reject) => {
+                    const startTime = Date.now();
+                    const interval = setInterval(async () => {
+                        const res = await fetch(RENDER_SERVER + '/offer?id=' + uuid);
+                        if (res.ok) {
+                            const data = await res.json();
+                            if (data.sdp) {
+                                clearInterval(interval);
+                                resolve(data.sdp);
+                            }
+                        }
+                        if (Date.now() - startTime > 90000) {
+                            clearInterval(interval);
+                            reject(new Error('offer-timeout'));
+                        }
+                    }, 2000);
+                });
+            };
+            
+            const offerSdp = await waitForOffer();
+            
+            const pc = new RTCPeerConnection();
+            pc.ondatachannel = (e) => {
+                p2ppongDataChannel = e.channel;
+                setupP2PPongChannel(e.channel);
+            };
+            
+            await pc.setRemoteDescription({ type: 'offer', sdp: offerSdp });
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+            
+            // Ждём ICE
+            await new Promise(resolve => {
+                if (pc.iceGatheringState === 'complete') resolve();
+                else pc.addEventListener('icegatheringstatechange', () => {
+                    if (pc.iceGatheringState === 'complete') resolve();
+                });
+            });
+            
+            // Отправляем answer
+            const ctrl2 = new AbortController();
+            const to2 = setTimeout(() => ctrl2.abort(), 80000);
+            await fetch(RENDER_SERVER + '/offer', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sdp: pc.localDescription.sdp, sessionId: uuid }),
+                signal: ctrl2.signal
+            });
+            clearTimeout(to2);
+            
+            updateRobinStatus('✅ Колчан открыт!', 3000);
+            p2ppongSession = { pc, dc: p2ppongDataChannel, uuid };
+        } catch(e) {
+            updateRobinStatus('Не удалось подключиться.', 3000);
+        }
     }
-
-    // ---------- ИНТЕРФЕЙС ----------
+    
+    function setupP2PPongChannel(channel) {
+        channel.onopen = () => {
+            updateRobinStatus('Канал открыт! Можно общаться.', 3000);
+        };
+        channel.onmessage = (e) => {
+            try {
+                const msg = JSON.parse(e.data);
+                if (msg.type === 'contact_info') {
+                    if (activeContact) {
+                        activeContact.name = msg.name || activeContact.name;
+                        activeContact.avatar = msg.avatar || activeContact.avatar;
+                        chatSwitcherLabel.textContent = activeContact.name;
+                        loadContacts();
+                    }
+                    return;
+                }
+            } catch(e) {}
+            appendMessage(activeContact?.name || 'Друг', e.data, activeContact?.avatar || 'assets/avatars/001-.png');
+            if (toggleHistory.checked) {
+                loadEncryptedHistory().then(hist => {
+                    hist.push({ text: e.data, sender: 'friend', recipient: myPubkey, senderName: activeContact?.name, avatar: activeContact?.avatar, time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) });
+                    saveEncryptedHistory(hist);
+                });
+            }
+        };
+    }
+    
+    // ========== ОСНОВНОЙ КОД ==========
     let myPrivkey, myPubkey, activeContact;
-    let peerConnection = null, dataChannel = null, currentUUID = null, pollingInterval = null;
-
+    
     async function generateKeyPair() {
         const keyPair = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]);
         const pubKeyBuffer = await crypto.subtle.exportKey("spki", keyPair.publicKey);
@@ -213,7 +390,7 @@
         if (storedPub && storedPriv) { myPubkey = storedPub; myPrivkey = storedPriv; }
         else await generateKeyPair();
     }
-
+    
     let historyEncryptionKey = null;
     async function getHistoryKey() {
         const stored = localStorage.getItem('robinhood_history_key');
@@ -251,7 +428,7 @@
             return JSON.parse(json);
         } catch(e) { return []; }
     }
-
+    
     const openMenuBtn = document.getElementById('open-menu'), drawer = document.getElementById('drawer'), overlay = document.getElementById('drawer-overlay');
     const ddgClearBtn = document.getElementById('ddg-clear'), changeProfileBtn = document.getElementById('change-profile-btn'), profileEditBox = document.getElementById('profile-edit-box');
     const saveProfileBtn = document.getElementById('save-profile-btn'), newNickInput = document.getElementById('new-nick-input'), myNick = document.getElementById('my-nick');
@@ -260,24 +437,21 @@
     const sherwoodBtn = document.getElementById('sherwood-letters-btn'), contactsListDiv = document.getElementById('contacts-list'), toggleHistory = document.getElementById('toggle-history'), toggleSound = document.getElementById('toggle-sound');
     const contactsListInner = document.getElementById('contacts-list-inner'), headerTitle = document.getElementById('header-title'), chatSwitcherBtn = document.getElementById('chat-switcher-btn'), chatSwitcherLabel = document.getElementById('chat-switcher-label');
     const chatSwitcher = document.getElementById('chat-switcher'), chatSwitcherList = document.getElementById('chat-switcher-list');
-
+    
     sherwoodBtn.addEventListener('click', () => {
         if (contactsListDiv.style.display === 'block') contactsListDiv.style.display = 'none';
         else { loadContacts(); contactsListDiv.style.display = 'block'; }
     });
-
+    
+    // Кнопка "Создать стрелу" — запускает P2PPong
     document.getElementById('create-arrow-btn').addEventListener('click', async () => {
-        updateRobinStatus('Создаю стрелу...', 3000);
-        const link = await createAutoOffer();
-        if (link) {
-            document.getElementById('ref-link-display').textContent = link;
-            document.getElementById('ref-modal').classList.add('active');
-        }
+        updateRobinStatus('Понг создаёт стрелу...', 0);
+        await startP2PPongAsCreator();
     });
-
+    
     document.getElementById('copy-ref-link-btn').addEventListener('click', () => {
         const link = document.getElementById('ref-link-display').textContent;
-        if (link) navigator.clipboard.writeText(link).then(() => updateRobinStatus('Ссылка скопирована!', 3000));
+        if (link) navigator.clipboard.writeText(link).then(() => updateRobinStatus('Ссылка скопирована!', 2000));
     });
     document.getElementById('share-ref-link-btn').addEventListener('click', () => {
         const link = document.getElementById('ref-link-display').textContent;
@@ -286,99 +460,120 @@
     document.getElementById('close-ref-modal-btn').addEventListener('click', () => {
         document.getElementById('ref-modal').classList.remove('active');
     });
-
+    
+    // Ручной SDP (запасной вариант)
     document.getElementById('apply-sdp-btn').addEventListener('click', async () => {
         const sdpText = document.getElementById('manual-sdp').value.trim();
         if (!sdpText) return;
         try {
             const sdpObj = JSON.parse(sdpText);
-            if (!peerConnection) {
-                peerConnection = new RTCPeerConnection();
-                peerConnection.ondatachannel = (e) => { dataChannel = e.channel; setupDataChannel(dataChannel); };
-            }
-            await peerConnection.setRemoteDescription(sdpObj);
+            const pc = new RTCPeerConnection();
             if (sdpObj.type === 'offer') {
-                const answer = await peerConnection.createAnswer();
-                await peerConnection.setLocalDescription(answer);
-                document.getElementById('manual-sdp').value = JSON.stringify(peerConnection.localDescription);
-                updateRobinStatus('Ответ создан. Скопируйте его и отправьте обратно.', 4000);
+                pc.ondatachannel = (e) => {
+                    p2ppongDataChannel = e.channel;
+                    setupP2PPongChannel(e.channel);
+                };
+                await pc.setRemoteDescription(sdpObj);
+                const answer = await pc.createAnswer();
+                await pc.setLocalDescription(answer);
+                document.getElementById('manual-sdp').value = JSON.stringify(pc.localDescription);
+                updateRobinStatus('Ответ создан. Скопируйте его и отправьте обратно.', 3000);
             } else {
+                p2ppongDataChannel = pc.createDataChannel('chat');
+                setupP2PPongChannel(p2ppongDataChannel);
+                await pc.setRemoteDescription(sdpObj);
                 updateRobinStatus('✅ Соединение установлено!', 3000);
             }
         } catch(e) { updateRobinStatus('Ошибка SDP: ' + e.message, 3000); }
     });
-
-    function setupDataChannel(channel) {
-        channel.onopen = () => {
-            updateRobinStatus('Колчан с ' + (activeContact?.name || 'другом') + ' открыт!', 4000);
-            const contactMsg = JSON.stringify({ type: 'contact_info', name: myNick.textContent, avatar: profileAvatar.src });
-            channel.send(contactMsg);
-        };
-        channel.onmessage = (e) => {
-            try {
-                const msg = JSON.parse(e.data);
-                if (msg.type === 'contact_info') {
-                    if (activeContact) {
-                        activeContact.name = msg.name || activeContact.name;
-                        activeContact.avatar = msg.avatar || activeContact.avatar;
-                        chatSwitcherLabel.textContent = activeContact.name;
-                        loadContacts();
-                    }
-                    return;
-                }
-            } catch(e) {}
-            appendMessage(activeContact?.name || 'Друг', e.data, activeContact?.avatar || 'assets/avatars/001-.png');
-            if (toggleHistory.checked) {
-                loadEncryptedHistory().then(hist => {
-                    hist.push({ text: e.data, sender: 'friend', recipient: myPubkey, senderName: activeContact?.name, avatar: activeContact?.avatar, time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) });
-                    saveEncryptedHistory(hist);
-                });
-            }
-        };
+    
+    function sendMessageHandler() {
+        const text = msgInput.value.trim();
+        if (!text) return;
+        if (!activeContact && !p2ppongDataChannel) { updateRobinStatus('Выберите стрелка.', 2000); return; }
+        if (p2ppongDataChannel && p2ppongDataChannel.readyState === 'open') {
+            p2ppongDataChannel.send(text);
+        } else {
+            updateRobinStatus('Колчан не готов.', 2000);
+            return;
+        }
+        appendMessage('Вы', text, profileAvatar.src);
+        msgInput.value = '';
+        if (toggleSound.checked) playSound('bow_shot.wav');
+        if (toggleHistory.checked) {
+            loadEncryptedHistory().then(hist => {
+                hist.push({ text, sender: myPubkey, recipient: activeContact?.pubkey || 'friend', senderName: myNick.textContent, avatar: profileAvatar.src, time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) });
+                saveEncryptedHistory(hist);
+            });
+        }
     }
-
-    async function createAutoOffer() {
-        if (peerConnection) peerConnection.close();
-        peerConnection = new RTCPeerConnection();
-        dataChannel = peerConnection.createDataChannel('chat');
-        setupDataChannel(dataChannel);
-        const offer = await peerConnection.createOffer();
-        await peerConnection.setLocalDescription(offer);
-        const uuid = await uploadOfferToServer(peerConnection.localDescription.sdp);
-        if (!uuid) { updateRobinStatus('Авто-стрела не удалась. Используйте ручной режим.', 6000); return null; }
-        currentUUID = uuid;
-        const link = `${window.location.origin}${window.location.pathname}?id=${uuid}`;
-        if (pollingInterval) clearInterval(pollingInterval);
-        pollingInterval = setInterval(async () => {
-            const sdp = await downloadFromServer(uuid);
-            if (sdp && sdp.trim().startsWith('v=')) {
-                clearInterval(pollingInterval);
-                pollingInterval = null;
-                await peerConnection.setRemoteDescription({ type:'answer', sdp });
-                updateRobinStatus('✅ Колчан открыт!', 4000);
-            }
-        }, 3000);
-        setTimeout(() => { if (pollingInterval) { clearInterval(pollingInterval); pollingInterval = null; updateRobinStatus('⏱️ Таймаут ответа.', 4000); } }, 90000);
-        return link;
+    
+    sendBtn.addEventListener('click', sendMessageHandler);
+    msgInput.addEventListener('keypress', e => { if (e.key === 'Enter') sendBtn.click(); });
+    
+    function appendMessage(sender, text, avatarSrc, timeStr = null) {
+        const row = document.createElement('div'); row.className = 'message-row';
+        const finalTime = timeStr || new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+        row.innerHTML = `<img src="${avatarSrc}" class="avatar"><div class="msg-body"><div class="msg-sender">${sender}</div><div>${text}</div><div class="msg-status">${finalTime}</div></div>`;
+        chatBox.appendChild(row); chatBox.scrollTop = chatBox.scrollHeight;
     }
-
-    async function processAutoAccept() {
+    
+    ddgClearBtn.addEventListener('click', async () => {
+        document.querySelectorAll('.message-row:not(#robin-row)').forEach(m => m.remove());
+        if (toggleHistory.checked) await saveEncryptedHistory([]); else localStorage.removeItem('robinhood_chat_history');
+        updateRobinStatus('Письма пущены на самокрутки!', 3000);
+    });
+    
+    let robinDefaultText = robinText.textContent, robinTimer;
+    function updateRobinStatus(text, duration=4000) {
+        clearTimeout(robinTimer); robinText.style.transition = 'none'; robinText.style.opacity = 1; robinText.textContent = text;
+        if (duration > 0) {
+            robinTimer = setTimeout(() => {
+                robinText.style.transition = 'opacity 0.6s ease'; robinText.style.opacity = 0;
+                const onEnd = () => { robinText.removeEventListener('transitionend', onEnd); robinText.style.transition = 'none'; robinText.textContent = robinDefaultText; robinText.style.opacity = 1; };
+                robinText.addEventListener('transitionend', onEnd);
+            }, duration);
+        }
+    }
+    
+    function playSound(filename) { if (toggleSound.checked) { const a = new Audio(`assets/sounds/${filename}`); a.volume=0.5; a.play().catch(()=>{}); } }
+    
+    async function init() {
+        await loadKeys();
+        updateRobinStatus('Святые сокеты стабильны !', 3000);
+        
+        // Проверяем, есть ли ?id= в URL (получатель)
         const urlParams = new URLSearchParams(window.location.search);
         const id = urlParams.get('id');
-        if (!id) return;
-        const sdp = await downloadFromServer(id);
-        if (!sdp) { updateRobinStatus('Стрела не найдена.', 3000); return; }
-        if (peerConnection) peerConnection.close();
-        peerConnection = new RTCPeerConnection();
-        peerConnection.ondatachannel = (e) => { dataChannel = e.channel; setupDataChannel(dataChannel); };
-        await peerConnection.setRemoteDescription({ type:'offer', sdp: sdp });
-        const answer = await peerConnection.createAnswer();
-        await peerConnection.setLocalDescription(answer);
-        await uploadOfferToServer(peerConnection.localDescription.sdp);
-        updateRobinStatus('Ответ отправлен.', 6000);
-        window.history.replaceState({}, document.title, window.location.pathname);
+        if (id) {
+            updateRobinStatus('Понг принимает стрелу...', 0);
+            await startP2PPongAsReceiver(id);
+        }
     }
-
+    window.addEventListener('load', init);
+    
+    openMenuBtn.addEventListener('click', () => { drawer.classList.toggle('open'); overlay.classList.toggle('visible'); });
+    overlay.addEventListener('click', () => { drawer.classList.remove('open'); overlay.classList.remove('visible'); });
+    
+    const savedAvatar = localStorage.getItem('robinhood_avatar'); if (savedAvatar) profileAvatar.src = savedAvatar;
+    const savedNick = localStorage.getItem('robinhood_nick'); if (savedNick) myNick.textContent = savedNick;
+    changeProfileBtn.addEventListener('click', () => profileEditBox.style.display = profileEditBox.style.display === 'block' ? 'none' : 'block');
+    saveProfileBtn.addEventListener('click', () => {
+        const newNick = newNickInput.value.trim();
+        if (newNick) { myNick.textContent = newNick; localStorage.setItem('robinhood_nick', newNick); newNickInput.value = ''; profileEditBox.style.display = 'none'; updateRobinStatus(`Ник изменён на ${newNick}`); }
+    });
+    
+    const avatars = ['assets/avatars/001-.png','assets/avatars/002--1.png','assets/avatars/003-icon-8033085.png','assets/avatars/009--7.png','assets/avatars/010--8.png','assets/avatars/018--16.png','assets/avatars/022--20.png','assets/avatars/037--35.png','assets/avatars/043--41.png','assets/avatars/048--46.png','assets/avatars/050--48.png','assets/avatars/052--50.png','assets/avatars/053--51.png','assets/avatars/056--54.png','assets/avatars/066--64.png','assets/avatars/077-icon-8033092.png','assets/avatars/083-icon-11885568.png','assets/avatars/094-icon-18926716.png','assets/avatars/108--83.png','assets/avatars/147-icon-6081840.png','assets/avatars/148-icon-5532632.png','assets/avatars/149-icon-4132697.png','assets/avatars/150-icon-10756654.png','assets/avatars/153-icon-4964924.png','assets/avatars/154-icon-4261075.png','assets/avatars/156-icon-4132828.png','assets/avatars/158--116.png','assets/avatars/160-icon-2332597.png','assets/avatars/162-icon-6237595.png','assets/avatars/167-icon-1920840.png','assets/avatars/168-icon-228268.png','assets/avatars/169-icon-5613167.png','assets/avatars/173-icon-1615623.png','assets/avatars/183-icon-5840846.png','assets/avatars/186-icon-6237499.png','assets/avatars/188-icon-6267517.png','assets/avatars/203-icon-3516506.png','assets/avatars/216-icon-5504960.png','assets/avatars/221-icon-9530256.png','assets/avatars/226-icon-9669507.png','assets/avatars/227-icon-9623471.png','assets/avatars/229-icon-10032172.png','assets/avatars/230-icon-10049316.png','assets/avatars/232-icon-11434002.png','assets/avatars/234-icon-10756328.png','assets/avatars/245-icon-16150697.png','assets/avatars/246-icon-16150730.png','assets/avatars/249-icon-17159913.png','assets/avatars/250-icon-17159758.png','assets/avatars/251-icon-17159744.png','assets/avatars/253-icon-18426073.png','assets/avatars/254-icon-18621065.png','assets/avatars/255-icon-18926692.png','assets/avatars/256--120.png'];
+    function loadAvatars() {
+        avatarList.innerHTML = '';
+        avatars.forEach(src => {
+            const img = document.createElement('img'); img.src = src; img.className = 'avatar-option';
+            img.addEventListener('click', () => { profileAvatar.src = src; localStorage.setItem('robinhood_avatar', src); updateRobinStatus('Аватар обновлён'); avatarSelector.style.display = 'none'; });
+            avatarList.appendChild(img);
+        });
+    }
+    profileAvatar.addEventListener('click', () => { avatarSelector.style.display = avatarSelector.style.display === 'block' ? 'none' : 'block'; if (avatarSelector.style.display === 'block') loadAvatars(); });
+    
     function loadContacts() {
         const contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
         const confirmed = contacts.filter(c => c.status === 'confirmed');
@@ -389,20 +584,13 @@
                 div.innerHTML = `<div class="contact-info"><img src="${c.avatar || 'assets/avatars/001-.png'}" class="contact-avatar"><span class="contact-name">${c.name}</span></div><button class="delete-contact" data-pubkey="${c.pubkey}">✖</button>`;
                 div.querySelector('.contact-info').addEventListener('click', () => openChatWithContact(c));
                 div.querySelector('.delete-contact').addEventListener('click', (e) => { e.stopPropagation(); deleteContact(c.pubkey, e); });
-                let pressTimer;
-                div.addEventListener('mousedown', () => { pressTimer = setTimeout(() => showContactMenu(c, div), 600); });
-                div.addEventListener('mouseup', () => clearTimeout(pressTimer));
-                div.addEventListener('mouseleave', () => clearTimeout(pressTimer));
-                div.addEventListener('touchstart', () => { pressTimer = setTimeout(() => showContactMenu(c, div), 600); }, { passive: true });
-                div.addEventListener('touchend', () => clearTimeout(pressTimer));
-                div.addEventListener('touchmove', () => clearTimeout(pressTimer));
                 contactsListInner.appendChild(div);
             });
         } else {
             contactsListInner.innerHTML = '<div style="padding:10px;color:#888;">Воспользуйся реферальной стрелой!</div>';
         }
     }
-
+    
     function deleteContact(pubkey, event) {
         event.stopPropagation();
         let contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
@@ -412,24 +600,24 @@
         loadContacts();
         updateRobinStatus('Стрелок уволен', 2000);
     }
-
+    
     function openChatWithContact(contact) {
         activeContact = contact;
         chatSwitcherLabel.textContent = contact.name;
         chatSwitcherBtn.style.display = 'inline-flex';
         msgInput.placeholder = "Выпустить стрелу " + contact.name + "...";
         document.querySelectorAll(".message-row:not(#robin-row)").forEach(m => m.remove());
-        updateRobinStatus("Перестрелка с " + contact.name + " открыта", 4000);
+        updateRobinStatus("Перестрелка с " + contact.name + " открыта", 3000);
         contactsListDiv.style.display = "none";
         drawer.classList.remove("open"); overlay.classList.remove("visible");
         loadChatHistory(contact.pubkey);
     }
-
+    
     chatSwitcherBtn.addEventListener('click', () => {
         if (chatSwitcher.classList.contains('open')) chatSwitcher.classList.remove('open');
         else { populateChatSwitcher(); chatSwitcher.classList.add('open'); }
     });
-
+    
     async function populateChatSwitcher() {
         chatSwitcherList.innerHTML = '';
         const contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]').filter(c => c.status === 'confirmed');
@@ -441,7 +629,7 @@
             chatSwitcherList.appendChild(div);
         });
     }
-
+    
     async function loadChatHistory(contactPubkey) {
         if (toggleHistory.checked) {
             const hist = await loadEncryptedHistory();
@@ -451,85 +639,7 @@
             });
         }
     }
-
-    function sendMessageHandler() {
-        const text = msgInput.value.trim();
-        if (!text) return;
-        if (!activeContact) { updateRobinStatus('Выберите стрелка.', 3000); return; }
-        if (dataChannel && dataChannel.readyState === 'open') {
-            dataChannel.send(text);
-        } else {
-            updateRobinStatus('Колчан не готов. Используйте ручной метод.', 3000);
-            return;
-        }
-        appendMessage('Вы', text, profileAvatar.src);
-        msgInput.value = '';
-        if (toggleSound.checked) playSound('bow_shot.wav');
-        if (toggleHistory.checked) {
-            loadEncryptedHistory().then(hist => {
-                hist.push({ text, sender: myPubkey, recipient: activeContact.pubkey, senderName: myNick.textContent, avatar: profileAvatar.src, time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) });
-                saveEncryptedHistory(hist);
-            });
-        }
-    }
-
-    sendBtn.addEventListener('click', sendMessageHandler);
-    msgInput.addEventListener('keypress', e => { if (e.key === 'Enter') sendBtn.click(); });
-
-    function appendMessage(sender, text, avatarSrc, timeStr = null) {
-        const row = document.createElement('div'); row.className = 'message-row';
-        const finalTime = timeStr || new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-        row.innerHTML = `<img src="${avatarSrc}" class="avatar"><div class="msg-body"><div class="msg-sender">${sender}</div><div>${text}</div><div class="msg-status">${finalTime}</div></div>`;
-        chatBox.appendChild(row); chatBox.scrollTop = chatBox.scrollHeight;
-    }
-
-    ddgClearBtn.addEventListener('click', async () => {
-        document.querySelectorAll('.message-row:not(#robin-row)').forEach(m => m.remove());
-        if (toggleHistory.checked) await saveEncryptedHistory([]); else localStorage.removeItem('robinhood_chat_history');
-        updateRobinStatus('Письма пущены на самокрутки!', 3000);
-    });
-
-    let robinDefaultText = robinText.textContent, robinTimer;
-    function updateRobinStatus(text, duration=6000) {
-        clearTimeout(robinTimer); robinText.style.transition = 'none'; robinText.style.opacity = 1; robinText.textContent = text;
-        robinTimer = setTimeout(() => {
-            robinText.style.transition = 'opacity 0.6s ease'; robinText.style.opacity = 0;
-            const onEnd = () => { robinText.removeEventListener('transitionend', onEnd); robinText.style.transition = 'none'; robinText.textContent = robinDefaultText; robinText.style.opacity = 1; };
-            robinText.addEventListener('transitionend', onEnd);
-        }, duration);
-    }
-
-    function playSound(filename) { if (toggleSound.checked) { const a = new Audio(`assets/sounds/${filename}`); a.volume=0.5; a.play().catch(()=>{}); } }
-
-    async function init() {
-        await loadKeys();
-        updateRobinStatus('Святые сокеты стабильны !', 3000);
-        await processAutoAccept();
-    }
-    window.addEventListener('load', init);
-
-    openMenuBtn.addEventListener('click', () => { drawer.classList.toggle('open'); overlay.classList.toggle('visible'); });
-    overlay.addEventListener('click', () => { drawer.classList.remove('open'); overlay.classList.remove('visible'); });
-
-    const savedAvatar = localStorage.getItem('robinhood_avatar'); if (savedAvatar) profileAvatar.src = savedAvatar;
-    const savedNick = localStorage.getItem('robinhood_nick'); if (savedNick) myNick.textContent = savedNick;
-    changeProfileBtn.addEventListener('click', () => profileEditBox.style.display = profileEditBox.style.display === 'block' ? 'none' : 'block');
-    saveProfileBtn.addEventListener('click', () => {
-        const newNick = newNickInput.value.trim();
-        if (newNick) { myNick.textContent = newNick; localStorage.setItem('robinhood_nick', newNick); newNickInput.value = ''; profileEditBox.style.display = 'none'; updateRobinStatus(`Ник изменён на ${newNick}`); }
-    });
-
-    const avatars = ['assets/avatars/001-.png','assets/avatars/002--1.png','assets/avatars/003-icon-8033085.png','assets/avatars/009--7.png','assets/avatars/010--8.png','assets/avatars/018--16.png','assets/avatars/022--20.png','assets/avatars/037--35.png','assets/avatars/043--41.png','assets/avatars/048--46.png','assets/avatars/050--48.png','assets/avatars/052--50.png','assets/avatars/053--51.png','assets/avatars/056--54.png','assets/avatars/066--64.png','assets/avatars/077-icon-8033092.png','assets/avatars/083-icon-11885568.png','assets/avatars/094-icon-18926716.png','assets/avatars/108--83.png','assets/avatars/147-icon-6081840.png','assets/avatars/148-icon-5532632.png','assets/avatars/149-icon-4132697.png','assets/avatars/150-icon-10756654.png','assets/avatars/153-icon-4964924.png','assets/avatars/154-icon-4261075.png','assets/avatars/156-icon-4132828.png','assets/avatars/158--116.png','assets/avatars/160-icon-2332597.png','assets/avatars/162-icon-6237595.png','assets/avatars/167-icon-1920840.png','assets/avatars/168-icon-228268.png','assets/avatars/169-icon-5613167.png','assets/avatars/173-icon-1615623.png','assets/avatars/183-icon-5840846.png','assets/avatars/186-icon-6237499.png','assets/avatars/188-icon-6267517.png','assets/avatars/203-icon-3516506.png','assets/avatars/216-icon-5504960.png','assets/avatars/221-icon-9530256.png','assets/avatars/226-icon-9669507.png','assets/avatars/227-icon-9623471.png','assets/avatars/229-icon-10032172.png','assets/avatars/230-icon-10049316.png','assets/avatars/232-icon-11434002.png','assets/avatars/234-icon-10756328.png','assets/avatars/245-icon-16150697.png','assets/avatars/246-icon-16150730.png','assets/avatars/249-icon-17159913.png','assets/avatars/250-icon-17159758.png','assets/avatars/251-icon-17159744.png','assets/avatars/253-icon-18426073.png','assets/avatars/254-icon-18621065.png','assets/avatars/255-icon-18926692.png','assets/avatars/256--120.png'];
-    function loadAvatars() {
-        avatarList.innerHTML = '';
-        avatars.forEach(src => {
-            const img = document.createElement('img'); img.src = src; img.className = 'avatar-option';
-            img.addEventListener('click', () => { profileAvatar.src = src; localStorage.setItem('robinhood_avatar', src); updateRobinStatus('Аватар обновлён'); avatarSelector.style.display = 'none'; });
-            avatarList.appendChild(img);
-        });
-    }
-    profileAvatar.addEventListener('click', () => { avatarSelector.style.display = avatarSelector.style.display === 'block' ? 'none' : 'block'; if (avatarSelector.style.display === 'block') loadAvatars(); });
-
+    
     let touchStartX = 0;
     document.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; });
     document.addEventListener('touchend', e => {
@@ -539,7 +649,7 @@
             else if (deltaX < 0 && drawer.classList.contains('open')) { drawer.classList.remove('open'); overlay.classList.remove('visible'); }
         }
     });
-
+    
     toggleHistory.addEventListener('change', async function() {
         if (!this.checked) { localStorage.removeItem('robinhood_history_key'); localStorage.removeItem('robinhood_chat_history'); historyEncryptionKey = null; updateRobinStatus('Этот стрелок отдаёт все письма Робин Гуду на самокрутки', 4000); }
         else updateRobinStatus('Этот стрелок хранит ваши письма', 4000);
@@ -548,7 +658,7 @@
     toggleSound.addEventListener('change', function() { localStorage.setItem('robinhood_sound', this.checked); updateRobinStatus(this.checked ? 'Звук включён' : 'Выключен'); });
     const savedHistory = localStorage.getItem('robinhood_history'); if (savedHistory !== null) toggleHistory.checked = savedHistory === 'true';
     const savedSound = localStorage.getItem('robinhood_sound'); if (savedSound !== null) toggleSound.checked = savedSound === 'true';
-
+    
     let currentMenuContact = null;
     function showDeleteConfirmation(pubkey, name) {
         const confirmDiv = document.createElement('div');
