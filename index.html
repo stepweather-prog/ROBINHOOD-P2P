@@ -693,6 +693,7 @@
         updateRobinStatus(`Колчан с ${name} сожжён`, 3000);
     }
     function deleteContact(pubkey, event) { event.stopPropagation(); const contact = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]').find(c => c.pubkey === pubkey); if (contact) showDeleteConfirmation(pubkey, contact.name); }
+    }
 </script>
 </body>
 </html>
