@@ -412,7 +412,9 @@
         const result = await uploadToAny(`p2p_${uuid}.offer.txt`, peerConnection.localDescription.sdp);
         if (!result) { updateRobinStatus('Авто-стрела не удалась. Используйте ручной режим.', 3000); return null; }
         const link = `${window.location.origin}${window.location.pathname}?id=${uuid}`;
-        const answerUrl = (result.baseUrl.endsWith('/') ? result.baseUrl : result.baseUrl + '/') + `p2p_${uuid}.answer.txt`;
+        const answerUrl = result.store === 'Render'
+    ? RENDER_SERVER + '/offer?id=' + uuid
+    : (result.baseUrl.endsWith('/') ? result.baseUrl : result.baseUrl + '/') + `p2p_${uuid}.answer.txt`;
         if (pollingInterval) clearInterval(pollingInterval);
         pollingInterval = setInterval(async () => {
             const sdp = await downloadText(answerUrl);
@@ -430,7 +432,35 @@
     async function processAutoAccept() {
         const urlParams = new URLSearchParams(window.location.search);
         const id = urlParams.get('id');
-        if (!id) return;
+        if (!id) return;   
+        // Сначала проверяем Render
+    try {
+        const ctrl = new AbortController();
+        const to = setTimeout(() => ctrl.abort(), 4000);
+        const res = await fetch(RENDER_SERVER + '/offer?id=' + id, { signal: ctrl.signal });
+        clearTimeout(to);
+        if (res.ok) {
+            const data = await res.json();
+            if (peerConnection) peerConnection.close();
+            peerConnection = new RTCPeerConnection();
+            peerConnection.ondatachannel = (e) => { dataChannel = e.channel; setupDataChannel(dataChannel); };
+            await peerConnection.setRemoteDescription({ type:'offer', sdp: data.sdp });
+            const answer = await peerConnection.createAnswer();
+            await peerConnection.setLocalDescription(answer);
+            // Отправляем answer на Render
+            const answerRes = await fetch(RENDER_SERVER + '/offer', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sdp: peerConnection.localDescription.sdp })
+            });
+            if (answerRes.ok) {
+                const answerData = await answerRes.json();
+                updateRobinStatus('Ответ отправлен через Render. ID: ' + answerData.id, 3000);
+            }
+            window.history.replaceState({}, document.title, window.location.pathname);
+            return;
+        }
+    } catch(e) {}
         const found = await findFileById(id, 'offer');
         if (!found) { updateRobinStatus('Стрела не найдена.', 3000); return; }
         if (peerConnection) peerConnection.close();
