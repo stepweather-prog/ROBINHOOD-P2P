@@ -165,7 +165,7 @@
         // Сначала пробуем Render
         try {
             const ctrl = new AbortController();
-            const to = setTimeout(() => ctrl.abort(), 5000);
+            const to = setTimeout(() => ctrl.abort(), 80000);
             const res = await fetch(RENDER_SERVER + '/offer', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
