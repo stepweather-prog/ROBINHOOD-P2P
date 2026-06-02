@@ -387,8 +387,35 @@
     });
 
     function setupDataChannel(channel) {
-        channel.onopen = () => updateRobinStatus('Колчан с ' + (activeContact?.name || 'другом') + ' открыт!', 3000);
+        channel.onopen = () => {
+            updateRobinStatus('Колчан с ' + (activeContact?.name || 'другом') + ' открыт!', 3000);
+            // Автоматический обмен контактами
+            const contactMsg = JSON.stringify({
+                type: 'contact_info',
+                name: myNick.textContent,
+                avatar: profileAvatar.src
+            });
+            channel.send(contactMsg);
+        };
         channel.onmessage = (e) => {
+            try {
+                const msg = JSON.parse(e.data);
+                if (msg.type === 'contact_info') {
+                    // Сохраняем информацию о собеседнике
+                    let contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
+                    // Находим контакт по pubkey, но его может не быть при авто-приёме
+                    const existing = contacts.find(c => c.pubkey === myPubkey); // собеседник — другой pubkey, упростим
+                    // Добавляем/обновляем контакт
+                    if (activeContact) {
+                        activeContact.name = msg.name || activeContact.name;
+                        activeContact.avatar = msg.avatar || activeContact.avatar;
+                        chatSwitcherLabel.textContent = activeContact.name;
+                        loadContacts();
+                    }
+                    return;
+                }
+            } catch(e) {}
+            // Обычное текстовое сообщение
             appendMessage(activeContact?.name || 'Друг', e.data, activeContact?.avatar || 'assets/avatars/001-.png');
             if (toggleHistory.checked) {
                 loadEncryptedHistory().then(hist => {
@@ -446,7 +473,7 @@
                 await peerConnection.setRemoteDescription({ type:'offer', sdp: data.sdp });
                 const answer = await peerConnection.createAnswer();
                 await peerConnection.setLocalDescription(answer);
-                // Отправляем answer на Render
+                // Отправляем answer на Render с тем же ID
                 const answerRes = await fetch(RENDER_SERVER + '/offer', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
