@@ -75,13 +75,12 @@
         .chat-switcher-list { padding: 0 16px; }
         .chat-switcher-item { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer; }
         .chat-switcher-item:last-child { border-bottom: none; }
-        .security-icon { font-size: 14px; margin-left: 10px; }
     </style>
 </head>
 <body>
 <div class="header">
     <button id="open-menu">☰</button>
-    <h2 id="header-title">RobinHood P2P <span class="security-icon" title="Безопасный колчан активирован">🛡️</span></h2>
+    <h2 id="header-title">RobinHood P2P <span style="font-size: 14px; margin-left: 8px;" title="Канал защищён сквозным шифрованием">🛡️</span></h2>
     <button id="chat-switcher-btn" class="switch-chat-btn"><span id="chat-switcher-label">Перестрелки</span> ▼</button>
     <div style="flex:1;"></div>
     <div id="ddg-clear">🔥</div>
@@ -162,7 +161,7 @@
 <script>
     // ---------- ОБУЧАЕМЫЙ РОУТЕР (P2P + хранилища) ----------
     const RENDER_SERVER = 'https://p2ppong.onrender.com';
-    const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
+    const CORS_PROXY = 'https://corsproxy.io/?';
     const STORAGES = [
         { name: "0x0.st", url: "https://0x0.st" },
         { name: "ix.io", url: "https://ix.io" },
@@ -200,24 +199,25 @@
     }
     const nodeStats = new NodeStats();
 
-    async function uploadToAny(filename, content) {  
+    async function uploadToAny(filename, content) {
         // Приоритетная попытка через Render
-    try {
-        const ctrl = new AbortController();
-        const to = setTimeout(() => ctrl.abort(), 4000);
-        const res = await fetch(RENDER_SERVER + '/offer', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ sdp: content }),
-            signal: ctrl.signal
-        });
-        clearTimeout(to);
-        if (res.ok) {
-            const data = await res.json();
-            updateRobinStatus('✅ Стрела создана через Render', 2000);
-            return { store: 'Render', fileUrl: RENDER_SERVER + '/offer?id=' + data.id, baseUrl: RENDER_SERVER };
-        }
-    } catch(e) {}
+        try {
+            const ctrl = new AbortController();
+            const to = setTimeout(() => ctrl.abort(), 4000);
+            const res = await fetch(RENDER_SERVER + '/offer', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sdp: content }),
+                signal: ctrl.signal
+            });
+            clearTimeout(to);
+            if (res.ok) {
+                const data = await res.json();
+                updateRobinStatus('✅ Стрела создана через Render', 2000);
+                return { store: 'Render', fileUrl: RENDER_SERVER + '/offer?id=' + data.id, baseUrl: RENDER_SERVER };
+            }
+        } catch(e) {}
+        // Запасной вариант – временные хранилища
         const sorted = nodeStats.getSortedNodes();
         for (let i = 0; i < Math.min(sorted.length, 50); i += 3) {
             const batch = sorted.slice(i, i + 3);
@@ -246,18 +246,17 @@
     }
 
     async function downloadText(url) {
-    if (!url.startsWith('http')) return null;
-    try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 4000);
-        // Если URL ведёт на наш Render-сервер — стучимся напрямую
-        const fetchUrl = url.includes('p2ppong.onrender.com') ? url : CORS_PROXY + encodeURIComponent(url);
-        const res = await fetch(fetchUrl, { signal: controller.signal });
-        clearTimeout(timeout);
-        if (res.ok) return await res.text();
-    } catch(e) {}
-    return null;
-}
+        if (!url.startsWith('http')) return null;
+        try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 4000);
+            const fetchUrl = url.includes('p2ppong.onrender.com') ? url : CORS_PROXY + encodeURIComponent(url);
+            const res = await fetch(fetchUrl, { signal: controller.signal });
+            clearTimeout(timeout);
+            if (res.ok) return await res.text();
+        } catch(e) {}
+        return null;
+    }
 
     async function findFileById(uuid, type) {
         const filename = `p2p_${uuid}.${type}.txt`;
@@ -273,7 +272,6 @@
 
     // ---------- ИНТЕРФЕЙС (стабильная версия) ----------
     let myPrivkey, myPubkey, activeContact;
-    const processedMessageIds = new Set();
     let peerConnection = null, dataChannel = null, currentUUID = null, pollingInterval = null;
 
     async function generateKeyPair() {
@@ -414,8 +412,8 @@
         if (!result) { updateRobinStatus('Авто-стрела не удалась. Используйте ручной режим.', 3000); return null; }
         const link = `${window.location.origin}${window.location.pathname}?id=${uuid}`;
         const answerUrl = result.store === 'Render'
-    ? RENDER_SERVER + '/offer?id=' + uuid
-    : (result.baseUrl.endsWith('/') ? result.baseUrl : result.baseUrl + '/') + `p2p_${uuid}.answer.txt`;
+            ? RENDER_SERVER + '/offer?id=' + uuid
+            : (result.baseUrl.endsWith('/') ? result.baseUrl : result.baseUrl + '/') + `p2p_${uuid}.answer.txt`;
         if (pollingInterval) clearInterval(pollingInterval);
         pollingInterval = setInterval(async () => {
             const sdp = await downloadText(answerUrl);
@@ -433,35 +431,36 @@
     async function processAutoAccept() {
         const urlParams = new URLSearchParams(window.location.search);
         const id = urlParams.get('id');
-        if (!id) return;   
+        if (!id) return;
         // Сначала проверяем Render
-    try {
-        const ctrl = new AbortController();
-        const to = setTimeout(() => ctrl.abort(), 4000);
-        const res = await fetch(RENDER_SERVER + '/offer?id=' + id, { signal: ctrl.signal });
-        clearTimeout(to);
-        if (res.ok) {
-            const data = await res.json();
-            if (peerConnection) peerConnection.close();
-            peerConnection = new RTCPeerConnection();
-            peerConnection.ondatachannel = (e) => { dataChannel = e.channel; setupDataChannel(dataChannel); };
-            await peerConnection.setRemoteDescription({ type:'offer', sdp: data.sdp });
-            const answer = await peerConnection.createAnswer();
-            await peerConnection.setLocalDescription(answer);
-            // Отправляем answer на Render
-            const answerRes = await fetch(RENDER_SERVER + '/offer', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ sdp: peerConnection.localDescription.sdp })
-            });
-            if (answerRes.ok) {
-                const answerData = await answerRes.json();
-                updateRobinStatus('Ответ отправлен через Render. ID: ' + answerData.id, 3000);
+        try {
+            const ctrl = new AbortController();
+            const to = setTimeout(() => ctrl.abort(), 4000);
+            const res = await fetch(RENDER_SERVER + '/offer?id=' + id, { signal: ctrl.signal });
+            clearTimeout(to);
+            if (res.ok) {
+                const data = await res.json();
+                if (peerConnection) peerConnection.close();
+                peerConnection = new RTCPeerConnection();
+                peerConnection.ondatachannel = (e) => { dataChannel = e.channel; setupDataChannel(dataChannel); };
+                await peerConnection.setRemoteDescription({ type:'offer', sdp: data.sdp });
+                const answer = await peerConnection.createAnswer();
+                await peerConnection.setLocalDescription(answer);
+                // Отправляем answer на Render
+                const answerRes = await fetch(RENDER_SERVER + '/offer', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sdp: peerConnection.localDescription.sdp })
+                });
+                if (answerRes.ok) {
+                    const answerData = await answerRes.json();
+                    updateRobinStatus('Ответ отправлен через Render. ID: ' + answerData.id, 3000);
+                }
+                window.history.replaceState({}, document.title, window.location.pathname);
+                return;
             }
-            window.history.replaceState({}, document.title, window.location.pathname);
-            return;
-        }
-    } catch(e) {}
+        } catch(e) {}
+        // Запасной вариант – поиск по хранилищам
         const found = await findFileById(id, 'offer');
         if (!found) { updateRobinStatus('Стрела не найдена.', 3000); return; }
         if (peerConnection) peerConnection.close();
