@@ -200,23 +200,27 @@
     const nodeStats = new NodeStats();
 
     async function uploadToAny(filename, content) {
-        // Приоритетная попытка через Render
-        try {
-            const ctrl = new AbortController();
-            const to = setTimeout(() => ctrl.abort(), 4000);
-            const res = await fetch(RENDER_SERVER + '/offer', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ sdp: content }),
-                signal: ctrl.signal
-            });
-            clearTimeout(to);
-            if (res.ok) {
-                const data = await res.json();
-                updateRobinStatus('✅ Стрела создана через Render', 2000);
-                return { store: 'Render', fileUrl: RENDER_SERVER + '/offer?id=' + data.id, baseUrl: RENDER_SERVER };
-            }
-        } catch(e) {}
+    // ТОЛЬКО Render, с увеличенным таймаутом
+    try {
+        const ctrl = new AbortController();
+        const to = setTimeout(() => ctrl.abort(), 15000); // ждём до 15 секунд (Render просыпается)
+        const res = await fetch(RENDER_SERVER + '/offer', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sdp: content }),
+            signal: ctrl.signal
+        });
+        clearTimeout(to);
+        if (res.ok) {
+            const data = await res.json();
+            updateRobinStatus('✅ Стрела создана через Render', 2000);
+            return { store: 'Render', fileUrl: RENDER_SERVER + '/offer?id=' + data.id, baseUrl: RENDER_SERVER };
+        }
+    } catch(e) {}
+    // Если Render не ответил — сразу говорим пользователю
+    updateRobinStatus('⚠️ Сервер временно недоступен. Попробуйте позже.', 3000);
+    return null;
+}
         // Запасной вариант – временные хранилища
         const sorted = nodeStats.getSortedNodes();
         for (let i = 0; i < Math.min(sorted.length, 50); i += 3) {
