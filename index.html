@@ -163,52 +163,55 @@
     const pongFrame = document.getElementById('pong-frame');
     let pongReady = false;
     let pongBusy = false;
-    let pongCallback = null;
     
-    // Отправка команды P2PPong'у
     function sendToPong(msg) {
         pongFrame.contentWindow.postMessage(msg, '*');
     }
     
-    // Приём ответов от P2PPong'а
     window.addEventListener('message', (event) => {
         if (event.source !== pongFrame.contentWindow) return;
         const data = event.data;
         
         switch(data.type) {
             case 'pong-ready':
-                // P2PPong проверил Render и готов
                 pongReady = true;
                 pongBusy = false;
                 updateRobinStatus('Понг готов к стрельбе!', 2000);
+                
+                // Если есть ?id= в URL — это получатель, передаём id Понгу
+                const urlParams = new URLSearchParams(window.location.search);
+                const id = urlParams.get('id');
+                if (id) {
+                    pongBusy = true;
+                    updateRobinStatus('Понг принимает стрелу...', 0);
+                    sendToPong({ action: 'accept', id: id });
+                }
                 break;
                 
-            case 'link':
-                // P2PPong создал сессию и вернул ссылку
-                document.getElementById('ref-link-display').textContent = data.link;
+            case 'session-created':
+                // Понг создал сессию, вернул sessionId
+                // RobinHood сам собирает ссылку на себя
+                const link = window.location.origin + window.location.pathname + '?id=' + data.sessionId;
+                document.getElementById('ref-link-display').textContent = link;
                 document.getElementById('ref-modal').classList.add('active');
-                pongBusy = false;
                 break;
                 
             case 'channel-open':
-                // Канал открыт
                 updateRobinStatus('✅ Колчан открыт!', 3000);
                 pongBusy = false;
                 break;
                 
             case 'message':
-                // Входящее сообщение от другого Робина
-                appendMessage(data.sender || 'Друг', data.text, data.avatar || 'assets/avatars/001-.png');
+                appendMessage(data.sender || 'Друг', data.text, 'assets/avatars/001-.png');
                 if (toggleHistory.checked) {
                     loadEncryptedHistory().then(hist => {
-                        hist.push({ text: data.text, sender: 'friend', recipient: myPubkey, senderName: data.sender, avatar: data.avatar, time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) });
+                        hist.push({ text: data.text, sender: 'friend', recipient: myPubkey, senderName: data.sender, time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) });
                         saveEncryptedHistory(hist);
                     });
                 }
                 break;
                 
             case 'status':
-                // Статус от Понга
                 updateRobinStatus(data.text, data.duration || 3000);
                 break;
                 
@@ -290,7 +293,7 @@
         else { loadContacts(); contactsListDiv.style.display = 'block'; }
     });
     
-    // Кнопка "Создать стрелу" — отправляет запрос P2PPong'у
+    // Кнопка "Создать стрелу"
     document.getElementById('create-arrow-btn').addEventListener('click', () => {
         if (!pongReady) {
             updateRobinStatus('Понг ещё не готов.', 2000);
@@ -317,7 +320,6 @@
         document.getElementById('ref-modal').classList.remove('active');
     });
     
-    // Ручной SDP (запасной вариант — обращается напрямую к P2PPong'у через postMessage)
     document.getElementById('apply-sdp-btn').addEventListener('click', () => {
         const sdpText = document.getElementById('manual-sdp').value.trim();
         if (!sdpText) return;
@@ -331,7 +333,6 @@
             updateRobinStatus('Понг не готов.', 2000);
             return;
         }
-        // Отправляем сообщение через P2PPong
         sendToPong({ action: 'send', text: text });
         appendMessage('Вы', text, profileAvatar.src);
         msgInput.value = '';
@@ -377,21 +378,6 @@
     async function init() {
         await loadKeys();
         updateRobinStatus('Ждём Понга...', 0);
-        
-        // Проверяем, есть ли ?id= в URL (получатель)
-        const urlParams = new URLSearchParams(window.location.search);
-        const id = urlParams.get('id');
-        if (id) {
-            // Ждём готовности Понга и отправляем запрос на принятие
-            const checkPongAndAccept = setInterval(() => {
-                if (pongReady) {
-                    clearInterval(checkPongAndAccept);
-                    pongBusy = true;
-                    updateRobinStatus('Понг принимает стрелу...', 0);
-                    sendToPong({ action: 'accept', id: id });
-                }
-            }, 500);
-        }
     }
     window.addEventListener('load', init);
     
