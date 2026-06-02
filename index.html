@@ -99,9 +99,6 @@
     <input type="text" id="msg-input" placeholder="Пустить стрелу">
     <img src="assets/ui/bow.png" class="bow-button" id="send-btn" alt="Отправить">
 </div>
-<div style="padding: 8px; text-align: center;">
-    <button id="create-arrow-btn" style="width: 90%; padding: 12px; font-size: 16px; background: #2E7D32; border: none; color: white; border-radius: 8px; cursor: pointer;">🎯 Создать стрелу</button>
-</div>
 
 <div class="invite-modal" id="ref-modal">
     <div class="invite-dialog">
@@ -134,6 +131,7 @@
         </div>
     </div>
     <div class="drawer-content">
+        <div class="menu-link" id="create-arrow-btn"><span>🎯</span> Создать стрелу</div>
         <div class="menu-link" id="sherwood-letters-btn"><span>📖</span> Шервудские письма</div>
         <div class="contacts-list" id="contacts-list">
             <div id="contacts-list-inner"></div>
@@ -158,196 +156,144 @@
 </div>
 
 <script>
-    // ========== P2PPONG API ==========
-    const RENDER_SERVER = 'https://p2ppong.onrender.com';
+    // ========== P2PPong API (внешний арбитр) ==========
+    const P2PPONG_SERVER = 'https://p2ppong.onrender.com';
     
-    // Переменные для P2PPong-сессии
-    let p2ppongSession = null;
-    let p2ppongDataChannel = null;
+    let p2ppongChannel = null;
+    let p2ppongSessionId = null;
+    let p2ppongBusy = false;
     
-    // Запуск P2PPong от имени создателя
-    async function startP2PPongAsCreator() {
+    // Запрос к P2PPong: создать сессию
+    async function p2ppongCreateSession() {
+        if (p2ppongBusy) return null;
+        p2ppongBusy = true;
         const uuid = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 15);
         const link = `${window.location.origin}${window.location.pathname}?id=${uuid}`;
         
-        // Показываем ссылку
-        document.getElementById('ref-link-display').textContent = link;
-        document.getElementById('ref-modal').classList.add('active');
-        
-        // Ждём получателя (опрашиваем Render)
-        const waitForRecipient = async () => {
-            return new Promise((resolve, reject) => {
-                const startTime = Date.now();
-                const interval = setInterval(async () => {
-                    const ctrl = new AbortController();
-                    const to = setTimeout(() => ctrl.abort(), 4000);
-                    try {
-                        const res = await fetch(RENDER_SERVER + '/offer?id=' + uuid, { signal: ctrl.signal });
-                        clearTimeout(to);
-                        if (res.ok) {
-                            const data = await res.json();
-                            if (data.status === 'ready') {
-                                clearInterval(interval);
-                                resolve();
-                            }
-                        }
-                    } catch(e) {}
-                    if (Date.now() - startTime > 90000) {
-                        clearInterval(interval);
-                        reject(new Error('timeout'));
-                    }
-                }, 2000);
-            });
-        };
-        
-        try {
-            updateRobinStatus('Ожидаем получателя...', 0);
-            await waitForRecipient();
-            updateRobinStatus('Получатель готов. Создаю канал...', 0);
-            
-            // Создаём WebRTC offer
-            const pc = new RTCPeerConnection();
-            const dc = pc.createDataChannel('chat');
-            p2ppongDataChannel = dc;
-            
-            // Перенаправляем события канала в RobinHood
-            setupP2PPongChannel(dc);
-            
-            const offer = await pc.createOffer();
-            await pc.setLocalDescription(offer);
-            
-            // Ждём ICE
-            await new Promise(resolve => {
-                if (pc.iceGatheringState === 'complete') resolve();
-                else pc.addEventListener('icegatheringstatechange', () => {
-                    if (pc.iceGatheringState === 'complete') resolve();
-                });
-            });
-            
-            // Отправляем offer на Render
+        // Ждём получателя
+        const startTime = Date.now();
+        while (Date.now() - startTime < 90000) {
             const ctrl = new AbortController();
-            const to = setTimeout(() => ctrl.abort(), 80000);
-            const res = await fetch(RENDER_SERVER + '/offer', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ sdp: pc.localDescription.sdp, sessionId: uuid }),
-                signal: ctrl.signal
-            });
-            clearTimeout(to);
-            
-            if (!res.ok) throw new Error('offer-failed');
-            
-            // Ждём answer
-            const waitForAnswer = async () => {
-                return new Promise((resolve, reject) => {
-                    const startTime = Date.now();
-                    const interval = setInterval(async () => {
-                        const res = await fetch(RENDER_SERVER + '/offer?id=' + uuid);
-                        if (res.ok) {
-                            const data = await res.json();
-                            if (data.sdp && data.sdp !== pc.localDescription.sdp) {
-                                clearInterval(interval);
-                                resolve(data.sdp);
-                            }
-                        }
-                        if (Date.now() - startTime > 90000) {
-                            clearInterval(interval);
-                            reject(new Error('answer-timeout'));
-                        }
-                    }, 2000);
-                });
-            };
-            
-            const answerSdp = await waitForAnswer();
-            await pc.setRemoteDescription({ type: 'answer', sdp: answerSdp });
-            
-            updateRobinStatus('✅ Колчан открыт!', 3000);
-            p2ppongSession = { pc, dc, uuid };
-        } catch(e) {
-            updateRobinStatus('Не удалось установить соединение. Попробуйте ручной режим.', 3000);
+            const to = setTimeout(() => ctrl.abort(), 4000);
+            try {
+                const res = await fetch(P2PPONG_SERVER + '/offer?id=' + uuid, { signal: ctrl.signal });
+                clearTimeout(to);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.status === 'ready') break;
+                }
+            } catch(e) { clearTimeout(to); }
+            await new Promise(r => setTimeout(r, 2000));
         }
+        
+        // Создаём WebRTC offer
+        const pc = new RTCPeerConnection();
+        const dc = pc.createDataChannel('chat');
+        p2ppongChannel = dc;
+        setupP2PPongChannel(dc);
+        
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        await new Promise(resolve => {
+            if (pc.iceGatheringState === 'complete') resolve();
+            else pc.addEventListener('icegatheringstatechange', () => {
+                if (pc.iceGatheringState === 'complete') resolve();
+            });
+        });
+        
+        const ctrl = new AbortController();
+        const to = setTimeout(() => ctrl.abort(), 80000);
+        await fetch(P2PPONG_SERVER + '/offer', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sdp: pc.localDescription.sdp, sessionId: uuid }),
+            signal: ctrl.signal
+        });
+        clearTimeout(to);
+        
+        // Ждём answer
+        const answerStart = Date.now();
+        while (Date.now() - answerStart < 90000) {
+            const res = await fetch(P2PPONG_SERVER + '/offer?id=' + uuid);
+            if (res.ok) {
+                const data = await res.json();
+                if (data.sdp && data.sdp !== pc.localDescription.sdp) {
+                    await pc.setRemoteDescription({ type: 'answer', sdp: data.sdp });
+                    break;
+                }
+            }
+            await new Promise(r => setTimeout(r, 2000));
+        }
+        
+        p2ppongSessionId = uuid;
+        p2ppongBusy = false;
+        return link;
     }
     
-    // Запуск P2PPong от имени получателя (при переходе по ссылке)
-    async function startP2PPongAsReceiver(uuid) {
-        try {
-            updateRobinStatus('Подключаюсь...', 0);
-            
-            // Отправляем сигнал готовности
-            const ctrl1 = new AbortController();
-            const to1 = setTimeout(() => ctrl1.abort(), 80000);
-            await fetch(RENDER_SERVER + '/offer', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status: 'ready', sessionId: uuid }),
-                signal: ctrl1.signal
-            });
-            clearTimeout(to1);
-            
-            updateRobinStatus('Ожидаю offer...', 0);
-            
-            // Ждём offer
-            const waitForOffer = async () => {
-                return new Promise((resolve, reject) => {
-                    const startTime = Date.now();
-                    const interval = setInterval(async () => {
-                        const res = await fetch(RENDER_SERVER + '/offer?id=' + uuid);
-                        if (res.ok) {
-                            const data = await res.json();
-                            if (data.sdp) {
-                                clearInterval(interval);
-                                resolve(data.sdp);
-                            }
-                        }
-                        if (Date.now() - startTime > 90000) {
-                            clearInterval(interval);
-                            reject(new Error('offer-timeout'));
-                        }
-                    }, 2000);
-                });
-            };
-            
-            const offerSdp = await waitForOffer();
-            
-            const pc = new RTCPeerConnection();
-            pc.ondatachannel = (e) => {
-                p2ppongDataChannel = e.channel;
-                setupP2PPongChannel(e.channel);
-            };
-            
-            await pc.setRemoteDescription({ type: 'offer', sdp: offerSdp });
-            const answer = await pc.createAnswer();
-            await pc.setLocalDescription(answer);
-            
-            // Ждём ICE
-            await new Promise(resolve => {
-                if (pc.iceGatheringState === 'complete') resolve();
-                else pc.addEventListener('icegatheringstatechange', () => {
-                    if (pc.iceGatheringState === 'complete') resolve();
-                });
-            });
-            
-            // Отправляем answer
-            const ctrl2 = new AbortController();
-            const to2 = setTimeout(() => ctrl2.abort(), 80000);
-            await fetch(RENDER_SERVER + '/offer', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ sdp: pc.localDescription.sdp, sessionId: uuid }),
-                signal: ctrl2.signal
-            });
-            clearTimeout(to2);
-            
-            updateRobinStatus('✅ Колчан открыт!', 3000);
-            p2ppongSession = { pc, dc: p2ppongDataChannel, uuid };
-        } catch(e) {
-            updateRobinStatus('Не удалось подключиться.', 3000);
+    // Запрос к P2PPong: принять сессию (получатель)
+    async function p2ppongAcceptSession(uuid) {
+        if (p2ppongBusy) return;
+        p2ppongBusy = true;
+        
+        // Отправляем сигнал готовности
+        const ctrl1 = new AbortController();
+        const to1 = setTimeout(() => ctrl1.abort(), 80000);
+        await fetch(P2PPONG_SERVER + '/offer', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'ready', sessionId: uuid }),
+            signal: ctrl1.signal
+        });
+        clearTimeout(to1);
+        
+        // Ждём offer
+        const offerStart = Date.now();
+        let offerSdp = null;
+        while (Date.now() - offerStart < 90000) {
+            const res = await fetch(P2PPONG_SERVER + '/offer?id=' + uuid);
+            if (res.ok) {
+                const data = await res.json();
+                if (data.sdp) { offerSdp = data.sdp; break; }
+            }
+            await new Promise(r => setTimeout(r, 2000));
         }
+        
+        if (!offerSdp) { p2ppongBusy = false; return; }
+        
+        const pc = new RTCPeerConnection();
+        pc.ondatachannel = (e) => {
+            p2ppongChannel = e.channel;
+            setupP2PPongChannel(e.channel);
+        };
+        
+        await pc.setRemoteDescription({ type: 'offer', sdp: offerSdp });
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        
+        await new Promise(resolve => {
+            if (pc.iceGatheringState === 'complete') resolve();
+            else pc.addEventListener('icegatheringstatechange', () => {
+                if (pc.iceGatheringState === 'complete') resolve();
+            });
+        });
+        
+        const ctrl2 = new AbortController();
+        const to2 = setTimeout(() => ctrl2.abort(), 80000);
+        await fetch(P2PPONG_SERVER + '/offer', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sdp: pc.localDescription.sdp, sessionId: uuid }),
+            signal: ctrl2.signal
+        });
+        clearTimeout(to2);
+        
+        p2ppongSessionId = uuid;
+        p2ppongBusy = false;
     }
     
     function setupP2PPongChannel(channel) {
         channel.onopen = () => {
-            updateRobinStatus('Канал открыт! Можно общаться.', 3000);
+            updateRobinStatus('✅ Колчан открыт!', 3000);
         };
         channel.onmessage = (e) => {
             try {
@@ -372,7 +318,7 @@
         };
     }
     
-    // ========== ОСНОВНОЙ КОД ==========
+    // ========== ИНТЕРФЕЙС ==========
     let myPrivkey, myPubkey, activeContact;
     
     async function generateKeyPair() {
@@ -443,10 +389,16 @@
         else { loadContacts(); contactsListDiv.style.display = 'block'; }
     });
     
-    // Кнопка "Создать стрелу" — запускает P2PPong
+    // Кнопка "Создать стрелу" в боковом меню
     document.getElementById('create-arrow-btn').addEventListener('click', async () => {
         updateRobinStatus('Понг создаёт стрелу...', 0);
-        await startP2PPongAsCreator();
+        const link = await p2ppongCreateSession();
+        if (link) {
+            document.getElementById('ref-link-display').textContent = link;
+            document.getElementById('ref-modal').classList.add('active');
+        } else {
+            updateRobinStatus('Не удалось создать стрелу.', 3000);
+        }
     });
     
     document.getElementById('copy-ref-link-btn').addEventListener('click', () => {
@@ -461,7 +413,6 @@
         document.getElementById('ref-modal').classList.remove('active');
     });
     
-    // Ручной SDP (запасной вариант)
     document.getElementById('apply-sdp-btn').addEventListener('click', async () => {
         const sdpText = document.getElementById('manual-sdp').value.trim();
         if (!sdpText) return;
@@ -470,7 +421,7 @@
             const pc = new RTCPeerConnection();
             if (sdpObj.type === 'offer') {
                 pc.ondatachannel = (e) => {
-                    p2ppongDataChannel = e.channel;
+                    p2ppongChannel = e.channel;
                     setupP2PPongChannel(e.channel);
                 };
                 await pc.setRemoteDescription(sdpObj);
@@ -479,8 +430,8 @@
                 document.getElementById('manual-sdp').value = JSON.stringify(pc.localDescription);
                 updateRobinStatus('Ответ создан. Скопируйте его и отправьте обратно.', 3000);
             } else {
-                p2ppongDataChannel = pc.createDataChannel('chat');
-                setupP2PPongChannel(p2ppongDataChannel);
+                p2ppongChannel = pc.createDataChannel('chat');
+                setupP2PPongChannel(p2ppongChannel);
                 await pc.setRemoteDescription(sdpObj);
                 updateRobinStatus('✅ Соединение установлено!', 3000);
             }
@@ -490,19 +441,17 @@
     function sendMessageHandler() {
         const text = msgInput.value.trim();
         if (!text) return;
-        if (!activeContact && !p2ppongDataChannel) { updateRobinStatus('Выберите стрелка.', 2000); return; }
-        if (p2ppongDataChannel && p2ppongDataChannel.readyState === 'open') {
-            p2ppongDataChannel.send(text);
-        } else {
+        if (!p2ppongChannel || p2ppongChannel.readyState !== 'open') {
             updateRobinStatus('Колчан не готов.', 2000);
             return;
         }
+        p2ppongChannel.send(text);
         appendMessage('Вы', text, profileAvatar.src);
         msgInput.value = '';
         if (toggleSound.checked) playSound('bow_shot.wav');
         if (toggleHistory.checked) {
             loadEncryptedHistory().then(hist => {
-                hist.push({ text, sender: myPubkey, recipient: activeContact?.pubkey || 'friend', senderName: myNick.textContent, avatar: profileAvatar.src, time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) });
+                hist.push({ text, sender: myPubkey, recipient: 'friend', senderName: myNick.textContent, avatar: profileAvatar.src, time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) });
                 saveEncryptedHistory(hist);
             });
         }
@@ -541,13 +490,11 @@
     async function init() {
         await loadKeys();
         updateRobinStatus('Святые сокеты стабильны !', 3000);
-        
-        // Проверяем, есть ли ?id= в URL (получатель)
         const urlParams = new URLSearchParams(window.location.search);
         const id = urlParams.get('id');
         if (id) {
             updateRobinStatus('Понг принимает стрелу...', 0);
-            await startP2PPongAsReceiver(id);
+            await p2ppongAcceptSession(id);
         }
     }
     window.addEventListener('load', init);
