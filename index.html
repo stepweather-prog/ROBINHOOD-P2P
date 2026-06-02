@@ -99,7 +99,6 @@
     <input type="text" id="msg-input" placeholder="Пустить стрелу">
     <img src="assets/ui/bow.png" class="bow-button" id="send-btn" alt="Отправить">
 </div>
-<!-- Кнопка создания стрелы -->
 <div style="padding: 8px; text-align: center;">
     <button id="create-arrow-btn" style="width: 90%; padding: 12px; font-size: 16px; background: #2E7D32; border: none; color: white; border-radius: 8px; cursor: pointer;">🎯 Создать стрелу</button>
 </div>
@@ -159,74 +158,56 @@
 </div>
 
 <script>
-    // ---------- ОБУЧАЕМЫЙ РОУТЕР (P2P + хранилища) ----------
     const RENDER_SERVER = 'https://p2ppong.onrender.com';
     const CORS_PROXY = 'https://corsproxy.io/?';
-    const STORAGES = [
-        { name: "0x0.st", url: "https://0x0.st" },
-        { name: "ix.io", url: "https://ix.io" },
-        { name: "paste.rs", url: "https://paste.rs" },
-        { name: "file.io", url: "https://file.io" },
-        { name: "transfer.sh", url: "https://transfer.sh" }
-    ];
-
-    class NodeStats {
-        constructor() {
-            this.stats = JSON.parse(localStorage.getItem('robinhood_nodes') || '{}');
-            for (const store of STORAGES) {
-                if (!this.stats[store.name]) this.stats[store.name] = { success: 0, fail: 0, lastSeen: 0, penalty: 0 };
-            }
-            this.save();
-        }
-        save() { localStorage.setItem('robinhood_nodes', JSON.stringify(this.stats)); }
-        success(name) {
-            const s = this.stats[name]; if (s) { s.success++; s.fail = 0; s.penalty = 0; s.lastSeen = Date.now(); this.save(); }
-        }
-        fail(name, isCorsBlock = false) {
-            if (isCorsBlock) { this.markNeedsProxy(name); return; }
-            const s = this.stats[name]; if (s) { s.fail++; s.lastSeen = Date.now(); if (s.fail >= 3) s.penalty = Date.now() + 5 * 60 * 1000; this.save(); }
-        }
-        markNeedsProxy(name) { const s = this.stats[name]; if (s) s.needsProxy = true; this.save(); }
-        isUsable(name) { const s = this.stats[name]; if (!s) return true; if (s.penalty && Date.now() < s.penalty) return false; return true; }
-        getSortedNodes() {
-            return [...STORAGES].sort((a, b) => {
-                const sa = this.stats[a.name] || {}, sb = this.stats[b.name] || {};
-                const aUsable = this.isUsable(a.name) ? 0 : 1, bUsable = this.isUsable(b.name) ? 0 : 1;
-                if (aUsable !== bUsable) return aUsable - bUsable;
-                return (sb.success || 0) - (sa.success || 0);
-            });
-        }
-    }
-    const nodeStats = new NodeStats();
 
     async function uploadToAny(filename, content) {
-    // Сначала пробуем Render
-    try {
-        const ctrl = new AbortController();
-        const to = setTimeout(() => ctrl.abort(), 5000); // 5 секунд на ответ
-        const res = await fetch(RENDER_SERVER + '/offer', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ sdp: content }),
-            signal: ctrl.signal
-        });
-        clearTimeout(to);
-        if (res.ok) {
-            const data = await res.json();
-            return { store: 'Render', fileUrl: RENDER_SERVER + '/offer?id=' + data.id, baseUrl: RENDER_SERVER };
-        }
-    } catch(e) {}
+        // Сначала пробуем Render
+        try {
+            const ctrl = new AbortController();
+            const to = setTimeout(() => ctrl.abort(), 5000);
+            const res = await fetch(RENDER_SERVER + '/offer', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sdp: content }),
+                signal: ctrl.signal
+            });
+            clearTimeout(to);
+            if (res.ok) {
+                const data = await res.json();
+                return { store: 'Render', fileUrl: RENDER_SERVER + '/offer?id=' + data.id, baseUrl: RENDER_SERVER };
+            }
+        } catch(e) {}
 
-    // Если Render не ответил — пробуем временные хранилища
-    const CORS_PROXY = 'https://corsproxy.io/?';
-    const STORAGES = [
-        { name: "0x0.st", url: "https://0x0.st" },
-        { name: "ix.io", url: "https://ix.io" },
-        { name: "paste.rs", url: "https://paste.rs" },
-        { name: "file.io", url: "https://file.io" },
-        { name: "transfer.sh", url: "https://transfer.sh" }
-    ];
-        
+        // Запасной вариант – временные хранилища
+        const STORAGES = [
+            { name: "0x0.st", url: "https://0x0.st" },
+            { name: "ix.io", url: "https://ix.io" },
+            { name: "paste.rs", url: "https://paste.rs" },
+            { name: "file.io", url: "https://file.io" },
+            { name: "transfer.sh", url: "https://transfer.sh" }
+        ];
+        const tasks = STORAGES.map(async (store) => {
+            try {
+                const ctrl = new AbortController();
+                const to = setTimeout(() => ctrl.abort(), 3000);
+                const fd = new FormData();
+                fd.append("file", new Blob([content], {type:"text/plain"}), filename);
+                const res = await fetch(CORS_PROXY + encodeURIComponent(store.url), { method:"POST", body:fd, signal:ctrl.signal, mode:"cors" });
+                clearTimeout(to);
+                if (res.ok) {
+                    let url = (await res.text()).trim();
+                    if (!url.startsWith("http")) url = store.url.replace(/\/?$/, '/') + url;
+                    return { store: store.name, fileUrl: url, baseUrl: store.url };
+                }
+            } catch(e) {}
+            return null;
+        });
+        const results = await Promise.allSettled(tasks);
+        for (const r of results) if (r.status === "fulfilled" && r.value) return r.value;
+        return null;
+    }
+
     async function downloadText(url) {
         if (!url.startsWith('http')) return null;
         try {
@@ -240,19 +221,6 @@
         return null;
     }
 
-    async function findFileById(uuid, type) {
-        const filename = `p2p_${uuid}.${type}.txt`;
-        for (const store of STORAGES) {
-            const baseUrl = store.url.replace(/\/?$/, '/') + filename;
-            const content = await downloadText(baseUrl);
-            if (content && content.trim().startsWith("v=")) {
-                return { content, store: store.name, baseUrl: store.url };
-            }
-        }
-        return null;
-    }
-
-    // ---------- ИНТЕРФЕЙС (стабильная версия) ----------
     let myPrivkey, myPubkey, activeContact;
     let peerConnection = null, dataChannel = null, currentUUID = null, pollingInterval = null;
 
@@ -324,7 +292,6 @@
         else { loadContacts(); contactsListDiv.style.display = 'block'; }
     });
 
-    // Кнопка "Создать стрелу"
     document.getElementById('create-arrow-btn').addEventListener('click', async () => {
         updateRobinStatus('Создаю стрелу...', 2000);
         const link = await createAutoOffer();
@@ -346,7 +313,6 @@
         document.getElementById('ref-modal').classList.remove('active');
     });
 
-    // Ручной SDP
     document.getElementById('apply-sdp-btn').addEventListener('click', async () => {
         const sdpText = document.getElementById('manual-sdp').value.trim();
         if (!sdpText) return;
@@ -371,23 +337,13 @@
     function setupDataChannel(channel) {
         channel.onopen = () => {
             updateRobinStatus('Колчан с ' + (activeContact?.name || 'другом') + ' открыт!', 3000);
-            // Автоматический обмен контактами
-            const contactMsg = JSON.stringify({
-                type: 'contact_info',
-                name: myNick.textContent,
-                avatar: profileAvatar.src
-            });
+            const contactMsg = JSON.stringify({ type: 'contact_info', name: myNick.textContent, avatar: profileAvatar.src });
             channel.send(contactMsg);
         };
         channel.onmessage = (e) => {
             try {
                 const msg = JSON.parse(e.data);
                 if (msg.type === 'contact_info') {
-                    // Сохраняем информацию о собеседнике
-                    let contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
-                    // Находим контакт по pubkey, но его может не быть при авто-приёме
-                    const existing = contacts.find(c => c.pubkey === myPubkey); // собеседник — другой pubkey, упростим
-                    // Добавляем/обновляем контакт
                     if (activeContact) {
                         activeContact.name = msg.name || activeContact.name;
                         activeContact.avatar = msg.avatar || activeContact.avatar;
@@ -397,7 +353,6 @@
                     return;
                 }
             } catch(e) {}
-            // Обычное текстовое сообщение
             appendMessage(activeContact?.name || 'Друг', e.data, activeContact?.avatar || 'assets/avatars/001-.png');
             if (toggleHistory.checked) {
                 loadEncryptedHistory().then(hist => {
@@ -418,12 +373,9 @@
         const uuid = Math.random().toString(36).substring(2,10) + Date.now().toString(36);
         currentUUID = uuid;
         const result = await uploadToAny(`p2p_${uuid}.offer.txt`, peerConnection.localDescription.sdp);
-        if (!result) { updateRobinStatus('Авто-стрела не удалась. Используйте ручной режим.', 3000); 
-        return null; }
+        if (!result) { updateRobinStatus('Авто-стрела не удалась. Используйте ручной режим.', 3000); return null; }
         const link = `${window.location.origin}${window.location.pathname}?id=${uuid}`;
-        const answerUrl = result.store === 'Render'
-            ? RENDER_SERVER + '/offer?id=' + uuid
-            : (result.baseUrl.endsWith('/') ? result.baseUrl : result.baseUrl + '/') + `p2p_${uuid}.answer.txt`;
+        const answerUrl = result.store === 'Render' ? RENDER_SERVER + '/offer?id=' + uuid : (result.baseUrl.endsWith('/') ? result.baseUrl : result.baseUrl + '/') + `p2p_${uuid}.answer.txt`;
         if (pollingInterval) clearInterval(pollingInterval);
         pollingInterval = setInterval(async () => {
             const sdp = await downloadText(answerUrl);
@@ -442,7 +394,6 @@
         const urlParams = new URLSearchParams(window.location.search);
         const id = urlParams.get('id');
         if (!id) return;
-        // Сначала проверяем Render
         try {
             const ctrl = new AbortController();
             const to = setTimeout(() => ctrl.abort(), 4000);
@@ -456,35 +407,13 @@
                 await peerConnection.setRemoteDescription({ type:'offer', sdp: data.sdp });
                 const answer = await peerConnection.createAnswer();
                 await peerConnection.setLocalDescription(answer);
-                // Отправляем answer на Render с тем же ID
-                const answerRes = await fetch(RENDER_SERVER + '/offer', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ sdp: peerConnection.localDescription.sdp })
-                });
-                if (answerRes.ok) {
-                    const answerData = await answerRes.json();
-                    updateRobinStatus('Ответ отправлен через Render. ID: ' + answerData.id, 3000);
-                }
+                const answerRes = await fetch(RENDER_SERVER + '/offer', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ sdp: peerConnection.localDescription.sdp }) });
+                if (answerRes.ok) updateRobinStatus('Ответ отправлен через Render.', 3000);
                 window.history.replaceState({}, document.title, window.location.pathname);
                 return;
             }
         } catch(e) {}
-        // Запасной вариант – поиск по хранилищам
-        const found = await findFileById(id, 'offer');
-        if (!found) { updateRobinStatus('Стрела не найдена.', 3000); return; }
-        if (peerConnection) peerConnection.close();
-        peerConnection = new RTCPeerConnection();
-        peerConnection.ondatachannel = (e) => { dataChannel = e.channel; setupDataChannel(dataChannel); };
-        await peerConnection.setRemoteDescription({ type:'offer', sdp: found.content });
-        const answer = await peerConnection.createAnswer();
-        await peerConnection.setLocalDescription(answer);
-        const answerBase = found.baseUrl || found.store;
-        const answerFilename = `p2p_${id}.answer.txt`;
-        const answerResult = await uploadToAny(answerFilename, peerConnection.localDescription.sdp);
-        if (answerResult) updateRobinStatus('Ответ отправлен через ' + answerResult.store, 3000);
-        else updateRobinStatus('Ответ не удалось загрузить.', 2000);
-        window.history.replaceState({}, document.title, window.location.pathname);
+        updateRobinStatus('Стрела не найдена.', 3000);
     }
 
     function loadContacts() {
@@ -657,7 +586,6 @@
     const savedHistory = localStorage.getItem('robinhood_history'); if (savedHistory !== null) toggleHistory.checked = savedHistory === 'true';
     const savedSound = localStorage.getItem('robinhood_sound'); if (savedSound !== null) toggleSound.checked = savedSound === 'true';
 
-    // Контекстное меню
     let currentMenuContact = null;
     function showDeleteConfirmation(pubkey, name) {
         const confirmDiv = document.createElement('div');
@@ -675,7 +603,7 @@
         const menuOpenTime = Date.now(); currentMenuContact = contact;
         const menu = document.getElementById('contact-menu'); menu.style.display = 'block';
         document.getElementById('menu-rename').onclick = () => { hideContactMenu(); const newName = prompt('Введите новое имя для лучника:', contact.name); if (newName && newName.trim()) { let contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]'); const c = contacts.find(c => c.pubkey === contact.pubkey); if (c) { c.name = newName.trim(); localStorage.setItem('robinhood_contacts', JSON.stringify(contacts)); loadContacts(); updateRobinStatus('Имя стрелка изменено!', 2000); } } };
-        document.getElementById('menu-avatar').onclick = () => { hideContactMenu(); /* аватар-пикер */ };
+        document.getElementById('menu-avatar').onclick = () => { hideContactMenu(); };
         document.getElementById('menu-delete').onclick = () => { hideContactMenu(); showDeleteConfirmation(contact.pubkey, contact.name); };
         document.getElementById('menu-cancel').onclick = hideContactMenu;
         setTimeout(() => {
@@ -693,9 +621,6 @@
         updateRobinStatus(`Колчан с ${name} сожжён`, 3000);
     }
     function deleteContact(pubkey, event) { event.stopPropagation(); const contact = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]').find(c => c.pubkey === pubkey); if (contact) showDeleteConfirmation(pubkey, contact.name); }
-
-}
-    
 </script>
 </body>
 </html>
