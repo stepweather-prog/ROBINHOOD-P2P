@@ -175,13 +175,16 @@
                 }
                 break;
             case 'message':
-                appendMessage(data.sender || 'Друг', data.text, 'assets/avatars/001-.png');
-                if (toggleHistoryState) { loadEncryptedHistory().then(hist => { hist.push({ text: data.text, sender: 'friend', recipient: myPubkey, senderName: data.sender, time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) }); saveEncryptedHistory(hist); }); }
-                if (toggleSoundState) playSound('bow_shot.wav');
-                break;
-            case 'install-prompt': if (deferredPrompt) { deferredPrompt.prompt(); deferredPrompt.userChoice.then(() => { deferredPrompt = null; }); } break;
-            case 'status': updateRobinStatus(data.text, data.duration || 3000); break;
-            case 'error': updateRobinStatus(data.text, 4000); break;
+    if (data.channelId && channels[data.channelId]) {
+        activeChannelId = data.channelId;
+        appendMessage(data.sender || 'Друг', data.text, 'assets/avatars/001-.png');
+        if (toggleHistoryState) { loadEncryptedHistory().then(hist => { hist.push({ text: data.text, sender: 'friend', recipient: myPubkey, senderName: data.sender, time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) }); saveEncryptedHistory(hist); }); }
+        if (toggleSoundState) playSound('bow_shot.wav');
+    }
+    break;
+case 'install-prompt': if (deferredPrompt) { deferredPrompt.prompt(); deferredPrompt.userChoice.then(() => { deferredPrompt = null; }); } break;
+case 'status': updateRobinStatus(data.text, data.duration || 3000); break;
+case 'error': updateRobinStatus(data.text, 4000); break;
         }
     });
 
