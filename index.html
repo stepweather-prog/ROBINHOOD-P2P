@@ -158,7 +158,7 @@
     <button id="menu-cancel" style="width:100%; margin-top:5px; background:#555; border:none; padding:8px; border-radius:6px; color:white;">Отмена</button>
 </div>
 
-<iframe id="pong-frame" src="https://stepweather-prog.github.io/P2PPong/?v=" + Date.now() style="display:none;"></iframe>
+<iframe id="pong-frame" src="" style="display:none;"></iframe>
 
 <script>
     const pongFrame = document.getElementById('pong-frame');
@@ -368,9 +368,10 @@
     function playSound(filename) { if (toggleSound.checked) { const a = new Audio(`assets/sounds/${filename}`); a.volume=0.5; a.play().catch(()=>{}); } }
 
     async function init() {
-        await loadKeys();
-        updateRobinStatus('Ждём Понга...', 0);
-    }
+    document.getElementById('pong-frame').src = 'https://stepweather-prog.github.io/P2PPong/?v=' + Date.now();
+    await loadKeys();
+    updateRobinStatus('Ждём Понга...', 0);
+}
     window.addEventListener('load', init);
 
     openMenuBtn.addEventListener('click', () => { drawer.classList.toggle('open'); overlay.classList.toggle('visible'); });
