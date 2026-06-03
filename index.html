@@ -13,137 +13,127 @@
         body { background-color: #121212; color: #E0E0E0; font-family: sans-serif; display: flex; flex-direction: column; height: 100vh; height: 100dvh; position: relative; }
         body::before { content: ""; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-image: url('assets/Front/background.png'); background-size: cover; background-position: center center; background-repeat: no-repeat; z-index: 0; }
         body::after { content: ""; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 0; }
-        .header, .chat-area, .input-area, .drawer, .invite-modal, .chat-switcher { position: relative; z-index: 1; }
-        .header { background-color: rgba(31,31,31,0.95); padding: 8px 15px; display: flex; align-items: center; border-bottom: 2px solid #2E7D32; backdrop-filter: blur(5px); z-index: 10; }
-        #open-menu { font-size: 26px; cursor: pointer; background: none; border: none; color: inherit; outline: none; margin-right: 10px; }
-        #header-title { margin: 0; font-size: 1.3em; flex: 1; }
-        .switch-chat-btn { background: none; border: none; color: white; font-size: 16px; cursor: pointer; display: none; align-items: center; gap: 4px; }
-        #ddg-clear { font-size: 22px; cursor: pointer; user-select: none; margin-left: 10px; }
-        .chat-area { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; background: transparent; scrollbar-width: none; }
+        
+        .header { background-color: rgba(31,31,31,0.95); border-bottom: 2px solid #2E7D32; backdrop-filter: blur(5px); z-index: 10; padding: 6px 10px; display: flex; flex-direction: column; gap: 2px; position: relative; }
+        .header-row-1 { display: flex; align-items: center; gap: 6px; }
+        .header-title-text { font-size: 1.2em; font-weight: bold; color: #4CAF50; }
+        .header-shield { font-size: 1em; }
+        .header-version { font-size: 0.65em; color: #888; }
+        .header-row-2 { display: flex; justify-content: space-around; align-items: center; }
+        .header-row-3 { display: flex; justify-content: space-around; }
+        .header-btn { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 6px; font-size: 16px; position: relative; }
+        .header-btn:hover { background: rgba(255,255,255,0.1); }
+        .header-label { font-size: 0.5em; color: #888; text-align: center; width: 32px; cursor: pointer; }
+        .header-avatar { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; }
+        
+        .chat-area { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px; background: transparent; scrollbar-width: none; position: relative; z-index: 1; }
         .chat-area::-webkit-scrollbar { display: none; }
-        .message-row { display: flex; align-items: center; gap: 10px; background: rgba(31,31,31,0.9); padding: 10px; border-radius: 8px; backdrop-filter: blur(5px); }
-        .input-area { background-color: rgba(31,31,31,0.95); padding: 10px; padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)); display: flex; gap: 10px; align-items: center; border-top: 1px solid #333; backdrop-filter: blur(5px); }
-        input { flex: 1; background: rgba(42,42,42,0.9); border: 1px solid #444; padding: 12px; color: white; border-radius: 6px; font-size: 16px; outline: none; }
-        .online-indicator { width: 12px; height: 12px; background-color: #4CAF50; border-radius: 50%; box-shadow: 0 0 8px #4CAF50; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #121212; }
-        .online-indicator.offline { background-color: #f44336; box-shadow: 0 0 8px #f44336; }
-        .bow-button { width: 50px; height: 50px; cursor: pointer; }
-        .avatar { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; background-color: #333; flex-shrink: 0; }
+        .message-row { display: flex; align-items: center; gap: 8px; background: rgba(31,31,31,0.9); padding: 8px; border-radius: 8px; backdrop-filter: blur(5px); }
+        .input-area { background-color: rgba(31,31,31,0.95); padding: 8px; padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px)); display: flex; gap: 8px; align-items: center; border-top: 1px solid #333; backdrop-filter: blur(5px); position: relative; z-index: 1; }
+        input { flex: 1; background: rgba(42,42,42,0.9); border: 1px solid #444; padding: 10px; color: white; border-radius: 6px; font-size: 16px; outline: none; }
+        .bow-button { width: 40px; height: 40px; cursor: pointer; }
+        .avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; background-color: #333; flex-shrink: 0; }
         .msg-body { flex: 1; min-width: 0; }
-        .msg-sender { font-weight: bold; color: #4CAF50; font-size: 0.9em; }
-        .msg-status { font-size: 0.7em; color: #888; text-align: right; }
+        .msg-sender { font-weight: bold; color: #4CAF50; font-size: 0.85em; }
+        .msg-status { font-size: 0.65em; color: #888; text-align: right; }
         #robin-row { background: rgba(46,125,50,0.2); border-left: 3px solid #2E7D32; }
-        #robin-text { transition: opacity 0.6s ease; opacity: 1; }
-        .drawer-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: none; z-index: 90; }
-        .drawer { position: fixed; top: 0; left: -280px; width: 280px; height: 100vh; background-color: rgba(31,31,31,0.95); z-index: 100; transition: left 0.3s ease; display: flex; flex-direction: column; box-shadow: 4px 0 10px rgba(0,0,0,0.4); border-right: 1px solid #2E7D32; backdrop-filter: blur(10px); }
-        .drawer.open { left: 0; }
-        .drawer-overlay.visible { display: block; }
-        .drawer-header { padding: 24px 16px; background-color: #2E7D32; color: white; display: flex; flex-direction: column; gap: 12px; align-items: center; text-align: center; }
-        .drawer-avatar { width: 75px; height: 75px; border-radius: 50%; border: 3px solid white; object-fit: cover; cursor: pointer; }
-        .drawer-nick { font-size: 18px; font-weight: bold; }
-        .change-name-btn { background: rgba(255,255,255,0.25); border: none; padding: 5px 14px; color: white; border-radius: 20px; cursor: pointer; font-size: 11px; font-weight: bold; }
-        .drawer-content { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 16px; background: transparent; }
-        .menu-link { display: flex; align-items: center; padding: 12px 4px; color: #E0E0E0; text-decoration: none; font-weight: 600; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 15px; }
-        .menu-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 4px; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 14px; color: #E0E0E0; }
-        .switch { position: relative; display: inline-block; width: 42px; height: 22px; flex-shrink: 0; }
-        .switch input { opacity: 0; width: 0; height: 0; }
-        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #555; transition: .3s; border-radius: 22px; }
-        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; }
-        input:checked + .slider { background-color: #2E7D32; }
-        input:checked + .slider:before { transform: translateX(20px); }
-        .profile-edit { background: rgba(255,255,255,0.1); padding: 12px; border-radius: 8px; display: none; margin-top: 5px; width: 100%; box-sizing: border-box; }
-        .profile-edit input { width: 100%; padding: 8px 12px; background: #121212; border: 1px solid #444; color: white; border-radius: 6px; margin-bottom: 8px; outline: none; box-sizing: border-box; }
+        #robin-text { transition: opacity 0.6s ease; opacity: 1; font-size: 0.9em; }
+        
+        .avatar-selector, .contacts-list { display: none; position: fixed; top: 60px; left: 10px; right: 10px; max-height: 280px; overflow-y: auto; padding: 10px; background: rgba(20,20,20,0.98); border: 1px solid #2E7D32; border-radius: 10px; z-index: 200; text-align: center; }
+        .avatar-selector.show, .contacts-list.show { display: block; }
+        .avatar-option { width: 45px; height: 45px; border-radius: 50%; object-fit: cover; margin: 4px; cursor: pointer; border: 2px solid transparent; }
+        .avatar-option:hover { border-color: #FFA000; }
+        .contact-item { display: flex; align-items: center; justify-content: space-between; padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer; color: #E0E0E0; }
+        .contact-info { display: flex; align-items: center; gap: 8px; flex: 1; }
+        .contact-avatar { width: 35px; height: 35px; border-radius: 50%; object-fit: cover; }
+        .contact-name { font-weight: 600; font-size: 0.9em; }
+        .delete-contact { background: none; border: none; color: #f44336; font-size: 18px; cursor: pointer; padding: 0 8px; opacity: 0.7; }
+        .delete-contact:hover { opacity: 1; }
+        
         .invite-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 200; justify-content: center; align-items: center; }
         .invite-modal.active { display: flex; }
         .invite-dialog { background: #1F1F1F; padding: 20px; border-radius: 12px; width: 80%; max-width: 320px; text-align: center; border: 1px solid #2E7D32; max-height: 80vh; overflow-y: auto; }
-        .invite-dialog h3 { color: #4CAF50; margin: 0 0 10px; }
-        .invite-dialog button { width: 100%; padding: 10px; margin-top: 5px; background: #2E7D32; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; }
-        .code-display { background: #121212; border: 1px solid #444; color: white; border-radius: 6px; padding: 10px; font-size: 0.9em; word-break: break-all; margin: 10px 0; text-align: center; user-select: all; }
-        .avatar-selector, .contacts-list { display: none; margin-top: 10px; text-align: center; max-height: 300px; overflow-y: auto; padding: 5px; background: rgba(255,255,255,0.05); border-radius: 8px; }
-        .avatar-option { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; margin: 5px; cursor: pointer; border: 2px solid transparent; transition: border 0.2s; }
-        .avatar-option:hover { border-color: #FFA000; }
-        .contact-item { display: flex; align-items: center; justify-content: space-between; padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer; color: #E0E0E0; }
-        .contact-info { display: flex; align-items: center; gap: 10px; flex: 1; }
-        .contact-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
-        .contact-name { font-weight: 600; }
-        .delete-contact { background: none; border: none; color: #f44336; font-size: 20px; cursor: pointer; padding: 0 10px; opacity: 0.7; }
-        .delete-contact:hover { opacity: 1; }
-        .drawer-footer { padding: 16px; font-size: 11px; text-align: center; border-top: 1px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.15); color: #888; }
-        .contact-menu { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); background: #1F1F1F; border: 1px solid #2E7D32; border-radius: 12px; padding: 10px; z-index: 300; min-width: 220px; box-shadow: 0 8px 20px rgba(0,0,0,0.6); }
-        .contact-menu-item { padding: 10px; cursor: pointer; border-radius: 6px; margin-bottom: 4px; }
-        .contact-menu-item:hover { background: rgba(255,255,255,0.1); }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-        .chat-switcher { position: fixed; bottom: 0; left: 0; right: 0; max-height: 60vh; background: rgba(20,20,20,0.98); z-index: 150; border-top: 2px solid #2E7D32; border-radius: 16px 16px 0 0; transform: translateY(100%); transition: transform 0.3s ease; overflow-y: auto; padding: 10px 0; }
+        .invite-dialog h3 { color: #4CAF50; margin: 0 0 10px; font-size: 1.1em; }
+        .invite-dialog button { width: 100%; padding: 10px; margin-top: 5px; background: #2E7D32; color: white; border: none; border-radius: 6px; font-size: 14px; font-weight: bold; cursor: pointer; }
+        .code-display { background: #121212; border: 1px solid #444; color: white; border-radius: 6px; padding: 10px; font-size: 0.8em; word-break: break-all; margin: 10px 0; text-align: center; user-select: all; }
+        textarea { width: 100%; height: 50px; background: #1e1e1e; color: #ccc; border: 1px solid #444; padding: 5px; font-family: monospace; resize: vertical; font-size: 12px; }
+        
+        .chat-switcher { position: fixed; bottom: 0; left: 0; right: 0; max-height: 50vh; background: rgba(20,20,20,0.98); z-index: 150; border-top: 2px solid #2E7D32; border-radius: 16px 16px 0 0; transform: translateY(100%); transition: transform 0.3s ease; overflow-y: auto; padding: 10px 0; }
         .chat-switcher.open { transform: translateY(0); }
-        .chat-switcher-header { padding: 8px 16px; font-weight: bold; color: #888; border-bottom: 1px solid #333; margin-bottom: 5px; }
+        .chat-switcher-header { padding: 8px 16px; font-weight: bold; color: #888; border-bottom: 1px solid #333; margin-bottom: 5px; font-size: 0.9em; }
         .chat-switcher-list { padding: 0 16px; }
         .chat-switcher-item { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer; }
         .chat-switcher-item:last-child { border-bottom: none; }
+        
+        .contact-menu { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); background: #1F1F1F; border: 1px solid #2E7D32; border-radius: 12px; padding: 10px; z-index: 300; min-width: 200px; box-shadow: 0 8px 20px rgba(0,0,0,0.6); }
+        .contact-menu-item { padding: 10px; cursor: pointer; border-radius: 6px; margin-bottom: 4px; font-size: 0.9em; }
+        .contact-menu-item:hover { background: rgba(255,255,255,0.1); }
+        
+        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; z-index: 190; }
+        .overlay.show { display: block; }
     </style>
 </head>
 <body>
 <div class="header">
-    <button id="open-menu">☰</button>
-    <h2 id="header-title">RobinHood P2P <span style="font-size: 14px; margin-left: 8px;" title="Канал защищён сквозным шифрованием">🛡️</span></h2>
-    <button id="chat-switcher-btn" class="switch-chat-btn"><span id="chat-switcher-label">Перестрелки</span> ▼</button>
-    <div style="flex:1;"></div>
-    <div id="ddg-clear">🔥</div>
+    <div class="header-row-1">
+        <span class="header-title-text">ROBINHOOD P2P</span>
+        <span class="header-shield">🛡️</span>
+        <span style="flex:1;"></span>
+        <span class="header-version">v2.0</span>
+    </div>
+    <div class="header-row-2">
+        <div class="header-btn" id="btn-avatar"><img src="assets/avatars/001-.png" class="header-avatar" id="profile-avatar-small"></div>
+        <div class="header-btn" id="btn-letters">📖</div>
+        <div class="header-btn" id="btn-chats">▼</div>
+        <div class="header-btn" id="btn-arrow">🎯</div>
+        <div class="header-btn" id="btn-history">💾</div>
+        <div class="header-btn" id="btn-sound">🔊</div>
+        <div class="header-btn" id="btn-clear">🔥</div>
+    </div>
+    <div class="header-row-3">
+        <span class="header-label" id="nick-label">Лучник</span>
+        <span class="header-label">Письма</span>
+        <span class="header-label">Чаты</span>
+        <span class="header-label">Стрела</span>
+        <span class="header-label">Истор</span>
+        <span class="header-label">Звук</span>
+        <span class="header-label">Очист</span>
+    </div>
 </div>
+
 <div class="chat-area" id="chat-box">
     <div class="message-row" id="robin-row">
         <img src="assets/avatars/231-icon-11433690.png" class="avatar" id="robin-avatar">
         <div class="msg-body">
-            <div class="msg-sender" id="robin-title">Robin Hood</div>
+            <div class="msg-sender">Robin Hood</div>
             <div id="robin-text">Святые сокеты стабильны !</div>
         </div>
-        <div class="online-indicator" id="network-status-dot">🛡️</div>
     </div>
 </div>
+
 <div class="input-area">
     <input type="text" id="msg-input" placeholder="Пустить стрелу">
     <img src="assets/bow.png" class="bow-button" id="send-btn" alt="Отправить">
 </div>
 
-<div class="invite-modal" id="ref-modal">
-    <div class="invite-dialog">
-        
-        <p style="font-size:0.9em;">Ваша ссылка для приглашения:</p>
-        <div class="code-display" id="ref-link-display"></div>
-        <button id="copy-ref-link-btn">Зарядить</button>
-        <button id="share-ref-link-btn">Метнуть...</button>
-        <hr style="border: 0; border-top: 1px solid #444; margin: 15px 0;">
-        <p style="font-size:0.9em;">Ручной режим (если авто не сработал)</p>
-        <textarea id="manual-sdp" placeholder="Вставьте SDP предложение или ответ"></textarea>
-        <button id="apply-sdp-btn">Применить SDP</button>
-        <button id="close-ref-modal-btn" style="background:#555;">Закрыть</button>
-    </div>
+<div class="overlay" id="overlay"></div>
+
+<div class="avatar-selector" id="avatar-selector">
+    <p style="color:#888;margin:0 0 8px;">Выбери лучника</p>
+    <div id="avatar-list"></div>
 </div>
 
-<div class="drawer-overlay" id="drawer-overlay"></div>
-<div class="drawer" id="drawer">
-    <div class="drawer-header">
-        <img src="assets/avatars/001-.png" class="drawer-avatar" id="profile-avatar">
-        <div class="drawer-nick" id="my-nick">Лучник</div>
-        <button class="change-name-btn" id="change-profile-btn">Сменить ник</button>
-        <div class="profile-edit" id="profile-edit-box">
-            <input type="text" id="new-nick-input" placeholder="Новый ник...">
-            <button class="change-name-btn" id="save-profile-btn">Применить</button>
-        </div>
-        <div class="avatar-selector" id="avatar-selector">
-            <p>Выбери лучника</p>
-            <div id="avatar-list"></div>
-        </div>
+<div class="contacts-list" id="contacts-list">
+    <div id="contacts-list-inner"></div>
+</div>
+
+<div class="invite-modal" id="ref-modal">
+    <div class="invite-dialog">
+        <h3>Стрела готова</h3>
+        <div class="code-display" id="ref-link-display"></div>
+        <button id="share-ref-link-btn">Поделиться...</button>
+        <button id="close-ref-modal-btn" style="background:#555;margin-top:5px;">Закрыть</button>
     </div>
-    <div class="drawer-content">
-       <div class="menu-link" id="create-arrow-btn"><img src="assets/invain.png" style="width:24px;height:24px;margin-right:10px;"> Создать стрелу</div>
-        <div class="menu-link" id="sherwood-letters-btn"><span>📖</span> Шервудские письма</div>
-        <div class="contacts-list" id="contacts-list">
-            <div id="contacts-list-inner"></div>
-            <div id="pending-requests" style="margin-top: 10px; border-top: 1px solid #444; padding-top: 10px;"></div>
-        </div>
-        <div class="menu-item"><span>🗑️ Хранить историю</span><label class="switch"><input type="checkbox" id="toggle-history" checked><span class="slider"></span></label></div>
-        <div class="menu-item"><span>🔊 Звук приложения</span><label class="switch"><input type="checkbox" id="toggle-sound" checked><span class="slider"></span></label></div>
-    </div>
-    <div class="drawer-footer">RobinHood Messenger v2.0</div>
 </div>
 
 <div class="chat-switcher" id="chat-switcher">
@@ -155,7 +145,7 @@
     <div class="contact-menu-item" id="menu-rename">✎ Переименовать</div>
     <div class="contact-menu-item" id="menu-avatar">🖼 Сменить аватар</div>
     <div class="contact-menu-item" id="menu-delete">🔥 Сжечь колчан</div>
-    <button id="menu-cancel" style="width:100%; margin-top:5px; background:#555; border:none; padding:8px; border-radius:6px; color:white;">Отмена</button>
+    <button id="menu-cancel" style="width:100%;margin-top:5px;background:#555;border:none;padding:8px;border-radius:6px;color:white;">Отмена</button>
 </div>
 
 <iframe id="pong-frame" src="" style="display:none;"></iframe>
@@ -175,7 +165,6 @@
     window.addEventListener('message', (event) => {
         if (event.source !== pongFrame.contentWindow) return;
         const data = event.data;
-
         switch(data.type) {
             case 'pong-ready':
                 handshakeSecret = data.handshake;
@@ -194,6 +183,8 @@
                 const link = window.location.origin + window.location.pathname + '?id=' + data.sessionId;
                 document.getElementById('ref-link-display').textContent = link;
                 document.getElementById('ref-modal').classList.add('active');
+                navigator.clipboard.writeText(link).catch(()=>{});
+                if (navigator.share) navigator.share({ title:'RobinHood P2P', url: link }).catch(()=>{});
                 break;
             case 'channel-open':
                 sessionSecret = data.secret;
@@ -210,12 +201,8 @@
                 }
                 if (toggleSound.checked) playSound('bow_shot.wav');
                 break;
-            case 'status':
-                updateRobinStatus(data.text, data.duration || 3000);
-                break;
-            case 'error':
-                updateRobinStatus(data.text, 4000);
-                break;
+            case 'status': updateRobinStatus(data.text, data.duration || 3000); break;
+            case 'error': updateRobinStatus(data.text, 4000); break;
         }
     });
 
@@ -275,35 +262,129 @@
         } catch(e) { return []; }
     }
 
-    const openMenuBtn = document.getElementById('open-menu'), drawer = document.getElementById('drawer'), overlay = document.getElementById('drawer-overlay');
-    const ddgClearBtn = document.getElementById('ddg-clear'), changeProfileBtn = document.getElementById('change-profile-btn'), profileEditBox = document.getElementById('profile-edit-box');
-    const saveProfileBtn = document.getElementById('save-profile-btn'), newNickInput = document.getElementById('new-nick-input'), myNick = document.getElementById('my-nick');
-    const msgInput = document.getElementById('msg-input'), sendBtn = document.getElementById('send-btn'), chatBox = document.getElementById('chat-box');
-    const robinText = document.getElementById('robin-text'), profileAvatar = document.getElementById('profile-avatar'), avatarSelector = document.getElementById('avatar-selector'), avatarList = document.getElementById('avatar-list');
-    const sherwoodBtn = document.getElementById('sherwood-letters-btn'), contactsListDiv = document.getElementById('contacts-list'), toggleHistory = document.getElementById('toggle-history'), toggleSound = document.getElementById('toggle-sound');
-    const contactsListInner = document.getElementById('contacts-list-inner'), headerTitle = document.getElementById('header-title'), chatSwitcherBtn = document.getElementById('chat-switcher-btn'), chatSwitcherLabel = document.getElementById('chat-switcher-label');
-    const chatSwitcher = document.getElementById('chat-switcher'), chatSwitcherList = document.getElementById('chat-switcher-list');
+    const chatBox = document.getElementById('chat-box');
+    const msgInput = document.getElementById('msg-input');
+    const robinText = document.getElementById('robin-text');
+    const profileAvatarSmall = document.getElementById('profile-avatar-small');
+    const nickLabel = document.getElementById('nick-label');
+    const avatarSelector = document.getElementById('avatar-selector');
+    const avatarList = document.getElementById('avatar-list');
+    const contactsListDiv = document.getElementById('contacts-list');
+    const contactsListInner = document.getElementById('contacts-list-inner');
+    const overlay = document.getElementById('overlay');
+    const chatSwitcher = document.getElementById('chat-switcher');
+    const chatSwitcherList = document.getElementById('chat-switcher-list');
+    const toggleHistory = document.getElementById('toggle-history');
+    const toggleSound = document.getElementById('toggle-sound');
+    let toggleHistoryState = true;
+    let toggleSoundState = true;
 
-    sherwoodBtn.addEventListener('click', () => {
-        if (contactsListDiv.style.display === 'block') contactsListDiv.style.display = 'none';
-        else { loadContacts(); contactsListDiv.style.display = 'block'; }
-    });
+    const savedAvatar = localStorage.getItem('robinhood_avatar');
+    if (savedAvatar) {
+        profileAvatarSmall.src = savedAvatar;
+        document.getElementById('robin-avatar').src = savedAvatar;
+    }
+    const savedNick = localStorage.getItem('robinhood_nick');
+    if (savedNick) nickLabel.textContent = savedNick;
 
-    document.getElementById('create-arrow-btn').addEventListener('click', () => {
-        if (!sessionSecret && handshakeSecret) {
-            updateRobinStatus('Создаю стрелу...', 0);
-            sendToPong({ action: 'create' });
-        } else if (channelReady) {
-            updateRobinStatus('Канал уже открыт', 2000);
+    // Аватар
+    document.getElementById('btn-avatar').addEventListener('click', () => {
+        if (avatarSelector.classList.contains('show')) {
+            avatarSelector.classList.remove('show');
+            overlay.classList.remove('show');
         } else {
-            updateRobinStatus('Понг ещё не готов', 2000);
+            closeAllPanels();
+            loadAvatars();
+            avatarSelector.classList.add('show');
+            overlay.classList.add('show');
+        }
+    });
+    nickLabel.addEventListener('click', () => {
+        const newNick = prompt('Новый ник:', nickLabel.textContent);
+        if (newNick && newNick.trim()) {
+            nickLabel.textContent = newNick.trim();
+            localStorage.setItem('robinhood_nick', newNick.trim());
+            updateRobinStatus('Ник изменён на ' + newNick.trim());
         }
     });
 
-    document.getElementById('copy-ref-link-btn').addEventListener('click', () => {
-        const link = document.getElementById('ref-link-display').textContent;
-        if (link) navigator.clipboard.writeText(link).then(() => updateRobinStatus('Ссылка скопирована!', 2000));
+    // Письма
+    document.getElementById('btn-letters').addEventListener('click', () => {
+        if (contactsListDiv.classList.contains('show')) {
+            contactsListDiv.classList.remove('show');
+            overlay.classList.remove('show');
+        } else {
+            closeAllPanels();
+            loadContacts();
+            contactsListDiv.classList.add('show');
+            overlay.classList.add('show');
+        }
     });
+
+    // Чаты
+    document.getElementById('btn-chats').addEventListener('click', () => {
+        if (chatSwitcher.classList.contains('open')) {
+            chatSwitcher.classList.remove('open');
+        } else {
+            populateChatSwitcher();
+            chatSwitcher.classList.add('open');
+        }
+    });
+
+    // Стрела
+    document.getElementById('btn-arrow').addEventListener('click', () => {
+        if (!handshakeSecret && !sessionSecret) {
+            updateRobinStatus('Понг ещё не готов', 2000);
+            return;
+        }
+        if (channelReady) {
+            updateRobinStatus('Канал уже открыт', 2000);
+            return;
+        }
+        updateRobinStatus('Крафт стрелы...', 0);
+        sendToPong({ action: 'create' });
+    });
+
+    // История
+    document.getElementById('btn-history').addEventListener('click', () => {
+        toggleHistoryState = !toggleHistoryState;
+        if (!toggleHistoryState) {
+            localStorage.removeItem('robinhood_history_key');
+            localStorage.removeItem('robinhood_chat_history');
+            historyEncryptionKey = null;
+            sessionSecret = null;
+            updateRobinStatus('Секреты уничтожены', 4000);
+        } else {
+            updateRobinStatus('История хранится', 4000);
+        }
+        localStorage.setItem('robinhood_history', toggleHistoryState);
+    });
+
+    // Звук
+    document.getElementById('btn-sound').addEventListener('click', () => {
+        toggleSoundState = !toggleSoundState;
+        localStorage.setItem('robinhood_sound', toggleSoundState);
+        updateRobinStatus(toggleSoundState ? 'Звук включён' : 'Звук выключен');
+    });
+
+    // Очистка
+    document.getElementById('btn-clear').addEventListener('click', async () => {
+        document.querySelectorAll('.message-row:not(#robin-row)').forEach(m => m.remove());
+        if (toggleHistoryState) await saveEncryptedHistory([]);
+        else localStorage.removeItem('robinhood_chat_history');
+        updateRobinStatus('Письма пущены на самокрутки!', 3000);
+    });
+
+    overlay.addEventListener('click', () => {
+        closeAllPanels();
+    });
+
+    function closeAllPanels() {
+        avatarSelector.classList.remove('show');
+        contactsListDiv.classList.remove('show');
+        overlay.classList.remove('show');
+    }
+
     document.getElementById('share-ref-link-btn').addEventListener('click', () => {
         const link = document.getElementById('ref-link-display').textContent;
         if (link && navigator.share) navigator.share({ title:'RobinHood P2P', url: link });
@@ -312,33 +393,24 @@
         document.getElementById('ref-modal').classList.remove('active');
     });
 
-    document.getElementById('apply-sdp-btn').addEventListener('click', () => {
-        const sdpText = document.getElementById('manual-sdp').value.trim();
-        if (!sdpText) return;
-        sendToPong({ action: 'manual-sdp', sdp: sdpText });
-    });
-
     function sendMessageHandler() {
         const text = msgInput.value.trim();
         if (!text) return;
-        if (!channelReady) {
-            updateRobinStatus('Канал не готов.', 2000);
-            return;
-        }
+        if (!channelReady) { updateRobinStatus('Канал не готов.', 2000); return; }
         sendToPong({ action: 'send', text: text });
-        appendMessage('Вы', text, profileAvatar.src);
+        appendMessage('Вы', text, profileAvatarSmall.src);
         msgInput.value = '';
-        if (toggleSound.checked) playSound('bow_shot.wav');
-        if (toggleHistory.checked) {
+        if (toggleSoundState) playSound('bow_shot.wav');
+        if (toggleHistoryState) {
             loadEncryptedHistory().then(hist => {
-                hist.push({ text, sender: myPubkey, recipient: 'friend', senderName: myNick.textContent, avatar: profileAvatar.src, time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) });
+                hist.push({ text, sender: myPubkey, recipient: 'friend', senderName: nickLabel.textContent, avatar: profileAvatarSmall.src, time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) });
                 saveEncryptedHistory(hist);
             });
         }
     }
 
-    sendBtn.addEventListener('click', sendMessageHandler);
-    msgInput.addEventListener('keypress', e => { if (e.key === 'Enter') sendBtn.click(); });
+    document.getElementById('send-btn').addEventListener('click', sendMessageHandler);
+    msgInput.addEventListener('keypress', e => { if (e.key === 'Enter') sendMessageHandler(); });
 
     function appendMessage(sender, text, avatarSrc, timeStr = null) {
         const row = document.createElement('div'); row.className = 'message-row';
@@ -346,12 +418,6 @@
         row.innerHTML = `<img src="${avatarSrc}" class="avatar"><div class="msg-body"><div class="msg-sender">${sender}</div><div>${text}</div><div class="msg-status">${finalTime}</div></div>`;
         chatBox.appendChild(row); chatBox.scrollTop = chatBox.scrollHeight;
     }
-
-    ddgClearBtn.addEventListener('click', async () => {
-        document.querySelectorAll('.message-row:not(#robin-row)').forEach(m => m.remove());
-        if (toggleHistory.checked) await saveEncryptedHistory([]); else localStorage.removeItem('robinhood_chat_history');
-        updateRobinStatus('Письма пущены на самокрутки!', 3000);
-    });
 
     let robinDefaultText = robinText.textContent, robinTimer;
     function updateRobinStatus(text, duration=4000) {
@@ -365,36 +431,24 @@
         }
     }
 
-    function playSound(filename) { if (toggleSound.checked) { const a = new Audio(`assets/sounds/${filename}`); a.volume=0.5; a.play().catch(()=>{}); } }
-
-    async function init() {
-    document.getElementById('pong-frame').src = 'https://stepweather-prog.github.io/P2PPong/?v=' + Date.now();
-    await loadKeys();
-    updateRobinStatus('Ждём Понга...', 0);
-}
-    window.addEventListener('load', init);
-
-    openMenuBtn.addEventListener('click', () => { drawer.classList.toggle('open'); overlay.classList.toggle('visible'); });
-    overlay.addEventListener('click', () => { drawer.classList.remove('open'); overlay.classList.remove('visible'); });
-
-    const savedAvatar = localStorage.getItem('robinhood_avatar'); if (savedAvatar) profileAvatar.src = savedAvatar;
-    const savedNick = localStorage.getItem('robinhood_nick'); if (savedNick) myNick.textContent = savedNick;
-    changeProfileBtn.addEventListener('click', () => profileEditBox.style.display = profileEditBox.style.display === 'block' ? 'none' : 'block');
-    saveProfileBtn.addEventListener('click', () => {
-        const newNick = newNickInput.value.trim();
-        if (newNick) { myNick.textContent = newNick; localStorage.setItem('robinhood_nick', newNick); newNickInput.value = ''; profileEditBox.style.display = 'none'; updateRobinStatus(`Ник изменён на ${newNick}`); }
-    });
+    function playSound(filename) { if (toggleSoundState) { const a = new Audio(`assets/sounds/${filename}`); a.volume=0.5; a.play().catch(()=>{}); } }
 
     const avatars = ['assets/avatars/001-.png','assets/avatars/002--1.png','assets/avatars/003-icon-8033085.png','assets/avatars/009--7.png','assets/avatars/010--8.png','assets/avatars/018--16.png','assets/avatars/022--20.png','assets/avatars/037--35.png','assets/avatars/043--41.png','assets/avatars/048--46.png','assets/avatars/050--48.png','assets/avatars/052--50.png','assets/avatars/053--51.png','assets/avatars/056--54.png','assets/avatars/066--64.png','assets/avatars/077-icon-8033092.png','assets/avatars/083-icon-11885568.png','assets/avatars/094-icon-18926716.png','assets/avatars/108--83.png','assets/avatars/147-icon-6081840.png','assets/avatars/148-icon-5532632.png','assets/avatars/149-icon-4132697.png','assets/avatars/150-icon-10756654.png','assets/avatars/153-icon-4964924.png','assets/avatars/154-icon-4261075.png','assets/avatars/156-icon-4132828.png','assets/avatars/158--116.png','assets/avatars/160-icon-2332597.png','assets/avatars/162-icon-6237595.png','assets/avatars/167-icon-1920840.png','assets/avatars/168-icon-228268.png','assets/avatars/169-icon-5613167.png','assets/avatars/173-icon-1615623.png','assets/avatars/183-icon-5840846.png','assets/avatars/186-icon-6237499.png','assets/avatars/188-icon-6267517.png','assets/avatars/203-icon-3516506.png','assets/avatars/216-icon-5504960.png','assets/avatars/221-icon-9530256.png','assets/avatars/226-icon-9669507.png','assets/avatars/227-icon-9623471.png','assets/avatars/229-icon-10032172.png','assets/avatars/230-icon-10049316.png','assets/avatars/232-icon-11434002.png','assets/avatars/234-icon-10756328.png','assets/avatars/245-icon-16150697.png','assets/avatars/246-icon-16150730.png','assets/avatars/249-icon-17159913.png','assets/avatars/250-icon-17159758.png','assets/avatars/251-icon-17159744.png','assets/avatars/253-icon-18426073.png','assets/avatars/254-icon-18621065.png','assets/avatars/255-icon-18926692.png','assets/avatars/256--120.png'];
     function loadAvatars() {
         avatarList.innerHTML = '';
         avatars.forEach(src => {
             const img = document.createElement('img'); img.src = src; img.className = 'avatar-option';
-            img.addEventListener('click', () => { profileAvatar.src = src; localStorage.setItem('robinhood_avatar', src); updateRobinStatus('Аватар обновлён'); avatarSelector.style.display = 'none'; });
+            img.addEventListener('click', () => {
+                profileAvatarSmall.src = src;
+                document.getElementById('robin-avatar').src = src;
+                localStorage.setItem('robinhood_avatar', src);
+                updateRobinStatus('Аватар обновлён');
+                avatarSelector.classList.remove('show');
+                overlay.classList.remove('show');
+            });
             avatarList.appendChild(img);
         });
     }
-    profileAvatar.addEventListener('click', () => { avatarSelector.style.display = avatarSelector.style.display === 'block' ? 'none' : 'block'; if (avatarSelector.style.display === 'block') loadAvatars(); });
 
     function loadContacts() {
         const contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
@@ -404,41 +458,32 @@
             confirmed.forEach(c => {
                 const div = document.createElement('div'); div.className = 'contact-item';
                 div.innerHTML = `<div class="contact-info"><img src="${c.avatar || 'assets/avatars/001-.png'}" class="contact-avatar"><span class="contact-name">${c.name}</span></div><button class="delete-contact" data-pubkey="${c.pubkey}">✖</button>`;
-                div.querySelector('.contact-info').addEventListener('click', () => openChatWithContact(c));
-                div.querySelector('.delete-contact').addEventListener('click', (e) => { e.stopPropagation(); deleteContact(c.pubkey, e); });
+                div.querySelector('.contact-info').addEventListener('click', () => {
+                    openChatWithContact(c);
+                    closeAllPanels();
+                });
+                div.querySelector('.delete-contact').addEventListener('click', (e) => { e.stopPropagation(); deleteContact(c.pubkey); });
                 contactsListInner.appendChild(div);
             });
         } else {
-            contactsListInner.innerHTML = '<div style="padding:10px;color:#888;">Воспользуйся реферальной стрелой!</div>';
+            contactsListInner.innerHTML = '<div style="padding:10px;color:#888;">Контактов нет. Создайте стрелу!</div>';
         }
     }
 
-    function deleteContact(pubkey, event) {
-        event.stopPropagation();
+    function deleteContact(pubkey) {
         let contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
         contacts = contacts.filter(c => c.pubkey !== pubkey);
         localStorage.setItem('robinhood_contacts', JSON.stringify(contacts));
-        if (activeContact && activeContact.pubkey === pubkey) { activeContact = null; chatSwitcherBtn.style.display = 'none'; }
         loadContacts();
         updateRobinStatus('Стрелок уволен', 2000);
     }
 
     function openChatWithContact(contact) {
         activeContact = contact;
-        chatSwitcherLabel.textContent = contact.name;
-        chatSwitcherBtn.style.display = 'inline-flex';
-        msgInput.placeholder = "Выпустить стрелу " + contact.name + "...";
-        document.querySelectorAll(".message-row:not(#robin-row)").forEach(m => m.remove());
-        updateRobinStatus("Перестрелка с " + contact.name + " открыта", 3000);
-        contactsListDiv.style.display = "none";
-        drawer.classList.remove("open"); overlay.classList.remove("visible");
+        document.querySelectorAll('.message-row:not(#robin-row)').forEach(m => m.remove());
+        updateRobinStatus('Перестрелка с ' + contact.name + ' открыта', 3000);
         loadChatHistory(contact.pubkey);
     }
-
-    chatSwitcherBtn.addEventListener('click', () => {
-        if (chatSwitcher.classList.contains('open')) chatSwitcher.classList.remove('open');
-        else { populateChatSwitcher(); chatSwitcher.classList.add('open'); }
-    });
 
     async function populateChatSwitcher() {
         chatSwitcherList.innerHTML = '';
@@ -453,7 +498,7 @@
     }
 
     async function loadChatHistory(contactPubkey) {
-        if (toggleHistory.checked) {
+        if (toggleHistoryState) {
             const hist = await loadEncryptedHistory();
             hist.forEach(msg => {
                 if (msg.sender === contactPubkey || msg.recipient === contactPubkey)
@@ -462,67 +507,16 @@
         }
     }
 
-    let touchStartX = 0;
-    document.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; });
-    document.addEventListener('touchend', e => {
-        const deltaX = e.changedTouches[0].clientX - touchStartX;
-        if (Math.abs(deltaX) > 50) {
-            if (deltaX > 0 && !drawer.classList.contains('open')) { drawer.classList.add('open'); overlay.classList.add('visible'); }
-            else if (deltaX < 0 && drawer.classList.contains('open')) { drawer.classList.remove('open'); overlay.classList.remove('visible'); }
-        }
-    });
-
-    toggleHistory.addEventListener('change', async function() {
-        if (!this.checked) {
-            localStorage.removeItem('robinhood_history_key');
-            localStorage.removeItem('robinhood_chat_history');
-            historyEncryptionKey = null;
-            sessionSecret = null;
-            updateRobinStatus('Секреты уничтожены', 4000);
-        } else {
-            updateRobinStatus('Секреты сохранены', 4000);
-        }
-        localStorage.setItem('robinhood_history', this.checked);
-    });
-    toggleSound.addEventListener('change', function() { localStorage.setItem('robinhood_sound', this.checked); updateRobinStatus(this.checked ? 'Звук включён' : 'Выключен'); });
-    const savedHistory = localStorage.getItem('robinhood_history'); if (savedHistory !== null) toggleHistory.checked = savedHistory === 'true';
-    const savedSound = localStorage.getItem('robinhood_sound'); if (savedSound !== null) toggleSound.checked = savedSound === 'true';
-
-    let currentMenuContact = null;
-    function showDeleteConfirmation(pubkey, name) {
-        const confirmDiv = document.createElement('div');
-        confirmDiv.style = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#1F1F1F;border:1px solid #f44336;border-radius:12px;padding:20px;z-index:400;text-align:center;';
-        confirmDiv.innerHTML = `<p style="margin-bottom:15px;">Уверены, что хотите сжечь колчан с ${name}?</p>`;
-        const btnContainer = document.createElement('div'); btnContainer.style.display='flex'; btnContainer.style.justifyContent='center'; btnContainer.style.gap='15px';
-        const yesBtn = document.createElement('button'); yesBtn.textContent='✓ Да'; yesBtn.style.background='#2E7D32'; yesBtn.style.color='white'; yesBtn.style.border='none'; yesBtn.style.padding='10px 20px'; yesBtn.style.borderRadius='6px'; yesBtn.style.cursor='pointer';
-        yesBtn.addEventListener('click', () => { document.body.removeChild(confirmDiv); deleteContactAfterConfirm(pubkey, name); });
-        const noBtn = document.createElement('button'); noBtn.textContent='✕ Нет'; noBtn.style.background='#f44336'; noBtn.style.color='white'; noBtn.style.border='none'; noBtn.style.padding='10px 20px'; noBtn.style.borderRadius='6px'; noBtn.style.cursor='pointer';
-        noBtn.addEventListener('click', () => document.body.removeChild(confirmDiv));
-        btnContainer.appendChild(yesBtn); btnContainer.appendChild(noBtn);
-        confirmDiv.appendChild(btnContainer); document.body.appendChild(confirmDiv);
+    async function init() {
+        document.getElementById('pong-frame').src = 'https://stepweather-prog.github.io/P2PPong/?v=' + Date.now();
+        await loadKeys();
+        const savedHistory = localStorage.getItem('robinhood_history');
+        if (savedHistory !== null) toggleHistoryState = savedHistory === 'true';
+        const savedSound = localStorage.getItem('robinhood_sound');
+        if (savedSound !== null) toggleSoundState = savedSound === 'true';
+        updateRobinStatus('Ждём Понга...', 0);
     }
-    function showContactMenu(contact, element) {
-        const menuOpenTime = Date.now(); currentMenuContact = contact;
-        const menu = document.getElementById('contact-menu'); menu.style.display = 'block';
-        document.getElementById('menu-rename').onclick = () => { hideContactMenu(); const newName = prompt('Введите новое имя для лучника:', contact.name); if (newName && newName.trim()) { let contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]'); const c = contacts.find(c => c.pubkey === contact.pubkey); if (c) { c.name = newName.trim(); localStorage.setItem('robinhood_contacts', JSON.stringify(contacts)); loadContacts(); updateRobinStatus('Имя стрелка изменено!', 2000); } } };
-        document.getElementById('menu-avatar').onclick = () => { hideContactMenu(); };
-        document.getElementById('menu-delete').onclick = () => { hideContactMenu(); showDeleteConfirmation(contact.pubkey, contact.name); };
-        document.getElementById('menu-cancel').onclick = hideContactMenu;
-        setTimeout(() => {
-            const closeHandler = (e) => { if (Date.now() - menuOpenTime < 500) return; if (!menu.contains(e.target)) { hideContactMenu(); document.removeEventListener('click', closeHandler); } };
-            document.addEventListener('click', closeHandler);
-        }, 100);
-    }
-    function hideContactMenu() { document.getElementById('contact-menu').style.display = 'none'; currentMenuContact = null; }
-    function deleteContactAfterConfirm(pubkey, name) {
-        let contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
-        contacts = contacts.filter(c => c.pubkey !== pubkey);
-        localStorage.setItem('robinhood_contacts', JSON.stringify(contacts));
-        if (activeContact && activeContact.pubkey === pubkey) { activeContact = null; chatSwitcherBtn.style.display = 'none'; }
-        loadContacts();
-        updateRobinStatus(`Колчан с ${name} сожжён`, 3000);
-    }
-    function deleteContact(pubkey, event) { event.stopPropagation(); const contact = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]').find(c => c.pubkey === pubkey); if (contact) showDeleteConfirmation(pubkey, contact.name); }
+    window.addEventListener('load', init);
 </script>
 </body>
 </html>
