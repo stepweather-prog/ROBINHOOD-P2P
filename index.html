@@ -156,15 +156,18 @@
 </div>
 
 <!-- P2PPong — скрытый iframe, арбитр -->
-<iframe id="pong-frame" src="https://stepweather-prog.github.io/P2PPong/" style="display:none;"></iframe>
+<iframe id="pong-frame" src="https://stepweather-prog.github.io/P2PPong/?v=2" style="display:none;"></iframe>
 
 <script>
     // ========== СВЯЗЬ С P2PPong ==========
     const pongFrame = document.getElementById('pong-frame');
     let pongReady = false;
     let pongBusy = false;
+    let robinToken = null; // Токен для общения с Понгом
     
+    // Все команды к Понгу включают токен
     function sendToPong(msg) {
+        msg.robinToken = robinToken;
         pongFrame.contentWindow.postMessage(msg, '*');
     }
     
@@ -174,6 +177,8 @@
         
         switch(data.type) {
             case 'pong-ready':
+                // Сохраняем токен, полученный от Понга
+                robinToken = data.robinToken;
                 pongReady = true;
                 pongBusy = false;
                 updateRobinStatus('Понг готов к стрельбе!', 2000);
@@ -189,8 +194,6 @@
                 break;
                 
             case 'session-created':
-                // Понг создал сессию, вернул sessionId
-                // RobinHood сам собирает ссылку на себя
                 const link = window.location.origin + window.location.pathname + '?id=' + data.sessionId;
                 document.getElementById('ref-link-display').textContent = link;
                 document.getElementById('ref-modal').classList.add('active');
