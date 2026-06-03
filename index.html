@@ -214,10 +214,22 @@
                 if (navigator.share) navigator.share({ title:'RobinHood P2P', url: link }).catch(()=>{});
                 break;
             case 'channel-open':
-                sessionSecret = data.secret;
-                channelReady = true;
-                updateRobinStatus('✅ Колчан открыт!', 3000);
-                break;
+    sessionSecret = data.secret;
+    channelReady = true;
+    // Сохраняем контакт
+    const contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
+    const friendId = new URLSearchParams(window.location.search).get('id') || sessionSecret.substring(0, 12);
+    if (!contacts.find(c => c.pubkey === friendId)) {
+        contacts.push({
+            pubkey: friendId,
+            name: 'Друг',
+            avatar: 'assets/avatars/001-.png',
+            status: 'confirmed'
+        });
+        localStorage.setItem('robinhood_contacts', JSON.stringify(contacts));
+    }
+    updateRobinStatus('✅ Колчан открыт!', 3000);
+    break;
             case 'message':
                 appendMessage(data.sender || 'Друг', data.text, 'assets/avatars/001-.png');
                 if (toggleHistory.checked) {
