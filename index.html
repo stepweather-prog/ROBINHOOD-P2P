@@ -292,7 +292,7 @@
     document.querySelectorAll('.message-row:not(#robin-row)').forEach(m => m.remove());
     if (toggleHistoryState) await saveEncryptedHistory([]); else localStorage.removeItem('robinhood_chat_history');
     const anim = document.createElement('div');
-    anim.style.cssText = 'position:fixed;bottom:40px;left:25%;width:50%;height:60%;z-index:500;pointer-events:none;';
+    anim.style.cssText = 'position:fixed;bottom:60px;left:45%;width:40%;height:60%;z-index:500;pointer-events:none;';
     document.body.appendChild(anim);
     lottie.loadAnimation({
         container: anim,
@@ -301,8 +301,8 @@
         autoplay: true,
         path: 'assets/smoke.json'
     });
-    setTimeout(() => anim.remove(), 8500);
-    updateRobinStatus('Робин Гуд пустил ваши письма на самокрутки!', 7000);
+    setTimeout(() => anim.remove(), 6500);
+    updateRobinStatus('Робин Гуд пустил ваши письма на самокрутки!', 8000);
     if (toggleSoundState) { const a = new Audio('assets/sounds/clear cache.mp3'); a.volume=0.5; a.play().catch(()=>{}); }
 });
 
