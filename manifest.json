@@ -1,8 +1,8 @@
 {
-  "name": "RobinHood P2P",
+  "name":"ROBINHOOD-P2P",
   "short_name": "RobinHood",
-  "start_url": "/RobinHood-messenger/",
-  "scope": "/RobinHood-messenger/",
+  "start_url": "/ROBINHOOD-P2P/",
+  "scope": "/ROBINHOOD-P2P/",
   "display": "standalone",
   "background_color": "#121212",
   "theme_color": "#2E7D32",
