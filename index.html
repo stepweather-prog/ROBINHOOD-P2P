@@ -29,7 +29,15 @@
         
         .chat-area { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px; background: transparent; scrollbar-width: none; position: relative; z-index: 1; }
         .chat-area::-webkit-scrollbar { display: none; }
-        .message-row { display: flex; align-items: center; gap: 8px; background: rgba(31,31,31,0.9); padding: 8px; border-radius: 8px; backdrop-filter: blur(5px); }
+        .message-row { 
+    display: flex; 
+    align-items: center; 
+    gap: 8px; 
+    background: rgba(31,31,31,0.7); 
+    padding: 8px; 
+    border-radius: 8px; 
+    backdrop-filter: blur(5px); 
+}
         .input-area { background-color: rgba(31,31,31,0.95); padding: 8px; padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px)); display: flex; gap: 8px; align-items: center; border-top: 1px solid #333; backdrop-filter: blur(5px); position: relative; z-index: 1; }
         input { flex: 1; background: rgba(42,42,42,0.9); border: 1px solid #444; padding: 10px; color: white; border-radius: 6px; font-size: 16px; outline: none; }
         .bow-button { width: 40px; height: 40px; cursor: pointer; }
