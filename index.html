@@ -272,10 +272,11 @@
     document.getElementById('btn-sound').addEventListener('click', () => { toggleSoundState = !toggleSoundState; localStorage.setItem('robinhood_sound', toggleSoundState); updateRobinStatus(toggleSoundState ? 'Звук включён' : 'Звук выключен'); });
 
     document.getElementById('btn-clear').addEventListener('click', async () => {
-        document.querySelectorAll('.message-row:not(#robin-row)').forEach(m => m.remove());
-        if (toggleHistoryState) await saveEncryptedHistory([]); else localStorage.removeItem('robinhood_chat_history');
-        updateRobinStatus('Робин Гуд всё спалил!', 3000);
-    });
+    document.querySelectorAll('.message-row:not(#robin-row)').forEach(m => m.remove());
+    if (toggleHistoryState) await saveEncryptedHistory([]); else localStorage.removeItem('robinhood_chat_history');
+    updateRobinStatus('Робин Гуд пустил ваши письма на самокрутки!', 3000);
+    if (toggleSoundState) { const a = new Audio('assets/sounds/clear cache.mp3'); a.volume=0.5; a.play().catch(()=>{}); }
+});
 
     overlay.addEventListener('click', () => { avatarSelector.classList.remove('show'); overlay.classList.remove('show'); });
     function closeAll() { avatarSelector.classList.remove('show'); overlay.classList.remove('show'); }
