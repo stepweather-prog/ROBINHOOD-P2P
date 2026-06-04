@@ -8,87 +8,611 @@
     <meta http-equiv="Expires" content="0">
     <title>RobinHood P2P</title>
     <link rel="manifest" href="manifest.json">
-    <link rel="manifest" href="manifest.json">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.12.2/lottie.min.js"></script>
     <style>
-        html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; -webkit-text-size-adjust: 100%; }
-        body { background-color: #121212; color: #E0E0E0; font-family: sans-serif; display: flex; flex-direction: column; height: 100vh; height: 100dvh; position: relative; }
-        body::before { content: ""; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-image: url('assets/background.webp'); background-size: cover; background-position: center 30%; background-repeat: no-repeat; z-index: 0; }
-        @media (max-width: 500px) and (orientation: portrait) { body::before { background-position: center center; } }
-        body::after { content: ""; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 0; }
-        .header { background-color: rgba(31,31,31,0.95); border-bottom: 2px solid #2E7D32; backdrop-filter: blur(5px); z-index: 10; padding: 6px 10px; display: flex; flex-direction: column; gap: 2px; position: relative; }
-        .header-row-1 { display: flex; align-items: center; gap: 6px; }
-        .header-title-text { font-size: 1.2em; font-weight: bold; color: #4CAF50; }
-        .header-shield { font-size: 1em; }
-        .header-version { font-size: 0.65em; color: #888; }
-        .header-row-2 { display: flex; justify-content: space-around; align-items: center; }
-        .header-row-3 { display: flex; justify-content: space-around; }
-        .header-btn { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 8px; font-size: 22px; position: relative; }
-        .header-btn:hover { background: rgba(255,255,255,0.1); }
-        .header-label { font-size: 0.65em; color: #888; text-align: center; width: 40px; cursor: pointer; font-weight: bold; white-space: nowrap; }
-        .header-avatar { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; }
-        .chat-area { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px; background: transparent; scrollbar-width: none; position: relative; z-index: 1; }
-        .chat-area::-webkit-scrollbar { display: none; }
-        .message-row { display: flex; align-items: center; gap: 8px; background: rgba(31,31,31,0.9); padding: 8px; border-radius: 8px; backdrop-filter: blur(5px); }
-        .input-area { background-color: rgba(31,31,31,0.95); padding: 8px; padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px)); display: flex; gap: 8px; align-items: center; border-top: 1px solid #333; backdrop-filter: blur(5px); position: relative; z-index: 1; }
-        input { flex: 1; background: rgba(42,42,42,0.9); border: 1px solid #444; padding: 10px; color: white; border-radius: 6px; font-size: 16px; outline: none; }
-        .bow-button { width: 40px; height: 40px; cursor: pointer; }
-        .avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; background-color: #333; flex-shrink: 0; }
-        .msg-body { flex: 1; min-width: 0; }
-        .msg-sender { font-weight: bold; color: #4CAF50; font-size: 0.85em; }
-        .msg-status { font-size: 0.65em; color: #888; text-align: right; }
-        #robin-row { background: rgba(46,125,50,0.2); border-left: 3px solid #2E7D32; }
-        #robin-text { transition: opacity 0.6s ease; opacity: 1; font-size: 0.9em; }
-        .avatar-selector { display: none; position: fixed; top: 60px; left: 10px; right: 10px; max-height: 280px; overflow-y: auto; padding: 10px; background: rgba(20,20,20,0.98); border: 1px solid #2E7D32; border-radius: 10px; z-index: 200; text-align: center; }
-        .avatar-selector.show { display: block; }
-        .avatar-option { width: 45px; height: 45px; border-radius: 50%; object-fit: cover; margin: 4px; cursor: pointer; border: 2px solid transparent; }
-        .avatar-option:hover { border-color: #FFA000; }
-        .bottom-sheet { position: fixed; bottom: 0; left: 0; right: 0; max-height: 50vh; background: rgba(20,20,20,0.98); z-index: 150; border-top: 2px solid #2E7D32; border-radius: 16px 16px 0 0; transform: translateY(100%); transition: transform 0.3s ease; overflow-y: auto; padding: 10px 0; }
-        .bottom-sheet.open { transform: translateY(0); }
-        .bottom-sheet-header { padding: 8px 16px; font-weight: bold; color: #888; border-bottom: 1px solid #333; margin-bottom: 5px; font-size: 0.9em; display: flex; justify-content: space-between; align-items: center; }
-        .bottom-sheet-close { background: none; border: none; color: #888; font-size: 20px; cursor: pointer; }
-        .bottom-sheet-list { padding: 0 16px; }
-        .contact-item { display: flex; align-items: center; justify-content: space-between; padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.05); cursor: pointer; color: #E0E0E0; }
-        .contact-info { display: flex; align-items: center; gap: 8px; flex: 1; }
-        .contact-avatar { width: 35px; height: 35px; border-radius: 50%; object-fit: cover; }
-        .contact-name { font-weight: 600; font-size: 0.9em; }
-        .delete-contact { background: none; border: none; color: #f44336; font-size: 18px; cursor: pointer; padding: 0 8px; opacity: 0.7; }
-        .delete-contact:hover { opacity: 1; }
-        .invite-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 200; justify-content: center; align-items: center; }
-        .invite-modal.active { display: flex; }
-        .invite-dialog { background: #1F1F1F; padding: 20px; border-radius: 12px; width: 80%; max-width: 320px; text-align: center; border: 1px solid #2E7D32; max-height: 80vh; overflow-y: auto; }
-        .invite-dialog h3 { color: #4CAF50; margin: 0 0 10px; font-size: 1.1em; }
-        .invite-dialog button { width: 100%; padding: 10px; margin-top: 5px; background: #2E7D32; color: white; border: none; border-radius: 6px; font-size: 14px; font-weight: bold; cursor: pointer; }
-        .code-display { background: #121212; border: 1px solid #444; color: white; border-radius: 6px; padding: 10px; font-size: 0.8em; word-break: break-all; margin: 10px 0; text-align: center; user-select: all; }
-        .contact-menu { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); background: #1F1F1F; border: 1px solid #2E7D32; border-radius: 12px; padding: 10px; z-index: 300; min-width: 200px; box-shadow: 0 8px 20px rgba(0,0,0,0.6); }
-        .contact-menu-item { padding: 10px; cursor: pointer; border-radius: 6px; margin-bottom: 4px; font-size: 0.9em; }
-        .contact-menu-item:hover { background: rgba(255,255,255,0.1); }
-        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; z-index: 190; }
-        .overlay.show { display: block; }
-         .smoke-anim {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    height: 200px;
-    background: linear-gradient(to top, rgba(100,100,100,0.4), transparent);
-    z-index: 500;
-    animation: smoke 3s ease-out forwards;
-    pointer-events: none;
-}
-@keyframes smoke {
-    0% { opacity: 1; transform: translateY(0); }
-    100% { opacity: 0; transform: translateY(-150px); }
-}
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        html, body { 
+            margin: 0; 
+            padding: 0; 
+            height: 100%; 
+            overflow: hidden; 
+            -webkit-text-size-adjust: 100%; 
+        }
+
+        body { 
+            background: linear-gradient(135deg, #1a2a1f 0%, #0d1a0c 100%);
+            color: #e8e2c7; 
+            font-family: 'Segoe UI', 'Inter', 'Georgia', serif; 
+            display: flex; 
+            flex-direction: column; 
+            height: 100vh; 
+            height: 100dvh; 
+            position: relative; 
+        }
+
+        /* Фоновое изображение леса с наложением */
+        body::before { 
+            content: ""; 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            background-image: url('assets/background.webp'); 
+            background-size: cover; 
+            background-position: center 30%; 
+            background-repeat: no-repeat; 
+            z-index: 0; 
+            opacity: 0.4;
+        }
+
+        @media (max-width: 500px) and (orientation: portrait) { 
+            body::before { background-position: center center; } 
+        }
+
+        body::after { 
+            content: ""; 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            background: radial-gradient(circle at 20% 30%, rgba(30,40,25,0.65), rgba(10,20,8,0.85));
+            z-index: 0; 
+        }
+
+        /* Хедер в средневековом стиле */
+        .header { 
+            background: linear-gradient(135deg, rgba(25,35,20,0.96), rgba(15,25,12,0.98));
+            border-bottom: 2px solid #c4a24b;
+            backdrop-filter: blur(8px);
+            z-index: 10; 
+            padding: 8px 12px; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 6px; 
+            position: relative;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+
+        .header-row-1 { 
+            display: flex; 
+            align-items: center; 
+            gap: 8px; 
+        }
+
+        .header-title-text { 
+            font-size: 1.3em; 
+            font-weight: bold; 
+            background: linear-gradient(135deg, #e8d5a3, #c4a24b);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            letter-spacing: 1px;
+        }
+
+        .header-shield { 
+            font-size: 1.1em; 
+            filter: drop-shadow(0 0 3px rgba(196,162,75,0.5));
+        }
+
+        .header-version { 
+            font-size: 0.65em; 
+            color: #9b8e6e; 
+        }
+
+        .header-row-2 { 
+            display: flex; 
+            justify-content: space-around; 
+            align-items: center; 
+        }
+
+        .header-row-3 { 
+            display: flex; 
+            justify-content: space-around; 
+        }
+
+        .header-btn { 
+            width: 44px; 
+            height: 44px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            cursor: pointer; 
+            border-radius: 12px; 
+            font-size: 22px; 
+            position: relative;
+            transition: all 0.2s ease;
+            background: rgba(196,162,75,0.1);
+            border: 1px solid rgba(196,162,75,0.3);
+        }
+
+        .header-btn:hover { 
+            background: rgba(196,162,75,0.25);
+            transform: scale(1.05);
+            border-color: #c4a24b;
+        }
+
+        .header-label { 
+            font-size: 0.6em; 
+            color: #b8a87a; 
+            text-align: center; 
+            width: 44px; 
+            cursor: pointer; 
+            font-weight: bold; 
+            white-space: nowrap;
+            letter-spacing: 0.5px;
+        }
+
+        .header-avatar { 
+            width: 34px; 
+            height: 34px; 
+            border-radius: 50%; 
+            object-fit: cover;
+            border: 2px solid #c4a24b;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+
+        /* Область чата с полупрозрачным фоном */
+        .chat-area { 
+            flex: 1; 
+            overflow-y: auto; 
+            padding: 12px; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 10px; 
+            background: rgba(10,18,8,0.35);
+            scrollbar-width: none; 
+            position: relative; 
+            z-index: 1; 
+        }
+
+        .chat-area::-webkit-scrollbar { 
+            display: none; 
+        }
+
+        /* Стили сообщений в стиле пергамент */
+        .message-row { 
+            display: flex; 
+            align-items: center; 
+            gap: 10px; 
+            background: rgba(30,40,25,0.85);
+            backdrop-filter: blur(8px);
+            padding: 10px 12px; 
+            border-radius: 16px;
+            border-left: 3px solid #c4a24b;
+            transition: all 0.2s ease;
+            animation: messageSlideIn 0.3s ease;
+        }
+
+        @keyframes messageSlideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .input-area { 
+            background: linear-gradient(135deg, rgba(25,35,20,0.96), rgba(15,25,12,0.98));
+            backdrop-filter: blur(8px);
+            padding: 10px; 
+            padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)); 
+            display: flex; 
+            gap: 10px; 
+            align-items: center; 
+            border-top: 1px solid #c4a24b;
+            position: relative; 
+            z-index: 1; 
+        }
+
+        input { 
+            flex: 1; 
+            background: rgba(20,30,18,0.9);
+            border: 1px solid #c4a24b;
+            padding: 12px; 
+            color: #e8e2c7; 
+            border-radius: 12px; 
+            font-size: 16px; 
+            outline: none;
+            font-family: 'Segoe UI', 'Inter', monospace;
+            transition: all 0.2s;
+        }
+
+        input:focus {
+            border-color: #e8c97a;
+            box-shadow: 0 0 8px rgba(196,162,75,0.3);
+            background: rgba(25,38,22,0.95);
+        }
+
+        .bow-button { 
+            width: 44px; 
+            height: 44px; 
+            cursor: pointer;
+            transition: transform 0.1s ease;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+        }
+
+        .bow-button:active {
+            transform: scale(0.92);
+        }
+
+        .avatar { 
+            width: 44px; 
+            height: 44px; 
+            border-radius: 50%; 
+            object-fit: cover; 
+            background-color: #2a3a25;
+            flex-shrink: 0;
+            border: 2px solid #c4a24b;
+        }
+
+        .msg-body { 
+            flex: 1; 
+            min-width: 0; 
+        }
+
+        .msg-sender { 
+            font-weight: bold; 
+            color: #e8c97a; 
+            font-size: 0.85em; 
+        }
+
+        .msg-status { 
+            font-size: 0.65em; 
+            color: #9b8e6e; 
+            text-align: right; 
+            margin-top: 4px;
+        }
+
+        #robin-row { 
+            background: rgba(50,70,40,0.9);
+            border-left: 3px solid #e8c97a;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+        }
+
+        /* Стили для всех трёх боковых меню (выезд слева) */
+        .bottom-sheet, .avatar-selector {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: min(85%, 380px);
+            height: 100%;
+            background: linear-gradient(145deg, #1e2a1a 0%, #0f180d 100%);
+            border-right: 2px solid #c4a24b;
+            z-index: 200;
+            transform: translateX(-100%);
+            transition: transform 0.35s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+            overflow-y: auto;
+            backdrop-filter: blur(16px);
+            box-shadow: 8px 0 30px rgba(0,0,0,0.5);
+        }
+
+        .bottom-sheet.open, .avatar-selector.show {
+            transform: translateX(0);
+        }
+
+        .bottom-sheet-header {
+            padding: 20px 20px 12px;
+            font-weight: bold;
+            color: #e8c97a;
+            border-bottom: 1px solid #c4a24b;
+            margin-bottom: 8px;
+            font-size: 1.1em;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(0,0,0,0.2);
+        }
+
+        .bottom-sheet-close {
+            background: none;
+            border: none;
+            color: #e8c97a;
+            font-size: 26px;
+            cursor: pointer;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .bottom-sheet-close:hover {
+            background: rgba(196,162,75,0.2);
+            transform: rotate(90deg);
+        }
+
+        .bottom-sheet-list {
+            padding: 8px 16px;
+        }
+
+        .contact-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px;
+            margin: 6px 0;
+            border-radius: 14px;
+            background: rgba(255,245,215,0.05);
+            border: 1px solid rgba(196,162,75,0.3);
+            cursor: pointer;
+            color: #e8e2c7;
+            transition: all 0.2s;
+        }
+
+        .contact-item:hover {
+            background: rgba(196,162,75,0.15);
+            border-color: #c4a24b;
+            transform: translateX(5px);
+        }
+
+        .contact-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex: 1;
+        }
+
+        .contact-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #c4a24b;
+        }
+
+        .contact-name {
+            font-weight: 600;
+            font-size: 1em;
+            color: #e8d5a3;
+        }
+
+        .delete-contact {
+            background: none;
+            border: none;
+            color: #c97a5a;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+
+        .delete-contact:hover {
+            background: rgba(201,122,90,0.2);
+            transform: scale(1.1);
+        }
+
+        /* Меню аватаров */
+        .avatar-selector {
+            padding: 20px;
+        }
+
+        .avatar-selector p {
+            color: #e8c97a;
+            margin: 0 0 16px;
+            font-size: 1.1em;
+            text-align: center;
+        }
+
+        #avatar-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+        }
+
+        .avatar-option {
+            width: 55px;
+            height: 55px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin: 4px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .avatar-option:hover {
+            border-color: #e8c97a;
+            transform: scale(1.1);
+        }
+
+        /* Оверлей */
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(4px);
+            display: none;
+            z-index: 190;
+        }
+
+        .overlay.show {
+            display: block;
+        }
+
+        /* Модальное окно приглашения */
+        .invite-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(8px);
+            z-index: 300;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .invite-modal.active {
+            display: flex;
+        }
+
+        .invite-dialog {
+            background: linear-gradient(135deg, #1e2a1a, #0f180d);
+            padding: 24px;
+            border-radius: 24px;
+            width: 85%;
+            max-width: 340px;
+            text-align: center;
+            border: 2px solid #c4a24b;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+        }
+
+        .invite-dialog h3 {
+            color: #e8c97a;
+            margin: 0 0 16px;
+            font-size: 1.3em;
+        }
+
+        .invite-dialog button {
+            width: 100%;
+            padding: 12px;
+            margin-top: 8px;
+            background: linear-gradient(135deg, #c4a24b, #a07e32);
+            color: #1a1f0f;
+            border: none;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .invite-dialog button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+
+        .code-display {
+            background: #0a1208;
+            border: 1px solid #c4a24b;
+            color: #e8d5a3;
+            border-radius: 12px;
+            padding: 12px;
+            font-size: 0.8em;
+            word-break: break-all;
+            margin: 16px 0;
+            text-align: center;
+            user-select: all;
+            font-family: monospace;
+        }
+
+        /* Контекстное меню */
+        .contact-menu {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, #1e2a1a, #0f180d);
+            border: 2px solid #c4a24b;
+            border-radius: 20px;
+            padding: 12px;
+            z-index: 400;
+            min-width: 240px;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+        }
+
+        .contact-menu-item {
+            padding: 12px;
+            cursor: pointer;
+            border-radius: 12px;
+            margin-bottom: 6px;
+            font-size: 0.95em;
+            color: #e8e2c7;
+            transition: all 0.2s;
+        }
+
+        .contact-menu-item:hover {
+            background: rgba(196,162,75,0.2);
+            transform: translateX(5px);
+        }
+
+        #menu-cancel {
+            background: #4a3a2a;
+            border: none;
+            padding: 10px;
+            border-radius: 10px;
+            color: white;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 8px;
+        }
+
+        /* Анимация дыма (увеличенная, по центру чата) */
+        .smoke-anim {
+            position: fixed;
+            bottom: 50%;
+            left: 50%;
+            transform: translate(-50%, 50%);
+            width: 280px;
+            height: 280px;
+            z-index: 500;
+            pointer-events: none;
+            animation: smokeRise 3s ease-out forwards;
+        }
+
+        @keyframes smokeRise {
+            0% {
+                opacity: 1;
+                transform: translate(-50%, 50%) scale(0.5);
+            }
+            100% {
+                opacity: 0;
+                transform: translate(-50%, -100%) scale(1.5);
+            }
+        }
+
+        /* Анимация отправки стрелы */
+        @keyframes arrowShot {
+            0% {
+                transform: translateX(0) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: translateX(100px) rotate(45deg);
+                opacity: 0;
+            }
+        }
+
+        .arrow-effect {
+            position: fixed;
+            bottom: 80px;
+            right: 20px;
+            font-size: 32px;
+            pointer-events: none;
+            z-index: 600;
+            animation: arrowShot 0.4s ease-out forwards;
+        }
     </style>
 </head>
 <body>
 <div class="header">
     <div class="header-row-1">
         <span class="header-title-text">ROBINHOOD P2P</span>
-        <span class="header-shield">🛡️</span>
+        <span class="header-shield">🏹</span>
         <span style="flex:1;"></span>
-        <a href="https://github.com/stepweather-prog/ROBINHOOD-P2P/blob/main/README.md" target="_blank" style="font-size:0.55em;color:#555;">условия</a>
+        <a href="https://github.com/stepweather-prog/ROBINHOOD-P2P/blob/main/README.md" target="_blank" style="font-size:0.55em;color:#b8a87a;">условия</a>
         <span class="header-version">v2.0</span>
     </div>
     <div class="header-row-2">
@@ -124,24 +648,24 @@
 </div>
 
 <div class="overlay" id="overlay"></div>
-<div class="avatar-selector" id="avatar-selector"><p style="color:#888;margin:0 0 8px;">Выбери лучника</p><div id="avatar-list"></div></div>
+<div class="avatar-selector" id="avatar-selector"><p>🏹 Выбери лучника 🏹</p><div id="avatar-list"></div></div>
 
 <div class="bottom-sheet" id="contacts-sheet">
-    <div class="bottom-sheet-header"><span>Лучники</span><button class="bottom-sheet-close" id="contacts-close">✕</button></div>
+    <div class="bottom-sheet-header"><span>🏹 Лучники Шервуда</span><button class="bottom-sheet-close" id="contacts-close">✕</button></div>
     <div class="bottom-sheet-list" id="contacts-list-inner"></div>
 </div>
 
 <div class="bottom-sheet" id="chats-sheet">
-    <div class="bottom-sheet-header"><span>Перестрелки</span><button class="bottom-sheet-close" id="chats-close">✕</button></div>
+    <div class="bottom-sheet-header"><span>🏹 Перестрелки</span><button class="bottom-sheet-close" id="chats-close">✕</button></div>
     <div class="bottom-sheet-list" id="chat-switcher-list"></div>
 </div>
 
 <div class="invite-modal" id="ref-modal">
     <div class="invite-dialog">
-        <h3>Стрела готова</h3>
+        <h3>🏹 Стрела готова 🏹</h3>
         <div class="code-display" id="ref-link-display"></div>
         <button id="share-ref-link-btn">Поделиться...</button>
-        <button id="close-ref-modal-btn" style="background:#555;margin-top:5px;">Закрыть</button>
+        <button id="close-ref-modal-btn" style="background:#4a3a2a;margin-top:5px;">Закрыть</button>
     </div>
 </div>
 
@@ -149,7 +673,7 @@
     <div class="contact-menu-item" id="menu-rename">✎ Переименовать</div>
     <div class="contact-menu-item" id="menu-avatar">🖼 Сменить аватар</div>
     <div class="contact-menu-item" id="menu-delete">🔥 Уволить лучника!</div>
-    <button id="menu-cancel" style="width:100%;margin-top:5px;background:#555;border:none;padding:8px;border-radius:6px;color:white;">Отмена</button>
+    <button id="menu-cancel">Отмена</button>
 </div>
 
 <iframe id="pong-frame" src="" style="display:none;"></iframe>
@@ -254,8 +778,8 @@
     const savedNick = localStorage.getItem('robinhood_nick'); if (savedNick) nickLabel.textContent = savedNick.substring(0, 10);
 
     document.getElementById('btn-avatar').addEventListener('click', () => {
-        if (avatarSelector.classList.contains('show')) { avatarSelector.classList.remove('show'); overlay.classList.remove('show'); }
-        else { closeAll(); loadAvatars(); avatarSelector.classList.add('show'); overlay.classList.add('show'); }
+        if (avatarSelector.classList.contains('show')) { closeAllSheets(); }
+        else { closeAllSheets(); loadAvatars(); avatarSelector.classList.add('show'); overlay.classList.add('show'); }
     });
     nickLabel.addEventListener('click', () => {
         const newNick = prompt('Новый ник (макс. 10):', nickLabel.textContent);
@@ -263,16 +787,16 @@
     });
 
     document.getElementById('btn-letters').addEventListener('click', () => {
-        if (contactsSheet.classList.contains('open')) { contactsSheet.classList.remove('open'); }
-        else { loadContacts(); contactsSheet.classList.add('open'); chatsSheet.classList.remove('open'); }
+        if (contactsSheet.classList.contains('open')) { contactsSheet.classList.remove('open'); overlay.classList.remove('show'); }
+        else { closeAllSheets(); loadContacts(); contactsSheet.classList.add('open'); overlay.classList.add('show'); }
     });
-    document.getElementById('contacts-close').addEventListener('click', () => contactsSheet.classList.remove('open'));
+    document.getElementById('contacts-close').addEventListener('click', () => { contactsSheet.classList.remove('open'); overlay.classList.remove('show'); });
 
     document.getElementById('btn-chats').addEventListener('click', () => {
-        if (chatsSheet.classList.contains('open')) { chatsSheet.classList.remove('open'); }
-        else { populateChatSwitcher(); chatsSheet.classList.add('open'); contactsSheet.classList.remove('open'); }
+        if (chatsSheet.classList.contains('open')) { chatsSheet.classList.remove('open'); overlay.classList.remove('show'); }
+        else { closeAllSheets(); populateChatSwitcher(); chatsSheet.classList.add('open'); overlay.classList.add('show'); }
     });
-    document.getElementById('chats-close').addEventListener('click', () => chatsSheet.classList.remove('open'));
+    document.getElementById('chats-close').addEventListener('click', () => { chatsSheet.classList.remove('open'); overlay.classList.remove('show'); });
 
     document.getElementById('btn-arrow').addEventListener('click', () => {
         if (!handshakeSecret && Object.keys(channels).length === 0) { updateRobinStatus('Колчан ещё не готов', 2000); return; }
@@ -288,26 +812,35 @@
 
     document.getElementById('btn-sound').addEventListener('click', () => { toggleSoundState = !toggleSoundState; localStorage.setItem('robinhood_sound', toggleSoundState); updateRobinStatus(toggleSoundState ? 'Звук включён' : 'Звук выключен'); });
 
-   document.getElementById('btn-clear').addEventListener('click', async () => {
-    document.querySelectorAll('.message-row:not(#robin-row)').forEach(m => m.remove());
-    if (toggleHistoryState) await saveEncryptedHistory([]); else localStorage.removeItem('robinhood_chat_history');
-    const anim = document.createElement('div');
-    anim.style.cssText = 'position:fixed;bottom:60px;left:45%;width:40%;height:60%;z-index:500;pointer-events:none;';
-    document.body.appendChild(anim);
-    lottie.loadAnimation({
-        container: anim,
-        renderer: 'canvas',
-        loop: true,
-        autoplay: true,
-        path: 'assets/smoke.json'
+    document.getElementById('btn-clear').addEventListener('click', async () => {
+        document.querySelectorAll('.message-row:not(#robin-row)').forEach(m => m.remove());
+        if (toggleHistoryState) await saveEncryptedHistory([]); else localStorage.removeItem('robinhood_chat_history');
+        
+        // Увеличенная анимация дыма по центру чата
+        const anim = document.createElement('div');
+        anim.classList.add('smoke-anim');
+        document.body.appendChild(anim);
+        lottie.loadAnimation({
+            container: anim,
+            renderer: 'canvas',
+            loop: true,
+            autoplay: true,
+            path: 'assets/smoke.json'
+        });
+        setTimeout(() => anim.remove(), 6500);
+        updateRobinStatus('Робин Гуд пустил ваши письма на самокрутки!', 8000);
+        if (toggleSoundState) { const a = new Audio('assets/sounds/clear cache.mp3'); a.volume=0.5; a.play().catch(()=>{}); }
     });
-    setTimeout(() => anim.remove(), 6500);
-    updateRobinStatus('Робин Гуд пустил ваши письма на самокрутки!', 8000);
-    if (toggleSoundState) { const a = new Audio('assets/sounds/clear cache.mp3'); a.volume=0.5; a.play().catch(()=>{}); }
-});
 
-    overlay.addEventListener('click', () => { avatarSelector.classList.remove('show'); overlay.classList.remove('show'); });
-    function closeAll() { avatarSelector.classList.remove('show'); overlay.classList.remove('show'); }
+    // Закрытие всех меню и оверлея
+    function closeAllSheets() {
+        avatarSelector.classList.remove('show');
+        contactsSheet.classList.remove('open');
+        chatsSheet.classList.remove('open');
+        overlay.classList.remove('show');
+    }
+
+    overlay.addEventListener('click', closeAllSheets);
 
     document.getElementById('share-ref-link-btn').addEventListener('click', () => { const link = document.getElementById('ref-link-display').textContent; if (link && navigator.share) navigator.share({ title:'RobinHood P2P', url: link }); });
     document.getElementById('close-ref-modal-btn').addEventListener('click', () => document.getElementById('ref-modal').classList.remove('active'));
@@ -315,10 +848,20 @@
     function sendMessageHandler() {
         const text = msgInput.value.trim(); if (!text) return;
         if (!activeChannelId || !channels[activeChannelId]) { updateRobinStatus('Нет активного колчана.', 2000); return; }
-            sendToPong({ action: 'send', text: text, channelId: activeChannelId });
-    appendMessage('Вы', text, profileAvatarSmall.src); msgInput.value = '';
-    if (toggleSoundState) playSound('shot.mp3');
-}
+        sendToPong({ action: 'send', text: text, channelId: activeChannelId });
+        appendMessage('Вы', text, profileAvatarSmall.src);
+        msgInput.value = '';
+        
+        // Анимация стрелы при отправке (синхронно со звуком)
+        const arrowDiv = document.createElement('div');
+        arrowDiv.classList.add('arrow-effect');
+        arrowDiv.textContent = '🏹';
+        document.body.appendChild(arrowDiv);
+        setTimeout(() => arrowDiv.remove(), 400);
+        
+        if (toggleSoundState) playSound('shot.mp3');
+    }
+
     document.getElementById('send-btn').addEventListener('click', sendMessageHandler);
     msgInput.addEventListener('keypress', e => { if (e.key === 'Enter') sendMessageHandler(); });
 
@@ -337,33 +880,73 @@
     function playSound(filename) { if (toggleSoundState) { const a = new Audio(`assets/sounds/${filename}`); a.volume=0.5; a.play().catch(()=>{}); } }
 
     const avatars = ['assets/avatars/001-.png','assets/avatars/002--1.png','assets/avatars/003-icon-8033085.png','assets/avatars/009--7.png','assets/avatars/010--8.png','assets/avatars/018--16.png','assets/avatars/022--20.png','assets/avatars/037--35.png','assets/avatars/043--41.png','assets/avatars/048--46.png','assets/avatars/050--48.png','assets/avatars/052--50.png','assets/avatars/053--51.png','assets/avatars/056--54.png','assets/avatars/066--64.png','assets/avatars/077-icon-8033092.png','assets/avatars/083-icon-11885568.png','assets/avatars/094-icon-18926716.png','assets/avatars/108--83.png','assets/avatars/147-icon-6081840.png','assets/avatars/148-icon-5532632.png','assets/avatars/149-icon-4132697.png','assets/avatars/150-icon-10756654.png','assets/avatars/153-icon-4964924.png','assets/avatars/154-icon-4261075.png','assets/avatars/156-icon-4132828.png','assets/avatars/158--116.png','assets/avatars/160-icon-2332597.png','assets/avatars/162-icon-6237595.png','assets/avatars/167-icon-1920840.png','assets/avatars/168-icon-228268.png','assets/avatars/169-icon-5613167.png','assets/avatars/173-icon-1615623.png','assets/avatars/183-icon-5840846.png','assets/avatars/186-icon-6237499.png','assets/avatars/188-icon-6267517.png','assets/avatars/203-icon-3516506.png','assets/avatars/216-icon-5504960.png','assets/avatars/221-icon-9530256.png','assets/avatars/226-icon-9669507.png','assets/avatars/227-icon-9623471.png','assets/avatars/229-icon-10032172.png','assets/avatars/230-icon-10049316.png','assets/avatars/232-icon-11434002.png','assets/avatars/234-icon-10756328.png','assets/avatars/245-icon-16150697.png','assets/avatars/246-icon-16150730.png','assets/avatars/249-icon-17159913.png','assets/avatars/250-icon-17159758.png','assets/avatars/251-icon-17159744.png','assets/avatars/253-icon-18426073.png','assets/avatars/254-icon-18621065.png','assets/avatars/255-icon-18926692.png','assets/avatars/256--120.png'];
+    
     function loadAvatars() {
-        avatarList.innerHTML = ''; avatars.forEach(src => { const img = document.createElement('img'); img.src = src; img.className = 'avatar-option'; img.addEventListener('click', () => { profileAvatarSmall.src = src; document.getElementById('robin-avatar').src = src; localStorage.setItem('robinhood_avatar', src); updateRobinStatus('Аватар обновлён'); avatarSelector.classList.remove('show'); overlay.classList.remove('show'); }); avatarList.appendChild(img); });
+        avatarList.innerHTML = ''; avatars.forEach(src => { const img = document.createElement('img'); img.src = src; img.className = 'avatar-option'; img.addEventListener('click', () => { profileAvatarSmall.src = src; document.getElementById('robin-avatar').src = src; localStorage.setItem('robinhood_avatar', src); updateRobinStatus('Аватар обновлён'); closeAllSheets(); }); avatarList.appendChild(img); });
     }
+    
     function loadAvatarsForFriend(contact) {
-        avatarList.innerHTML = ''; avatars.forEach(src => { const img = document.createElement('img'); img.src = src; img.className = 'avatar-option'; img.addEventListener('click', () => { let contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]'); const c = contacts.find(c => c.pubkey === contact.pubkey); if (c) { c.avatar = src; localStorage.setItem('robinhood_contacts', JSON.stringify(contacts)); loadContacts(); } avatarSelector.classList.remove('show'); overlay.classList.remove('show'); }); avatarList.appendChild(img); });
+        avatarList.innerHTML = ''; avatars.forEach(src => { const img = document.createElement('img'); img.src = src; img.className = 'avatar-option'; img.addEventListener('click', () => { let contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]'); const c = contacts.find(c => c.pubkey === contact.pubkey); if (c) { c.avatar = src; localStorage.setItem('robinhood_contacts', JSON.stringify(contacts)); loadContacts(); } closeAllSheets(); }); avatarList.appendChild(img); });
         avatarSelector.classList.add('show'); overlay.classList.add('show');
     }
 
     function loadContacts() {
         const contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]'); const confirmed = contacts.filter(c => c.status === 'confirmed'); contactsListInner.innerHTML = '';
-        if (confirmed.length) { confirmed.forEach(c => { const div = document.createElement('div'); div.className = 'contact-item'; div.innerHTML = `<div class="contact-info"><img src="${c.avatar || 'assets/avatars/001-.png'}" class="contact-avatar"><span class="contact-name">${c.name}</span></div><button class="delete-contact" data-pubkey="${c.pubkey}">✖</button>`; div.querySelector('.contact-info').addEventListener('click', () => { activeChannelId = c.pubkey; openChatWithContact(c); contactsSheet.classList.remove('open'); }); div.querySelector('.delete-contact').addEventListener('click', (e) => { e.stopPropagation(); if (confirm('Убить лучника '+c.name+'?')) deleteContact(c.pubkey); }); let pressTimer; div.addEventListener('mousedown', () => { pressTimer = setTimeout(() => showContactMenu(c), 600); }); div.addEventListener('mouseup', () => clearTimeout(pressTimer)); div.addEventListener('mouseleave', () => clearTimeout(pressTimer)); div.addEventListener('touchstart', () => { pressTimer = setTimeout(() => showContactMenu(c), 600); }, { passive: true }); div.addEventListener('touchend', () => clearTimeout(pressTimer)); div.addEventListener('touchmove', () => clearTimeout(pressTimer)); contactsListInner.appendChild(div); }); } else { updateRobinStatus('Лучников нет! Создайте стрелу!', 3000); }
+        if (confirmed.length) { confirmed.forEach(c => { const div = document.createElement('div'); div.className = 'contact-item'; div.innerHTML = `<div class="contact-info"><img src="${c.avatar || 'assets/avatars/001-.png'}" class="contact-avatar"><span class="contact-name">${c.name}</span></div><button class="delete-contact" data-pubkey="${c.pubkey}">✖</button>`; div.querySelector('.contact-info').addEventListener('click', () => { activeChannelId = c.pubkey; openChatWithContact(c); contactsSheet.classList.remove('open'); overlay.classList.remove('show'); }); div.querySelector('.delete-contact').addEventListener('click', (e) => { e.stopPropagation(); if (confirm('Убить лучника '+c.name+'?')) deleteContact(c.pubkey); }); let pressTimer; div.addEventListener('mousedown', () => { pressTimer = setTimeout(() => showContactMenu(c), 600); }); div.addEventListener('mouseup', () => clearTimeout(pressTimer)); div.addEventListener('mouseleave', () => clearTimeout(pressTimer)); div.addEventListener('touchstart', () => { pressTimer = setTimeout(() => showContactMenu(c), 600); }, { passive: true }); div.addEventListener('touchend', () => clearTimeout(pressTimer)); div.addEventListener('touchmove', () => clearTimeout(pressTimer)); contactsListInner.appendChild(div); }); } else { updateRobinStatus('Лучников нет! Создайте стрелу!', 3000); }
     }
 
     function deleteContact(pubkey) { let contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]'); contacts = contacts.filter(c => c.pubkey !== pubkey); localStorage.setItem('robinhood_contacts', JSON.stringify(contacts)); if (activeChannelId === pubkey) { delete channels[pubkey]; activeChannelId = Object.keys(channels)[0] || null; } loadContacts(); updateRobinStatus('Стрелок уволен', 2000); }
+    
     function openChatWithContact(contact) { activeContact = contact; document.querySelectorAll('.message-row:not(#robin-row)').forEach(m => m.remove()); updateRobinStatus('Перестрелка с '+contact.name+' открыта', 3000); loadChatHistory(contact.pubkey); }
 
     function populateChatSwitcher() {
         chatSwitcherList.innerHTML = ''; const contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]').filter(c => c.status === 'confirmed');
         if (!contacts.length) { updateRobinStatus('Нет перестрелок!', 3000); return; }
-        contacts.forEach(c => { const div = document.createElement('div'); div.className = 'contact-item'; div.innerHTML = `<div class="contact-info"><img src="${c.avatar || 'assets/avatars/001-.png'}" class="contact-avatar"><span class="contact-name">${c.name}</span></div>`; div.addEventListener('click', () => { activeChannelId = c.pubkey; chatsSheet.classList.remove('open'); openChatWithContact(c); }); chatSwitcherList.appendChild(div); });
+        contacts.forEach(c => { const div = document.createElement('div'); div.className = 'contact-item'; div.innerHTML = `<div class="contact-info"><img src="${c.avatar || 'assets/avatars/001-.png'}" class="contact-avatar"><span class="contact-name">${c.name}</span></div>`; div.addEventListener('click', () => { activeChannelId = c.pubkey; chatsSheet.classList.remove('open'); overlay.classList.remove('show'); openChatWithContact(c); }); chatSwitcherList.appendChild(div); });
     }
 
     async function loadChatHistory(contactPubkey) { if (toggleHistoryState) { const hist = await loadEncryptedHistory(); hist.forEach(msg => { if (msg.sender === contactPubkey || msg.recipient === contactPubkey) appendMessage(msg.sender === myPubkey ? 'Вы' : (msg.senderName || msg.sender.slice(0,8)), msg.text, msg.avatar || 'assets/avatars/001-.png', msg.time); }); } }
 
     let currentMenuContact = null;
     function showContactMenu(contact) { currentMenuContact = contact; const menu = document.getElementById('contact-menu'); menu.style.display = 'block'; document.getElementById('menu-rename').onclick = () => { hideContactMenu(); const newName = prompt('Новое имя:', contact.name); if (newName && newName.trim()) { let contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]'); const c = contacts.find(c => c.pubkey === contact.pubkey); if (c) { c.name = newName.trim().substring(0, 15); localStorage.setItem('robinhood_contacts', JSON.stringify(contacts)); loadContacts(); } } }; document.getElementById('menu-avatar').onclick = () => { hideContactMenu(); loadAvatarsForFriend(contact); }; document.getElementById('menu-delete').onclick = () => { hideContactMenu(); if (confirm('Убить лучника '+contact.name+'?')) deleteContact(contact.pubkey); }; document.getElementById('menu-cancel').onclick = hideContactMenu; }
+    
     function hideContactMenu() { document.getElementById('contact-menu').style.display = 'none'; currentMenuContact = null; }
+
+    // ============= СВАЙП ДЛЯ ЗАКРЫТИЯ МЕНЮ (работает везде) =============
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let activeSheet = null;
+    
+    function getActiveSheet() {
+        if (avatarSelector.classList.contains('show')) return avatarSelector;
+        if (contactsSheet.classList.contains('open')) return contactsSheet;
+        if (chatsSheet.classList.contains('open')) return chatsSheet;
+        return null;
+    }
+    
+    document.body.addEventListener('touchstart', (e) => {
+        activeSheet = getActiveSheet();
+        if (activeSheet) {
+            touchStartX = e.changedTouches[0].clientX;
+            touchStartY = e.changedTouches[0].clientY;
+        }
+    }, { passive: true });
+    
+    document.body.addEventListener('touchmove', (e) => {
+        if (!activeSheet) return;
+        const deltaX = e.changedTouches[0].clientX - touchStartX;
+        const deltaY = e.changedTouches[0].clientY - touchStartY;
+        if (deltaX < -35 && Math.abs(deltaY) < 80) {
+            e.preventDefault();
+            closeAllSheets();
+            activeSheet = null;
+            updateRobinStatus('↩️ Закрыто жестом', 1500);
+        }
+    });
+    
+    document.body.addEventListener('touchend', () => {
+        activeSheet = null;
+    });
 
     async function init() { document.getElementById('pong-frame').src = 'https://stepweather-prog.github.io/P2PPong/?v=' + Date.now(); await loadKeys(); const savedHistory = localStorage.getItem('robinhood_history'); if (savedHistory !== null) toggleHistoryState = savedHistory === 'true'; const savedSound = localStorage.getItem('robinhood_sound'); if (savedSound !== null) toggleSoundState = savedSound === 'true'; updateRobinStatus('Ждём колчан...', 0); }
     window.addEventListener('load', init);
