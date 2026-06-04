@@ -286,10 +286,10 @@
     function sendMessageHandler() {
         const text = msgInput.value.trim(); if (!text) return;
         if (!activeChannelId || !channels[activeChannelId]) { updateRobinStatus('Нет активного колчана.', 2000); return; }
-        sendToPong({ action: 'send', text: text, channelId: activeChannelId });
-        appendMessage('Вы', text, profileAvatarSmall.src); msgInput.value = '';
-    }
-
+            sendToPong({ action: 'send', text: text, channelId: activeChannelId });
+    appendMessage('Вы', text, profileAvatarSmall.src); msgInput.value = '';
+    if (toggleSoundState) playSound('shot.mp3');
+}
     document.getElementById('send-btn').addEventListener('click', sendMessageHandler);
     msgInput.addEventListener('keypress', e => { if (e.key === 'Enter') sendMessageHandler(); });
 
