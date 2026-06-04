@@ -288,11 +288,11 @@
 
     document.getElementById('btn-sound').addEventListener('click', () => { toggleSoundState = !toggleSoundState; localStorage.setItem('robinhood_sound', toggleSoundState); updateRobinStatus(toggleSoundState ? 'Звук включён' : 'Звук выключен'); });
 
-    document.getElementById('btn-clear').addEventListener('click', async () => {
+   document.getElementById('btn-clear').addEventListener('click', async () => {
     document.querySelectorAll('.message-row:not(#robin-row)').forEach(m => m.remove());
     if (toggleHistoryState) await saveEncryptedHistory([]); else localStorage.removeItem('robinhood_chat_history');
-        const anim = document.createElement('div');
-    anim.style.cssText = 'position:fixed;bottom:0;left:0;width:100%;height:100%;z-index:500;pointer-events:none;';
+    const anim = document.createElement('div');
+    anim.style.cssText = 'position:fixed;bottom:60px;left:10%;width:80%;height:40%;z-index:500;pointer-events:none;';
     document.body.appendChild(anim);
     lottie.loadAnimation({
         container: anim,
@@ -301,8 +301,8 @@
         autoplay: true,
         path: 'assets/smoke.json'
     });
-    setTimeout(() => anim.remove(), 4000);
-    updateRobinStatus('Робин Гуд пустил ваши письма на самокрутки!', 8500);
+    setTimeout(() => anim.remove(), 8500);
+    updateRobinStatus('Робин Гуд пустил ваши письма на самокрутки!', 7000);
     if (toggleSoundState) { const a = new Audio('assets/sounds/clear cache.mp3'); a.volume=0.5; a.play().catch(()=>{}); }
 });
 
