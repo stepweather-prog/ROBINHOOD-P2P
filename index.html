@@ -296,7 +296,7 @@
         if (!activeChannelId || !channels[activeChannelId]) { updateRobinStatus('Нет активного колчана.', 2000); return; }
         sendToPong({ action: 'send', text: text, channelId: activeChannelId });
         appendMessage('Вы', text, profileAvatarSmall.src); msgInput.value = '';
-        if (toggleSoundState) playSound('bow_shot.wav');
+        if (toggleSoundState) playSound('bow_shot.mp3');
         if (toggleHistoryState) { loadEncryptedHistory().then(hist => { hist.push({ text, sender: myPubkey, recipient: 'friend', senderName: nickLabel.textContent, avatar: profileAvatarSmall.src, time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) }); saveEncryptedHistory(hist); }); }
     }
 
