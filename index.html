@@ -848,14 +848,14 @@
     document.getElementById('share-ref-link-btn').addEventListener('click', () => { const link = document.getElementById('ref-link-display').textContent; if (link && navigator.share) navigator.share({ title:'RobinHood P2P', url: link }); });
     document.getElementById('close-ref-modal-btn').addEventListener('click', () => document.getElementById('ref-modal').classList.remove('active'));
 
-    let archerAnimation = null;
+        let archerAnimation = null;
     function playArcherAnimation() {
         const archerContainer = document.getElementById('archer-container');
         archerContainer.classList.add('active');
         if (archerAnimation) { archerAnimation.destroy(); }
         archerAnimation = lottie.loadAnimation({
             container: archerContainer,
-            renderer: 'svg',
+            renderer: 'canvas',  // ← поменял с 'svg' на 'canvas'
             loop: false,
             autoplay: true,
             path: 'assets/Archer.json',
@@ -865,7 +865,7 @@
         archerAnimation.addEventListener('complete', () => { archerContainer.classList.remove('active'); });
     }
     
-    let bowAnimation = null;
+        let bowAnimation = null;
     let currentArrowContainer = null;
     function playBowAnimation() {
         if (currentArrowContainer && currentArrowContainer.parentNode) { currentArrowContainer.parentNode.removeChild(currentArrowContainer); }
@@ -878,7 +878,7 @@
         robinText.appendChild(arrowWrapper);
         bowAnimation = lottie.loadAnimation({
             container: arrowWrapper,
-            renderer: 'svg',
+            renderer: 'canvas',  // ← поменял с 'svg' на 'canvas'
             loop: false,
             autoplay: true,
             path: 'assets/bow.json',
@@ -890,7 +890,6 @@
             currentArrowContainer = null;
         });
     }
-
     function sendMessageHandler() {
         const text = msgInput.value.trim(); if (!text) return;
         if (!activeChannelId || !channels[activeChannelId]) { updateRobinStatus('Нет активного колчана.', 2000); return; }
