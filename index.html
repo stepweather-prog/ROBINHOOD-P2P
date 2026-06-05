@@ -882,66 +882,123 @@
             }
 
             window.addEventListener('message', async (event) => {
-                if (event.source !== pongFrame.contentWindow) return;
-                const data = event.data;
-                switch (data.type) {
-                    case 'pong-ready':
-                        handshakeSecret = data.handshake;
-                        sendToPong({ action: 'handshake' });
-                        break;
-                    case 'handshake-ok':
-                        updateRobinStatus('🏹 Тетива натянута! Лучники готовы!', 2000);
-                        const urlParams = new URLSearchParams(window.location.search);
-                        const id = urlParams.get('id');
-                        const key = urlParams.get('key');
-                        if (id && key) { updateRobinStatus('📨 Принимаю стрелу...', 0);
-                            sendToPong({ action: 'accept', id: id, key: key }); }
-                        break;
-                    case 'session-created':
-                        const link = data.fullLink;
-                        document.getElementById('ref-link-display').textContent = link;
-                        document.getElementById('ref-modal').classList.add('active');
-                        navigator.clipboard.writeText(link).catch(() => {});
-                        break;
-                    case 'channel-open':
-                        channels[data.channelId] = { secret: data.secret, role: data.role };
-                        if (!activeChannelId) activeChannelId = data.channelId;
-                        playQuiverAnimation();
-                        updateRobinStatus('✅ Колчан открыт! Можно стрелять.', 3000);
-                        const contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
-                        if (!contacts.find(c => c.pubkey === data.channelId)) {
-                            contacts.push({ pubkey: data.channelId, name: 'Лучник', avatar: 'assets/avatars/001-.png', status: 'confirmed' });
-                            localStorage.setItem('robinhood_contacts', JSON.stringify(contacts));
-                        }
-                        break;
-                    case 'message':
-                        if (data.channelId && channels[data.channelId]) {
-                            activeChannelId = data.channelId;
-                            appendMessage(data.sender || 'Друг', data.text, 'assets/avatars/001-.png');
-                            playDeliveryAnimation();
-                            if (toggleHistoryState) {
-                                loadEncryptedHistory().then(hist => {
-                                    hist.push({ text: data.text, sender: 'friend', recipient: 'me', senderName: data.sender, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
-                                    saveEncryptedHistory(hist);
-                                });
-                            }
-                            if (toggleSoundState) playSound('bow_shot.mp3');
-                        }
-                        break;
-                    case 'install-prompt':
-                        if (deferredPrompt) { deferredPrompt.prompt();
-                            deferredPrompt.userChoice.then((r) => { if (r.outcome === 'accepted') updateRobinStatus('🏹 Приложение устанавливается', 2000);
-                                deferredPrompt = null; }); } else { updateRobinStatus('Откройте в браузере для установки', 3000); }
-                        break;
-                    case 'status':
-                        updateRobinStatus(data.text, data.duration || 3000);
-                        break;
-                    case 'error':
-                        updateRobinStatus('⚠ ' + data.text, 4000);
-                        break;
-                }
+    if (event.source !== pongFrame.contentWindow) return;
+    const data = event.data;
+    switch (data.type) {
+        case 'pong-ready':
+            handshakeSecret = data.handshake;
+            sendToPong({ action: 'handshake' });
+            break;
+        case 'handshake-ok':
+            updateRobinStatus('🏹 Тетива натянута! Лучники готовы!', 2000);
+            const urlParams = new URLSearchParams(window.location.search);
+            const id = urlParams.get('id');
+            const key = urlParams.get('key');
+            if (id && key) {
+                updateRobinStatus('📨 Принимаю стрелу...', 0);
+                sendToPong({ action: 'accept', id: id, key: key });
+            }
+            break;
+        case 'session-created':
+            const link = data.fullLink;
+            document.getElementById('ref-link-display').textContent = link;
+            document.getElementById('ref-modal').classList.add('active');
+            navigator.clipboard.writeText(link).catch(() => {});
+            break;
+        case 'channel-open':
+            channels[data.channelId] = { secret: data.secret, role: data.role };
+            if (!activeChannelId) activeChannelId = data.channelId;
+            playQuiverAnimation();
+            updateRobinStatus('✅ Колчан открыт! Можно стрелять.', 3000);
+            const contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
+            if (!contacts.find(c => c.pubkey === data.channelId)) {
+                contacts.push({ pubkey: data.channelId, name: 'Лучник', avatar: 'assets/avatars/001-.png', status: 'confirmed' });
+                localStorage.setItem('robinhood_contacts', JSON.stringify(contacts));
+            }
+            // Отправляем свой профиль при подключении
+            sendToPong({
+                action: 'send',
+                text: '__PROFILE__' + JSON.stringify({
+                    nick: nickLabel.textContent,
+                    avatar: profileAvatarSmall.src
+                }),
+                channelId: data.channelId
             });
+            break;
+        case 'message':
+            if (data.channelId && channels[data.channelId]) {
+                activeChannelId = data.channelId;
 
+                // Проверяем, это профиль или обычное сообщение
+                if (typeof data.text === 'string' && data.text.startsWith('__PROFILE__')) {
+                    try {
+                        const profile = JSON.parse(data.text.replace('__PROFILE__', ''));
+                        const contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
+                        const contact = contacts.find(c => c.pubkey === data.channelId);
+                        if (contact) {
+                            contact.name = profile.nick || contact.name;
+                            contact.avatar = profile.avatar || contact.avatar;
+                            localStorage.setItem('robinhood_contacts', JSON.stringify(contacts));
+                            // Обновляем ник в уже показанных сообщениях
+                            document.querySelectorAll('.message-row:not(#robin-row) .msg-sender').forEach(el => {
+                                if (el.textContent === 'Друг') {
+                                    el.textContent = contact.name;
+                                }
+                            });
+                            // Обновляем аватарки в уже показанных сообщениях
+                            document.querySelectorAll('.message-row:not(#robin-row) .avatar').forEach(el => {
+                                if (el.src.includes('001-.png') && !el.src.includes('231-icon')) {
+                                    el.src = contact.avatar;
+                                }
+                            });
+                        }
+                    } catch (e) {}
+                    return;
+                }
+
+                // Ищем контакт для аватарки и ника
+                const contacts2 = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
+                const contact = contacts2.find(c => c.pubkey === data.channelId);
+                const senderName = contact ? contact.name : (data.sender || 'Друг');
+                const senderAvatar = contact ? contact.avatar : 'assets/avatars/001-.png';
+
+                appendMessage(senderName, data.text, senderAvatar);
+                playDeliveryAnimation();
+                if (toggleHistoryState) {
+                    loadEncryptedHistory().then(hist => {
+                        hist.push({
+                            text: data.text,
+                            sender: 'friend',
+                            recipient: 'me',
+                            senderName: senderName,
+                            avatar: senderAvatar,
+                            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                        });
+                        saveEncryptedHistory(hist);
+                    });
+                }
+                if (toggleSoundState) playSound('bow_shot.mp3');
+            }
+            break;
+        case 'install-prompt':
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((r) => {
+                    if (r.outcome === 'accepted') updateRobinStatus('🏹 Приложение устанавливается', 2000);
+                    deferredPrompt = null;
+                });
+            } else {
+                updateRobinStatus('Откройте в браузере для установки', 3000);
+            }
+            break;
+        case 'status':
+            updateRobinStatus(data.text, data.duration || 3000);
+            break;
+        case 'error':
+            updateRobinStatus('⚠ ' + data.text, 4000);
+            break;
+    }
+});
             window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault();
                 deferredPrompt = e; });
 
@@ -1019,18 +1076,36 @@
                 chatsSheet.classList.remove('open');
                 overlay.classList.remove('show'); }
             overlay.addEventListener('click', closeAllSheets);
+            let profileSent = {};
 
-            function sendMessageHandler() {
-                const text = msgInput.value.trim();
-                if (!text) return;
-                if (!activeChannelId || !channels[activeChannelId]) { updateRobinStatus('❌ Нет активного колчана. Создайте или примите стрелу.', 2500); return; }
-                sendToPong({ action: 'send', text: text, channelId: activeChannelId });
-                appendMessage('Вы', text, profileAvatarSmall.src);
-                msgInput.value = '';
-                playArcherAnimation();
-                playBowAnimation();
-                if (toggleSoundState) playSound('shot.mp3');
-            }
+   function sendMessageHandler() {
+    const text = msgInput.value.trim();
+    if (!text) return;
+    if (!activeChannelId || !channels[activeChannelId]) {
+        updateRobinStatus('❌ Нет активного колчана. Создайте или примите стрелу.', 2500);
+        return;
+    }
+
+    // Отправляем профиль при первом сообщении
+    if (!profileSent[activeChannelId]) {
+        profileSent[activeChannelId] = true;
+        sendToPong({
+            action: 'send',
+            text: '__PROFILE__' + JSON.stringify({
+                nick: nickLabel.textContent,
+                avatar: profileAvatarSmall.src
+            }),
+            channelId: activeChannelId
+        });
+    }
+
+    sendToPong({ action: 'send', text: text, channelId: activeChannelId });
+    appendMessage('Вы', text, profileAvatarSmall.src);
+    msgInput.value = '';
+    playArcherAnimation();
+    playBowAnimation();
+    if (toggleSoundState) playSound('shot.mp3');
+}
             document.getElementById('send-btn').addEventListener('click', sendMessageHandler);
             msgInput.addEventListener('keypress', e => { if (e.key === 'Enter') sendMessageHandler(); });
 
