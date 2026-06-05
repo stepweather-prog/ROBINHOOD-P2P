@@ -796,20 +796,29 @@
         // Звук сразу
         if (toggleSoundState) { const a = new Audio('assets/sounds/clear cache.mp3'); a.volume=0.5; a.play().catch(()=>{}); }
         
-        // Анимация дыма через 2 секунды (ваша Lottie)
-        setTimeout(() => {
-            const anim = document.createElement('div');
-            anim.style.cssText = 'position:fixed;bottom:60px;left:45%;width:40%;height:60%;z-index:500;pointer-events:none;';
-            document.body.appendChild(anim);
-            lottie.loadAnimation({
-                container: anim,
-                renderer: 'canvas',
-                loop: true,
-                autoplay: true,
-                path: 'assets/smoke.json'
-            });
-            setTimeout(() => anim.remove(), 6500);
-        }, 2000);
+       /* Анимация дыма (увеличенная, по центру чата) */
+        .smoke-anim {
+            position: fixed;
+            bottom: 50%;
+            left: 50%;
+            transform: translate(-50%, 50%);
+            width: 280px;
+            height: 280px;
+            z-index: 500;
+            pointer-events: none;
+            animation: smokeRise 3s ease-out forwards;
+        }
+
+        @keyframes smokeRise {
+            0% {
+                opacity: 1;
+                transform: translate(-50%, 50%) scale(0.5);
+            }
+            100% {
+                opacity: 0;
+                transform: translate(-50%, -100%) scale(1.5);
+            }
+        }
         
         updateRobinStatus('Робин Гуд пустил ваши письма на самокрутки!', 8000);
     });
