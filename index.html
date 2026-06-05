@@ -10,612 +10,77 @@
     <link rel="manifest" href="manifest.json">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.12.2/lottie.min.js"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        html, body { 
-            margin: 0; 
-            padding: 0; 
-            height: 100%; 
-            overflow: hidden; 
-            -webkit-text-size-adjust: 100%; 
-        }
-
-        body { 
-            background: linear-gradient(135deg, #1a2a1f 0%, #0d1a0c 100%);
-            color: #e8e2c7; 
-            font-family: 'Segoe UI', 'Inter', 'Georgia', serif; 
-            display: flex; 
-            flex-direction: column; 
-            height: 100vh; 
-            height: 100dvh; 
-            position: relative; 
-        }
-
-        body::before { 
-            content: ""; 
-            position: fixed; 
-            top: 0; 
-            left: 0; 
-            width: 100%; 
-            height: 100%; 
-            background-image: url('assets/background.webp'); 
-            background-size: cover; 
-            background-position: center 30%; 
-            background-repeat: no-repeat; 
-            z-index: 0; 
-            opacity: 0.4;
-        }
-
-        @media (max-width: 500px) and (orientation: portrait) { 
-            body::before { background-position: center center; } 
-        }
-
-        body::after { 
-            content: ""; 
-            position: fixed; 
-            top: 0; 
-            left: 0; 
-            width: 100%; 
-            height: 100%; 
-            background: radial-gradient(circle at 20% 30%, rgba(30,40,25,0.65), rgba(10,20,8,0.85));
-            z-index: 0; 
-        }
-
-        .header { 
-            background: linear-gradient(135deg, rgba(25,35,20,0.96), rgba(15,25,12,0.98));
-            border-bottom: 2px solid #c4a24b;
-            backdrop-filter: blur(8px);
-            z-index: 10; 
-            padding: 8px 12px; 
-            display: flex; 
-            flex-direction: column; 
-            gap: 6px; 
-            position: relative;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-        }
-
-        .header-row-1 { 
-            display: flex; 
-            align-items: center; 
-            gap: 8px; 
-        }
-
-        .header-title-text { 
-            font-size: 1.3em; 
-            font-weight: bold; 
-            background: linear-gradient(135deg, #e8d5a3, #c4a24b);
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
-            letter-spacing: 1px;
-        }
-
-        .header-shield { 
-            font-size: 1.1em; 
-            filter: drop-shadow(0 0 3px rgba(196,162,75,0.5));
-        }
-
-        .header-version { 
-            font-size: 0.65em; 
-            color: #9b8e6e; 
-        }
-
-        .header-row-2 { 
-            display: flex; 
-            justify-content: space-around; 
-            align-items: center; 
-        }
-
-        .header-row-3 { 
-            display: flex; 
-            justify-content: space-around; 
-        }
-
-        .header-btn { 
-            width: 44px; 
-            height: 44px; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            cursor: pointer; 
-            border-radius: 12px; 
-            font-size: 22px; 
-            position: relative;
-            transition: all 0.2s ease;
-            background: rgba(196,162,75,0.1);
-            border: 1px solid rgba(196,162,75,0.3);
-        }
-
-        .header-btn:hover { 
-            background: rgba(196,162,75,0.25);
-            transform: scale(1.05);
-            border-color: #c4a24b;
-        }
-
-        .header-label { 
-            font-size: 0.6em; 
-            color: #b8a87a; 
-            text-align: center; 
-            width: 44px; 
-            cursor: pointer; 
-            font-weight: bold; 
-            white-space: nowrap;
-            letter-spacing: 0.5px;
-        }
-
-        .header-avatar { 
-            width: 34px; 
-            height: 34px; 
-            border-radius: 50%; 
-            object-fit: cover;
-            border: 2px solid #c4a24b;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-        }
-
-        .chat-area { 
-            flex: 1; 
-            overflow-y: auto; 
-            padding: 12px; 
-            display: flex; 
-            flex-direction: column; 
-            gap: 10px; 
-            background: rgba(10,18,8,0.35);
-            scrollbar-width: none; 
-            position: relative; 
-            z-index: 1; 
-        }
-
-        .chat-area::-webkit-scrollbar { 
-            display: none; 
-        }
-
-        .message-row { 
-            display: flex; 
-            align-items: center; 
-            gap: 10px; 
-            background: rgba(30,40,25,0.85);
-            backdrop-filter: blur(8px);
-            padding: 10px 12px; 
-            border-radius: 16px;
-            border-left: 3px solid #c4a24b;
-            transition: all 0.2s ease;
-            animation: messageSlideIn 0.3s ease;
-        }
-
-        @keyframes messageSlideIn {
-            from {
-                opacity: 0;
-                transform: translateX(-10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
-        }
-
-        .input-area { 
-            background: linear-gradient(135deg, rgba(25,35,20,0.96), rgba(15,25,12,0.98));
-            backdrop-filter: blur(8px);
-            padding: 10px; 
-            padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)); 
-            display: flex; 
-            gap: 10px; 
-            align-items: center; 
-            border-top: 1px solid #c4a24b;
-            position: relative; 
-            z-index: 1; 
-        }
-
-        input { 
-            flex: 1; 
-            background: rgba(20,30,18,0.9);
-            border: 1px solid #c4a24b;
-            padding: 12px; 
-            color: #e8e2c7; 
-            border-radius: 12px; 
-            font-size: 16px; 
-            outline: none;
-            font-family: 'Segoe UI', 'Inter', monospace;
-            transition: all 0.2s;
-        }
-
-        input:focus {
-            border-color: #e8c97a;
-            box-shadow: 0 0 8px rgba(196,162,75,0.3);
-            background: rgba(25,38,22,0.95);
-        }
-
-        .bow-button { 
-            width: 44px; 
-            height: 44px; 
-            cursor: pointer;
-            transition: transform 0.1s ease;
-            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
-        }
-
-        .bow-button:active {
-            transform: scale(0.92);
-        }
-
-        .avatar { 
-            width: 44px; 
-            height: 44px; 
-            border-radius: 50%; 
-            object-fit: cover; 
-            background-color: #2a3a25;
-            flex-shrink: 0;
-            border: 2px solid #c4a24b;
-        }
-
-        .msg-body { 
-            flex: 1; 
-            min-width: 0; 
-        }
-
-        .msg-sender { 
-            font-weight: bold; 
-            color: #e8c97a; 
-            font-size: 0.85em; 
-        }
-
-        .msg-status { 
-            font-size: 0.65em; 
-            color: #9b8e6e; 
-            text-align: right; 
-            margin-top: 4px;
-        }
-
-        #robin-row { 
-            background: rgba(50,70,40,0.9);
-            border-left: 3px solid #e8c97a;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.2);
-        }
-
-        .bottom-sheet, .avatar-selector {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: min(85%, 380px);
-            height: 100%;
-            background: linear-gradient(145deg, #1e2a1a 0%, #0f180d 100%);
-            border-right: 2px solid #c4a24b;
-            z-index: 200;
-            transform: translateX(-100%);
-            transition: transform 0.35s cubic-bezier(0.2, 0.9, 0.4, 1.1);
-            overflow-y: auto;
-            backdrop-filter: blur(16px);
-            box-shadow: 8px 0 30px rgba(0,0,0,0.5);
-        }
-
-        .bottom-sheet.open, .avatar-selector.show {
-            transform: translateX(0);
-        }
-
-        .bottom-sheet-header {
-            padding: 20px 20px 12px;
-            font-weight: bold;
-            color: #e8c97a;
-            border-bottom: 1px solid #c4a24b;
-            margin-bottom: 8px;
-            font-size: 1.1em;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: rgba(0,0,0,0.2);
-        }
-
-        .bottom-sheet-close {
-            background: none;
-            border: none;
-            color: #e8c97a;
-            font-size: 26px;
-            cursor: pointer;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s;
-        }
-
-        .bottom-sheet-close:hover {
-            background: rgba(196,162,75,0.2);
-            transform: rotate(90deg);
-        }
-
-        .bottom-sheet-list {
-            padding: 8px 16px;
-        }
-
-        .contact-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 12px;
-            margin: 6px 0;
-            border-radius: 14px;
-            background: rgba(255,245,215,0.05);
-            border: 1px solid rgba(196,162,75,0.3);
-            cursor: pointer;
-            color: #e8e2c7;
-            transition: all 0.2s;
-        }
-
-        .contact-item:hover {
-            background: rgba(196,162,75,0.15);
-            border-color: #c4a24b;
-            transform: translateX(5px);
-        }
-
-        .contact-info {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            flex: 1;
-        }
-
-        .contact-avatar {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 2px solid #c4a24b;
-        }
-
-        .contact-name {
-            font-weight: 600;
-            font-size: 1em;
-            color: #e8d5a3;
-        }
-
-        .delete-contact {
-            background: none;
-            border: none;
-            color: #c97a5a;
-            font-size: 20px;
-            cursor: pointer;
-            padding: 8px;
-            border-radius: 8px;
-            transition: all 0.2s;
-        }
-
-        .delete-contact:hover {
-            background: rgba(201,122,90,0.2);
-            transform: scale(1.1);
-        }
-
-        .avatar-selector {
-            padding: 20px;
-        }
-
-        .avatar-selector p {
-            color: #e8c97a;
-            margin: 0 0 16px;
-            font-size: 1.1em;
-            text-align: center;
-        }
-
-        #avatar-list {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            justify-content: center;
-        }
-
-        .avatar-option {
-            width: 55px;
-            height: 55px;
-            border-radius: 50%;
-            object-fit: cover;
-            margin: 4px;
-            cursor: pointer;
-            border: 2px solid transparent;
-            transition: all 0.2s;
-        }
-
-        .avatar-option:hover {
-            border-color: #e8c97a;
-            transform: scale(1.1);
-        }
-
-        .overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.6);
-            backdrop-filter: blur(4px);
-            display: none;
-            z-index: 190;
-        }
-
-        .overlay.show {
-            display: block;
-        }
-
-        .invite-modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.85);
-            backdrop-filter: blur(8px);
-            z-index: 300;
-            justify-content: center;
-            align-items: center;
-        }
-
-        .invite-modal.active {
-            display: flex;
-        }
-
-        .invite-dialog {
-            background: linear-gradient(135deg, #1e2a1a, #0f180d);
-            padding: 24px;
-            border-radius: 24px;
-            width: 85%;
-            max-width: 340px;
-            text-align: center;
-            border: 2px solid #c4a24b;
-            max-height: 80vh;
-            overflow-y: auto;
-            box-shadow: 0 12px 40px rgba(0,0,0,0.5);
-        }
-
-        .invite-dialog h3 {
-            color: #e8c97a;
-            margin: 0 0 16px;
-            font-size: 1.3em;
-        }
-
-        .invite-dialog button {
-            width: 100%;
-            padding: 12px;
-            margin-top: 8px;
-            background: linear-gradient(135deg, #c4a24b, #a07e32);
-            color: #1a1f0f;
-            border: none;
-            border-radius: 12px;
-            font-size: 14px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .invite-dialog button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-        }
-
-        .code-display {
-            background: #0a1208;
-            border: 1px solid #c4a24b;
-            color: #e8d5a3;
-            border-radius: 12px;
-            padding: 12px;
-            font-size: 0.8em;
-            word-break: break-all;
-            margin: 16px 0;
-            text-align: center;
-            user-select: all;
-            font-family: monospace;
-        }
-
-        .contact-menu {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: linear-gradient(135deg, #1e2a1a, #0f180d);
-            border: 2px solid #c4a24b;
-            border-radius: 20px;
-            padding: 12px;
-            z-index: 400;
-            min-width: 240px;
-            box-shadow: 0 12px 40px rgba(0,0,0,0.6);
-        }
-
-        .contact-menu-item {
-            padding: 12px;
-            cursor: pointer;
-            border-radius: 12px;
-            margin-bottom: 6px;
-            font-size: 0.95em;
-            color: #e8e2c7;
-            transition: all 0.2s;
-        }
-
-        .contact-menu-item:hover {
-            background: rgba(196,162,75,0.2);
-            transform: translateX(5px);
-        }
-
-        #menu-cancel {
-            background: #4a3a2a;
-            border: none;
-            padding: 10px;
-            border-radius: 10px;
-            color: white;
-            cursor: pointer;
-            width: 100%;
-            margin-top: 8px;
-        }
-
-        .robin-arrow-container {
-            display: inline-block;
-            vertical-align: middle;
-            margin-left: 8px;
-        }
-        
-        .archer-container {
-            position: fixed;
-            bottom: 80px;
-            right: 20px;
-            width: 120px;
-            height: 120px;
-            z-index: 100;
-            pointer-events: none;
-            display: none;
-        }
-        .archer-container.active {
-            display: block;
-        }
-
-        .avatar-selector::-webkit-scrollbar,
-        .bottom-sheet::-webkit-scrollbar {
-            display: none;
-        }
-
-        .avatar-selector,
-        .bottom-sheet {
-            scrollbar-width: none;
-        }
-                /* Анимация дыма (увеличенная, по центру чата) */
-        .smoke-anim {
-            position: fixed;
-            bottom: 50%;
-            left: 50%;
-            transform: translate(-50%, 50%);
-            width: 280px;
-            height: 280px;
-            z-index: 500;
-            pointer-events: none;
-            animation: smokeRise 3s ease-out forwards;
-        }
-
-        @keyframes smokeRise {
-            0% {
-                opacity: 1;
-                transform: translate(-50%, 50%) scale(0.5);
-            }
-            100% {
-                opacity: 0;
-                transform: translate(-50%, -100%) scale(1.5);
-            }
-        }
-    /* Убираем белый фон у анимации стрелы */
-.robin-arrow-container {
-    background: transparent !important;
-}
-
-.robin-arrow-container svg,
-.robin-arrow-container canvas {
-    background: transparent !important;
-}
-
-#archer-container svg,
-#archer-container canvas {
-    background: transparent !important;
-}
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; -webkit-text-size-adjust: 100%; }
+        body { background: linear-gradient(135deg, #1a2a1f 0%, #0d1a0c 100%); color: #e8e2c7; font-family: 'Segoe UI', 'Inter', 'Georgia', serif; display: flex; flex-direction: column; height: 100vh; height: 100dvh; position: relative; }
+        body::before { content: ""; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-image: url('assets/background.webp'); background-size: cover; background-position: center 30%; background-repeat: no-repeat; z-index: 0; opacity: 0.4; }
+        @media (max-width: 500px) and (orientation: portrait) { body::before { background-position: center center; } }
+        body::after { content: ""; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: radial-gradient(circle at 20% 30%, rgba(30,40,25,0.65), rgba(10,20,8,0.85)); z-index: 0; }
+        .header { background: linear-gradient(135deg, rgba(25,35,20,0.96), rgba(15,25,12,0.98)); border-bottom: 2px solid #c4a24b; backdrop-filter: blur(8px); z-index: 10; padding: 8px 12px; display: flex; flex-direction: column; gap: 6px; position: relative; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+        .header-row-1 { display: flex; align-items: center; gap: 8px; }
+        .header-title-text { font-size: 1.3em; font-weight: bold; background: linear-gradient(135deg, #e8d5a3, #c4a24b); -webkit-background-clip: text; background-clip: text; color: transparent; letter-spacing: 1px; }
+        .header-shield { font-size: 1.1em; filter: drop-shadow(0 0 3px rgba(196,162,75,0.5)); }
+        .header-version { font-size: 0.65em; color: #9b8e6e; }
+        .header-row-2 { display: flex; justify-content: space-around; align-items: center; }
+        .header-row-3 { display: flex; justify-content: space-around; }
+        .header-btn { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 12px; font-size: 22px; position: relative; transition: all 0.2s ease; background: rgba(196,162,75,0.1); border: 1px solid rgba(196,162,75,0.3); }
+        .header-btn:hover { background: rgba(196,162,75,0.25); transform: scale(1.05); border-color: #c4a24b; }
+        .header-label { font-size: 0.6em; color: #b8a87a; text-align: center; width: 44px; cursor: pointer; font-weight: bold; white-space: nowrap; letter-spacing: 0.5px; }
+        .header-avatar { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; border: 2px solid #c4a24b; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
+        .chat-area { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; background: rgba(10,18,8,0.35); scrollbar-width: none; position: relative; z-index: 1; }
+        .chat-area::-webkit-scrollbar { display: none; }
+        .message-row { display: flex; align-items: center; gap: 10px; background: rgba(30,40,25,0.85); backdrop-filter: blur(8px); padding: 10px 12px; border-radius: 16px; border-left: 3px solid #c4a24b; transition: all 0.2s ease; animation: messageSlideIn 0.3s ease; }
+        @keyframes messageSlideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
+        .input-area { background: linear-gradient(135deg, rgba(25,35,20,0.96), rgba(15,25,12,0.98)); backdrop-filter: blur(8px); padding: 10px; padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)); display: flex; gap: 10px; align-items: center; border-top: 1px solid #c4a24b; position: relative; z-index: 1; }
+        input { flex: 1; background: rgba(20,30,18,0.9); border: 1px solid #c4a24b; padding: 12px; color: #e8e2c7; border-radius: 12px; font-size: 16px; outline: none; font-family: 'Segoe UI', 'Inter', monospace; transition: all 0.2s; }
+        input:focus { border-color: #e8c97a; box-shadow: 0 0 8px rgba(196,162,75,0.3); background: rgba(25,38,22,0.95); }
+        .bow-button { width: 44px; height: 44px; cursor: pointer; transition: transform 0.1s ease; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3)); }
+        .bow-button:active { transform: scale(0.92); }
+        .avatar { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; background-color: #2a3a25; flex-shrink: 0; border: 2px solid #c4a24b; }
+        .msg-body { flex: 1; min-width: 0; }
+        .msg-sender { font-weight: bold; color: #e8c97a; font-size: 0.85em; }
+        .msg-status { font-size: 0.65em; color: #9b8e6e; text-align: right; margin-top: 4px; }
+        #robin-row { background: rgba(50,70,40,0.9); border-left: 3px solid #e8c97a; box-shadow: 0 2px 12px rgba(0,0,0,0.2); }
+        .bottom-sheet, .avatar-selector { position: fixed; top: 0; left: 0; width: min(85%, 380px); height: 100%; background: linear-gradient(145deg, #1e2a1a 0%, #0f180d 100%); border-right: 2px solid #c4a24b; z-index: 200; transform: translateX(-100%); transition: transform 0.35s cubic-bezier(0.2, 0.9, 0.4, 1.1); overflow-y: auto; backdrop-filter: blur(16px); box-shadow: 8px 0 30px rgba(0,0,0,0.5); }
+        .bottom-sheet.open, .avatar-selector.show { transform: translateX(0); }
+        .bottom-sheet-header { padding: 20px 20px 12px; font-weight: bold; color: #e8c97a; border-bottom: 1px solid #c4a24b; margin-bottom: 8px; font-size: 1.1em; display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.2); }
+        .bottom-sheet-close { background: none; border: none; color: #e8c97a; font-size: 26px; cursor: pointer; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+        .bottom-sheet-close:hover { background: rgba(196,162,75,0.2); transform: rotate(90deg); }
+        .bottom-sheet-list { padding: 8px 16px; }
+        .contact-item { display: flex; align-items: center; justify-content: space-between; padding: 12px; margin: 6px 0; border-radius: 14px; background: rgba(255,245,215,0.05); border: 1px solid rgba(196,162,75,0.3); cursor: pointer; color: #e8e2c7; transition: all 0.2s; }
+        .contact-item:hover { background: rgba(196,162,75,0.15); border-color: #c4a24b; transform: translateX(5px); }
+        .contact-info { display: flex; align-items: center; gap: 12px; flex: 1; }
+        .contact-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid #c4a24b; }
+        .contact-name { font-weight: 600; font-size: 1em; color: #e8d5a3; }
+        .delete-contact { background: none; border: none; color: #c97a5a; font-size: 20px; cursor: pointer; padding: 8px; border-radius: 8px; transition: all 0.2s; }
+        .delete-contact:hover { background: rgba(201,122,90,0.2); transform: scale(1.1); }
+        .avatar-selector { padding: 20px; }
+        .avatar-selector p { color: #e8c97a; margin: 0 0 16px; font-size: 1.1em; text-align: center; }
+        #avatar-list { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+        .avatar-option { width: 55px; height: 55px; border-radius: 50%; object-fit: cover; margin: 4px; cursor: pointer; border: 2px solid transparent; transition: all 0.2s; }
+        .avatar-option:hover { border-color: #e8c97a; transform: scale(1.1); }
+        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); display: none; z-index: 190; }
+        .overlay.show { display: block; }
+        .invite-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); z-index: 300; justify-content: center; align-items: center; }
+        .invite-modal.active { display: flex; }
+        .invite-dialog { background: linear-gradient(135deg, #1e2a1a, #0f180d); padding: 24px; border-radius: 24px; width: 85%; max-width: 340px; text-align: center; border: 2px solid #c4a24b; max-height: 80vh; overflow-y: auto; box-shadow: 0 12px 40px rgba(0,0,0,0.5); }
+        .invite-dialog h3 { color: #e8c97a; margin: 0 0 16px; font-size: 1.3em; }
+        .invite-dialog button { width: 100%; padding: 12px; margin-top: 8px; background: linear-gradient(135deg, #c4a24b, #a07e32); color: #1a1f0f; border: none; border-radius: 12px; font-size: 14px; font-weight: bold; cursor: pointer; transition: all 0.2s; }
+        .invite-dialog button:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+        .code-display { background: #0a1208; border: 1px solid #c4a24b; color: #e8d5a3; border-radius: 12px; padding: 12px; font-size: 0.8em; word-break: break-all; margin: 16px 0; text-align: center; user-select: all; font-family: monospace; }
+        .contact-menu { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: linear-gradient(135deg, #1e2a1a, #0f180d); border: 2px solid #c4a24b; border-radius: 20px; padding: 12px; z-index: 400; min-width: 240px; box-shadow: 0 12px 40px rgba(0,0,0,0.6); }
+        .contact-menu-item { padding: 12px; cursor: pointer; border-radius: 12px; margin-bottom: 6px; font-size: 0.95em; color: #e8e2c7; transition: all 0.2s; }
+        .contact-menu-item:hover { background: rgba(196,162,75,0.2); transform: translateX(5px); }
+        #menu-cancel { background: #4a3a2a; border: none; padding: 10px; border-radius: 10px; color: white; cursor: pointer; width: 100%; margin-top: 8px; }
+        .robin-arrow-container { display: inline-block; vertical-align: middle; margin-left: 8px; background: transparent !important; }
+        .robin-arrow-container svg, .robin-arrow-container canvas { background: transparent !important; }
+        .archer-container { position: fixed; bottom: 80px; right: 20px; width: 120px; height: 120px; z-index: 100; pointer-events: none; display: none; }
+        .archer-container.active { display: block; }
+        #archer-container svg, #archer-container canvas { background: transparent !important; }
+        .avatar-selector::-webkit-scrollbar, .bottom-sheet::-webkit-scrollbar { display: none; }
+        .avatar-selector, .bottom-sheet { scrollbar-width: none; }
+        .smoke-anim { position: fixed; bottom: 50%; left: 50%; transform: translate(-50%, 50%); width: 280px; height: 280px; z-index: 500; pointer-events: none; animation: smokeRise 3s ease-out forwards; }
+        @keyframes smokeRise { 0% { opacity: 1; transform: translate(-50%, 50%) scale(0.5); } 100% { opacity: 0; transform: translate(-50%, -100%) scale(1.5); } }
     </style>
 </head>
 <body>
@@ -824,32 +289,22 @@
         localStorage.setItem('robinhood_history', toggleHistoryState);
     });
 
-       document.getElementById('btn-sound').addEventListener('click', () => { toggleSoundState = !toggleSoundState; localStorage.setItem('robinhood_sound', toggleSoundState); updateRobinStatus(toggleSoundState ? 'Звук включён' : 'Звук выключен'); });
+    document.getElementById('btn-sound').addEventListener('click', () => { toggleSoundState = !toggleSoundState; localStorage.setItem('robinhood_sound', toggleSoundState); updateRobinStatus(toggleSoundState ? 'Звук включён' : 'Звук выключен'); });
 
-            document.getElementById('btn-clear').addEventListener('click', async () => {
+    document.getElementById('btn-clear').addEventListener('click', async () => {
         document.querySelectorAll('.message-row:not(#robin-row)').forEach(m => m.remove());
         if (toggleHistoryState) await saveEncryptedHistory([]); else localStorage.removeItem('robinhood_chat_history');
-        
-        // Звук сразу
         if (toggleSoundState) { const a = new Audio('assets/sounds/clear cache.mp3'); a.volume=0.5; a.play().catch(()=>{}); }
-        
-        // Анимация дыма через 2 секунды
         setTimeout(() => {
             const anim = document.createElement('div');
             anim.className = 'smoke-anim';
             document.body.appendChild(anim);
-            lottie.loadAnimation({
-                container: anim,
-                renderer: 'canvas',
-                loop: true,
-                autoplay: true,
-                path: 'assets/smoke.json'
-            });
+            lottie.loadAnimation({ container: anim, renderer: 'canvas', loop: true, autoplay: true, path: 'assets/smoke.json' });
             setTimeout(() => anim.remove(), 6500);
         }, 2000);
-        
         updateRobinStatus('Робин Гуд пустил ваши письма на самокрутки!', 8000);
     });
+
     function closeAllSheets() {
         avatarSelector.classList.remove('show');
         contactsSheet.classList.remove('open');
@@ -862,24 +317,16 @@
     document.getElementById('share-ref-link-btn').addEventListener('click', () => { const link = document.getElementById('ref-link-display').textContent; if (link && navigator.share) navigator.share({ title:'RobinHood P2P', url: link }); });
     document.getElementById('close-ref-modal-btn').addEventListener('click', () => document.getElementById('ref-modal').classList.remove('active'));
 
-        let archerAnimation = null;
+    let archerAnimation = null;
     function playArcherAnimation() {
         const archerContainer = document.getElementById('archer-container');
         archerContainer.classList.add('active');
         if (archerAnimation) { archerAnimation.destroy(); }
-        archerAnimation = lottie.loadAnimation({
-            container: archerContainer,
-            renderer: 'canvas',  // ← поменял с 'svg' на 'canvas'
-            loop: false,
-            autoplay: true,
-            path: 'assets/Archer.json',
-            segmentStart: 0,
-            segmentEnd: 45
-        });
+        archerAnimation = lottie.loadAnimation({ container: archerContainer, renderer: 'canvas', loop: false, autoplay: true, path: 'assets/Archer.json', segmentStart: 0, segmentEnd: 45 });
         archerAnimation.addEventListener('complete', () => { archerContainer.classList.remove('active'); });
     }
     
-        let bowAnimation = null;
+    let bowAnimation = null;
     let currentArrowContainer = null;
     function playBowAnimation() {
         if (currentArrowContainer && currentArrowContainer.parentNode) { currentArrowContainer.parentNode.removeChild(currentArrowContainer); }
@@ -890,20 +337,13 @@
         arrowWrapper.style.height = '30px';
         currentArrowContainer = arrowWrapper;
         robinText.appendChild(arrowWrapper);
-        bowAnimation = lottie.loadAnimation({
-            container: arrowWrapper,
-            renderer: 'canvas',  // ← поменял с 'svg' на 'canvas'
-            loop: false,
-            autoplay: true,
-            path: 'assets/bow.json',
-            segmentStart: 0,
-            segmentEnd: 30
-        });
+        bowAnimation = lottie.loadAnimation({ container: arrowWrapper, renderer: 'canvas', loop: false, autoplay: true, path: 'assets/bow.json', segmentStart: 0, segmentEnd: 30 });
         bowAnimation.addEventListener('complete', () => {
             if (arrowWrapper && arrowWrapper.parentNode) { arrowWrapper.parentNode.removeChild(arrowWrapper); }
             currentArrowContainer = null;
         });
     }
+
     function sendMessageHandler() {
         const text = msgInput.value.trim(); if (!text) return;
         if (!activeChannelId || !channels[activeChannelId]) { updateRobinStatus('Нет активного колчана.', 2000); return; }
@@ -926,25 +366,17 @@
 
     let robinDefaultText = robinText.textContent, robinTimer;
     function updateRobinStatus(text, duration=4000) {
-        clearTimeout(robinTimer);
-        const arrowContainer = currentArrowContainer;
-        robinText.style.transition = 'none';
-        robinText.style.opacity = 1;
-        robinText.textContent = text;
-        if (arrowContainer && arrowContainer.parentNode !== robinText) { robinText.appendChild(arrowContainer); }
-        if (duration > 0) {
-            robinTimer = setTimeout(() => {
-                robinText.style.transition = 'opacity 0.6s ease';
-                robinText.style.opacity = 0;
-                const onEnd = () => {
-                    robinText.removeEventListener('transitionend', onEnd);
-                    robinText.style.transition = 'none';
-                    robinText.textContent = robinDefaultText;
-                    if (arrowContainer && arrowContainer.parentNode !== robinText) { robinText.appendChild(arrowContainer); }
-                    robinText.style.opacity = 1;
-                };
-                robinText.addEventListener('transitionend', onEnd);
-            }, duration);
+        clearTimeout(robinTimer); robinText.style.transition = 'none'; robinText.style.opacity = 1; robinText.textContent = text;
+        if (duration > 0) { robinTimer = setTimeout(() => { robinText.style.transition = 'opacity 0.6s ease'; robinText.style.opacity = 0; const onEnd = () => { robinText.removeEventListener('transitionend', onEnd); robinText.style.transition = 'none'; robinText.textContent = robinDefaultText; robinText.style.opacity = 1; }; robinText.addEventListener('transitionend', onEnd); }, duration); }
+    }
+
+    function updateChatWithContact(contact) {
+        if (activeContact && activeContact.pubkey === contact.pubkey) {
+            activeContact = contact;
+            msgInput.placeholder = 'Выпустить стрелу ' + contact.name + '...';
+            document.querySelectorAll('.message-row:not(#robin-row) .msg-sender').forEach(el => {
+                if (el.textContent !== 'Вы') el.textContent = contact.name;
+            });
         }
     }
 
@@ -957,7 +389,7 @@
     }
     
     function loadAvatarsForFriend(contact) {
-        avatarList.innerHTML = ''; avatars.forEach(src => { const img = document.createElement('img'); img.src = src; img.className = 'avatar-option'; img.addEventListener('click', () => { let contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]'); const c = contacts.find(c => c.pubkey === contact.pubkey); if (c) { c.avatar = src; localStorage.setItem('robinhood_contacts', JSON.stringify(contacts)); loadContacts(); } closeAllSheets(); }); avatarList.appendChild(img); });
+        avatarList.innerHTML = ''; avatars.forEach(src => { const img = document.createElement('img'); img.src = src; img.className = 'avatar-option'; img.addEventListener('click', () => { let contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]'); const c = contacts.find(c => c.pubkey === contact.pubkey); if (c) { c.avatar = src; localStorage.setItem('robinhood_contacts', JSON.stringify(contacts)); loadContacts(); updateChatWithContact(c); } closeAllSheets(); }); avatarList.appendChild(img); });
         avatarSelector.classList.add('show'); overlay.classList.add('show');
     }
 
@@ -979,7 +411,7 @@
     async function loadChatHistory(contactPubkey) { if (toggleHistoryState) { const hist = await loadEncryptedHistory(); hist.forEach(msg => { if (msg.sender === contactPubkey || msg.recipient === contactPubkey) appendMessage(msg.sender === myPubkey ? 'Вы' : (msg.senderName || msg.sender.slice(0,8)), msg.text, msg.avatar || 'assets/avatars/001-.png', msg.time); }); } }
 
     let currentMenuContact = null;
-    function showContactMenu(contact) { currentMenuContact = contact; const menu = document.getElementById('contact-menu'); menu.style.display = 'block'; document.getElementById('menu-rename').onclick = () => { hideContactMenu(); const newName = prompt('Новое имя:', contact.name); if (newName && newName.trim()) { let contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]'); const c = contacts.find(c => c.pubkey === contact.pubkey); if (c) { c.name = newName.trim().substring(0, 15); localStorage.setItem('robinhood_contacts', JSON.stringify(contacts)); loadContacts(); } } }; document.getElementById('menu-avatar').onclick = () => { hideContactMenu(); loadAvatarsForFriend(contact); }; document.getElementById('menu-delete').onclick = () => { hideContactMenu(); if (confirm('Убить лучника '+contact.name+'?')) deleteContact(contact.pubkey); }; document.getElementById('menu-cancel').onclick = hideContactMenu; }
+    function showContactMenu(contact) { currentMenuContact = contact; const menu = document.getElementById('contact-menu'); menu.style.display = 'block'; document.getElementById('menu-rename').onclick = () => { hideContactMenu(); const newName = prompt('Новое имя:', contact.name); if (newName && newName.trim()) { let contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]'); const c = contacts.find(c => c.pubkey === contact.pubkey); if (c) { c.name = newName.trim().substring(0, 15); localStorage.setItem('robinhood_contacts', JSON.stringify(contacts)); loadContacts(); updateChatWithContact(c); } } }; document.getElementById('menu-avatar').onclick = () => { hideContactMenu(); loadAvatarsForFriend(contact); }; document.getElementById('menu-delete').onclick = () => { hideContactMenu(); if (confirm('Убить лучника '+contact.name+'?')) deleteContact(contact.pubkey); }; document.getElementById('menu-cancel').onclick = hideContactMenu; }
     
     function hideContactMenu() { document.getElementById('contact-menu').style.display = 'none'; currentMenuContact = null; }
 
@@ -996,22 +428,14 @@
     
     document.body.addEventListener('touchstart', (e) => {
         activeSheet = getActiveSheet();
-        if (activeSheet) {
-            touchStartX = e.changedTouches[0].clientX;
-            touchStartY = e.changedTouches[0].clientY;
-        }
+        if (activeSheet) { touchStartX = e.changedTouches[0].clientX; touchStartY = e.changedTouches[0].clientY; }
     }, { passive: true });
     
     document.body.addEventListener('touchmove', (e) => {
         if (!activeSheet) return;
         const deltaX = e.changedTouches[0].clientX - touchStartX;
         const deltaY = e.changedTouches[0].clientY - touchStartY;
-        if (deltaX < -35 && Math.abs(deltaY) < 80) {
-            e.preventDefault();
-            closeAllSheets();
-            activeSheet = null;
-            updateRobinStatus('↩️ Закрыто жестом', 1500);
-        }
+        if (deltaX < -35 && Math.abs(deltaY) < 80) { e.preventDefault(); closeAllSheets(); activeSheet = null; updateRobinStatus('↩️ Закрыто жестом', 1500); }
     });
     
     document.body.addEventListener('touchend', () => { activeSheet = null; });
