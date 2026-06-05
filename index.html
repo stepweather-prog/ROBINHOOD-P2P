@@ -506,6 +506,7 @@
         .robin-arrow-container canvas {
             background: transparent !important;
         }
+        /* Контейнер для анимации лучника (отправка) */
         .archer-container {
             position: fixed;
             bottom: 80px;
@@ -522,6 +523,46 @@
         #archer-container svg,
         #archer-container canvas {
             background: transparent !important;
+        }
+        /* Контейнер для анимации колчана (подключение) */
+        #quiver-container {
+            position: fixed;
+            bottom: 90px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 150px;
+            height: 150px;
+            z-index: 150;
+            pointer-events: none;
+            display: none;
+        }
+        #quiver-container.active {
+            display: block;
+            animation: quiverPopIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            filter: drop-shadow(0 0 20px rgba(196, 162, 75, 0.7));
+        }
+        @keyframes quiverPopIn {
+            0% {
+                transform: translateX(-50%) scale(0) rotate(-15deg);
+                opacity: 0;
+            }
+            50% {
+                transform: translateX(-50%) scale(1.15) rotate(3deg);
+                opacity: 1;
+            }
+            100% {
+                transform: translateX(-50%) scale(1) rotate(0deg);
+                opacity: 1;
+            }
+        }
+        #quiver-container.fade-out {
+            animation: quiverFadeOut 0.4s ease forwards;
+        }
+        @keyframes quiverFadeOut {
+            to {
+                transform: translateX(-50%) scale(0.7);
+                opacity: 0;
+            }
         }
         .avatar-selector::-webkit-scrollbar,
         .bottom-sheet::-webkit-scrollbar {
@@ -552,7 +593,6 @@
                 transform: translate(-50%, -100%) scale(1.5);
             }
         }
-        /* Модальное окно для ввода текста (замена prompt) */
         .modal-input-overlay {
             position: fixed;
             top: 0;
@@ -606,7 +646,6 @@
             background: #4a3a2a;
             color: #eee;
         }
-        /* Условия — нормальная кнопка */
         .terms-btn {
             background: none;
             border: 1px solid rgba(196, 162, 75, 0.3);
@@ -632,7 +671,7 @@
             <span class="header-shield">🏹</span>
             <span style="flex:1;"></span>
             <button class="terms-btn" id="btn-terms">⚜ условия</button>
-            <span class="header-version">v3.0</span>
+            <span class="header-version">v3.1</span>
         </div>
         <div class="header-row-2">
             <div class="header-btn" id="btn-avatar"><img src="assets/avatars/001-.png" class="header-avatar" id="profile-avatar-small" alt="avatar"></div>
@@ -708,9 +747,13 @@
         <button id="menu-cancel">Отмена</button>
     </div>
 
+    <!-- Контейнер для анимации лучника (отправка) -->
     <div id="archer-container" class="archer-container"></div>
 
-    <!-- Модальное окно для ввода текста (замена prompt) -->
+    <!-- Контейнер для анимации колчана (подключение) -->
+    <div id="quiver-container"></div>
+
+    <!-- Модальное окно для ввода текста -->
     <div class="modal-input-overlay" id="modal-input-overlay">
         <div class="modal-input-dialog">
             <h3 id="modal-input-title">Введите текст</h3>
@@ -746,6 +789,7 @@
             const modalOk = document.getElementById('modal-input-ok');
             const modalCancel = document.getElementById('modal-input-cancel');
             const termsBtn = document.getElementById('btn-terms');
+            const quiverContainer = document.getElementById('quiver-container');
 
             let modalResolve = null;
 
@@ -762,7 +806,7 @@
             let robinTimer = null;
             let currentMenuContact = null;
 
-            // ==================== AES-GCM ШИФРОВАНИЕ (Web Crypto) ====================
+            // ==================== AES-GCM ШИФРОВАНИЕ ДЛЯ ИСТОРИИ ====================
             async function generateAESKey() {
                 return await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, true, [
                     "encrypt", "decrypt"
@@ -802,7 +846,7 @@
                 }
             }
 
-            // ==================== ИСТОРИЯ ЧАТА (AES-GCM) ====================
+            // ==================== ИСТОРИЯ ЧАТА ====================
             async function getHistoryKey() {
                 const stored = localStorage.getItem('robinhood_history_key');
                 if (stored) {
@@ -836,7 +880,7 @@
                 }
             }
 
-            // ==================== МОДАЛЬНОЕ ОКНО ВВОДА (замена prompt) ====================
+            // ==================== МОДАЛЬНОЕ ОКНО ВВОДА ====================
             function showModalInput(title, placeholder = '', defaultValue = '') {
                 return new Promise((resolve) => {
                     modalResolve = resolve;
@@ -904,6 +948,8 @@
                     case 'channel-open':
                         channels[data.channelId] = { secret: data.secret, role: data.role };
                         if (!activeChannelId) activeChannelId = data.channelId;
+                        // 🏹 Анимация колчана!
+                        playQuiverAnimation();
                         updateRobinStatus('✅ Колчан открыт! Можно стрелять.', 3000);
                         const contacts = JSON.parse(localStorage.getItem('robinhood_contacts') ||
                             '[]');
@@ -917,6 +963,8 @@
                         if (data.channelId && channels[data.channelId]) {
                             activeChannelId = data.channelId;
                             appendMessage(data.sender || 'Друг', data.text, 'assets/avatars/001-.png');
+                            // 🎯 Анимация доставки (стрела)
+                            playDeliveryAnimation();
                             if (toggleHistoryState) {
                                 loadEncryptedHistory().then(hist => {
                                     hist.push({ text: data.text, sender: 'friend',
@@ -1087,6 +1135,7 @@
                 sendToPong({ action: 'send', text: text, channelId: activeChannelId });
                 appendMessage('Вы', text, profileAvatarSmall.src);
                 msgInput.value = '';
+                // 🏹 Анимация лучника (отправка)
                 playArcherAnimation();
                 playBowAnimation();
                 if (toggleSoundState) playSound('shot.mp3');
@@ -1130,7 +1179,9 @@
 
             // ==================== АНИМАЦИИ ====================
             let archerAnimation = null;
+            let quiverAnim = null;
 
+            // Анимация лучника при отправке
             function playArcherAnimation() {
                 const archerContainer = document.getElementById('archer-container');
                 archerContainer.classList.add('active');
@@ -1138,12 +1189,51 @@
                 if (typeof lottie !== 'undefined') {
                     archerAnimation = lottie.loadAnimation({ container: archerContainer,
                         renderer: 'canvas', loop: false, autoplay: true,
-                        path: 'assets/Archer.json', segmentStart: 0, segmentEnd: 45 });
+                        path: 'assets/Archer.json' });
                     archerAnimation.addEventListener('complete', () => { archerContainer.classList.remove(
                             'active'); });
                 }
             }
 
+            // Анимация стрелы при доставке
+            let deliveryAnimation = null;
+
+            function playDeliveryAnimation() {
+                const archerContainer = document.getElementById('archer-container');
+                archerContainer.classList.add('active');
+                if (deliveryAnimation) { deliveryAnimation.destroy(); }
+                if (typeof lottie !== 'undefined') {
+                    deliveryAnimation = lottie.loadAnimation({ container: archerContainer,
+                        renderer: 'canvas', loop: false, autoplay: true,
+                        path: 'assets/Kinetic1.json' });
+                    deliveryAnimation.addEventListener('complete', () => { archerContainer.classList.remove(
+                            'active'); });
+                }
+            }
+
+            // Анимация колчана при подключении
+            function playQuiverAnimation() {
+                if (quiverAnim) { quiverAnim.destroy();
+                    quiverAnim = null; }
+                quiverContainer.classList.remove('fade-out');
+                quiverContainer.classList.add('active');
+                if (typeof lottie !== 'undefined') {
+                    quiverAnim = lottie.loadAnimation({ container: quiverContainer, renderer: 'canvas',
+                        loop: false, autoplay: true, path: 'assets/Arrow Quiver.json' });
+                    quiverAnim.addEventListener('complete', () => {
+                        setTimeout(() => {
+                            quiverContainer.classList.add('fade-out');
+                            setTimeout(() => {
+                                quiverContainer.classList.remove('active', 'fade-out');
+                                if (quiverAnim) { quiverAnim.destroy();
+                                    quiverAnim = null; }
+                            }, 400);
+                        }, 1500);
+                    });
+                }
+            }
+
+            // Мини-анимация лука в статусе
             let bowAnimation = null;
             let currentArrowContainer = null;
 
@@ -1160,8 +1250,7 @@
                 robinText.appendChild(arrowWrapper);
                 if (typeof lottie !== 'undefined') {
                     bowAnimation = lottie.loadAnimation({ container: arrowWrapper, renderer: 'canvas',
-                        loop: false, autoplay: true, path: 'assets/bow.json', segmentStart: 0,
-                        segmentEnd: 30 });
+                        loop: false, autoplay: true, path: 'assets/bow.json' });
                     bowAnimation.addEventListener('complete', () => {
                         if (arrowWrapper && arrowWrapper.parentNode) {
                             arrowWrapper.parentNode.removeChild(arrowWrapper);
@@ -1399,7 +1488,7 @@
                 currentMenuContact = null;
             }
 
-            // ==================== ЖЕСТ ДЛЯ ЗАКРЫТИЯ ПАНЕЛЕЙ (улучшен) ====================
+            // ==================== ЖЕСТ ДЛЯ ЗАКРЫТИЯ ПАНЕЛЕЙ ====================
             let touchStartX = 0;
             let touchStartY = 0;
             let activeSheet = null;
