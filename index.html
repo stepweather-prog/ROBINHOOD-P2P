@@ -36,7 +36,6 @@
             position: relative; 
         }
 
-        /* Фоновое изображение леса с наложением */
         body::before { 
             content: ""; 
             position: fixed; 
@@ -67,7 +66,6 @@
             z-index: 0; 
         }
 
-        /* Хедер в средневековом стиле */
         .header { 
             background: linear-gradient(135deg, rgba(25,35,20,0.96), rgba(15,25,12,0.98));
             border-bottom: 2px solid #c4a24b;
@@ -159,7 +157,6 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.3);
         }
 
-        /* Область чата с полупрозрачным фоном */
         .chat-area { 
             flex: 1; 
             overflow-y: auto; 
@@ -177,7 +174,6 @@
             display: none; 
         }
 
-        /* Стили сообщений в стиле пергамент */
         .message-row { 
             display: flex; 
             align-items: center; 
@@ -280,7 +276,6 @@
             box-shadow: 0 2px 12px rgba(0,0,0,0.2);
         }
 
-        /* Стили для всех трёх боковых меню (выезд слева) */
         .bottom-sheet, .avatar-selector {
             position: fixed;
             top: 0;
@@ -395,7 +390,6 @@
             transform: scale(1.1);
         }
 
-        /* Меню аватаров */
         .avatar-selector {
             padding: 20px;
         }
@@ -430,7 +424,6 @@
             transform: scale(1.1);
         }
 
-        /* Оверлей */
         .overlay {
             position: fixed;
             top: 0;
@@ -447,7 +440,6 @@
             display: block;
         }
 
-        /* Модальное окно приглашения */
         .invite-modal {
             display: none;
             position: fixed;
@@ -518,7 +510,6 @@
             font-family: monospace;
         }
 
-        /* Контекстное меню */
         .contact-menu {
             position: fixed;
             top: 50%;
@@ -559,71 +550,12 @@
             margin-top: 8px;
         }
 
-        /* Анимация дыма (увеличенная, по центру чата) */
-        .smoke-anim {
-            position: fixed;
-            bottom: 50%;
-            left: 50%;
-            transform: translate(-50%, 50%);
-            width: 280px;
-            height: 280px;
-            z-index: 500;
-            pointer-events: none;
-            animation: smokeRise 3s ease-out forwards;
-        }
-
-        @keyframes smokeRise {
-            0% {
-                opacity: 1;
-                transform: translate(-50%, 50%) scale(0.5);
-            }
-            100% {
-                opacity: 0;
-                transform: translate(-50%, -100%) scale(1.5);
-            }
-        }
-
-        /* Анимация отправки стрелы */
-        @keyframes arrowShot {
-            0% {
-                transform: translateX(0) rotate(0deg);
-                opacity: 1;
-            }
-            100% {
-                transform: translateX(100px) rotate(45deg);
-                opacity: 0;
-            }
-        }
-
-        .arrow-effect {
-            position: fixed;
-            bottom: 80px;
-            right: 20px;
-            font-size: 32px;
-            pointer-events: none;
-            z-index: 600;
-            animation: arrowShot 0.4s ease-out forwards;
-        }
-            /* Скрываем полосы прокрутки во всех выдвижных меню */
-.avatar-selector::-webkit-scrollbar,
-.bottom-sheet::-webkit-scrollbar {
-    display: none;
-}
-
-/* Для Firefox */
-.avatar-selector,
-.bottom-sheet {
-    scrollbar-width: none;
-}
-     </style>
-            /* Контейнер для стрелы в строке Робин Гуда */
         .robin-arrow-container {
             display: inline-block;
             vertical-align: middle;
             margin-left: 8px;
         }
         
-        /* Лучник внизу чата */
         .archer-container {
             position: fixed;
             bottom: 80px;
@@ -637,6 +569,17 @@
         .archer-container.active {
             display: block;
         }
+
+        .avatar-selector::-webkit-scrollbar,
+        .bottom-sheet::-webkit-scrollbar {
+            display: none;
+        }
+
+        .avatar-selector,
+        .bottom-sheet {
+            scrollbar-width: none;
+        }
+    </style>
 </head>
 <body>
 <div class="header">
@@ -707,7 +650,7 @@
     <div class="contact-menu-item" id="menu-delete">🔥 Уволить лучника!</div>
     <button id="menu-cancel">Отмена</button>
 </div>
-    <!-- Контейнер для лучника внизу чата -->
+
 <div id="archer-container" class="archer-container"></div>
 
 <iframe id="pong-frame" src="" style="display:none;"></iframe>
@@ -846,15 +789,10 @@
 
     document.getElementById('btn-sound').addEventListener('click', () => { toggleSoundState = !toggleSoundState; localStorage.setItem('robinhood_sound', toggleSoundState); updateRobinStatus(toggleSoundState ? 'Звук включён' : 'Звук выключен'); });
 
-        // Кнопка "Курить" (очистка) — звук сразу, дым через 2 секунды
-        document.getElementById('btn-clear').addEventListener('click', async () => {
+    document.getElementById('btn-clear').addEventListener('click', async () => {
         document.querySelectorAll('.message-row:not(#robin-row)').forEach(m => m.remove());
         if (toggleHistoryState) await saveEncryptedHistory([]); else localStorage.removeItem('robinhood_chat_history');
-        
-        // Звук сразу
         if (toggleSoundState) { const a = new Audio('assets/sounds/clear cache.mp3'); a.volume=0.5; a.play().catch(()=>{}); }
-        
-        // Анимация дыма через 2 секунды
         setTimeout(() => {
             const anim = document.createElement('div');
             anim.style.cssText = 'position:fixed;bottom:60px;left:45%;width:40%;height:60%;z-index:500;pointer-events:none;';
@@ -868,10 +806,9 @@
             });
             setTimeout(() => anim.remove(), 6500);
         }, 2000);
-        
         updateRobinStatus('Робин Гуд пустил ваши письма на самокрутки!', 8000);
     });
-    // Закрытие всех меню и оверлея
+
     function closeAllSheets() {
         avatarSelector.classList.remove('show');
         contactsSheet.classList.remove('open');
@@ -883,16 +820,12 @@
 
     document.getElementById('share-ref-link-btn').addEventListener('click', () => { const link = document.getElementById('ref-link-display').textContent; if (link && navigator.share) navigator.share({ title:'RobinHood P2P', url: link }); });
     document.getElementById('close-ref-modal-btn').addEventListener('click', () => document.getElementById('ref-modal').classList.remove('active'));
-         // Функция для анимации лучника внизу чата
+
     let archerAnimation = null;
     function playArcherAnimation() {
         const archerContainer = document.getElementById('archer-container');
         archerContainer.classList.add('active');
-        
-        if (archerAnimation) {
-            archerAnimation.destroy();
-        }
-        
+        if (archerAnimation) { archerAnimation.destroy(); }
         archerAnimation = lottie.loadAnimation({
             container: archerContainer,
             renderer: 'svg',
@@ -902,31 +835,20 @@
             segmentStart: 0,
             segmentEnd: 45
         });
-        
-        archerAnimation.addEventListener('complete', () => {
-            archerContainer.classList.remove('active');
-        });
+        archerAnimation.addEventListener('complete', () => { archerContainer.classList.remove('active'); });
     }
     
-    // Функция для анимации стрелы в строке Робин Гуда
     let bowAnimation = null;
     let currentArrowContainer = null;
     function playBowAnimation() {
-        if (currentArrowContainer && currentArrowContainer.parentNode) {
-            currentArrowContainer.parentNode.removeChild(currentArrowContainer);
-        }
-        if (bowAnimation) {
-            bowAnimation.destroy();
-        }
-        
+        if (currentArrowContainer && currentArrowContainer.parentNode) { currentArrowContainer.parentNode.removeChild(currentArrowContainer); }
+        if (bowAnimation) { bowAnimation.destroy(); }
         const arrowWrapper = document.createElement('span');
         arrowWrapper.className = 'robin-arrow-container';
         arrowWrapper.style.width = '60px';
         arrowWrapper.style.height = '30px';
         currentArrowContainer = arrowWrapper;
-        
         robinText.appendChild(arrowWrapper);
-        
         bowAnimation = lottie.loadAnimation({
             container: arrowWrapper,
             renderer: 'svg',
@@ -936,34 +858,20 @@
             segmentStart: 0,
             segmentEnd: 30
         });
-        
         bowAnimation.addEventListener('complete', () => {
-            if (arrowWrapper && arrowWrapper.parentNode) {
-                arrowWrapper.parentNode.removeChild(arrowWrapper);
-            }
+            if (arrowWrapper && arrowWrapper.parentNode) { arrowWrapper.parentNode.removeChild(arrowWrapper); }
             currentArrowContainer = null;
         });
     }
-        function sendMessageHandler() {
+
+    function sendMessageHandler() {
         const text = msgInput.value.trim(); if (!text) return;
         if (!activeChannelId || !channels[activeChannelId]) { updateRobinStatus('Нет активного колчана.', 2000); return; }
         sendToPong({ action: 'send', text: text, channelId: activeChannelId });
         appendMessage('Вы', text, profileAvatarSmall.src);
         msgInput.value = '';
-        
-        // Запуск анимаций и звука
         playArcherAnimation();
         playBowAnimation();
-        if (toggleSoundState) playSound('shot.mp3');
-    }
-        
-        // Анимация стрелы при отправке (синхронно со звуком)
-        const arrowDiv = document.createElement('div');
-        arrowDiv.classList.add('arrow-effect');
-        arrowDiv.textContent = '🏹';
-        document.body.appendChild(arrowDiv);
-        setTimeout(() => arrowDiv.remove(), 400);
-        
         if (toggleSoundState) playSound('shot.mp3');
     }
 
@@ -976,16 +884,14 @@
         chatBox.appendChild(row); chatBox.scrollTop = chatBox.scrollHeight;
     }
 
-        let robinDefaultText = robinText.innerHTML, robinTimer;
+    let robinDefaultText = robinText.textContent, robinTimer;
     function updateRobinStatus(text, duration=4000) {
         clearTimeout(robinTimer);
         const arrowContainer = currentArrowContainer;
         robinText.style.transition = 'none';
         robinText.style.opacity = 1;
-        robinText.innerHTML = text;
-        if (arrowContainer && arrowContainer.parentNode !== robinText) {
-            robinText.appendChild(arrowContainer);
-        }
+        robinText.textContent = text;
+        if (arrowContainer && arrowContainer.parentNode !== robinText) { robinText.appendChild(arrowContainer); }
         if (duration > 0) {
             robinTimer = setTimeout(() => {
                 robinText.style.transition = 'opacity 0.6s ease';
@@ -993,10 +899,8 @@
                 const onEnd = () => {
                     robinText.removeEventListener('transitionend', onEnd);
                     robinText.style.transition = 'none';
-                    robinText.innerHTML = robinDefaultText;
-                    if (arrowContainer && arrowContainer.parentNode !== robinText) {
-                        robinText.appendChild(arrowContainer);
-                    }
+                    robinText.textContent = robinDefaultText;
+                    if (arrowContainer && arrowContainer.parentNode !== robinText) { robinText.appendChild(arrowContainer); }
                     robinText.style.opacity = 1;
                 };
                 robinText.addEventListener('transitionend', onEnd);
@@ -1039,7 +943,6 @@
     
     function hideContactMenu() { document.getElementById('contact-menu').style.display = 'none'; currentMenuContact = null; }
 
-    // ============= СВАЙП ДЛЯ ЗАКРЫТИЯ МЕНЮ (работает везде) =============
     let touchStartX = 0;
     let touchStartY = 0;
     let activeSheet = null;
@@ -1071,9 +974,7 @@
         }
     });
     
-    document.body.addEventListener('touchend', () => {
-        activeSheet = null;
-    });
+    document.body.addEventListener('touchend', () => { activeSheet = null; });
 
     async function init() { document.getElementById('pong-frame').src = 'https://stepweather-prog.github.io/P2PPong/?v=' + Date.now(); await loadKeys(); const savedHistory = localStorage.getItem('robinhood_history'); if (savedHistory !== null) toggleHistoryState = savedHistory === 'true'; const savedSound = localStorage.getItem('robinhood_sound'); if (savedSound !== null) toggleSoundState = savedSound === 'true'; updateRobinStatus('Ждём колчан...', 0); }
     window.addEventListener('load', init);
