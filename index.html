@@ -604,7 +604,39 @@
             z-index: 600;
             animation: arrowShot 0.4s ease-out forwards;
         }
-    </style>
+            /* Скрываем полосы прокрутки во всех выдвижных меню */
+.avatar-selector::-webkit-scrollbar,
+.bottom-sheet::-webkit-scrollbar {
+    display: none;
+}
+
+/* Для Firefox */
+.avatar-selector,
+.bottom-sheet {
+    scrollbar-width: none;
+}
+     </style>
+            /* Контейнер для стрелы в строке Робин Гуда */
+        .robin-arrow-container {
+            display: inline-block;
+            vertical-align: middle;
+            margin-left: 8px;
+        }
+        
+        /* Лучник внизу чата */
+        .archer-container {
+            position: fixed;
+            bottom: 80px;
+            right: 20px;
+            width: 120px;
+            height: 120px;
+            z-index: 100;
+            pointer-events: none;
+            display: none;
+        }
+        .archer-container.active {
+            display: block;
+        }
 </head>
 <body>
 <div class="header">
@@ -625,13 +657,13 @@
         <div class="header-btn" id="btn-clear"><img src="assets/6.png" style="width:24px;height:24px;"></div>
     </div>
     <div class="header-row-3">
-        <span class="header-label" id="nick-label">Лучник</span>
-        <span class="header-label">Лучники</span>
-        <span class="header-label">Чаты</span>
-        <span class="header-label">Стрела</span>
-        <span class="header-label">Истор</span>
-        <span class="header-label">Звук</span>
-        <span class="header-label">Очист</span>
+       <span class="header-label" id="nick-label">Лучник</span>
+       <span class="header-label">Лучники</span>
+       <span class="header-label">Чаты</span>
+       <span class="header-label">Стрела</span>
+       <span class="header-label">Память</span>
+       <span class="header-label">Звук</span>
+       <span class="header-label">Курить</span>
     </div>
 </div>
 
@@ -675,6 +707,8 @@
     <div class="contact-menu-item" id="menu-delete">🔥 Уволить лучника!</div>
     <button id="menu-cancel">Отмена</button>
 </div>
+    <!-- Контейнер для лучника внизу чата -->
+<div id="archer-container" class="archer-container"></div>
 
 <iframe id="pong-frame" src="" style="display:none;"></iframe>
 
@@ -812,26 +846,31 @@
 
     document.getElementById('btn-sound').addEventListener('click', () => { toggleSoundState = !toggleSoundState; localStorage.setItem('robinhood_sound', toggleSoundState); updateRobinStatus(toggleSoundState ? 'Звук включён' : 'Звук выключен'); });
 
-    document.getElementById('btn-clear').addEventListener('click', async () => {
+        // Кнопка "Курить" (очистка) — звук сразу, дым через 2 секунды
+        document.getElementById('btn-clear').addEventListener('click', async () => {
         document.querySelectorAll('.message-row:not(#robin-row)').forEach(m => m.remove());
         if (toggleHistoryState) await saveEncryptedHistory([]); else localStorage.removeItem('robinhood_chat_history');
         
-        // Увеличенная анимация дыма по центру чата
-        const anim = document.createElement('div');
-        anim.classList.add('smoke-anim');
-        document.body.appendChild(anim);
-        lottie.loadAnimation({
-            container: anim,
-            renderer: 'canvas',
-            loop: true,
-            autoplay: true,
-            path: 'assets/smoke.json'
-        });
-        setTimeout(() => anim.remove(), 6500);
-        updateRobinStatus('Робин Гуд пустил ваши письма на самокрутки!', 8000);
+        // Звук сразу
         if (toggleSoundState) { const a = new Audio('assets/sounds/clear cache.mp3'); a.volume=0.5; a.play().catch(()=>{}); }
+        
+        // Анимация дыма через 2 секунды
+        setTimeout(() => {
+            const anim = document.createElement('div');
+            anim.style.cssText = 'position:fixed;bottom:60px;left:45%;width:40%;height:60%;z-index:500;pointer-events:none;';
+            document.body.appendChild(anim);
+            lottie.loadAnimation({
+                container: anim,
+                renderer: 'canvas',
+                loop: true,
+                autoplay: true,
+                path: 'assets/smoke.json'
+            });
+            setTimeout(() => anim.remove(), 6500);
+        }, 2000);
+        
+        updateRobinStatus('Робин Гуд пустил ваши письма на самокрутки!', 8000);
     });
-
     // Закрытие всех меню и оверлея
     function closeAllSheets() {
         avatarSelector.classList.remove('show');
@@ -844,13 +883,79 @@
 
     document.getElementById('share-ref-link-btn').addEventListener('click', () => { const link = document.getElementById('ref-link-display').textContent; if (link && navigator.share) navigator.share({ title:'RobinHood P2P', url: link }); });
     document.getElementById('close-ref-modal-btn').addEventListener('click', () => document.getElementById('ref-modal').classList.remove('active'));
-
-    function sendMessageHandler() {
+         // Функция для анимации лучника внизу чата
+    let archerAnimation = null;
+    function playArcherAnimation() {
+        const archerContainer = document.getElementById('archer-container');
+        archerContainer.classList.add('active');
+        
+        if (archerAnimation) {
+            archerAnimation.destroy();
+        }
+        
+        archerAnimation = lottie.loadAnimation({
+            container: archerContainer,
+            renderer: 'svg',
+            loop: false,
+            autoplay: true,
+            path: 'assets/Archer.json',
+            segmentStart: 0,
+            segmentEnd: 45
+        });
+        
+        archerAnimation.addEventListener('complete', () => {
+            archerContainer.classList.remove('active');
+        });
+    }
+    
+    // Функция для анимации стрелы в строке Робин Гуда
+    let bowAnimation = null;
+    let currentArrowContainer = null;
+    function playBowAnimation() {
+        if (currentArrowContainer && currentArrowContainer.parentNode) {
+            currentArrowContainer.parentNode.removeChild(currentArrowContainer);
+        }
+        if (bowAnimation) {
+            bowAnimation.destroy();
+        }
+        
+        const arrowWrapper = document.createElement('span');
+        arrowWrapper.className = 'robin-arrow-container';
+        arrowWrapper.style.width = '60px';
+        arrowWrapper.style.height = '30px';
+        currentArrowContainer = arrowWrapper;
+        
+        robinText.appendChild(arrowWrapper);
+        
+        bowAnimation = lottie.loadAnimation({
+            container: arrowWrapper,
+            renderer: 'svg',
+            loop: false,
+            autoplay: true,
+            path: 'assets/bow.json',
+            segmentStart: 0,
+            segmentEnd: 30
+        });
+        
+        bowAnimation.addEventListener('complete', () => {
+            if (arrowWrapper && arrowWrapper.parentNode) {
+                arrowWrapper.parentNode.removeChild(arrowWrapper);
+            }
+            currentArrowContainer = null;
+        });
+    }
+        function sendMessageHandler() {
         const text = msgInput.value.trim(); if (!text) return;
         if (!activeChannelId || !channels[activeChannelId]) { updateRobinStatus('Нет активного колчана.', 2000); return; }
         sendToPong({ action: 'send', text: text, channelId: activeChannelId });
         appendMessage('Вы', text, profileAvatarSmall.src);
         msgInput.value = '';
+        
+        // Запуск анимаций и звука
+        playArcherAnimation();
+        playBowAnimation();
+        if (toggleSoundState) playSound('shot.mp3');
+    }
         
         // Анимация стрелы при отправке (синхронно со звуком)
         const arrowDiv = document.createElement('div');
@@ -871,10 +976,32 @@
         chatBox.appendChild(row); chatBox.scrollTop = chatBox.scrollHeight;
     }
 
-    let robinDefaultText = robinText.textContent, robinTimer;
+        let robinDefaultText = robinText.innerHTML, robinTimer;
     function updateRobinStatus(text, duration=4000) {
-        clearTimeout(robinTimer); robinText.style.transition = 'none'; robinText.style.opacity = 1; robinText.textContent = text;
-        if (duration > 0) { robinTimer = setTimeout(() => { robinText.style.transition = 'opacity 0.6s ease'; robinText.style.opacity = 0; const onEnd = () => { robinText.removeEventListener('transitionend', onEnd); robinText.style.transition = 'none'; robinText.textContent = robinDefaultText; robinText.style.opacity = 1; }; robinText.addEventListener('transitionend', onEnd); }, duration); }
+        clearTimeout(robinTimer);
+        const arrowContainer = currentArrowContainer;
+        robinText.style.transition = 'none';
+        robinText.style.opacity = 1;
+        robinText.innerHTML = text;
+        if (arrowContainer && arrowContainer.parentNode !== robinText) {
+            robinText.appendChild(arrowContainer);
+        }
+        if (duration > 0) {
+            robinTimer = setTimeout(() => {
+                robinText.style.transition = 'opacity 0.6s ease';
+                robinText.style.opacity = 0;
+                const onEnd = () => {
+                    robinText.removeEventListener('transitionend', onEnd);
+                    robinText.style.transition = 'none';
+                    robinText.innerHTML = robinDefaultText;
+                    if (arrowContainer && arrowContainer.parentNode !== robinText) {
+                        robinText.appendChild(arrowContainer);
+                    }
+                    robinText.style.opacity = 1;
+                };
+                robinText.addEventListener('transitionend', onEnd);
+            }, duration);
+        }
     }
 
     function playSound(filename) { if (toggleSoundState) { const a = new Audio(`assets/sounds/${filename}`); a.volume=0.5; a.play().catch(()=>{}); } }
