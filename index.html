@@ -579,6 +579,29 @@
         .bottom-sheet {
             scrollbar-width: none;
         }
+                /* Анимация дыма (увеличенная, по центру чата) */
+        .smoke-anim {
+            position: fixed;
+            bottom: 50%;
+            left: 50%;
+            transform: translate(-50%, 50%);
+            width: 280px;
+            height: 280px;
+            z-index: 500;
+            pointer-events: none;
+            animation: smokeRise 3s ease-out forwards;
+        }
+
+        @keyframes smokeRise {
+            0% {
+                opacity: 1;
+                transform: translate(-50%, 50%) scale(0.5);
+            }
+            100% {
+                opacity: 0;
+                transform: translate(-50%, -100%) scale(1.5);
+            }
+        }
     </style>
 </head>
 <body>
@@ -787,42 +810,32 @@
         localStorage.setItem('robinhood_history', toggleHistoryState);
     });
 
-    document.getElementById('btn-sound').addEventListener('click', () => { toggleSoundState = !toggleSoundState; localStorage.setItem('robinhood_sound', toggleSoundState); updateRobinStatus(toggleSoundState ? 'Звук включён' : 'Звук выключен'); });
+       document.getElementById('btn-sound').addEventListener('click', () => { toggleSoundState = !toggleSoundState; localStorage.setItem('robinhood_sound', toggleSoundState); updateRobinStatus(toggleSoundState ? 'Звук включён' : 'Звук выключен'); });
 
-        document.getElementById('btn-clear').addEventListener('click', async () => {
+            document.getElementById('btn-clear').addEventListener('click', async () => {
         document.querySelectorAll('.message-row:not(#robin-row)').forEach(m => m.remove());
         if (toggleHistoryState) await saveEncryptedHistory([]); else localStorage.removeItem('robinhood_chat_history');
         
         // Звук сразу
         if (toggleSoundState) { const a = new Audio('assets/sounds/clear cache.mp3'); a.volume=0.5; a.play().catch(()=>{}); }
         
-       /* Анимация дыма (увеличенная, по центру чата) */
-        .smoke-anim {
-            position: fixed;
-            bottom: 50%;
-            left: 50%;
-            transform: translate(-50%, 50%);
-            width: 280px;
-            height: 280px;
-            z-index: 500;
-            pointer-events: none;
-            animation: smokeRise 3s ease-out forwards;
-        }
-
-        @keyframes smokeRise {
-            0% {
-                opacity: 1;
-                transform: translate(-50%, 50%) scale(0.5);
-            }
-            100% {
-                opacity: 0;
-                transform: translate(-50%, -100%) scale(1.5);
-            }
-        }
+        // Анимация дыма через 2 секунды
+        setTimeout(() => {
+            const anim = document.createElement('div');
+            anim.className = 'smoke-anim';
+            document.body.appendChild(anim);
+            lottie.loadAnimation({
+                container: anim,
+                renderer: 'canvas',
+                loop: true,
+                autoplay: true,
+                path: 'assets/smoke.json'
+            });
+            setTimeout(() => anim.remove(), 6500);
+        }, 2000);
         
         updateRobinStatus('Робин Гуд пустил ваши письма на самокрутки!', 8000);
     });
-
     function closeAllSheets() {
         avatarSelector.classList.remove('show');
         contactsSheet.classList.remove('open');
