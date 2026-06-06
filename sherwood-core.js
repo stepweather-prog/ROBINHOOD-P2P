@@ -1,7 +1,7 @@
 /**
- * sherwood-core.js — Единый модуль RobinHood P2P v1.2
+ * sherwood-core.js — Единый модуль RobinHood P2P v1.3
  * 
- * SherwoodCrypto — AES-GCM + SHA-256 + Ed25519 сигнатуры
+ * SherwoodCrypto — AES-GCM + SHA-256 + Ed25519
  * SherwoodAudio  — пул аудио + звуки звонков
  * SherwoodCall   — WebRTC звонки (аудио/видео/mesh), Data Channel, SRTP
  */
@@ -14,7 +14,7 @@
         async sha256(text) {
             const data = new TextEncoder().encode(text);
             const hash = await crypto.subtle.digest('SHA-256', data);
-            return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+            return Array.from(new Uint8Array(hash)).map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
         },
 
         async generateAESKey() {
@@ -27,11 +27,11 @@
 
         async exportAESKey(key) {
             const raw = await crypto.subtle.exportKey("raw", key);
-            return btoa(String.fromCharCode(...new Uint8Array(raw)));
+            return btoa(String.fromCharCode.apply(null, new Uint8Array(raw)));
         },
 
         async importAESKey(base64key) {
-            const raw = Uint8Array.from(atob(base64key), c => c.charCodeAt(0));
+            const raw = Uint8Array.from(atob(base64key), function(c) { return c.charCodeAt(0); });
             return await crypto.subtle.importKey(
                 "raw", raw,
                 { name: "AES-GCM" },
@@ -49,16 +49,16 @@
                 encoded
             );
             return JSON.stringify({
-                iv: btoa(String.fromCharCode(...iv)),
-                data: btoa(String.fromCharCode(...new Uint8Array(ciphertext)))
+                iv: btoa(String.fromCharCode.apply(null, iv)),
+                data: btoa(String.fromCharCode.apply(null, new Uint8Array(ciphertext)))
             });
         },
 
         async aesDecrypt(payloadStr, key) {
             try {
                 const payload = JSON.parse(payloadStr);
-                const iv = Uint8Array.from(atob(payload.iv), c => c.charCodeAt(0));
-                const data = Uint8Array.from(atob(payload.data), c => c.charCodeAt(0));
+                const iv = Uint8Array.from(atob(payload.iv), function(c) { return c.charCodeAt(0); });
+                const data = Uint8Array.from(atob(payload.data), function(c) { return c.charCodeAt(0); });
                 const decrypted = await crypto.subtle.decrypt(
                     { name: "AES-GCM", iv },
                     key,
@@ -70,7 +70,6 @@
             }
         },
 
-        // Ed25519 сигнатуры для SRTP
         async generateSigningKey() {
             return await crypto.subtle.generateKey(
                 { name: "Ed25519" },
@@ -81,11 +80,11 @@
 
         async exportSigningKey(key) {
             const raw = await crypto.subtle.exportKey("raw", key);
-            return btoa(String.fromCharCode(...new Uint8Array(raw)));
+            return btoa(String.fromCharCode.apply(null, new Uint8Array(raw)));
         },
 
         async importSigningKey(base64key, isPrivate) {
-            const raw = Uint8Array.from(atob(base64key), c => c.charCodeAt(0));
+            const raw = Uint8Array.from(atob(base64key), function(c) { return c.charCodeAt(0); });
             return await crypto.subtle.importKey(
                 "raw", raw,
                 { name: "Ed25519" },
@@ -101,13 +100,13 @@
                 privateKey,
                 encoded
             );
-            return btoa(String.fromCharCode(...new Uint8Array(signature)));
+            return btoa(String.fromCharCode.apply(null, new Uint8Array(signature)));
         },
 
         async verifySignature(data, signatureB64, publicKey) {
             try {
                 const encoded = new TextEncoder().encode(data);
-                const signature = Uint8Array.from(atob(signatureB64), c => c.charCodeAt(0));
+                const signature = Uint8Array.from(atob(signatureB64), function(c) { return c.charCodeAt(0); });
                 return await crypto.subtle.verify(
                     { name: "Ed25519" },
                     publicKey,
@@ -124,7 +123,7 @@
     const SherwoodAudio = {
         _pool: {},
 
-        getAudio(filename, volume) {
+        getAudio: function(filename, volume) {
             const vol = (volume !== undefined) ? volume : 0.5;
             if (!this._pool[filename]) {
                 this._pool[filename] = new Audio('assets/sounds/' + filename);
@@ -135,21 +134,21 @@
             return a;
         },
 
-        playSound(filename, volume) {
+        playSound: function(filename, volume) {
             this.getAudio(filename, volume).play().catch(function() {});
         },
 
         _ringtone: null,
         _ringback: null,
 
-        playRingtone() {
+        playRingtone: function() {
             this.stopRingtone();
             this._ringtone = this.getAudio('melodi.mp3', 0.7);
             this._ringtone.loop = true;
             this._ringtone.play().catch(function() {});
         },
 
-        stopRingtone() {
+        stopRingtone: function() {
             if (this._ringtone) {
                 this._ringtone.pause();
                 this._ringtone.loop = false;
@@ -157,14 +156,14 @@
             }
         },
 
-        playRingback() {
+        playRingback: function() {
             this.stopRingback();
             this._ringback = this.getAudio('Welk.mp3', 0.5);
             this._ringback.loop = true;
             this._ringback.play().catch(function() {});
         },
 
-        stopRingback() {
+        stopRingback: function() {
             if (this._ringback) {
                 this._ringback.pause();
                 this._ringback.loop = false;
@@ -172,26 +171,16 @@
             }
         },
 
-        playCallStart() {
+        playCallStart: function() {
             this.playSound('open.mp3', 0.7);
         },
 
-        playCallEnd() {
+        playCallEnd: function() {
             this.playSound('exet.mp3', 0.7);
         }
     };
 
     // ===================== SherwoodCall =====================
-    /**
-     * @param {Object} opts
-     * @param {Function} opts.sendSignal — (text, channelId) отправка сигнала
-     * @param {Function} opts.onStatus   — (statusText)
-     * @param {Function} opts.onTrack    — (stream, callId)
-     * @param {Function} opts.onHangup   — ()
-     * @param {Function} opts.onFile     — (fileData) — получен файл
-     * @param {boolean}  opts.enableVideo
-     * @param {boolean}  opts.enableSRTP — Ed25519 подпись SDP
-     */
     function SherwoodCall(opts) {
         opts = opts || {};
         this._sendSignal = opts.sendSignal || function() {};
@@ -207,10 +196,9 @@
         this._callActive = false;
         this._speakerOn = true;
         this._pendingIce = {};
-        this._offerCallback = null;
+        this._offerSdp = null;
         this._dataChannels = {};
         this._signingKey = null;
-        this._peerSigningKeys = {};
         this._meshPeers = {};
     }
 
@@ -307,9 +295,7 @@
             }
         };
 
-        // Data Channel
         this._setupDataChannel(pc, callId);
-
         this._peerConnections[callId] = pc;
         return pc;
     };
@@ -361,9 +347,11 @@
             return;
         }
         this._localStreams['main'] = stream;
-        const pc = this._createPeerConn(stream, 'main');
+        this._createPeerConn(stream, 'main');
+        const pc = this._peerConnections['main'];
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
+        // Отправляем объект с sdp и video
         this._sendSignal('__OFFER__' + JSON.stringify({ sdp: offer, video: this._enableVideo }));
         this._callActive = true;
         this._onStatus(this._enableVideo ? '📹 Видеовызов...' : '📞 Вызов...');
@@ -371,9 +359,9 @@
 
     // Принять входящий
     SherwoodCall.prototype.accept = async function() {
-        const offer = this._offerCallback;
-        if (!offer) return;
-        this._offerCallback = null;
+        const sdp = this._offerSdp;
+        if (!sdp) return;
+        this._offerSdp = null;
         SherwoodAudio.stopRingtone();
         SherwoodAudio.playCallStart();
         this._onStatus('📞 Соединение...');
@@ -383,8 +371,9 @@
             return;
         }
         this._localStreams['main'] = stream;
-        const pc = this._createPeerConn(stream, 'main');
-        await pc.setRemoteDescription(new RTCSessionDescription(offer));
+        this._createPeerConn(stream, 'main');
+        const pc = this._peerConnections['main'];
+        await pc.setRemoteDescription(new RTCSessionDescription(sdp));
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
         this._sendSignal('__ANSWER__' + JSON.stringify(answer));
@@ -404,11 +393,15 @@
     };
 
     // Обработать входящий OFFER
-    SherwoodCall.prototype.handleOffer = function(offer) {
+    SherwoodCall.prototype.handleOffer = function(offerObj) {
         if (this._callActive) return false;
-        this._offerCallback = offer;
+        // Извлекаем sdp и video
+        this._offerSdp = offerObj.sdp || offerObj;
+        if (offerObj.video !== undefined) {
+            this._enableVideo = offerObj.video;
+        }
         SherwoodAudio.playRingtone();
-        this._onStatus('📞 Входящий вызов...');
+        this._onStatus(this._enableVideo ? '📹 Входящий видеовызов...' : '📞 Входящий вызов...');
         return true;
     };
 
@@ -416,7 +409,7 @@
     SherwoodCall.prototype.reject = function() {
         SherwoodAudio.stopRingtone();
         this._sendSignal('__HANGUP__');
-        this._offerCallback = null;
+        this._offerSdp = null;
         this._onStatus('📞 Вызов отклонён');
     };
 
@@ -437,7 +430,7 @@
         this._pendingIce = {};
         this._dataChannels = {};
         this._meshPeers = {};
-        this._offerCallback = null;
+        this._offerSdp = null;
         this._onHangup();
     };
 
@@ -446,7 +439,8 @@
         const stream = this._localStreams['main'];
         if (!stream) return;
         const cId = meshId || ('mesh_' + Date.now());
-        const pc = this._createPeerConn(stream, cId);
+        this._createPeerConn(stream, cId);
+        const pc = this._peerConnections[cId];
         await pc.setRemoteDescription(new RTCSessionDescription(offerSdp));
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
@@ -455,7 +449,7 @@
         this._meshPeers[cId] = true;
     };
 
-    // Отправить файл через Data Channel
+    // Отправить файл
     SherwoodCall.prototype.sendFile = function(fileData, callId) {
         const cId = callId || 'main';
         const dc = this._dataChannels[cId];
@@ -464,7 +458,6 @@
         return true;
     };
 
-    // Громкая связь
     SherwoodCall.prototype.toggleSpeaker = function() {
         this._speakerOn = !this._speakerOn;
         return this._speakerOn;
@@ -480,6 +473,10 @@
 
     SherwoodCall.prototype.setVideo = function(v) {
         this._enableVideo = v;
+    };
+
+    SherwoodCall.prototype.getLocalStream = function(callId) {
+        return this._localStreams[callId || 'main'] || null;
     };
 
     // Экспорт
