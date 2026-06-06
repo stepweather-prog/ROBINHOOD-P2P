@@ -13,7 +13,7 @@
     </script>
     <style>
         :root,
-        [data-theme="green"] {
+        [data-theme="forest"] {
             --bg-primary: #1a2a1f;
             --bg-secondary: #0d1a0c;
             --accent: #c4a24b;
@@ -35,75 +35,6 @@
             --robin-accent: #e8c97a;
             --overlay-bg: rgba(0, 0, 0, 0.6);
             --call-bg: linear-gradient(135deg, rgba(25, 35, 20, 0.98), rgba(15, 25, 12, 0.98));
-        }
-        [data-theme="night"] {
-            --bg-primary: #0f1923;
-            --bg-secondary: #060c13;
-            --accent: #7b9ec7;
-            --accent-light: #b0c8e8;
-            --accent-glow: rgba(123, 158, 199, 0.5);
-            --text: #d0d8e8;
-            --text-bright: #e0eaf5;
-            --text-dim: #8899b0;
-            --border: #7b9ec7;
-            --btn-bg: rgba(123, 158, 199, 0.1);
-            --btn-border: rgba(123, 158, 199, 0.3);
-            --btn-hover: rgba(123, 158, 199, 0.25);
-            --sheet-bg: linear-gradient(145deg, #16202a 0%, #0a1018 100%);
-            --input-bg: rgba(18, 25, 35, 0.9);
-            --input-focus: rgba(22, 30, 42, 0.95);
-            --msg-bg: rgba(20, 30, 40, 0.85);
-            --msg-accent: #7b9ec7;
-            --robin-bg: rgba(30, 45, 60, 0.9);
-            --robin-accent: #a0c8e8;
-            --overlay-bg: rgba(0, 0, 0, 0.7);
-            --call-bg: linear-gradient(135deg, rgba(18, 25, 35, 0.98), rgba(10, 16, 24, 0.98));
-        }
-        [data-theme="autumn"] {
-            --bg-primary: #2a1f1a;
-            --bg-secondary: #1a0f0a;
-            --accent: #c47b4b;
-            --accent-light: #e8b090;
-            --accent-glow: rgba(196, 123, 75, 0.5);
-            --text: #f0d8c8;
-            --text-bright: #fae8d8;
-            --text-dim: #b89070;
-            --border: #c47b4b;
-            --btn-bg: rgba(196, 123, 75, 0.1);
-            --btn-border: rgba(196, 123, 75, 0.3);
-            --btn-hover: rgba(196, 123, 75, 0.25);
-            --sheet-bg: linear-gradient(145deg, #2a1e18 0%, #180e08 100%);
-            --input-bg: rgba(30, 20, 15, 0.9);
-            --input-focus: rgba(38, 25, 18, 0.95);
-            --msg-bg: rgba(40, 25, 20, 0.85);
-            --msg-accent: #c47b4b;
-            --robin-bg: rgba(60, 40, 30, 0.9);
-            --robin-accent: #e8b090;
-            --overlay-bg: rgba(0, 0, 0, 0.7);
-            --call-bg: linear-gradient(135deg, rgba(35, 20, 15, 0.98), rgba(20, 10, 5, 0.98));
-        }
-        [data-theme="winter"] {
-            --bg-primary: #1a2530;
-            --bg-secondary: #0d1820;
-            --accent: #8ab4d8;
-            --accent-light: #c0ddf0;
-            --accent-glow: rgba(138, 180, 216, 0.5);
-            --text: #e0eaf0;
-            --text-bright: #f0f5fa;
-            --text-dim: #90a8c0;
-            --border: #8ab4d8;
-            --btn-bg: rgba(138, 180, 216, 0.1);
-            --btn-border: rgba(138, 180, 216, 0.3);
-            --btn-hover: rgba(138, 180, 216, 0.25);
-            --sheet-bg: linear-gradient(145deg, #1a2835 0%, #0d1822 100%);
-            --input-bg: rgba(18, 28, 38, 0.9);
-            --input-focus: rgba(22, 35, 48, 0.95);
-            --msg-bg: rgba(20, 32, 42, 0.85);
-            --msg-accent: #8ab4d8;
-            --robin-bg: rgba(30, 45, 58, 0.9);
-            --robin-accent: #b0d8f0;
-            --overlay-bg: rgba(0, 0, 0, 0.7);
-            --call-bg: linear-gradient(135deg, rgba(18, 28, 38, 0.98), rgba(10, 18, 26, 0.98));
         }
         [data-theme="sunset"] {
             --bg-primary: #2a1a2f;
@@ -151,51 +82,120 @@
             --overlay-bg: rgba(0, 0, 0, 0.7);
             --call-bg: linear-gradient(135deg, rgba(15, 25, 30, 0.98), rgba(8, 15, 20, 0.98));
         }
-        [data-theme="crimson"] {
-            --bg-primary: #1f1a1a;
-            --bg-secondary: #120a0a;
-            --accent: #c44b4b;
-            --accent-light: #e89090;
-            --accent-glow: rgba(196, 75, 75, 0.5);
-            --text: #f0c8c8;
-            --text-bright: #fae0e0;
-            --text-dim: #b07070;
-            --border: #c44b4b;
-            --btn-bg: rgba(196, 75, 75, 0.1);
-            --btn-border: rgba(196, 75, 75, 0.3);
-            --btn-hover: rgba(196, 75, 75, 0.25);
-            --sheet-bg: linear-gradient(145deg, #2a1a1a 0%, #180808 100%);
-            --input-bg: rgba(30, 15, 15, 0.9);
-            --input-focus: rgba(38, 18, 18, 0.95);
-            --msg-bg: rgba(40, 20, 20, 0.85);
-            --msg-accent: #c44b4b;
-            --robin-bg: rgba(60, 30, 30, 0.9);
-            --robin-accent: #e89090;
+        [data-theme="rose"] {
+            --bg-primary: #2a1a22;
+            --bg-secondary: #1a0a12;
+            --accent: #c44b6e;
+            --accent-light: #e890b0;
+            --accent-glow: rgba(196, 75, 110, 0.5);
+            --text: #f0c8d8;
+            --text-bright: #fae0e8;
+            --text-dim: #b87090;
+            --border: #c44b6e;
+            --btn-bg: rgba(196, 75, 110, 0.1);
+            --btn-border: rgba(196, 75, 110, 0.3);
+            --btn-hover: rgba(196, 75, 110, 0.25);
+            --sheet-bg: linear-gradient(145deg, #2a1a22 0%, #180a12 100%);
+            --input-bg: rgba(30, 15, 22, 0.9);
+            --input-focus: rgba(38, 18, 28, 0.95);
+            --msg-bg: rgba(40, 20, 28, 0.85);
+            --msg-accent: #c44b6e;
+            --robin-bg: rgba(60, 30, 42, 0.9);
+            --robin-accent: #e890b0;
             --overlay-bg: rgba(0, 0, 0, 0.7);
-            --call-bg: linear-gradient(135deg, rgba(35, 15, 15, 0.98), rgba(20, 5, 5, 0.98));
+            --call-bg: linear-gradient(135deg, rgba(35, 15, 22, 0.98), rgba(20, 8, 12, 0.98));
         }
-        [data-theme="moss"] {
-            --bg-primary: #1a2f1a;
-            --bg-secondary: #0a1d0a;
-            --accent: #6bc44b;
-            --accent-light: #a8e890;
-            --accent-glow: rgba(107, 196, 75, 0.5);
-            --text: #d0f0c8;
-            --text-bright: #e8fae0;
-            --text-dim: #80b070;
-            --border: #6bc44b;
-            --btn-bg: rgba(107, 196, 75, 0.1);
-            --btn-border: rgba(107, 196, 75, 0.3);
-            --btn-hover: rgba(107, 196, 75, 0.25);
-            --sheet-bg: linear-gradient(145deg, #1a2a18 0%, #0a1808 100%);
-            --input-bg: rgba(15, 30, 15, 0.9);
-            --input-focus: rgba(18, 38, 18, 0.95);
-            --msg-bg: rgba(20, 38, 20, 0.85);
-            --msg-accent: #6bc44b;
-            --robin-bg: rgba(30, 58, 30, 0.9);
-            --robin-accent: #a8e890;
+        [data-theme="amber"] {
+            --bg-primary: #2a221a;
+            --bg-secondary: #1a120a;
+            --accent: #c48b4b;
+            --accent-light: #e8c090;
+            --accent-glow: rgba(196, 139, 75, 0.5);
+            --text: #f0d8c0;
+            --text-bright: #fae8d0;
+            --text-dim: #b89870;
+            --border: #c48b4b;
+            --btn-bg: rgba(196, 139, 75, 0.1);
+            --btn-border: rgba(196, 139, 75, 0.3);
+            --btn-hover: rgba(196, 139, 75, 0.25);
+            --sheet-bg: linear-gradient(145deg, #2a2018 0%, #181008 100%);
+            --input-bg: rgba(30, 22, 15, 0.9);
+            --input-focus: rgba(38, 28, 18, 0.95);
+            --msg-bg: rgba(40, 28, 20, 0.85);
+            --msg-accent: #c48b4b;
+            --robin-bg: rgba(60, 42, 30, 0.9);
+            --robin-accent: #e8c090;
             --overlay-bg: rgba(0, 0, 0, 0.7);
-            --call-bg: linear-gradient(135deg, rgba(15, 30, 15, 0.98), rgba(5, 20, 5, 0.98));
+            --call-bg: linear-gradient(135deg, rgba(35, 22, 15, 0.98), rgba(20, 10, 5, 0.98));
+        }
+        [data-theme="mint"] {
+            --bg-primary: #1a2f25;
+            --bg-secondary: #0a1d15;
+            --accent: #4bc49e;
+            --accent-light: #90e8d0;
+            --accent-glow: rgba(75, 196, 158, 0.5);
+            --text: #c8f0e0;
+            --text-bright: #e0faf0;
+            --text-dim: #70b098;
+            --border: #4bc49e;
+            --btn-bg: rgba(75, 196, 158, 0.1);
+            --btn-border: rgba(75, 196, 158, 0.3);
+            --btn-hover: rgba(75, 196, 158, 0.25);
+            --sheet-bg: linear-gradient(145deg, #1a2a20 0%, #0a1810 100%);
+            --input-bg: rgba(15, 30, 22, 0.9);
+            --input-focus: rgba(18, 38, 28, 0.95);
+            --msg-bg: rgba(20, 38, 28, 0.85);
+            --msg-accent: #4bc49e;
+            --robin-bg: rgba(30, 58, 42, 0.9);
+            --robin-accent: #90e8d0;
+            --overlay-bg: rgba(0, 0, 0, 0.7);
+            --call-bg: linear-gradient(135deg, rgba(15, 30, 22, 0.98), rgba(5, 20, 12, 0.98));
+        }
+        [data-theme="lavender"] {
+            --bg-primary: #1e1a2f;
+            --bg-secondary: #0e0a1d;
+            --accent: #8a6bc4;
+            --accent-light: #b890e8;
+            --accent-glow: rgba(138, 107, 196, 0.5);
+            --text: #d0c8f0;
+            --text-bright: #e0d8fa;
+            --text-dim: #9080b0;
+            --border: #8a6bc4;
+            --btn-bg: rgba(138, 107, 196, 0.1);
+            --btn-border: rgba(138, 107, 196, 0.3);
+            --btn-hover: rgba(138, 107, 196, 0.25);
+            --sheet-bg: linear-gradient(145deg, #1e1a2a 0%, #0e0a18 100%);
+            --input-bg: rgba(20, 15, 30, 0.9);
+            --input-focus: rgba(25, 18, 38, 0.95);
+            --msg-bg: rgba(25, 20, 38, 0.85);
+            --msg-accent: #8a6bc4;
+            --robin-bg: rgba(38, 30, 55, 0.9);
+            --robin-accent: #b890e8;
+            --overlay-bg: rgba(0, 0, 0, 0.7);
+            --call-bg: linear-gradient(135deg, rgba(20, 15, 30, 0.98), rgba(10, 8, 20, 0.98));
+        }
+        [data-theme="cherry"] {
+            --bg-primary: #2a1a1f;
+            --bg-secondary: #1a0a0f;
+            --accent: #c44b5e;
+            --accent-light: #e8909e;
+            --accent-glow: rgba(196, 75, 94, 0.5);
+            --text: #f0c8d0;
+            --text-bright: #fae0e5;
+            --text-dim: #b07080;
+            --border: #c44b5e;
+            --btn-bg: rgba(196, 75, 94, 0.1);
+            --btn-border: rgba(196, 75, 94, 0.3);
+            --btn-hover: rgba(196, 75, 94, 0.25);
+            --sheet-bg: linear-gradient(145deg, #2a1a1e 0%, #180a0e 100%);
+            --input-bg: rgba(30, 15, 18, 0.9);
+            --input-focus: rgba(38, 18, 22, 0.95);
+            --msg-bg: rgba(40, 20, 24, 0.85);
+            --msg-accent: #c44b5e;
+            --robin-bg: rgba(60, 30, 36, 0.9);
+            --robin-accent: #e8909e;
+            --overlay-bg: rgba(0, 0, 0, 0.7);
+            --call-bg: linear-gradient(135deg, rgba(35, 15, 18, 0.98), rgba(20, 5, 8, 0.98));
         }
 
         * {
@@ -236,9 +236,7 @@
             z-index: 0;
             opacity: 0.4;
         }
-        @media (max-width: 500px) and (orientation: portrait) {
-            body::before { background-position: center center; }
-        }
+        @media (max-width: 500px) and (orientation: portrait) { body::before { background-position: center center; } }
         body::after {
             content: "";
             position: fixed;
@@ -262,209 +260,79 @@
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
         }
         .header-row-1 { display: flex; align-items: center; gap: 8px; }
-        .header-title-text {
-            font-size: 1.3em;
-            font-weight: bold;
-            background: linear-gradient(135deg, var(--accent-light), var(--accent));
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
-            letter-spacing: 1px;
-        }
+        .header-title-text { font-size: 1.3em; font-weight: bold; background: linear-gradient(135deg, var(--accent-light), var(--accent)); -webkit-background-clip: text; background-clip: text; color: transparent; letter-spacing: 1px; }
         .header-shield { font-size: 1.1em; filter: drop-shadow(0 0 3px var(--accent-glow)); }
         .header-version { font-size: 0.65em; color: var(--text-dim); }
         .header-row-2 { display: flex; justify-content: space-around; align-items: center; }
         .header-row-3 { display: flex; justify-content: space-around; }
-        .header-btn {
-            width: 44px; height: 44px;
-            display: flex; align-items: center; justify-content: center;
-            cursor: pointer; border-radius: 12px; font-size: 22px;
-            position: relative; transition: all 0.2s ease;
-            background: var(--btn-bg); border: 1px solid var(--btn-border);
-        }
+        .header-btn { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 12px; font-size: 22px; position: relative; transition: all 0.2s ease; background: var(--btn-bg); border: 1px solid var(--btn-border); }
         .header-btn:hover { background: var(--btn-hover); transform: scale(1.05); border-color: var(--accent); }
         .header-btn img { width: 100%; height: 100%; object-fit: contain; padding: 6px; }
-        .header-label {
-            font-size: 0.6em; color: var(--text-dim); text-align: center;
-            width: 44px; cursor: pointer; font-weight: bold;
-            white-space: nowrap; letter-spacing: 0.5px;
-        }
-        .header-avatar {
-            width: 34px; height: 34px; border-radius: 50%; object-fit: cover;
-            border: 2px solid var(--border); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-        }
-        .chat-area {
-            flex: 1; overflow-y: auto; padding: 12px;
-            display: flex; flex-direction: column; gap: 10px;
-            background: rgba(10, 18, 8, 0.35); scrollbar-width: none;
-            position: relative; z-index: 1;
-        }
+        .header-label { font-size: 0.6em; color: var(--text-dim); text-align: center; width: 44px; cursor: pointer; font-weight: bold; white-space: nowrap; letter-spacing: 0.5px; }
+        .header-avatar { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; border: 2px solid var(--border); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3); }
+        .chat-area { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; background: rgba(10, 18, 8, 0.35); scrollbar-width: none; position: relative; z-index: 1; }
         .chat-area::-webkit-scrollbar { display: none; }
-        .message-row {
-            display: flex; align-items: flex-start; gap: 10px;
-            background: var(--msg-bg); backdrop-filter: blur(8px);
-            padding: 10px 12px; border-radius: 16px;
-            border-left: 3px solid var(--msg-accent);
-            transition: all 0.2s ease; animation: messageSlideIn 0.3s ease;
-        }
-        @keyframes messageSlideIn {
-            from { opacity: 0; transform: translateX(-10px); }
-            to { opacity: 1; transform: translateX(0); }
-        }
-        .input-area {
-            background: linear-gradient(135deg, rgba(25, 35, 20, 0.96), rgba(15, 25, 12, 0.98));
-            backdrop-filter: blur(8px); padding: 10px;
-            padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
-            display: flex; gap: 10px; align-items: center;
-            border-top: 1px solid var(--border); position: relative; z-index: 1;
-        }
-        input {
-            flex: 1; background: var(--input-bg); border: 1px solid var(--border);
-            padding: 12px; color: var(--text); border-radius: 12px; font-size: 16px;
-            outline: none; font-family: 'Segoe UI', 'Inter', monospace; transition: all 0.2s;
-        }
+        .message-row { display: flex; align-items: flex-start; gap: 10px; background: var(--msg-bg); backdrop-filter: blur(8px); padding: 10px 12px; border-radius: 16px; border-left: 3px solid var(--msg-accent); transition: all 0.2s ease; animation: messageSlideIn 0.3s ease; }
+        @keyframes messageSlideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
+        .input-area { background: linear-gradient(135deg, rgba(25, 35, 20, 0.96), rgba(15, 25, 12, 0.98)); backdrop-filter: blur(8px); padding: 10px; padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)); display: flex; gap: 10px; align-items: center; border-top: 1px solid var(--border); position: relative; z-index: 1; }
+        input { flex: 1; background: var(--input-bg); border: 1px solid var(--border); padding: 12px; color: var(--text); border-radius: 12px; font-size: 16px; outline: none; font-family: 'Segoe UI', 'Inter', monospace; transition: all 0.2s; }
         input:focus { border-color: var(--accent-light); box-shadow: 0 0 8px var(--accent-glow); background: var(--input-focus); }
-        .bow-button {
-            width: 44px; height: 44px; cursor: pointer; transition: transform 0.1s ease;
-            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
-        }
+        .bow-button { width: 44px; height: 44px; cursor: pointer; transition: transform 0.1s ease; filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3)); }
         .bow-button:active { transform: scale(0.92); }
-        .avatar {
-            width: 44px; height: 44px; border-radius: 50%; object-fit: cover;
-            background-color: #2a3a25; flex-shrink: 0; border: 2px solid var(--border);
-        }
+        .avatar { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; background-color: #2a3a25; flex-shrink: 0; border: 2px solid var(--border); }
         .msg-body { flex: 1; min-width: 0; }
         .msg-sender { font-weight: 900; color: var(--text-bright); font-size: 0.95em; text-shadow: 0 1px 2px rgba(0,0,0,0.5); letter-spacing: 0.3px; }
         .msg-body div { font-size: 0.95em; line-height: 1.4; color: var(--text); }
         .msg-status { font-size: 0.65em; color: var(--text-dim); text-align: right; margin-top: 4px; }
         #robin-row { background: var(--robin-bg); border-left: 3px solid var(--robin-accent); box-shadow: 0 2px 12px rgba(0,0,0,0.2); }
         #robin-text { font-weight: 700; font-size: 0.9em; color: var(--text-bright); text-shadow: 0 1px 3px rgba(0,0,0,0.6); }
-
-        .bottom-sheet,
-        .avatar-selector {
-            position: fixed; top: 0; left: 0; width: min(85%, 380px); height: 100%;
-            background: var(--sheet-bg); border-right: 2px solid var(--border);
-            z-index: 200; transform: translateX(-100%);
-            transition: transform 0.35s cubic-bezier(0.2, 0.9, 0.4, 1.1);
-            overflow-y: auto; backdrop-filter: blur(16px);
-            box-shadow: 8px 0 30px rgba(0, 0, 0, 0.5); -webkit-overflow-scrolling: touch;
-        }
-        .bottom-sheet.open,
-        .avatar-selector.show { transform: translateX(0); }
-        .bottom-sheet-header {
-            padding: 20px 20px 12px; font-weight: bold; color: var(--accent-light);
-            border-bottom: 1px solid var(--border); margin-bottom: 8px; font-size: 1.1em;
-            display: flex; justify-content: space-between; align-items: center;
-            background: rgba(0, 0, 0, 0.2);
-        }
-        .bottom-sheet-close {
-            background: none; border: none; color: var(--accent-light); font-size: 26px;
-            cursor: pointer; width: 40px; height: 40px; border-radius: 50%;
-            display: flex; align-items: center; justify-content: center; transition: all 0.2s;
-        }
+        .bottom-sheet, .avatar-selector { position: fixed; top: 0; left: 0; width: min(85%, 380px); height: 100%; background: var(--sheet-bg); border-right: 2px solid var(--border); z-index: 200; transform: translateX(-100%); transition: transform 0.35s cubic-bezier(0.2, 0.9, 0.4, 1.1); overflow-y: auto; backdrop-filter: blur(16px); box-shadow: 8px 0 30px rgba(0, 0, 0, 0.5); -webkit-overflow-scrolling: touch; }
+        .bottom-sheet.open, .avatar-selector.show { transform: translateX(0); }
+        .bottom-sheet-header { padding: 20px 20px 12px; font-weight: bold; color: var(--accent-light); border-bottom: 1px solid var(--border); margin-bottom: 8px; font-size: 1.1em; display: flex; justify-content: space-between; align-items: center; background: rgba(0, 0, 0, 0.2); }
+        .bottom-sheet-close { background: none; border: none; color: var(--accent-light); font-size: 26px; cursor: pointer; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
         .bottom-sheet-close:hover { background: var(--btn-hover); transform: rotate(90deg); }
         .bottom-sheet-list { padding: 8px 16px; }
-        .contact-item {
-            display: flex; align-items: center; justify-content: space-between;
-            padding: 12px; margin: 6px 0; border-radius: 14px;
-            background: rgba(255, 245, 215, 0.05); border: 1px solid var(--btn-border);
-            cursor: pointer; color: var(--text); transition: all 0.2s;
-        }
+        .contact-item { display: flex; align-items: center; justify-content: space-between; padding: 12px; margin: 6px 0; border-radius: 14px; background: rgba(255, 245, 215, 0.05); border: 1px solid var(--btn-border); cursor: pointer; color: var(--text); transition: all 0.2s; }
         .contact-item:hover { background: var(--btn-hover); border-color: var(--accent); transform: translateX(5px); }
         .contact-info { display: flex; align-items: center; gap: 12px; flex: 1; }
         .contact-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid var(--border); }
         .contact-name { font-weight: 600; font-size: 1em; color: var(--accent-light); }
-        .delete-contact {
-            background: none; border: none; color: #c97a5a; font-size: 20px;
-            cursor: pointer; padding: 8px; border-radius: 8px; transition: all 0.2s; flex-shrink: 0;
-        }
+        .delete-contact { background: none; border: none; color: #c97a5a; font-size: 20px; cursor: pointer; padding: 8px; border-radius: 8px; transition: all 0.2s; flex-shrink: 0; }
         .delete-contact:hover { background: rgba(201, 122, 90, 0.2); transform: scale(1.1); }
         .avatar-selector { padding: 20px; }
         .avatar-selector p { color: var(--accent-light); margin: 0 0 16px; font-size: 1.1em; text-align: center; }
         #avatar-list { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
-        .avatar-option {
-            width: 55px; height: 55px; border-radius: 50%; object-fit: cover;
-            margin: 4px; cursor: pointer; border: 2px solid transparent; transition: all 0.2s;
-        }
+        .avatar-option { width: 55px; height: 55px; border-radius: 50%; object-fit: cover; margin: 4px; cursor: pointer; border: 2px solid transparent; transition: all 0.2s; }
         .avatar-option:hover { border-color: var(--accent-light); transform: scale(1.1); }
-        .overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: var(--overlay-bg); backdrop-filter: blur(4px); display: none; z-index: 190;
-        }
+        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--overlay-bg); backdrop-filter: blur(4px); display: none; z-index: 190; }
         .overlay.show { display: block; }
-        .invite-modal {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(8px);
-            z-index: 300; justify-content: center; align-items: center;
-        }
+        .invite-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(8px); z-index: 300; justify-content: center; align-items: center; }
         .invite-modal.active { display: flex; }
-        .invite-dialog {
-            background: var(--sheet-bg); padding: 24px; border-radius: 24px;
-            width: 85%; max-width: 340px; text-align: center; border: 2px solid var(--border);
-            max-height: 80vh; overflow-y: auto; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
-        }
+        .invite-dialog { background: var(--sheet-bg); padding: 24px; border-radius: 24px; width: 85%; max-width: 340px; text-align: center; border: 2px solid var(--border); max-height: 80vh; overflow-y: auto; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); }
         .invite-dialog h3 { color: var(--accent-light); margin: 0 0 16px; font-size: 1.3em; }
-        .invite-dialog button {
-            width: 100%; padding: 12px; margin-top: 8px;
-            background: linear-gradient(135deg, var(--accent), var(--accent));
-            color: #1a1f0f; border: none; border-radius: 12px; font-size: 14px;
-            font-weight: bold; cursor: pointer; transition: all 0.2s;
-        }
+        .invite-dialog button { width: 100%; padding: 12px; margin-top: 8px; background: linear-gradient(135deg, var(--accent), var(--accent)); color: #1a1f0f; border: none; border-radius: 12px; font-size: 14px; font-weight: bold; cursor: pointer; transition: all 0.2s; }
         .invite-dialog button:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); }
-        .code-display {
-            background: #0a1208; border: 1px solid var(--border); color: var(--accent-light);
-            border-radius: 12px; padding: 12px; font-size: 0.8em; word-break: break-all;
-            margin: 16px 0; text-align: center; user-select: all; font-family: monospace;
-        }
-        .contact-menu {
-            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            background: var(--sheet-bg); border: 2px solid var(--border);
-            border-radius: 20px; padding: 12px; z-index: 400;
-            min-width: 240px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
-        }
-        .contact-menu-item {
-            padding: 12px; cursor: pointer; border-radius: 12px; margin-bottom: 6px;
-            font-size: 0.95em; color: var(--text); transition: all 0.2s;
-        }
+        .code-display { background: #0a1208; border: 1px solid var(--border); color: var(--accent-light); border-radius: 12px; padding: 12px; font-size: 0.8em; word-break: break-all; margin: 16px 0; text-align: center; user-select: all; font-family: monospace; }
+        .contact-menu { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: var(--sheet-bg); border: 2px solid var(--border); border-radius: 20px; padding: 12px; z-index: 400; min-width: 240px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6); }
+        .contact-menu-item { padding: 12px; cursor: pointer; border-radius: 12px; margin-bottom: 6px; font-size: 0.95em; color: var(--text); transition: all 0.2s; }
         .contact-menu-item:hover { background: var(--btn-hover); transform: translateX(5px); }
         #menu-cancel { background: #4a3a2a; border: none; padding: 10px; border-radius: 10px; color: white; cursor: pointer; width: 100%; margin-top: 8px; }
         .robin-arrow-container { display: inline-block; vertical-align: middle; margin-left: 8px; background: transparent !important; }
-        .robin-arrow-container svg,
-        .robin-arrow-container canvas { background: transparent !important; }
-        .avatar-selector::-webkit-scrollbar,
-        .bottom-sheet::-webkit-scrollbar { display: none; }
-        .avatar-selector,
-        .bottom-sheet { scrollbar-width: none; }
-        .smoke-anim {
-            position: fixed; bottom: 50%; left: 50%; transform: translate(-50%, 50%);
-            width: 280px; height: 280px; z-index: 500; pointer-events: none;
-            animation: smokeRise 3s ease-out forwards;
-        }
-        @keyframes smokeRise {
-            0% { opacity: 1; transform: translate(-50%, 50%) scale(0.5); }
-            100% { opacity: 0; transform: translate(-50%, -100%) scale(1.5); }
-        }
-        .modal-input-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.75); z-index: 500; display: none;
-            justify-content: center; align-items: center;
-        }
+        .robin-arrow-container svg, .robin-arrow-container canvas { background: transparent !important; }
+        .avatar-selector::-webkit-scrollbar, .bottom-sheet::-webkit-scrollbar { display: none; }
+        .avatar-selector, .bottom-sheet { scrollbar-width: none; }
+        .smoke-anim { position: fixed; bottom: 50%; left: 50%; transform: translate(-50%, 50%); width: 280px; height: 280px; z-index: 500; pointer-events: none; animation: smokeRise 3s ease-out forwards; }
+        @keyframes smokeRise { 0% { opacity: 1; transform: translate(-50%, 50%) scale(0.5); } 100% { opacity: 0; transform: translate(-50%, -100%) scale(1.5); } }
+        .modal-input-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.75); z-index: 500; display: none; justify-content: center; align-items: center; }
         .modal-input-overlay.active { display: flex; }
-        .modal-input-dialog {
-            background: var(--sheet-bg); border: 2px solid var(--border);
-            border-radius: 20px; padding: 20px; width: 85%; max-width: 340px; text-align: center;
-        }
+        .modal-input-dialog { background: var(--sheet-bg); border: 2px solid var(--border); border-radius: 20px; padding: 20px; width: 85%; max-width: 340px; text-align: center; }
         .modal-input-dialog h3 { color: var(--accent-light); margin: 0 0 12px; font-size: 1.1em; }
         .modal-input-dialog input { width: 100%; margin-bottom: 12px; }
         .modal-input-dialog .modal-btns { display: flex; gap: 8px; }
         .modal-input-dialog .modal-btns button { flex: 1; padding: 10px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; }
         .btn-gold { background: linear-gradient(135deg, var(--accent), var(--accent)); color: #1a1f0f; }
         .btn-dark { background: #4a3a2a; color: #eee; }
-        .terms-btn {
-            background: none; border: 1px solid var(--btn-border); color: var(--text-dim);
-            padding: 4px 8px; border-radius: 8px; font-size: 0.6em; cursor: pointer;
-            white-space: nowrap; transition: all 0.2s;
-        }
+        .terms-btn { background: none; border: 1px solid var(--btn-border); color: var(--text-dim); padding: 4px 8px; border-radius: 8px; font-size: 0.6em; cursor: pointer; white-space: nowrap; transition: all 0.2s; }
         .terms-btn:hover { background: var(--btn-hover); border-color: var(--accent); }
         #call-panel { background: var(--call-bg); border-top: 2px solid var(--border); }
         #call-status { color: var(--accent-light); }
@@ -478,7 +346,7 @@
             <span class="header-shield">🏹</span>
             <span style="flex:1;"></span>
             <button class="terms-btn" id="btn-terms">⚜ условия</button>
-            <span class="header-version">v4.0</span>
+            <span class="header-version">v4.1</span>
         </div>
         <div class="header-row-2">
             <div class="header-btn" id="btn-avatar"><img src="assets/avatars/001-.png" class="header-avatar" id="profile-avatar-small" alt="avatar"></div>
@@ -501,10 +369,7 @@
     <div class="chat-area" id="chat-box">
         <div class="message-row" id="robin-row">
             <img src="assets/avatars/231-icon-11433690.png" class="avatar" id="robin-avatar" alt="robin">
-            <div class="msg-body">
-                <div class="msg-sender">Robin Hood</div>
-                <div id="robin-text">Святые сокеты стабильны!</div>
-            </div>
+            <div class="msg-body"><div class="msg-sender">Robin Hood</div><div id="robin-text">Святые сокеты стабильны!</div></div>
         </div>
     </div>
 
@@ -513,7 +378,6 @@
         <img src="assets/bow.png" class="bow-button" id="send-btn" alt="Отправить">
     </div>
 
-    <!-- Панель звонка -->
     <div id="call-panel" style="display:none;position:fixed;bottom:0;left:0;width:100%;z-index:50;padding:15px;text-align:center;">
         <div id="call-status" style="font-size:1em;margin-bottom:10px;">📞 Входящий вызов...</div>
         <div style="display:flex;justify-content:center;gap:20px;align-items:center;">
@@ -537,22 +401,15 @@
         </div>
     </div>
 
-    <div class="invite-modal" id="ref-modal">
-        <div class="invite-dialog"><h3>🏹 Стрела готова 🏹</h3><div class="code-display" id="ref-link-display"></div><button id="share-ref-link-btn">📤 Поделиться</button><button id="close-ref-modal-btn" style="background:#4a3a2a;margin-top:5px;">Закрыть</button></div>
-    </div>
+    <div class="invite-modal" id="ref-modal"><div class="invite-dialog"><h3>🏹 Стрела готова 🏹</h3><div class="code-display" id="ref-link-display"></div><button id="share-ref-link-btn">📤 Поделиться</button><button id="close-ref-modal-btn" style="background:#4a3a2a;margin-top:5px;">Закрыть</button></div></div>
 
     <div id="contact-menu" class="contact-menu" style="display:none;">
-        <div class="contact-menu-item" id="menu-rename">✎ Переименовать</div>
-        <div class="contact-menu-item" id="menu-avatar">🖼 Сменить аватар</div>
-        <div class="contact-menu-item" id="menu-delete">🔥 Уволить лучника</div>
-        <button id="menu-cancel">Отмена</button>
+        <div class="contact-menu-item" id="menu-rename">✎ Переименовать</div><div class="contact-menu-item" id="menu-avatar">🖼 Сменить аватар</div><div class="contact-menu-item" id="menu-delete">🔥 Уволить лучника</div><button id="menu-cancel">Отмена</button>
     </div>
 
     <div id="bow-above-send" style="position:fixed;bottom:70px;right:15px;width:120px;height:120px;z-index:100;pointer-events:none;display:none;"></div>
 
-    <div class="modal-input-overlay" id="modal-input-overlay">
-        <div class="modal-input-dialog"><h3 id="modal-input-title">Введите текст</h3><input type="text" id="modal-input-field" placeholder="" autocomplete="off"><div class="modal-btns"><button class="btn-dark" id="modal-input-cancel">Отмена</button><button class="btn-gold" id="modal-input-ok">✓ Готово</button></div></div>
-    </div>
+    <div class="modal-input-overlay" id="modal-input-overlay"><div class="modal-input-dialog"><h3 id="modal-input-title">Введите текст</h3><input type="text" id="modal-input-field" placeholder="" autocomplete="off"><div class="modal-btns"><button class="btn-dark" id="modal-input-cancel">Отмена</button><button class="btn-gold" id="modal-input-ok">✓ Готово</button></div></div></div>
 
     <iframe id="pong-frame" src="" style="display:none;" title="p2p engine"></iframe>
 
@@ -612,16 +469,16 @@
             let ringbackAudio = null;
 
             const themes = [
-                { id: 'green', icon: '🏹', name: 'Лес' },
-                { id: 'night', icon: '🌙', name: 'Ночь' },
-                { id: 'autumn', icon: '🔥', name: 'Осень' },
-                { id: 'winter', icon: '❄️', name: 'Зима' },
+                { id: 'forest', icon: '🏹', name: 'Лес' },
                 { id: 'sunset', icon: '🌅', name: 'Закат' },
                 { id: 'ocean', icon: '🌊', name: 'Океан' },
-                { id: 'crimson', icon: '❤️', name: 'Кримсон' },
-                { id: 'moss', icon: '🌿', name: 'Мох' }
+                { id: 'rose', icon: '🌹', name: 'Роза' },
+                { id: 'amber', icon: '🍯', name: 'Янтарь' },
+                { id: 'mint', icon: '🌿', name: 'Мята' },
+                { id: 'lavender', icon: '💜', name: 'Лаванда' },
+                { id: 'cherry', icon: '🍒', name: 'Вишня' }
             ];
-            let currentTheme = localStorage.getItem('robinhood_theme') || 'green';
+            let currentTheme = localStorage.getItem('robinhood_theme') || 'forest';
 
             function applyTheme(id) {
                 currentTheme = id;
@@ -659,7 +516,6 @@
             function sendToPong(msg) { if (activeChannelId && channels[activeChannelId]) { msg.secret = channels[activeChannelId].secret; msg.channelId = activeChannelId; } if (handshakeSecret && msg.action === 'handshake') msg.handshake = handshakeSecret; if (pongFrame.contentWindow) { pongFrame.contentWindow.postMessage(msg, '*'); } }
             function sendCallSignal(text) { sendToPong({ action: 'send', text: text, channelId: activeChannelId }); }
 
-            // Звуки звонка
             function playRingtone() { stopRingtone(); ringtoneAudio = new Audio('assets/sounds/melodi.mp3'); ringtoneAudio.loop = true; ringtoneAudio.volume = 0.7; ringtoneAudio.play().catch(() => {}); }
             function stopRingtone() { if (ringtoneAudio) { ringtoneAudio.pause(); ringtoneAudio = null; } }
             function playRingback() { stopRingback(); ringbackAudio = new Audio('assets/sounds/Welk.mp3'); ringbackAudio.loop = true; ringbackAudio.volume = 0.5; ringbackAudio.play().catch(() => {}); }
@@ -674,7 +530,12 @@
                 if (localStream) localStream.getTracks().forEach(t => peerConnection.addTrack(t, localStream));
                 peerConnection.ontrack = (e) => { const a = new Audio(); a.srcObject = e.streams[0]; a.play().catch(() => {}); };
                 peerConnection.onicecandidate = (e) => { if (e.candidate && peerConnection.remoteDescription) { sendCallSignal('__ICE__' + JSON.stringify(e.candidate)); } };
-                peerConnection.onconnectionstatechange = () => { if (peerConnection.connectionState === 'connected') { callStatus.textContent = '✅ Разговор'; } if (peerConnection.connectionState === 'disconnected' || peerConnection.connectionState === 'failed') endCall(); };
+                peerConnection.oniceconnectionstatechange = () => {
+                    if (peerConnection.iceConnectionState === 'connected' || peerConnection.iceConnectionState === 'completed') {
+                        callStatus.textContent = '✅ Разговор';
+                    }
+                    if (peerConnection.iceConnectionState === 'disconnected' || peerConnection.iceConnectionState === 'failed') endCall();
+                };
             }
 
             async function startCall() {
@@ -706,7 +567,7 @@
                 updateRobinStatus('📞 Звонок завершён');
             }
 
-            function toggleSpeaker() { speakerOn = !speakerOn; callSpeaker.textContent = speakerOn ? '🔊' : '🔇'; if (localStream) localStream.getAudioTracks().forEach(t => {}); }
+            function toggleSpeaker() { speakerOn = !speakerOn; callSpeaker.textContent = speakerOn ? '🔊' : '🔇'; }
 
             btnCall.addEventListener('click', () => { if (!activeChannelId || !channels[activeChannelId]) { updateRobinStatus('🏹 Сначала воспользуйся стрелой!', 3000); return; } if (callActive) { endCall(); return; } startCall(); });
             callAccept.addEventListener('click', acceptCall);
@@ -723,16 +584,11 @@
                     case 'handshake-ok':
                         updateRobinStatus('🏹 Тетива натянута! Лучники готовы!', 2000);
                         const urlParams = new URLSearchParams(window.location.search);
-                        const id = urlParams.get('id'); const key = urlParams.get('key');
-                        if (id && key) { updateRobinStatus('📨 Принимаю стрелу...', 0); sendToPong({ action: 'accept', id: id, key: key }); }
+                        if (urlParams.get('id') && urlParams.get('key')) { updateRobinStatus('📨 Принимаю стрелу...', 0); sendToPong({ action: 'accept', id: urlParams.get('id'), key: urlParams.get('key') }); }
                         break;
-                    case 'session-created':
-                        const link = data.fullLink; document.getElementById('ref-link-display').textContent = link;
-                        document.getElementById('ref-modal').classList.add('active'); navigator.clipboard.writeText(link).catch(() => {});
-                        break;
+                    case 'session-created': document.getElementById('ref-link-display').textContent = data.fullLink; document.getElementById('ref-modal').classList.add('active'); navigator.clipboard.writeText(data.fullLink).catch(() => {}); break;
                     case 'channel-open':
-                        channels[data.channelId] = { secret: data.secret, role: data.role };
-                        if (!activeChannelId) activeChannelId = data.channelId;
+                        channels[data.channelId] = { secret: data.secret, role: data.role }; if (!activeChannelId) activeChannelId = data.channelId;
                         playQuiverAnimation();
                         const contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
                         if (!contacts.find(c => c.pubkey === data.channelId)) { contacts.push({ pubkey: data.channelId, name: 'Лучник', avatar: 'assets/avatars/001-.png', status: 'confirmed' }); localStorage.setItem('robinhood_contacts', JSON.stringify(contacts)); }
@@ -750,16 +606,10 @@
                                 callAccept.onclick = async () => { stopRingtone(); await acceptCall(); await peerConnection.setRemoteDescription(new RTCSessionDescription(offer)); const answer = await peerConnection.createAnswer(); await peerConnection.setLocalDescription(answer); sendCallSignal('__ANSWER__' + JSON.stringify(answer)); };
                                 return;
                             }
-                            if (typeof data.text === 'string' && data.text.startsWith('__ANSWER__')) {
-                            const answer = JSON.parse(data.text.replace('__ANSWER__', ''));
-                            stopRingback();
-                            callStatus.textContent = '✅ Разговор';
-                           if (peerConnection) peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
-                           return;
-                    }
+                            if (typeof data.text === 'string' && data.text.startsWith('__ANSWER__')) { stopRingback(); callStatus.textContent = '✅ Разговор'; const answer = JSON.parse(data.text.replace('__ANSWER__', '')); if (peerConnection) peerConnection.setRemoteDescription(new RTCSessionDescription(answer)); return; }
                             if (typeof data.text === 'string' && data.text.startsWith('__ICE__')) { const candidate = JSON.parse(data.text.replace('__ICE__', '')); if (peerConnection && peerConnection.remoteDescription && peerConnection.remoteDescription.type) { peerConnection.addIceCandidate(new RTCIceCandidate(candidate)).catch(e => {}); } return; }
                             if (data.text === '__HANGUP__') { if (callActive) { endCall(); updateRobinStatus('📞 Собеседник завершил звонок'); } else { stopRingtone(); callPanel.style.display = 'none'; updateRobinStatus('📞 Вызов отменён'); } return; }
-                            if (typeof data.text === 'string' && data.text.startsWith('__PROFILE__')) { try { const profile = JSON.parse(data.text.replace('__PROFILE__', '')); const contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]'); const contact = contacts.find(c => c.pubkey === data.channelId); if (contact) { contact.name = profile.nick || contact.name; contact.avatar = profile.avatar || contact.avatar; localStorage.setItem('robinhood_contacts', JSON.stringify(contacts)); } } catch (e) {} return; }
+                            if (typeof data.text === 'string' && data.text.startsWith('__PROFILE__')) { try { const p = JSON.parse(data.text.replace('__PROFILE__', '')); const cs = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]'); const c = cs.find(c => c.pubkey === data.channelId); if (c) { c.name = p.nick || c.name; c.avatar = p.avatar || c.avatar; localStorage.setItem('robinhood_contacts', JSON.stringify(cs)); } } catch (e) {} return; }
                             const contacts2 = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]'); const contact = contacts2.find(c => c.pubkey === data.channelId); const senderName = contact ? contact.name : (data.sender || 'Друг'); const senderAvatar = contact ? contact.avatar : 'assets/avatars/001-.png';
                             appendMessage(senderName, data.text, senderAvatar);
                             if (toggleHistoryState) { loadEncryptedHistory().then(hist => { hist.push({ text: data.text, sender: 'friend', recipient: 'me', senderName: senderName, avatar: senderAvatar, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }); saveEncryptedHistory(hist); }); }
@@ -773,7 +623,6 @@
             });
 
             window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; });
-
             const savedAvatar = localStorage.getItem('robinhood_avatar'); if (savedAvatar) { profileAvatarSmall.src = savedAvatar; document.getElementById('robin-avatar').src = savedAvatar; }
             const savedNick = localStorage.getItem('robinhood_nick'); if (savedNick) nickLabel.textContent = savedNick.substring(0, 10);
 
