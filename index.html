@@ -1178,8 +1178,8 @@ setTimeout(() => {
                 if (bowAnimation) { bowAnimation.destroy(); }
                 const arrowWrapper = document.createElement('span');
                 arrowWrapper.className = 'robin-arrow-container';
-                arrowWrapper.style.width = '60px';
-                arrowWrapper.style.height = '30px';
+                arrowWrapper.style.width = '80px';
+                arrowWrapper.style.height = '40px';
                 currentArrowContainer = arrowWrapper;
                 robinText.appendChild(arrowWrapper);
                 if (typeof lottie !== 'undefined') { bowAnimation = lottie.loadAnimation({ container: arrowWrapper, renderer: 'canvas', loop: false, autoplay: true, path: 'assets/bow.json' }); bowAnimation.addEventListener('complete', () => { if (arrowWrapper && arrowWrapper.parentNode) { arrowWrapper.parentNode.removeChild(arrowWrapper); } currentArrowContainer = null; }); }
