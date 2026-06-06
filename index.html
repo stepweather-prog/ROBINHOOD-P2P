@@ -614,7 +614,7 @@
             <span class="header-shield">🏹</span>
             <span style="flex:1;"></span>
             <button class="terms-btn" id="btn-terms">⚜ условия</button>
-            <span class="header-version">v3.6</span>
+            <span class="header-version">v3.7</span>
         </div>
         <div class="header-row-2">
             <div class="header-btn" id="btn-avatar"><img src="assets/avatars/001-.png" class="header-avatar" id="profile-avatar-small" alt="avatar"></div>
@@ -1069,8 +1069,8 @@
 
                 const wrapper = document.createElement('span');
                 wrapper.className = 'robin-arrow-container';
-                wrapper.style.width = '80px';
-                wrapper.style.height = '40px';
+                wrapper.style.width = '100px';
+                wrapper.style.height = '50px';
                 wrapper.style.display = 'inline-block';
                 wrapper.style.verticalAlign = 'middle';
                 currentArrowContainer = wrapper;
@@ -1113,12 +1113,12 @@
 
                 const wrapper = document.createElement('span');
                 wrapper.className = 'robin-arrow-container';
-                wrapper.style.width = '80px';
-                wrapper.style.height = '40px';
+                wrapper.style.width = '100px';
+                wrapper.style.height = '50px';
                 wrapper.style.display = 'inline-block';
                 wrapper.style.verticalAlign = 'middle';
                 currentArrowContainer = wrapper;
-                robinText.textContent = '';
+                robinText.textContent = '✅ ';
                 robinText.appendChild(wrapper);
 
                 if (typeof lottie !== 'undefined') {
@@ -1134,7 +1134,7 @@
                 setTimeout(() => {
                     if (wrapper && wrapper.parentNode) { wrapper.remove(); }
                     robinText.textContent = robinDefaultText;
-                }, 4000);
+                }, 5000);
             }
 
             function playSound(filename) { if (toggleSoundState) { const a = new Audio(`assets/sounds/${filename}`); a.volume = 0.5; a.play().catch(() => {}); } }
