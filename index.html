@@ -750,7 +750,13 @@
                                 callAccept.onclick = async () => { stopRingtone(); await acceptCall(); await peerConnection.setRemoteDescription(new RTCSessionDescription(offer)); const answer = await peerConnection.createAnswer(); await peerConnection.setLocalDescription(answer); sendCallSignal('__ANSWER__' + JSON.stringify(answer)); };
                                 return;
                             }
-                            if (typeof data.text === 'string' && data.text.startsWith('__ANSWER__')) { const answer = JSON.parse(data.text.replace('__ANSWER__', '')); stopRingback(); if (peerConnection) peerConnection.setRemoteDescription(new RTCSessionDescription(answer)); return; }
+                            if (typeof data.text === 'string' && data.text.startsWith('__ANSWER__')) {
+                            const answer = JSON.parse(data.text.replace('__ANSWER__', ''));
+                            stopRingback();
+                            callStatus.textContent = '✅ Разговор';
+                           if (peerConnection) peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+                           return;
+                    }
                             if (typeof data.text === 'string' && data.text.startsWith('__ICE__')) { const candidate = JSON.parse(data.text.replace('__ICE__', '')); if (peerConnection && peerConnection.remoteDescription && peerConnection.remoteDescription.type) { peerConnection.addIceCandidate(new RTCIceCandidate(candidate)).catch(e => {}); } return; }
                             if (data.text === '__HANGUP__') { if (callActive) { endCall(); updateRobinStatus('📞 Собеседник завершил звонок'); } else { stopRingtone(); callPanel.style.display = 'none'; updateRobinStatus('📞 Вызов отменён'); } return; }
                             if (typeof data.text === 'string' && data.text.startsWith('__PROFILE__')) { try { const profile = JSON.parse(data.text.replace('__PROFILE__', '')); const contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]'); const contact = contacts.find(c => c.pubkey === data.channelId); if (contact) { contact.name = profile.nick || contact.name; contact.avatar = profile.avatar || contact.avatar; localStorage.setItem('robinhood_contacts', JSON.stringify(contacts)); } } catch (e) {} return; }
