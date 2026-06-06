@@ -669,15 +669,15 @@
             <span class="header-shield">🏹</span>
             <span style="flex:1;"></span>
             <button class="terms-btn" id="btn-terms">⚜ условия</button>
-            <span class="header-version">v3.4</span>
+            <span class="header-version">v3.5</span>
         </div>
         <div class="header-row-2">
             <div class="header-btn" id="btn-avatar"><img src="assets/avatars/001-.png" class="header-avatar" id="profile-avatar-small" alt="avatar"></div>
             <div class="header-btn" id="btn-letters"><img src="assets/1.png" style="width:24px;height:24px;" alt="contacts"></div>
             <div class="header-btn" id="btn-arrow"><img src="assets/3.png" style="width:24px;height:24px;" alt="arrow"></div>
             <div class="header-btn" id="btn-clear"><img src="assets/6.png" style="width:24px;height:24px;" alt="clear"></div>
-            <div class="header-btn" id="btn-call" title="Позвонить" style="display:none;">
-                <img src="assets/phone-go.png" style="width:24px;height:24px;" alt="call">
+            <div class="header-btn" id="btn-call" title="Позвонить">
+                <span style="font-size:22px;">📞</span>
             </div>
             <div class="header-btn" id="btn-settings">
                 <span style="font-size:22px;">⚙️</span>
@@ -932,7 +932,6 @@
                         if (!activeChannelId) activeChannelId = data.channelId;
                         playQuiverAnimation();
                         updateRobinStatus('✅ Колчан открыт! Можно стрелять.', 3000);
-                        btnCall.style.display = 'flex';
                         const contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
                         if (!contacts.find(c => c.pubkey === data.channelId)) {
                             contacts.push({ pubkey: data.channelId, name: 'Лучник', avatar: 'assets/avatars/001-.png', status: 'confirmed' });
@@ -1003,10 +1002,10 @@
             const savedNick = localStorage.getItem('robinhood_nick');
             if (savedNick) nickLabel.textContent = savedNick.substring(0, 10);
 
-            // Кнопка звонка
+            // Кнопка звонка — всегда видна
             btnCall.addEventListener('click', () => {
                 if (!activeChannelId || !channels[activeChannelId]) {
-                    updateRobinStatus('❌ Нет активного колчана для звонка.', 2500);
+                    updateRobinStatus('🏹 Сначала воспользуйся стрелой!', 3000);
                     return;
                 }
                 const ch = channels[activeChannelId];
@@ -1173,7 +1172,6 @@
             function deleteContact(pubkey) { let contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]'); contacts = contacts.filter(c => c.pubkey !== pubkey); localStorage.setItem('robinhood_contacts', JSON.stringify(contacts)); if (activeChannelId === pubkey) { delete channels[pubkey]; activeChannelId = Object.keys(channels)[0] || null; } loadContacts(); updateRobinStatus('🔥 Стрелок уволен из Шервуда', 2000); }
             function openChatWithContact(contact) { activeContact = contact; document.querySelectorAll('.message-row:not(#robin-row)').forEach(m => m.remove()); updateRobinStatus('💬 Перестрелка с ' + contact.name + ' открыта', 3000); loadChatHistory(contact.pubkey); }
             function updateChatWithContact(contact) { if (activeContact && activeContact.pubkey === contact.pubkey) { activeContact = contact; } }
-            function populateChatSwitcher() { chatSwitcherList.innerHTML = ''; const contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]').filter(c => c.status === 'confirmed'); if (!contacts.length) { updateRobinStatus('🏹 Нет активных перестрелок!', 3000); return; } contacts.forEach(c => { const div = document.createElement('div'); div.className = 'contact-item'; div.innerHTML = `<div class="contact-info"><img src="${c.avatar || 'assets/avatars/001-.png'}" class="contact-avatar" alt="avatar"><span class="contact-name">${c.name}</span></div>`; div.addEventListener('click', () => { activeChannelId = c.pubkey; chatsSheet.classList.remove('open'); overlay.classList.remove('show'); openChatWithContact(c); }); chatSwitcherList.appendChild(div); }); }
             async function loadChatHistory(contactPubkey) { if (toggleHistoryState) { const hist = await loadEncryptedHistory(); hist.forEach(msg => { appendMessage(msg.sender === 'me' ? 'Вы' : (msg.senderName || msg.sender.slice(0, 8)), msg.text, msg.avatar || 'assets/avatars/001-.png', msg.time); }); } }
             function showContactMenu(contact) { currentMenuContact = contact; const menu = document.getElementById('contact-menu'); menu.style.display = 'block'; document.getElementById('menu-rename').onclick = async () => { hideContactMenu(); const newName = await showModalInput('✎ Новое имя лучника', 'Имя', contact.name); if (newName) { let contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]'); const c = contacts.find(c => c.pubkey === contact.pubkey); if (c) { c.name = newName.substring(0, 15); localStorage.setItem('robinhood_contacts', JSON.stringify(contacts)); loadContacts(); updateChatWithContact(c); } } }; document.getElementById('menu-avatar').onclick = () => { hideContactMenu(); loadAvatarsForFriend(contact); }; document.getElementById('menu-delete').onclick = () => { hideContactMenu(); if (confirm('Убить лучника ' + contact.name + '?')) deleteContact(contact.pubkey); }; document.getElementById('menu-cancel').onclick = hideContactMenu; }
             function hideContactMenu() { document.getElementById('contact-menu').style.display = 'none'; currentMenuContact = null; }
