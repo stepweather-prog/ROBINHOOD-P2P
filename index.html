@@ -221,8 +221,8 @@
         .message-row { display: flex; align-items: flex-start; gap: 10px; background: var(--msg-bg); backdrop-filter: blur(8px); padding: 10px 12px; border-radius: 16px; border-left: 3px solid var(--msg-accent); transition: all 0.2s ease; animation: messageSlideIn 0.3s ease; }
         @keyframes messageSlideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
         .input-area { background: linear-gradient(135deg, rgba(25, 35, 20, 0.96), rgba(15, 25, 12, 0.98)); backdrop-filter: blur(8px); padding: 10px; padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)); display: flex; gap: 8px; align-items: center; border-top: 1px solid var(--border); position: relative; z-index: 1; }
-        input { flex: 1; background: var(--input-bg); border: 1px solid var(--border); padding: 12px; color: var(--text); border-radius: 12px; font-size: 16px; outline: none; font-family: 'Segoe UI', 'Inter', monospace; transition: all 0.2s; }
-        input:focus { border-color: var(--accent-light); box-shadow: 0 0 8px var(--accent-glow); background: var(--input-focus); }
+        input, textarea { flex: 1; background: var(--input-bg); border: 1px solid var(--border); padding: 12px; color: var(--text); border-radius: 12px; font-size: 16px; outline: none; font-family: 'Segoe UI', 'Inter', monospace; transition: all 0.2s; }
+        input:focus, textarea:focus { border-color: var(--accent-light); box-shadow: 0 0 8px var(--accent-glow); background: var(--input-focus); }
         .bow-button { width: 44px; height: 44px; cursor: pointer; transition: transform 0.1s ease; filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3)); }
         .bow-button:active { transform: scale(0.92); }
         .avatar { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; background-color: #2a3a25; flex-shrink: 0; border: 2px solid var(--border); }
@@ -232,6 +232,7 @@
         .msg-status { font-size: 0.65em; color: var(--text-dim); text-align: right; margin-top: 4px; }
         #robin-row { background: var(--robin-bg); border-left: 3px solid var(--robin-accent); box-shadow: 0 2px 12px rgba(0,0,0,0.2); }
         #robin-text { font-weight: 700; font-size: 0.9em; color: var(--text-bright); text-shadow: 0 1px 3px rgba(0,0,0,0.6); }
+
         .bottom-sheet, .avatar-selector { position: fixed; top: 0; left: 0; width: min(85%, 380px); height: 100%; background: var(--sheet-bg); border-right: 2px solid var(--border); z-index: 200; transform: translateX(-100%); transition: transform 0.35s cubic-bezier(0.2, 0.9, 0.4, 1.1); overflow-y: auto; backdrop-filter: blur(16px); box-shadow: 8px 0 30px rgba(0, 0, 0, 0.5); -webkit-overflow-scrolling: touch; }
         .bottom-sheet.open, .avatar-selector.show { transform: translateX(0); }
         .bottom-sheet-header { padding: 20px 20px 12px; font-weight: bold; color: var(--accent-light); border-bottom: 1px solid var(--border); margin-bottom: 8px; font-size: 1.1em; display: flex; justify-content: space-between; align-items: center; background: rgba(0, 0, 0, 0.2); }
@@ -259,7 +260,6 @@
         .modal-dialog button { width: 100%; padding: 12px; margin-top: 8px; border: none; border-radius: 12px; font-size: 14px; font-weight: bold; cursor: pointer; transition: all 0.2s; }
         .modal-dialog button:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); }
         .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent)); color: #1a1f0f; }
-        .btn-warp { background: linear-gradient(135deg, #4b9ec4, #7bd4f0); color: #0a1018; }
         .btn-dark { background: #4a3a2a; color: #eee; }
         .code-display { background: #0a1208; border: 1px solid var(--border); color: var(--accent-light); border-radius: 12px; padding: 12px; font-size: 0.8em; word-break: break-all; margin: 16px 0; text-align: center; user-select: all; font-family: monospace; }
         .contact-menu { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: var(--sheet-bg); border: 2px solid var(--border); border-radius: 20px; padding: 12px; z-index: 400; min-width: 240px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6); }
@@ -287,11 +287,16 @@
         #emoji-panel { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
         #emoji-grid span { font-size: 24px; cursor: pointer; padding: 6px; border-radius: 8px; transition: all 0.15s; }
         #emoji-grid span:hover { background: var(--btn-hover); transform: scale(1.2); }
-        .tunnel-item { display: flex; align-items: center; justify-content: space-between; padding: 8px; margin: 4px 0; background: rgba(255,255,255,0.05); border-radius: 8px; }
-        .tunnel-item span { font-size: 0.8em; flex: 1; word-break: break-all; text-align: left; }
-        .tunnel-item button { padding: 4px 8px; border-radius: 6px; cursor: pointer; font-size: 0.7em; border: 1px solid var(--border); background: var(--btn-bg); color: var(--text); }
-        .tunnel-item button.active { background: #4caf50; color: white; }
-        .tunnel-item button.delete { background: none; border: none; color: #f44336; font-size: 1.2em; padding: 0 4px; }
+
+        /* Тумблер */
+        .toggle-switch { position: relative; display: inline-block; width: 48px; height: 26px; flex-shrink: 0; }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .toggle-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.1); border-radius: 26px; border: 2px solid var(--border); transition: all 0.3s; }
+        .toggle-slider:before { content: ""; position: absolute; height: 18px; width: 18px; left: 2px; bottom: 2px; background: var(--text-dim); border-radius: 50%; transition: all 0.3s; }
+        .toggle-switch input:checked + .toggle-slider { background: #4caf50; border-color: #4caf50; }
+        .toggle-switch input:checked + .toggle-slider:before { transform: translateX(22px); background: white; }
+        .toggle-switch.disabled { opacity: 0.3; pointer-events: none; }
+
         .arrow-choice { display: flex; gap: 12px; justify-content: center; margin: 16px 0; }
         .arrow-choice button { flex: 1; padding: 16px 12px; border-radius: 16px; border: 2px solid var(--border); cursor: pointer; transition: all 0.2s; font-size: 0.85em; font-weight: bold; }
         .arrow-choice button:hover { transform: translateY(-3px); }
@@ -306,7 +311,7 @@
     <div class="header">
         <div class="header-row-1">
             <span class="header-title-text">ROBINHOOD P2P</span><span class="header-shield">🏹</span><span style="flex:1;"></span>
-            <button class="terms-btn" id="btn-terms">⚜ условия</button><span class="header-version">v5.1</span>
+            <button class="terms-btn" id="btn-terms">⚜ условия</button><span class="header-version">v5.2</span>
         </div>
         <div class="header-row-2">
             <div class="header-btn" id="btn-avatar"><img src="assets/avatars/001-.png" class="header-avatar" id="profile-avatar-small" alt="avatar"></div>
@@ -346,12 +351,18 @@
     <div class="overlay" id="overlay"></div>
     <div class="avatar-selector" id="avatar-selector"><p>🏹 Выбери лучника 🏹</p><div id="avatar-list"></div></div>
     <div class="bottom-sheet" id="contacts-sheet"><div class="bottom-sheet-header"><span>🏹 Лучники Шервуда</span><button class="bottom-sheet-close" id="contacts-close">✕</button></div><div class="bottom-sheet-list" id="contacts-list-inner"></div></div>
-    <div class="bottom-sheet" id="chats-sheet" style="display:none;"></div>
+
     <div class="bottom-sheet" id="settings-sheet"><div class="bottom-sheet-header"><span>⚙️ Настройки</span><button class="bottom-sheet-close" id="settings-close">✕</button></div><div class="bottom-sheet-list" id="settings-list-inner">
         <div class="contact-item" id="setting-history"><div class="contact-info"><span style="font-size:24px;">📜</span><span class="contact-name">Память</span></div><span id="history-status" style="color:var(--text-dim);font-size:0.8em;">Вкл</span></div>
         <div class="contact-item" id="setting-sound"><div class="contact-info"><span style="font-size:24px;">🔔</span><span class="contact-name">Звук</span></div><span id="sound-status" style="color:var(--text-dim);font-size:0.8em;">Вкл</span></div>
         <div class="contact-item" id="setting-theme"><div class="contact-info"><span style="font-size:24px;" id="theme-icon">🏹</span><span class="contact-name">Тема</span></div><span id="theme-name" style="color:var(--text-dim);font-size:0.8em;">Лес</span></div>
-        <div class="contact-item" id="setting-tunnel"><div class="contact-info"><span style="font-size:24px;">🔒</span><span class="contact-name">Туннель</span></div><span id="tunnel-status" style="color:var(--text-dim);font-size:0.7em;">Выкл</span></div>
+        <div class="contact-item" id="setting-tunnel">
+            <div class="contact-info"><span style="font-size:24px;">🔒</span><span class="contact-name">Туннель</span></div>
+            <label class="toggle-switch" id="tunnel-toggle-wrapper">
+                <input type="checkbox" id="tunnel-toggle" onchange="window._toggleTunnel()">
+                <span class="toggle-slider"></span>
+            </label>
+        </div>
     </div></div>
 
     <div class="modal-overlay" id="ref-modal"><div class="modal-dialog"><h3>🏹 Стрела готова 🏹</h3><div class="code-display" id="ref-link-display"></div><button class="btn-primary" id="share-ref-link-btn">📤 Поделиться</button><button class="btn-dark" id="close-ref-modal-btn">Закрыть</button></div></div>
@@ -364,7 +375,14 @@
         <button class="btn-dark" id="btn-close-arrow">Отмена</button>
     </div></div>
 
-    <div class="modal-overlay" id="tunnel-modal"><div class="modal-dialog"><h3>🔒 Туннели WireGuard</h3><div id="tunnel-list" style="max-height:200px;overflow-y:auto;margin:10px 0;text-align:left;"></div><button class="btn-primary" id="btn-add-config">➕ Загрузить конфиг</button><button class="btn-primary" id="btn-gen-config">🔄 Сгенерировать новый</button><button class="btn-dark" id="btn-close-tunnel">Закрыть</button><input type="file" id="config-file-input" accept=".conf" style="display:none;"></div></div>
+    <div class="modal-overlay" id="tunnel-config-modal"><div class="modal-dialog"><h3>➕ Добавить конфиг</h3>
+        <button class="btn-primary" id="btn-load-file">📂 Загрузить из файла</button>
+        <div style="margin:12px 0;color:var(--text-dim);">или вставьте текст конфига:</div>
+        <textarea id="tunnel-config-input" placeholder="[Interface]&#10;PrivateKey = ...&#10;Address = ...&#10;..." style="width:100%;height:120px;background:var(--input-bg);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:0.7em;font-family:monospace;resize:vertical;"></textarea>
+        <button class="btn-primary" id="btn-save-tunnel">💾 Сохранить</button>
+        <button class="btn-dark" id="btn-cancel-tunnel-config">Отмена</button>
+        <input type="file" id="config-file-input" accept=".conf" style="display:none;">
+    </div></div>
 
     <div id="contact-menu" class="contact-menu" style="display:none;"><div class="contact-menu-item" id="menu-rename">✎ Переименовать</div><div class="contact-menu-item" id="menu-avatar">🖼 Сменить аватар</div><div class="contact-menu-item" id="menu-delete">🔥 Уволить лучника</div><button id="menu-cancel">Отмена</button></div>
     <div id="bow-above-send" style="position:fixed;bottom:70px;right:15px;width:120px;height:120px;z-index:100;pointer-events:none;display:none;"></div>
@@ -404,16 +422,10 @@
             const emojiPanel = document.getElementById('emoji-panel');
             const emojiGrid = document.getElementById('emoji-grid');
             const btnEmoji = document.getElementById('btn-emoji');
-            const tunnelModal = document.getElementById('tunnel-modal');
-            const tunnelList = document.getElementById('tunnel-list');
-            const tunnelStatus = document.getElementById('tunnel-status');
+            const tunnelToggle = document.getElementById('tunnel-toggle');
+            const tunnelConfigModal = document.getElementById('tunnel-config-modal');
+            const tunnelConfigInput = document.getElementById('tunnel-config-input');
             const configFileInput = document.getElementById('config-file-input');
-            const arrowModal = document.getElementById('arrow-modal');
-            const refModal = document.getElementById('ref-modal');
-            const refLinkDisplay = document.getElementById('ref-link-display');
-            const btnArrowSherwood = document.getElementById('btn-arrow-sherwood');
-            const btnArrowWarp = document.getElementById('btn-arrow-warp');
-            const btnCloseArrow = document.getElementById('btn-close-arrow');
 
             let modalResolve = null;
             let handshakeSecret = null;
@@ -438,9 +450,9 @@
             let speakerOn = true;
             let ringtoneAudio = null;
             let ringbackAudio = null;
-            let activeTunnel = null;
             let savedConfigs = JSON.parse(localStorage.getItem('robinhood_tunnels') || '[]');
-            let currentServer = 'render'; // 'render' или 'workers'
+            let activeTunnel = null;
+            let currentServer = 'render';
             const WORKERS_URL = 'https://robincall.stephanclaps-491.workers.dev';
             const RENDER_URL = 'https://p2ppong.onrender.com';
 
@@ -453,9 +465,7 @@
             function applyTheme(id) { currentTheme = id; document.documentElement.setAttribute('data-theme', id); localStorage.setItem('robinhood_theme', id); const t = themes.find(th => th.id === id); document.getElementById('theme-icon').textContent = t.icon; document.getElementById('theme-name').textContent = t.name; }
 
             function getIceServers() {
-                const servers = [
-                    { urls: "stun:stun.l.google.com:19302" }, { urls: "stun:stun1.l.google.com:19302" }
-                ];
+                const servers = [{ urls: "stun:stun.l.google.com:19302" }, { urls: "stun:stun1.l.google.com:19302" }];
                 servers.push({ urls: ["turn:openrelay.metered.ca:80?transport=tcp", "turn:openrelay.metered.ca:443?transport=tcp"], username: "openrelayproject", credential: "openrelayproject" });
                 return servers;
             }
@@ -536,47 +546,72 @@
             document.addEventListener('click', (e) => { if (!emojiPanel.contains(e.target) && e.target !== btnEmoji) { emojiPanel.style.display = 'none'; } });
 
             // Выбор стрелы
-            document.getElementById('btn-arrow').addEventListener('click', () => {
-                arrowModal.classList.add('active');
-            });
-            btnCloseArrow.addEventListener('click', () => { arrowModal.classList.remove('active'); });
+            document.getElementById('btn-arrow').addEventListener('click', () => { arrowModal.classList.add('active'); });
+            document.getElementById('btn-close-arrow').addEventListener('click', () => { arrowModal.classList.remove('active'); });
+            document.getElementById('btn-arrow-sherwood').addEventListener('click', () => { arrowModal.classList.remove('active'); currentServer = 'render'; updateRobinStatus('🏕️ Стрела Шервуда...', 0); sendToPong({ action: 'create' }); });
+            document.getElementById('btn-arrow-warp').addEventListener('click', () => { arrowModal.classList.remove('active'); currentServer = 'workers'; updateRobinStatus('⚡ Варп-стрела...', 0); sendToPong({ action: 'create' }); });
 
-            btnArrowSherwood.addEventListener('click', () => {
-                arrowModal.classList.remove('active');
-                currentServer = 'render';
-                updateRobinStatus('🏕️ Стрела Шервуда...', 0);
-                sendToPong({ action: 'create' });
-            });
-
-            btnArrowWarp.addEventListener('click', () => {
-                arrowModal.classList.remove('active');
-                currentServer = 'workers';
-                updateRobinStatus('⚡ Варп-стрела...', 0);
-                sendToPong({ action: 'create' });
-            });
-
-            // Туннели
-            function renderTunnelList() {
-                tunnelList.innerHTML = savedConfigs.map((cfg, i) => `
-                    <div class="tunnel-item">
-                        <span>${cfg.name || 'Конфиг '+(i+1)}</span>
-                        <button class="${activeTunnel===i?'active':''}" onclick="window._activateTunnel(${i})">${activeTunnel===i?'✅':'Вкл'}</button>
-                        <button class="delete" onclick="window._deleteTunnel(${i})">✖</button>
-                    </div>
-                `).join('');
-                tunnelStatus.textContent = activeTunnel !== null ? '🔒 Активен' : '🔓 Выкл';
-            }
-            window._activateTunnel = function(i) { activeTunnel = i; localStorage.setItem('robinhood_active_tunnel', i); renderTunnelList(); updateRobinStatus('🔒 Туннель активирован'); };
-            window._deleteTunnel = function(i) { savedConfigs.splice(i, 1); if (activeTunnel === i) { activeTunnel = null; } else if (activeTunnel > i) { activeTunnel--; } localStorage.setItem('robinhood_tunnels', JSON.stringify(savedConfigs)); localStorage.setItem('robinhood_active_tunnel', activeTunnel !== null ? activeTunnel : ''); renderTunnelList(); };
-
-            document.getElementById('btn-add-config').addEventListener('click', () => configFileInput.click());
-            configFileInput.addEventListener('change', (e) => { const file = e.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (ev) => { savedConfigs.push({ name: file.name, config: ev.target.result }); localStorage.setItem('robinhood_tunnels', JSON.stringify(savedConfigs)); renderTunnelList(); }; reader.readAsText(file); });
-            document.getElementById('btn-gen-config').addEventListener('click', async () => { updateRobinStatus('🔄 Генерация конфига...'); try { const keyPair = await crypto.subtle.generateKey({ name: "ECDH", namedCurve: "P-256" }, true, ["deriveKey"]); const pubKey = await crypto.subtle.exportKey("raw", keyPair.publicKey); const pubB64 = btoa(String.fromCharCode(...new Uint8Array(pubKey))); const res = await fetch('https://api.cloudflareclient.com/v0a2158/reg', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: pubB64, install_id: crypto.randomUUID(), fcm_token: "", model: "PC", serial_number: crypto.randomUUID() }) }); const data = await res.json(); if (data.config) { savedConfigs.push({ name: 'WARP ' + new Date().toLocaleDateString(), config: data.config }); localStorage.setItem('robinhood_tunnels', JSON.stringify(savedConfigs)); renderTunnelList(); updateRobinStatus('✅ Конфиг сгенерирован'); } } catch(e) { updateRobinStatus('❌ Ошибка генерации'); } });
-
-            document.getElementById('setting-tunnel').addEventListener('click', () => { renderTunnelList(); tunnelModal.classList.add('active'); });
-            document.getElementById('btn-close-tunnel').addEventListener('click', () => { tunnelModal.classList.remove('active'); });
+            // Туннели — тумблер
             const savedActive = localStorage.getItem('robinhood_active_tunnel');
             if (savedActive !== null && savedActive !== '') { activeTunnel = parseInt(savedActive); }
+            updateTunnelToggle();
+
+            function updateTunnelToggle() {
+                if (savedConfigs.length === 0) {
+                    tunnelToggle.checked = false;
+                    tunnelToggle.parentElement.classList.add('disabled');
+                } else {
+                    tunnelToggle.parentElement.classList.remove('disabled');
+                    tunnelToggle.checked = activeTunnel !== null;
+                }
+            }
+
+            window._toggleTunnel = function() {
+                if (savedConfigs.length === 0) {
+                    tunnelConfigModal.classList.add('active');
+                    tunnelToggle.checked = false;
+                    return;
+                }
+                if (tunnelToggle.checked) {
+                    activeTunnel = savedConfigs.length - 1; // Последний добавленный
+                } else {
+                    activeTunnel = null;
+                }
+                localStorage.setItem('robinhood_active_tunnel', activeTunnel !== null ? activeTunnel : '');
+                updateRobinStatus(activeTunnel !== null ? '🔒 Туннель включён' : '🔓 Туннель выключен');
+            };
+
+            // Модалка добавления конфига
+            document.getElementById('setting-tunnel').addEventListener('click', () => {
+                if (savedConfigs.length > 0) { tunnelToggle.checked = !tunnelToggle.checked; window._toggleTunnel(); return; }
+                tunnelConfigModal.classList.add('active');
+            });
+
+            document.getElementById('btn-load-file').addEventListener('click', () => configFileInput.click());
+            configFileInput.addEventListener('change', (e) => {
+                const file = e.target.files[0]; if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (ev) => { tunnelConfigInput.value = ev.target.result; };
+                reader.readAsText(file);
+            });
+
+            document.getElementById('btn-save-tunnel').addEventListener('click', () => {
+                const config = tunnelConfigInput.value.trim();
+                if (!config) { updateRobinStatus('❌ Вставьте конфиг'); return; }
+                savedConfigs.push({ name: 'Конфиг ' + (savedConfigs.length + 1), config });
+                localStorage.setItem('robinhood_tunnels', JSON.stringify(savedConfigs));
+                tunnelConfigModal.classList.remove('active');
+                tunnelConfigInput.value = '';
+                updateTunnelToggle();
+                updateRobinStatus('✅ Конфиг сохранён');
+            });
+
+            document.getElementById('btn-cancel-tunnel-config').addEventListener('click', () => {
+                tunnelConfigModal.classList.remove('active');
+                tunnelConfigInput.value = '';
+            });
+
+            updateTunnelToggle();
 
             window.addEventListener('message', async (event) => {
                 if (event.source !== pongFrame.contentWindow) return;
@@ -586,9 +621,9 @@
                     case 'handshake-ok':
                         updateRobinStatus('🏹 Тетива натянута! Лучники готовы!', 2000);
                         const urlParams = new URLSearchParams(window.location.search);
-                        if (urlParams.get('id') && urlParams.get('key')) { updateRobinStatus('📨 Принимаю стрелу...', 0); sendToPong({ action: 'accept', id: urlParams.get('id'), key: urlParams.get('key') }); }
+                        if (urlParams.get('id') && urlParams.get('key')) { currentServer = urlParams.get('server') || 'render'; updateRobinStatus('📨 Принимаю стрелу...', 0); sendToPong({ action: 'accept', id: urlParams.get('id'), key: urlParams.get('key') }); }
                         break;
-                    case 'session-created': refLinkDisplay.textContent = data.fullLink; refModal.classList.add('active'); navigator.clipboard.writeText(data.fullLink).catch(() => {}); break;
+                    case 'session-created': document.getElementById('ref-link-display').textContent = data.fullLink; document.getElementById('ref-modal').classList.add('active'); navigator.clipboard.writeText(data.fullLink).catch(() => {}); break;
                     case 'channel-open':
                         channels[data.channelId] = { secret: data.secret, role: data.role }; if (!activeChannelId) activeChannelId = data.channelId;
                         playQuiverAnimation();
@@ -674,8 +709,8 @@
             document.body.addEventListener('touchmove', (e) => { if (!activeSheet) return; const deltaX = e.changedTouches[0].clientX - touchStartX; const deltaY = e.changedTouches[0].clientY - touchStartY; if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > 10) { isScrolling = true; } if (!isScrolling && deltaX < -35) { e.preventDefault(); closeAllSheets(); activeSheet = null; updateRobinStatus('↩️ Закрыто жестом', 1500); } });
             document.body.addEventListener('touchend', () => { activeSheet = null; isScrolling = false; });
 
-            document.getElementById('share-ref-link-btn').addEventListener('click', () => { const link = refLinkDisplay.textContent; if (link && navigator.share) { navigator.share({ title: 'RobinHood P2P', url: link }).catch(() => {}); } });
-            document.getElementById('close-ref-modal-btn').addEventListener('click', () => refModal.classList.remove('active'));
+            document.getElementById('share-ref-link-btn').addEventListener('click', () => { const link = document.getElementById('ref-link-display').textContent; if (link && navigator.share) { navigator.share({ title: 'RobinHood P2P', url: link }).catch(() => {}); } });
+            document.getElementById('close-ref-modal-btn').addEventListener('click', () => document.getElementById('ref-modal').classList.remove('active'));
 
             async function init() { applyTheme(currentTheme); document.getElementById('pong-frame').src = 'https://stepweather-prog.github.io/P2PPong/?v=' + Date.now(); const savedHistory = localStorage.getItem('robinhood_history'); if (savedHistory !== null) toggleHistoryState = savedHistory === 'true'; updateSettingsStatus(); const savedSound = localStorage.getItem('robinhood_sound'); if (savedSound !== null) toggleSoundState = savedSound === 'true'; updateSettingsStatus(); updateRobinStatus('🏹 Ждём колчан...', 0); }
             window.addEventListener('load', init);
