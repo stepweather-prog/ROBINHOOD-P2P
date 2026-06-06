@@ -6,9 +6,9 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <link rel="icon" type="image/png" sizes="192x192" href="assets/avatars/001-.png">
     <title>RobinHood P2P</title>
-   <link rel="manifest" href="manifest.json">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" sizes="192x192" href="assets/avatars/001-.png">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.12.2/lottie.min.js">
     </script>
     <style>
@@ -507,62 +507,6 @@
         .robin-arrow-container canvas {
             background: transparent !important;
         }
-        .archer-container {
-            position: fixed;
-            bottom: 80px;
-            right: 20px;
-            width: 120px;
-            height: 120px;
-            z-index: 100;
-            pointer-events: none;
-            display: none;
-        }
-        .archer-container.active {
-            display: block;
-        }
-        #archer-container svg,
-        #archer-container canvas {
-            background: transparent !important;
-        }
-        #quiver-container {
-            position: fixed;
-            bottom: 90px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 150px;
-            height: 150px;
-            z-index: 150;
-            pointer-events: none;
-            display: none;
-        }
-        #quiver-container.active {
-            display: block;
-            animation: quiverPopIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            filter: drop-shadow(0 0 20px rgba(196, 162, 75, 0.7));
-        }
-        @keyframes quiverPopIn {
-            0% {
-                transform: translateX(-50%) scale(0) rotate(-15deg);
-                opacity: 0;
-            }
-            50% {
-                transform: translateX(-50%) scale(1.15) rotate(3deg);
-                opacity: 1;
-            }
-            100% {
-                transform: translateX(-50%) scale(1) rotate(0deg);
-                opacity: 1;
-            }
-        }
-        #quiver-container.fade-out {
-            animation: quiverFadeOut 0.4s ease forwards;
-        }
-        @keyframes quiverFadeOut {
-            to {
-                transform: translateX(-50%) scale(0.7);
-                opacity: 0;
-            }
-        }
         .avatar-selector::-webkit-scrollbar,
         .bottom-sheet::-webkit-scrollbar {
             display: none;
@@ -670,16 +614,16 @@
             <span class="header-shield">🏹</span>
             <span style="flex:1;"></span>
             <button class="terms-btn" id="btn-terms">⚜ условия</button>
-            <span class="header-version">v3.5</span>
+            <span class="header-version">v3.6</span>
         </div>
         <div class="header-row-2">
             <div class="header-btn" id="btn-avatar"><img src="assets/avatars/001-.png" class="header-avatar" id="profile-avatar-small" alt="avatar"></div>
             <div class="header-btn" id="btn-letters"><img src="assets/1.png" style="width:24px;height:24px;" alt="contacts"></div>
             <div class="header-btn" id="btn-arrow"><img src="assets/3.png" style="width:24px;height:24px;" alt="arrow"></div>
             <div class="header-btn" id="btn-clear"><img src="assets/6.png" style="width:24px;height:24px;" alt="clear"></div>
-           <div class="header-btn" id="btn-call" title="Позвонить">
-    <img src="assets/phone-go.png" style="width:24px;height:24px;" alt="call">
-</div>
+            <div class="header-btn" id="btn-call" title="Позвонить">
+                <img src="assets/phone-go.png" style="width:24px;height:24px;" alt="call">
+            </div>
             <div class="header-btn" id="btn-settings">
                 <span style="font-size:22px;">⚙️</span>
             </div>
@@ -765,8 +709,7 @@
         <button id="menu-cancel">Отмена</button>
     </div>
 
-    <div id="archer-container" class="archer-container"></div>
-    <div id="quiver-container"></div>
+    <div id="bow-above-send" style="position:fixed;bottom:70px;right:15px;width:120px;height:120px;z-index:100;pointer-events:none;display:none;"></div>
 
     <div class="modal-input-overlay" id="modal-input-overlay">
         <div class="modal-input-dialog">
@@ -803,7 +746,6 @@
             const modalOk = document.getElementById('modal-input-ok');
             const modalCancel = document.getElementById('modal-input-cancel');
             const termsBtn = document.getElementById('btn-terms');
-            const quiverContainer = document.getElementById('quiver-container');
             const btnCall = document.getElementById('btn-call');
             const callLabel = document.getElementById('call-label');
 
@@ -820,6 +762,10 @@
             let robinTimer = null;
             let currentMenuContact = null;
             let profileSent = {};
+            let archerAnimation = null;
+            let quiverAnim = null;
+            let bowAnim = null;
+            let currentArrowContainer = null;
 
             async function generateAESKey() {
                 return await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]);
@@ -932,28 +878,6 @@
                         channels[data.channelId] = { secret: data.secret, role: data.role };
                         if (!activeChannelId) activeChannelId = data.channelId;
                         playQuiverAnimation();
-                        updateRobinStatus('✅ Колчан открыт! ', 0);
-// Анимация Docking в статус-баре
-const dockingWrapper = document.createElement('span');
-dockingWrapper.className = 'robin-arrow-container';
-dockingWrapper.style.width = '60px';
-dockingWrapper.style.height = '30px';
-robinText.appendChild(dockingWrapper);
-if (typeof lottie !== 'undefined') {
-    lottie.loadAnimation({
-        container: dockingWrapper,
-        renderer: 'canvas',
-        loop: false,
-        autoplay: true,
-        path: 'assets/docking/animation.json'
-    }).addEventListener('complete', () => {
-        dockingWrapper.remove();
-    });
-}
-setTimeout(() => {
-    if (dockingWrapper.parentNode) dockingWrapper.remove();
-    robinText.textContent = robinDefaultText;
-}, 4000);
                         const contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
                         if (!contacts.find(c => c.pubkey === data.channelId)) {
                             contacts.push({ pubkey: data.channelId, name: 'Лучник', avatar: 'assets/avatars/001-.png', status: 'confirmed' });
@@ -977,12 +901,6 @@ setTimeout(() => {
                                         contact.name = profile.nick || contact.name;
                                         contact.avatar = profile.avatar || contact.avatar;
                                         localStorage.setItem('robinhood_contacts', JSON.stringify(contacts));
-                                        document.querySelectorAll('.message-row:not(#robin-row) .msg-sender').forEach(el => {
-                                            if (el.textContent === 'Друг') { el.textContent = contact.name; }
-                                        });
-                                        document.querySelectorAll('.message-row:not(#robin-row) .avatar').forEach(el => {
-                                            if (el.src.includes('001-.png') && !el.src.includes('231-icon')) { el.src = contact.avatar; }
-                                        });
                                     }
                                 } catch (e) {}
                                 return;
@@ -992,7 +910,6 @@ setTimeout(() => {
                             const senderName = contact ? contact.name : (data.sender || 'Друг');
                             const senderAvatar = contact ? contact.avatar : 'assets/avatars/001-.png';
                             appendMessage(senderName, data.text, senderAvatar);
-                            playDeliveryAnimation();
                             if (toggleHistoryState) {
                                 loadEncryptedHistory().then(hist => {
                                     hist.push({ text: data.text, sender: 'friend', recipient: 'me', senderName: senderName, avatar: senderAvatar, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
@@ -1024,7 +941,6 @@ setTimeout(() => {
             const savedNick = localStorage.getItem('robinhood_nick');
             if (savedNick) nickLabel.textContent = savedNick.substring(0, 10);
 
-            // Кнопка звонка — всегда видна
             btnCall.addEventListener('click', () => {
                 if (!activeChannelId || !channels[activeChannelId]) {
                     updateRobinStatus('🏹 Сначала воспользуйся стрелой!', 3000);
@@ -1036,7 +952,6 @@ setTimeout(() => {
             });
             callLabel.addEventListener('click', () => { btnCall.click(); });
 
-            // Кнопка настроек
             document.getElementById('btn-settings').addEventListener('click', () => {
                 if (settingsSheet.classList.contains('open')) {
                     settingsSheet.classList.remove('open');
@@ -1048,13 +963,8 @@ setTimeout(() => {
                     overlay.classList.add('show');
                 }
             });
-            document.getElementById('settings-close').addEventListener('click', () => {
-                settingsSheet.classList.remove('open');
-                overlay.classList.remove('show');
-            });
-            document.getElementById('settings-label').addEventListener('click', () => {
-                document.getElementById('btn-settings').click();
-            });
+            document.getElementById('settings-close').addEventListener('click', () => { settingsSheet.classList.remove('open'); overlay.classList.remove('show'); });
+            document.getElementById('settings-label').addEventListener('click', () => { document.getElementById('btn-settings').click(); });
 
             document.getElementById('setting-history').addEventListener('click', () => {
                 toggleHistoryState = !toggleHistoryState;
@@ -1067,7 +977,6 @@ setTimeout(() => {
                 updateSettingsStatus();
                 updateRobinStatus(toggleHistoryState ? '📜 Свитки будут храниться' : '🔥 Свитки сожжены');
             });
-
             document.getElementById('setting-sound').addEventListener('click', () => {
                 toggleSoundState = !toggleSoundState;
                 localStorage.setItem('robinhood_sound', toggleSoundState);
@@ -1149,41 +1058,85 @@ setTimeout(() => {
                 if (duration > 0) { robinTimer = setTimeout(() => { robinText.style.transition = 'opacity 0.6s ease'; robinText.style.opacity = 0; const onEnd = () => { robinText.removeEventListener('transitionend', onEnd); robinText.style.transition = 'none'; robinText.textContent = robinDefaultText; robinText.style.opacity = 1; }; robinText.addEventListener('transitionend', onEnd); }, duration); }
             }
 
-            let archerAnimation = null;
-            let quiverAnim = null;
-            let deliveryAnimation = null;
-            let bowAnimation = null;
-            let currentArrowContainer = null;
+            // ==================== АНИМАЦИИ ====================
 
+            // Лучник в статус-баре (отправка)
             function playArcherAnimation() {
-                const archerContainer = document.getElementById('archer-container');
-                archerContainer.classList.add('active');
+                if (currentArrowContainer && currentArrowContainer.parentNode) {
+                    currentArrowContainer.parentNode.removeChild(currentArrowContainer);
+                }
                 if (archerAnimation) { archerAnimation.destroy(); }
-                if (typeof lottie !== 'undefined') { archerAnimation = lottie.loadAnimation({ container: archerContainer, renderer: 'canvas', loop: false, autoplay: true, path: 'assets/Archer.json' }); archerAnimation.addEventListener('complete', () => { archerContainer.classList.remove('active'); }); }
+
+                const wrapper = document.createElement('span');
+                wrapper.className = 'robin-arrow-container';
+                wrapper.style.width = '80px';
+                wrapper.style.height = '40px';
+                wrapper.style.display = 'inline-block';
+                wrapper.style.verticalAlign = 'middle';
+                currentArrowContainer = wrapper;
+                robinText.textContent = '';
+                robinText.appendChild(wrapper);
+
+                if (typeof lottie !== 'undefined') {
+                    archerAnimation = lottie.loadAnimation({
+                        container: wrapper, renderer: 'canvas', loop: false, autoplay: true,
+                        path: 'assets/Archer.json'
+                    });
+                    archerAnimation.addEventListener('complete', () => {
+                        if (wrapper && wrapper.parentNode) { wrapper.parentNode.removeChild(wrapper); }
+                        currentArrowContainer = null;
+                        robinText.textContent = robinDefaultText;
+                    });
+                }
             }
-            function playDeliveryAnimation() {
-                const archerContainer = document.getElementById('archer-container');
-                archerContainer.classList.add('active');
-                if (deliveryAnimation) { deliveryAnimation.destroy(); }
-                if (typeof lottie !== 'undefined') { deliveryAnimation = lottie.loadAnimation({ container: archerContainer, renderer: 'canvas', loop: false, autoplay: true, path: 'assets/bow.json' }); deliveryAnimation.addEventListener('complete', () => { archerContainer.classList.remove('active'); }); }
-            }
-            function playQuiverAnimation() {
-                if (quiverAnim) { quiverAnim.destroy(); quiverAnim = null; }
-                quiverContainer.classList.remove('fade-out');
-                quiverContainer.classList.add('active');
-                if (typeof lottie !== 'undefined') { quiverAnim = lottie.loadAnimation({ container: quiverContainer, renderer: 'canvas', loop: false, autoplay: true, path: 'assets/Arrow Quiver.json' }); quiverAnim.addEventListener('complete', () => { setTimeout(() => { quiverContainer.classList.add('fade-out'); setTimeout(() => { quiverContainer.classList.remove('active', 'fade-out'); if (quiverAnim) { quiverAnim.destroy(); quiverAnim = null; } }, 400); }, 1500); }); }
-            }
+
+            // Стрела над кнопкой отправки
             function playBowAnimation() {
-                if (currentArrowContainer && currentArrowContainer.parentNode) { currentArrowContainer.parentNode.removeChild(currentArrowContainer); }
-                if (bowAnimation) { bowAnimation.destroy(); }
-                const arrowWrapper = document.createElement('span');
-                arrowWrapper.className = 'robin-arrow-container';
-                arrowWrapper.style.width = '80px';
-                arrowWrapper.style.height = '40px';
-                currentArrowContainer = arrowWrapper;
-                robinText.appendChild(arrowWrapper);
-                if (typeof lottie !== 'undefined') { bowAnimation = lottie.loadAnimation({ container: arrowWrapper, renderer: 'canvas', loop: false, autoplay: true, path: 'assets/bow.json' }); bowAnimation.addEventListener('complete', () => { if (arrowWrapper && arrowWrapper.parentNode) { arrowWrapper.parentNode.removeChild(arrowWrapper); } currentArrowContainer = null; }); }
+                const bowContainer = document.getElementById('bow-above-send');
+                if (bowAnim) { bowAnim.destroy(); }
+                bowContainer.style.display = 'block';
+                if (typeof lottie !== 'undefined') {
+                    bowAnim = lottie.loadAnimation({
+                        container: bowContainer, renderer: 'canvas', loop: false, autoplay: true,
+                        path: 'assets/bow.json'
+                    });
+                    bowAnim.addEventListener('complete', () => { bowContainer.style.display = 'none'; });
+                }
             }
+
+            // Docking в статус-баре (подключение)
+            function playQuiverAnimation() {
+                if (currentArrowContainer && currentArrowContainer.parentNode) {
+                    currentArrowContainer.parentNode.removeChild(currentArrowContainer);
+                }
+                if (quiverAnim) { quiverAnim.destroy(); quiverAnim = null; }
+
+                const wrapper = document.createElement('span');
+                wrapper.className = 'robin-arrow-container';
+                wrapper.style.width = '80px';
+                wrapper.style.height = '40px';
+                wrapper.style.display = 'inline-block';
+                wrapper.style.verticalAlign = 'middle';
+                currentArrowContainer = wrapper;
+                robinText.textContent = '';
+                robinText.appendChild(wrapper);
+
+                if (typeof lottie !== 'undefined') {
+                    quiverAnim = lottie.loadAnimation({
+                        container: wrapper, renderer: 'canvas', loop: false, autoplay: true,
+                        path: 'assets/docking/animation.json'
+                    });
+                    quiverAnim.addEventListener('complete', () => {
+                        if (wrapper && wrapper.parentNode) { wrapper.parentNode.removeChild(wrapper); }
+                        currentArrowContainer = null;
+                    });
+                }
+                setTimeout(() => {
+                    if (wrapper && wrapper.parentNode) { wrapper.remove(); }
+                    robinText.textContent = robinDefaultText;
+                }, 4000);
+            }
+
             function playSound(filename) { if (toggleSoundState) { const a = new Audio(`assets/sounds/${filename}`); a.volume = 0.5; a.play().catch(() => {}); } }
 
             const avatars = ['assets/avatars/001-.png','assets/avatars/002--1.png','assets/avatars/003-icon-8033085.png','assets/avatars/009--7.png','assets/avatars/010--8.png','assets/avatars/018--16.png','assets/avatars/022--20.png','assets/avatars/037--35.png','assets/avatars/043--41.png','assets/avatars/048--46.png','assets/avatars/050--48.png','assets/avatars/052--50.png','assets/avatars/053--51.png','assets/avatars/056--54.png','assets/avatars/066--64.png','assets/avatars/077-icon-8033092.png','assets/avatars/083-icon-11885568.png','assets/avatars/094-icon-18926716.png','assets/avatars/108--83.png','assets/avatars/147-icon-6081840.png','assets/avatars/148-icon-5532632.png','assets/avatars/149-icon-4132697.png','assets/avatars/150-icon-10756654.png','assets/avatars/153-icon-4964924.png','assets/avatars/154-icon-4261075.png','assets/avatars/156-icon-4132828.png','assets/avatars/158--116.png','assets/avatars/160-icon-2332597.png','assets/avatars/162-icon-6237595.png','assets/avatars/167-icon-1920840.png','assets/avatars/168-icon-228268.png','assets/avatars/169-icon-5613167.png','assets/avatars/173-icon-1615623.png','assets/avatars/183-icon-5840846.png','assets/avatars/186-icon-6237499.png','assets/avatars/188-icon-6267517.png','assets/avatars/203-icon-3516506.png','assets/avatars/216-icon-5504960.png','assets/avatars/221-icon-9530256.png','assets/avatars/226-icon-9669507.png','assets/avatars/227-icon-9623471.png','assets/avatars/229-icon-10032172.png','assets/avatars/230-icon-10049316.png','assets/avatars/232-icon-11434002.png','assets/avatars/234-icon-10756328.png','assets/avatars/245-icon-16150697.png','assets/avatars/246-icon-16150730.png','assets/avatars/249-icon-17159913.png','assets/avatars/250-icon-17159758.png','assets/avatars/251-icon-17159744.png','assets/avatars/253-icon-18426073.png','assets/avatars/254-icon-18621065.png','assets/avatars/255-icon-18926692.png','assets/avatars/256--120.png'];
