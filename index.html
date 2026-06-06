@@ -879,18 +879,18 @@
     function closeAllSheets() { avatarSelector.classList.remove('show'); contactsSheet.classList.remove('open'); settingsSheet.classList.remove('open'); overlay.classList.remove('show'); }
     overlay.addEventListener('click', closeAllSheets);
 
-    function sendMessageHandler() {
-        var text = msgInput.value.trim(); if (!text) return;
-        if (!activeChannelId || !channels[activeChannelId]) { updateRobinStatus('❌ Нет активного колчана. Создайте или примите стрелу.', 2500); return; }
-        if (!profileSent[activeChannelId]) { profileSent[activeChannelId] = true; sendToPong({ action: 'send', text: '__PROFILE__' + JSON.stringify({ nick: nickLabel.textContent, avatar: profileAvatarSmall.src }), channelId: activeChannelId }); }
-        if (selfDestructMode) {
-            var durationStr = await showModalInput('💣 Время самоуничтожения (сек)', '30', '30');
-            if (durationStr === null || durationStr === undefined || durationStr === '') return;
-            var sec = parseInt(durationStr) || 30; sendSelfDestructMessage(text, sec); selfDestructMode = false;
-            btnSelfDestruct.style.borderColor = ''; btnSelfDestruct.style.background = '';
-        } else { sendToPong({ action: 'send', text: text, channelId: activeChannelId }); appendMessage('Вы', text, profileAvatarSmall.src); }
-        msgInput.value = ''; typingIndicator.textContent = ''; clearTimeout(typingTimeout); playArcherAnimation(); playBowAnimation(); if (toggleSoundState) playSound('shot.mp3');
-    }
+    async function sendMessageHandler() {
+    var text = msgInput.value.trim(); if (!text) return;
+    if (!activeChannelId || !channels[activeChannelId]) { updateRobinStatus('❌ Нет активного колчана. Создайте или примите стрелу.', 2500); return; }
+    if (!profileSent[activeChannelId]) { profileSent[activeChannelId] = true; sendToPong({ action: 'send', text: '__PROFILE__' + JSON.stringify({ nick: nickLabel.textContent, avatar: profileAvatarSmall.src }), channelId: activeChannelId }); }
+    if (selfDestructMode) {
+        var durationStr = await showModalInput('💣 Время самоуничтожения (сек)', '30', '30');
+        if (durationStr === null || durationStr === undefined || durationStr === '') return;
+        var sec = parseInt(durationStr) || 30; sendSelfDestructMessage(text, sec); selfDestructMode = false;
+        btnSelfDestruct.style.borderColor = ''; btnSelfDestruct.style.background = '';
+    } else { sendToPong({ action: 'send', text: text, channelId: activeChannelId }); appendMessage('Вы', text, profileAvatarSmall.src); }
+    msgInput.value = ''; typingIndicator.textContent = ''; clearTimeout(typingTimeout); playArcherAnimation(); playBowAnimation(); if (toggleSoundState) playSound('shot.mp3');
+}
     document.getElementById('send-btn').addEventListener('click', sendMessageHandler);
     msgInput.addEventListener('keypress', function(e) { if (e.key === 'Enter') sendMessageHandler(); });
 
