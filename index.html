@@ -932,7 +932,28 @@
                         channels[data.channelId] = { secret: data.secret, role: data.role };
                         if (!activeChannelId) activeChannelId = data.channelId;
                         playQuiverAnimation();
-                        updateRobinStatus('✅ Колчан открыт! Можно стрелять.', 3000);
+                        updateRobinStatus('✅ Колчан открыт! ', 0);
+// Анимация Docking в статус-баре
+const dockingWrapper = document.createElement('span');
+dockingWrapper.className = 'robin-arrow-container';
+dockingWrapper.style.width = '60px';
+dockingWrapper.style.height = '30px';
+robinText.appendChild(dockingWrapper);
+if (typeof lottie !== 'undefined') {
+    lottie.loadAnimation({
+        container: dockingWrapper,
+        renderer: 'canvas',
+        loop: false,
+        autoplay: true,
+        path: 'assets/Docking.json'
+    }).addEventListener('complete', () => {
+        dockingWrapper.remove();
+    });
+}
+setTimeout(() => {
+    if (dockingWrapper.parentNode) dockingWrapper.remove();
+    robinText.textContent = robinDefaultText;
+}, 4000);
                         const contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
                         if (!contacts.find(c => c.pubkey === data.channelId)) {
                             contacts.push({ pubkey: data.channelId, name: 'Лучник', avatar: 'assets/avatars/001-.png', status: 'confirmed' });
