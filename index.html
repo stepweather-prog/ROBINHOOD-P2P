@@ -252,12 +252,12 @@
         .avatar-option:hover { border-color: var(--accent-light); transform: scale(1.1); }
         .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--overlay-bg); backdrop-filter: blur(4px); display: none; z-index: 190; }
         .overlay.show { display: block; }
-        .invite-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(8px); z-index: 300; justify-content: center; align-items: center; }
-        .invite-modal.active { display: flex; }
-        .invite-dialog { background: var(--sheet-bg); padding: 24px; border-radius: 24px; width: 85%; max-width: 340px; text-align: center; border: 2px solid var(--border); max-height: 80vh; overflow-y: auto; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); }
-        .invite-dialog h3 { color: var(--accent-light); margin: 0 0 16px; font-size: 1.3em; }
-        .invite-dialog button { width: 100%; padding: 12px; margin-top: 8px; background: linear-gradient(135deg, var(--accent), var(--accent)); color: #1a1f0f; border: none; border-radius: 12px; font-size: 14px; font-weight: bold; cursor: pointer; transition: all 0.2s; }
-        .invite-dialog button:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); }
+        .invite-modal, .tunnel-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(8px); z-index: 300; justify-content: center; align-items: center; }
+        .invite-modal.active, .tunnel-modal.active { display: flex; }
+        .invite-dialog, .tunnel-dialog { background: var(--sheet-bg); padding: 24px; border-radius: 24px; width: 85%; max-width: 400px; text-align: center; border: 2px solid var(--border); max-height: 85vh; overflow-y: auto; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); }
+        .invite-dialog h3, .tunnel-dialog h3 { color: var(--accent-light); margin: 0 0 16px; font-size: 1.3em; }
+        .invite-dialog button, .tunnel-dialog button { width: 100%; padding: 12px; margin-top: 8px; background: linear-gradient(135deg, var(--accent), var(--accent)); color: #1a1f0f; border: none; border-radius: 12px; font-size: 14px; font-weight: bold; cursor: pointer; transition: all 0.2s; }
+        .invite-dialog button:hover, .tunnel-dialog button:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); }
         .code-display { background: #0a1208; border: 1px solid var(--border); color: var(--accent-light); border-radius: 12px; padding: 12px; font-size: 0.8em; word-break: break-all; margin: 16px 0; text-align: center; user-select: all; font-family: monospace; }
         .contact-menu { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: var(--sheet-bg); border: 2px solid var(--border); border-radius: 20px; padding: 12px; z-index: 400; min-width: 240px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6); }
         .contact-menu-item { padding: 12px; cursor: pointer; border-radius: 12px; margin-bottom: 6px; font-size: 0.95em; color: var(--text); transition: all 0.2s; }
@@ -285,6 +285,11 @@
         #emoji-panel { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
         #emoji-grid span { font-size: 24px; cursor: pointer; padding: 6px; border-radius: 8px; transition: all 0.15s; }
         #emoji-grid span:hover { background: var(--btn-hover); transform: scale(1.2); }
+        .tunnel-item { display: flex; align-items: center; justify-content: space-between; padding: 8px; margin: 4px 0; background: rgba(255,255,255,0.05); border-radius: 8px; }
+        .tunnel-item span { font-size: 0.8em; flex: 1; word-break: break-all; text-align: left; }
+        .tunnel-item button { padding: 4px 8px; border-radius: 6px; cursor: pointer; font-size: 0.7em; border: 1px solid var(--border); background: var(--btn-bg); color: var(--text); }
+        .tunnel-item button.active { background: #4caf50; color: white; }
+        .tunnel-item button.delete { background: none; border: none; color: #f44336; font-size: 1.2em; padding: 0 4px; }
     </style>
 </head>
 <body>
@@ -292,7 +297,7 @@
     <div class="header">
         <div class="header-row-1">
             <span class="header-title-text">ROBINHOOD P2P</span><span class="header-shield">🏹</span><span style="flex:1;"></span>
-            <button class="terms-btn" id="btn-terms">⚜ условия</button><span class="header-version">v4.3</span>
+            <button class="terms-btn" id="btn-terms">⚜ условия</button><span class="header-version">v5.0</span>
         </div>
         <div class="header-row-2">
             <div class="header-btn" id="btn-avatar"><img src="assets/avatars/001-.png" class="header-avatar" id="profile-avatar-small" alt="avatar"></div>
@@ -333,8 +338,17 @@
     <div class="avatar-selector" id="avatar-selector"><p>🏹 Выбери лучника 🏹</p><div id="avatar-list"></div></div>
     <div class="bottom-sheet" id="contacts-sheet"><div class="bottom-sheet-header"><span>🏹 Лучники Шервуда</span><button class="bottom-sheet-close" id="contacts-close">✕</button></div><div class="bottom-sheet-list" id="contacts-list-inner"></div></div>
     <div class="bottom-sheet" id="chats-sheet" style="display:none;"></div>
-    <div class="bottom-sheet" id="settings-sheet"><div class="bottom-sheet-header"><span>⚙️ Настройки</span><button class="bottom-sheet-close" id="settings-close">✕</button></div><div class="bottom-sheet-list" id="settings-list-inner"><div class="contact-item" id="setting-history"><div class="contact-info"><span style="font-size:24px;">📜</span><span class="contact-name">Память</span></div><span id="history-status" style="color:var(--text-dim);font-size:0.8em;">Вкл</span></div><div class="contact-item" id="setting-sound"><div class="contact-info"><span style="font-size:24px;">🔔</span><span class="contact-name">Звук</span></div><span id="sound-status" style="color:var(--text-dim);font-size:0.8em;">Вкл</span></div><div class="contact-item" id="setting-theme"><div class="contact-info"><span style="font-size:24px;" id="theme-icon">🏹</span><span class="contact-name">Тема</span></div><span id="theme-name" style="color:var(--text-dim);font-size:0.8em;">Лес</span></div></div></div>
+    <div class="bottom-sheet" id="settings-sheet"><div class="bottom-sheet-header"><span>⚙️ Настройки</span><button class="bottom-sheet-close" id="settings-close">✕</button></div><div class="bottom-sheet-list" id="settings-list-inner">
+        <div class="contact-item" id="setting-history"><div class="contact-info"><span style="font-size:24px;">📜</span><span class="contact-name">Память</span></div><span id="history-status" style="color:var(--text-dim);font-size:0.8em;">Вкл</span></div>
+        <div class="contact-item" id="setting-sound"><div class="contact-info"><span style="font-size:24px;">🔔</span><span class="contact-name">Звук</span></div><span id="sound-status" style="color:var(--text-dim);font-size:0.8em;">Вкл</span></div>
+        <div class="contact-item" id="setting-theme"><div class="contact-info"><span style="font-size:24px;" id="theme-icon">🏹</span><span class="contact-name">Тема</span></div><span id="theme-name" style="color:var(--text-dim);font-size:0.8em;">Лес</span></div>
+        <div class="contact-item" id="setting-tunnel"><div class="contact-info"><span style="font-size:24px;">🔒</span><span class="contact-name">Туннель</span></div><span id="tunnel-status" style="color:var(--text-dim);font-size:0.7em;">Выкл</span></div>
+    </div></div>
+
     <div class="invite-modal" id="ref-modal"><div class="invite-dialog"><h3>🏹 Стрела готова 🏹</h3><div class="code-display" id="ref-link-display"></div><button id="share-ref-link-btn">📤 Поделиться</button><button id="close-ref-modal-btn" style="background:#4a3a2a;margin-top:5px;">Закрыть</button></div></div>
+
+    <div class="tunnel-modal" id="tunnel-modal"><div class="tunnel-dialog"><h3>🔒 Туннели WireGuard</h3><div id="tunnel-list" style="max-height:200px;overflow-y:auto;margin:10px 0;text-align:left;"></div><button class="btn-gold" id="btn-add-config" style="width:100%;">➕ Загрузить конфиг</button><button class="btn-gold" id="btn-gen-config" style="width:100%;">🔄 Сгенерировать новый</button><button class="btn-dark" id="btn-close-tunnel" style="width:100%;margin-top:5px;">Закрыть</button><input type="file" id="config-file-input" accept=".conf" style="display:none;"></div></div>
+
     <div id="contact-menu" class="contact-menu" style="display:none;"><div class="contact-menu-item" id="menu-rename">✎ Переименовать</div><div class="contact-menu-item" id="menu-avatar">🖼 Сменить аватар</div><div class="contact-menu-item" id="menu-delete">🔥 Уволить лучника</div><button id="menu-cancel">Отмена</button></div>
     <div id="bow-above-send" style="position:fixed;bottom:70px;right:15px;width:120px;height:120px;z-index:100;pointer-events:none;display:none;"></div>
     <div class="modal-input-overlay" id="modal-input-overlay"><div class="modal-input-dialog"><h3 id="modal-input-title">Введите текст</h3><input type="text" id="modal-input-field" placeholder="" autocomplete="off"><div class="modal-btns"><button class="btn-dark" id="modal-input-cancel">Отмена</button><button class="btn-gold" id="modal-input-ok">✓ Готово</button></div></div></div>
@@ -373,6 +387,10 @@
             const emojiPanel = document.getElementById('emoji-panel');
             const emojiGrid = document.getElementById('emoji-grid');
             const btnEmoji = document.getElementById('btn-emoji');
+            const tunnelModal = document.getElementById('tunnel-modal');
+            const tunnelList = document.getElementById('tunnel-list');
+            const tunnelStatus = document.getElementById('tunnel-status');
+            const configFileInput = document.getElementById('config-file-input');
 
             let modalResolve = null;
             let handshakeSecret = null;
@@ -397,6 +415,8 @@
             let speakerOn = true;
             let ringtoneAudio = null;
             let ringbackAudio = null;
+            let activeTunnel = null;
+            let savedConfigs = JSON.parse(localStorage.getItem('robinhood_tunnels') || '[]');
 
             const themes = [
                 { id: 'forest', icon: '🏹', name: 'Лес' }, { id: 'sunset', icon: '🌅', name: 'Закат' }, { id: 'ocean', icon: '🌊', name: 'Океан' },
@@ -408,14 +428,10 @@
 
             function getIceServers() {
                 const servers = [
-                    { urls: "stun:stun.l.google.com:19302" },
-                    { urls: "stun:stun1.l.google.com:19302" }
+                    { urls: "stun:stun.l.google.com:19302" }, { urls: "stun:stun1.l.google.com:19302" },
+                    { urls: "stun:stun2.l.google.com:19302" }, { urls: "stun:stun3.l.google.com:19302" }
                 ];
-                servers.push({
-                    urls: ["turn:openrelay.metered.ca:80?transport=tcp", "turn:openrelay.metered.ca:443?transport=tcp"],
-                    username: "openrelayproject",
-                    credential: "openrelayproject"
-                });
+                servers.push({ urls: ["turn:openrelay.metered.ca:80?transport=tcp", "turn:openrelay.metered.ca:443?transport=tcp"], username: "openrelayproject", credential: "openrelayproject" });
                 return servers;
             }
 
@@ -449,19 +465,13 @@
             async function getAudioStream() { try { localStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }, video: false }); return true; } catch (e) { updateRobinStatus('❌ Нет доступа к микрофону'); return false; } }
 
             function createPeerConn() {
-                peerConnection = new RTCPeerConnection({ iceServers: getIceServers(), iceTransportPolicy: 'all', iceCandidatePoolSize: 2 });
+                peerConnection = new RTCPeerConnection({ iceServers: getIceServers(), iceTransportPolicy: 'all' });
                 if (localStream) localStream.getTracks().forEach(t => peerConnection.addTrack(t, localStream));
                 peerConnection.ontrack = (e) => { const a = new Audio(); a.srcObject = e.streams[0]; a.play().catch(() => {}); };
-                peerConnection.onicecandidate = (e) => { if (e.candidate && peerConnection.remoteDescription && peerConnection.remoteDescription.type) { sendCallSignal('__ICE__' + JSON.stringify(e.candidate)); } };
+                peerConnection.onicecandidate = (e) => { if (e.candidate) { sendCallSignal('__ICE__' + JSON.stringify(e.candidate)); } };
                 peerConnection.oniceconnectionstatechange = () => {
                     if (peerConnection.iceConnectionState === 'connected' || peerConnection.iceConnectionState === 'completed') { callStatus.textContent = '✅ Разговор'; }
-                    if (peerConnection.iceConnectionState === 'disconnected') {
-                        setTimeout(() => { if (peerConnection && peerConnection.iceConnectionState === 'disconnected') endCall(); }, 8000);
-                    }
-                    if (peerConnection.iceConnectionState === 'failed') {
-                        peerConnection.restartIce();
-                        setTimeout(() => { if (peerConnection && peerConnection.iceConnectionState !== 'connected' && peerConnection.iceConnectionState !== 'completed') endCall(); }, 10000);
-                    }
+                    if (peerConnection.iceConnectionState === 'disconnected' || peerConnection.iceConnectionState === 'failed') endCall();
                 };
             }
 
@@ -489,12 +499,53 @@
             callSpeaker.addEventListener('click', toggleSpeaker);
             callLabel.addEventListener('click', () => { btnCall.click(); });
 
-            // Эмодзи
             const emojis = ['😀','😂','🤣','😍','😘','😜','😎','🤩','🥳','😢','😡','👍','👎','❤️','🔥','🎉','💀','🏹','🌲','🏰','🦊','🐺','✨','⚔️','🛡️','🍺','🍗','🏕️','🌙','☀️','🌟','💪','🤝','🙏','👑','💰','🎯','📞','💬','🔔','❌','✅','🎵','📜','⚜️'];
             emojiGrid.innerHTML = emojis.map(e => `<span onclick="window._insertEmoji('${e}')">${e}</span>`).join('');
             window._insertEmoji = function(e) { msgInput.value += e; msgInput.focus(); };
             btnEmoji.addEventListener('click', () => { emojiPanel.style.display = emojiPanel.style.display === 'block' ? 'none' : 'block'; });
             document.addEventListener('click', (e) => { if (!emojiPanel.contains(e.target) && e.target !== btnEmoji) { emojiPanel.style.display = 'none'; } });
+
+            // Туннели
+            function renderTunnelList() {
+                tunnelList.innerHTML = savedConfigs.map((cfg, i) => `
+                    <div class="tunnel-item">
+                        <span>${cfg.name || 'Конфиг '+(i+1)}</span>
+                        <button class="${activeTunnel===i?'active':''}" onclick="window._activateTunnel(${i})">${activeTunnel===i?'✅':'Вкл'}</button>
+                        <button class="delete" onclick="window._deleteTunnel(${i})">✖</button>
+                    </div>
+                `).join('');
+                tunnelStatus.textContent = activeTunnel !== null ? '🔒 Активен' : '🔓 Выкл';
+            }
+            window._activateTunnel = function(i) { activeTunnel = i; localStorage.setItem('robinhood_active_tunnel', i); renderTunnelList(); updateRobinStatus('🔒 Туннель активирован'); };
+            window._deleteTunnel = function(i) { savedConfigs.splice(i, 1); if (activeTunnel === i) { activeTunnel = null; } else if (activeTunnel > i) { activeTunnel--; } localStorage.setItem('robinhood_tunnels', JSON.stringify(savedConfigs)); localStorage.setItem('robinhood_active_tunnel', activeTunnel !== null ? activeTunnel : ''); renderTunnelList(); };
+
+            document.getElementById('btn-add-config').addEventListener('click', () => configFileInput.click());
+            configFileInput.addEventListener('change', (e) => {
+                const file = e.target.files[0]; if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (ev) => { savedConfigs.push({ name: file.name, config: ev.target.result }); localStorage.setItem('robinhood_tunnels', JSON.stringify(savedConfigs)); renderTunnelList(); };
+                reader.readAsText(file);
+            });
+
+            document.getElementById('btn-gen-config').addEventListener('click', async () => {
+                updateRobinStatus('🔄 Генерация конфига...');
+                try {
+                    const keyPair = await crypto.subtle.generateKey({ name: "ECDH", namedCurve: "P-256" }, true, ["deriveKey"]);
+                    const pubKey = await crypto.subtle.exportKey("raw", keyPair.publicKey);
+                    const pubB64 = btoa(String.fromCharCode(...new Uint8Array(pubKey)));
+                    const res = await fetch('https://api.cloudflareclient.com/v0a2158/reg', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ key: pubB64, install_id: crypto.randomUUID(), fcm_token: "", model: "PC", serial_number: crypto.randomUUID() })
+                    });
+                    const data = await res.json();
+                    if (data.config) { savedConfigs.push({ name: 'WARP ' + new Date().toLocaleDateString(), config: data.config }); localStorage.setItem('robinhood_tunnels', JSON.stringify(savedConfigs)); renderTunnelList(); updateRobinStatus('✅ Конфиг сгенерирован'); }
+                } catch(e) { updateRobinStatus('❌ Ошибка генерации'); }
+            });
+
+            document.getElementById('setting-tunnel').addEventListener('click', () => { renderTunnelList(); tunnelModal.classList.add('active'); });
+            document.getElementById('btn-close-tunnel').addEventListener('click', () => { tunnelModal.classList.remove('active'); });
+            const savedActive = localStorage.getItem('robinhood_active_tunnel');
+            if (savedActive !== null && savedActive !== '') { activeTunnel = parseInt(savedActive); }
 
             window.addEventListener('message', async (event) => {
                 if (event.source !== pongFrame.contentWindow) return;
