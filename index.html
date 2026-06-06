@@ -220,7 +220,7 @@
         .chat-area::-webkit-scrollbar { display: none; }
         .message-row { display: flex; align-items: flex-start; gap: 10px; background: var(--msg-bg); backdrop-filter: blur(8px); padding: 10px 12px; border-radius: 16px; border-left: 3px solid var(--msg-accent); transition: all 0.2s ease; animation: messageSlideIn 0.3s ease; }
         @keyframes messageSlideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
-        .input-area { background: linear-gradient(135deg, rgba(25, 35, 20, 0.96), rgba(15, 25, 12, 0.98)); backdrop-filter: blur(8px); padding: 10px; padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)); display: flex; gap: 10px; align-items: center; border-top: 1px solid var(--border); position: relative; z-index: 1; }
+        .input-area { background: linear-gradient(135deg, rgba(25, 35, 20, 0.96), rgba(15, 25, 12, 0.98)); backdrop-filter: blur(8px); padding: 10px; padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)); display: flex; gap: 8px; align-items: center; border-top: 1px solid var(--border); position: relative; z-index: 1; }
         input { flex: 1; background: var(--input-bg); border: 1px solid var(--border); padding: 12px; color: var(--text); border-radius: 12px; font-size: 16px; outline: none; font-family: 'Segoe UI', 'Inter', monospace; transition: all 0.2s; }
         input:focus { border-color: var(--accent-light); box-shadow: 0 0 8px var(--accent-glow); background: var(--input-focus); }
         .bow-button { width: 44px; height: 44px; cursor: pointer; transition: transform 0.1s ease; filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3)); }
@@ -282,6 +282,9 @@
         .terms-btn:hover { background: var(--btn-hover); border-color: var(--accent); }
         #call-panel { background: var(--call-bg); border-top: 2px solid var(--border); }
         #call-status { color: var(--accent-light); }
+        #emoji-panel { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+        #emoji-grid span { font-size: 24px; cursor: pointer; padding: 6px; border-radius: 8px; transition: all 0.15s; }
+        #emoji-grid span:hover { background: var(--btn-hover); transform: scale(1.2); }
     </style>
 </head>
 <body>
@@ -289,7 +292,7 @@
     <div class="header">
         <div class="header-row-1">
             <span class="header-title-text">ROBINHOOD P2P</span><span class="header-shield">🏹</span><span style="flex:1;"></span>
-            <button class="terms-btn" id="btn-terms">⚜ условия</button><span class="header-version">v4.2</span>
+            <button class="terms-btn" id="btn-terms">⚜ условия</button><span class="header-version">v4.3</span>
         </div>
         <div class="header-row-2">
             <div class="header-btn" id="btn-avatar"><img src="assets/avatars/001-.png" class="header-avatar" id="profile-avatar-small" alt="avatar"></div>
@@ -306,7 +309,15 @@
 
     <div class="chat-area" id="chat-box"><div class="message-row" id="robin-row"><img src="assets/avatars/231-icon-11433690.png" class="avatar" id="robin-avatar" alt="robin"><div class="msg-body"><div class="msg-sender">Robin Hood</div><div id="robin-text">Святые сокеты стабильны!</div></div></div></div>
 
-    <div class="input-area"><input type="text" id="msg-input" placeholder="Пустить стрелу" autocomplete="off"><img src="assets/bow.png" class="bow-button" id="send-btn" alt="Отправить"></div>
+    <div class="input-area">
+        <button class="header-btn" id="btn-emoji" style="flex-shrink:0;width:38px;height:38px;font-size:18px;">😊</button>
+        <input type="text" id="msg-input" placeholder="Пустить стрелу" autocomplete="off">
+        <img src="assets/bow.png" class="bow-button" id="send-btn" alt="Отправить">
+    </div>
+
+    <div id="emoji-panel" style="display:none;position:fixed;bottom:60px;left:0;width:100%;background:linear-gradient(135deg,rgba(25,35,20,0.98),rgba(15,25,12,0.98));border-top:2px solid var(--border);z-index:50;padding:10px;max-height:200px;overflow-y:auto;">
+        <div id="emoji-grid" style="display:grid;grid-template-columns:repeat(8,1fr);gap:8px;text-align:center;"></div>
+    </div>
 
     <div id="call-panel" style="display:none;position:fixed;bottom:0;left:0;width:100%;z-index:50;padding:15px;text-align:center;">
         <div id="call-status" style="font-size:1em;margin-bottom:10px;">📞 Входящий вызов...</div>
@@ -359,6 +370,9 @@
             const callReject = document.getElementById('call-reject');
             const callSpeaker = document.getElementById('call-speaker');
             const callEnd = document.getElementById('call-end');
+            const emojiPanel = document.getElementById('emoji-panel');
+            const emojiGrid = document.getElementById('emoji-grid');
+            const btnEmoji = document.getElementById('btn-emoji');
 
             let modalResolve = null;
             let handshakeSecret = null;
@@ -392,11 +406,18 @@
             let currentTheme = localStorage.getItem('robinhood_theme') || 'forest';
             function applyTheme(id) { currentTheme = id; document.documentElement.setAttribute('data-theme', id); localStorage.setItem('robinhood_theme', id); const t = themes.find(th => th.id === id); document.getElementById('theme-icon').textContent = t.icon; document.getElementById('theme-name').textContent = t.name; }
 
-            const iceServers = [
-                { urls: "stun:stun.l.google.com:19302" }, { urls: "stun:stun1.l.google.com:19302" },
-                { urls: "turn:openrelay.metered.ca:80", username: "openrelayproject", credential: "openrelayproject" },
-                { urls: "turn:openrelay.metered.ca:443", username: "openrelayproject", credential: "openrelayproject" }
-            ];
+            function getIceServers() {
+                const servers = [
+                    { urls: "stun:stun.l.google.com:19302" },
+                    { urls: "stun:stun1.l.google.com:19302" }
+                ];
+                servers.push({
+                    urls: ["turn:openrelay.metered.ca:80?transport=tcp", "turn:openrelay.metered.ca:443?transport=tcp"],
+                    username: "openrelayproject",
+                    credential: "openrelayproject"
+                });
+                return servers;
+            }
 
             async function generateAESKey() { return await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]); }
             async function exportAESKey(key) { const raw = await crypto.subtle.exportKey("raw", key); return btoa(String.fromCharCode(...new Uint8Array(raw))); }
@@ -428,11 +449,20 @@
             async function getAudioStream() { try { localStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }, video: false }); return true; } catch (e) { updateRobinStatus('❌ Нет доступа к микрофону'); return false; } }
 
             function createPeerConn() {
-                peerConnection = new RTCPeerConnection({ iceServers });
+                peerConnection = new RTCPeerConnection({ iceServers: getIceServers(), iceTransportPolicy: 'all', iceCandidatePoolSize: 2 });
                 if (localStream) localStream.getTracks().forEach(t => peerConnection.addTrack(t, localStream));
                 peerConnection.ontrack = (e) => { const a = new Audio(); a.srcObject = e.streams[0]; a.play().catch(() => {}); };
-                peerConnection.onicecandidate = (e) => { if (e.candidate && peerConnection.remoteDescription) { sendCallSignal('__ICE__' + JSON.stringify(e.candidate)); } };
-                peerConnection.oniceconnectionstatechange = () => { if (peerConnection.iceConnectionState === 'connected' || peerConnection.iceConnectionState === 'completed') { callStatus.textContent = '✅ Разговор'; } if (peerConnection.iceConnectionState === 'disconnected' || peerConnection.iceConnectionState === 'failed') endCall(); };
+                peerConnection.onicecandidate = (e) => { if (e.candidate && peerConnection.remoteDescription && peerConnection.remoteDescription.type) { sendCallSignal('__ICE__' + JSON.stringify(e.candidate)); } };
+                peerConnection.oniceconnectionstatechange = () => {
+                    if (peerConnection.iceConnectionState === 'connected' || peerConnection.iceConnectionState === 'completed') { callStatus.textContent = '✅ Разговор'; }
+                    if (peerConnection.iceConnectionState === 'disconnected') {
+                        setTimeout(() => { if (peerConnection && peerConnection.iceConnectionState === 'disconnected') endCall(); }, 8000);
+                    }
+                    if (peerConnection.iceConnectionState === 'failed') {
+                        peerConnection.restartIce();
+                        setTimeout(() => { if (peerConnection && peerConnection.iceConnectionState !== 'connected' && peerConnection.iceConnectionState !== 'completed') endCall(); }, 10000);
+                    }
+                };
             }
 
             async function startCall() {
@@ -458,6 +488,13 @@
             callEnd.addEventListener('click', endCall);
             callSpeaker.addEventListener('click', toggleSpeaker);
             callLabel.addEventListener('click', () => { btnCall.click(); });
+
+            // Эмодзи
+            const emojis = ['😀','😂','🤣','😍','😘','😜','😎','🤩','🥳','😢','😡','👍','👎','❤️','🔥','🎉','💀','🏹','🌲','🏰','🦊','🐺','✨','⚔️','🛡️','🍺','🍗','🏕️','🌙','☀️','🌟','💪','🤝','🙏','👑','💰','🎯','📞','💬','🔔','❌','✅','🎵','📜','⚜️'];
+            emojiGrid.innerHTML = emojis.map(e => `<span onclick="window._insertEmoji('${e}')">${e}</span>`).join('');
+            window._insertEmoji = function(e) { msgInput.value += e; msgInput.focus(); };
+            btnEmoji.addEventListener('click', () => { emojiPanel.style.display = emojiPanel.style.display === 'block' ? 'none' : 'block'; });
+            document.addEventListener('click', (e) => { if (!emojiPanel.contains(e.target) && e.target !== btnEmoji) { emojiPanel.style.display = 'none'; } });
 
             window.addEventListener('message', async (event) => {
                 if (event.source !== pongFrame.contentWindow) return;
