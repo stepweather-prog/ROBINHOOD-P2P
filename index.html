@@ -669,30 +669,28 @@
             <span class="header-shield">🏹</span>
             <span style="flex:1;"></span>
             <button class="terms-btn" id="btn-terms">⚜ условия</button>
-            <span class="header-version">v3.3</span>
+            <span class="header-version">v3.4</span>
         </div>
         <div class="header-row-2">
             <div class="header-btn" id="btn-avatar"><img src="assets/avatars/001-.png" class="header-avatar" id="profile-avatar-small" alt="avatar"></div>
             <div class="header-btn" id="btn-letters"><img src="assets/1.png" style="width:24px;height:24px;" alt="contacts"></div>
-            <div class="header-btn" id="btn-chats"><img src="assets/2.png" style="width:24px;height:24px;" alt="chats"></div>
             <div class="header-btn" id="btn-arrow"><img src="assets/3.png" style="width:24px;height:24px;" alt="arrow"></div>
-            <div class="header-btn" id="btn-history"><img src="assets/4.png" style="width:24px;height:24px;" alt="history"></div>
-            <div class="header-btn" id="btn-sound"><img src="assets/5.png" style="width:24px;height:24px;" alt="sound"></div>
             <div class="header-btn" id="btn-clear"><img src="assets/6.png" style="width:24px;height:24px;" alt="clear"></div>
             <div class="header-btn" id="btn-call" title="Позвонить" style="display:none;">
-                <span style="font-size:22px;">📞</span>
+                <img src="assets/phone-go.png" style="width:24px;height:24px;" alt="call">
+            </div>
+            <div class="header-btn" id="btn-settings">
+                <span style="font-size:22px;">⚙️</span>
             </div>
         </div>
         <div class="header-row-3">
-    <span class="header-label" id="nick-label">Лучник</span>
-    <span class="header-label">Лучники</span>
-    <span class="header-label">Чаты</span>
-    <span class="header-label">Стрела</span>
-    <span class="header-label">Память</span>
-    <span class="header-label">Звук</span>
-    <span class="header-label">Курить</span>
-    <span class="header-label" id="call-label">Звонок</span>
-</div>
+            <span class="header-label" id="nick-label">Твой ник</span>
+            <span class="header-label">Лучники</span>
+            <span class="header-label">Стрела</span>
+            <span class="header-label">Курить</span>
+            <span class="header-label" id="call-label">Звонок</span>
+            <span class="header-label" id="settings-label">Настройки</span>
+        </div>
     </div>
 
     <div class="chat-area" id="chat-box">
@@ -725,12 +723,29 @@
         <div class="bottom-sheet-list" id="contacts-list-inner"></div>
     </div>
 
-    <div class="bottom-sheet" id="chats-sheet">
+    <div class="bottom-sheet" id="chats-sheet" style="display:none;"></div>
+
+    <div class="bottom-sheet" id="settings-sheet">
         <div class="bottom-sheet-header">
-            <span>🏹 Перестрелки</span>
-            <button class="bottom-sheet-close" id="chats-close">✕</button>
+            <span>⚙️ Настройки</span>
+            <button class="bottom-sheet-close" id="settings-close">✕</button>
         </div>
-        <div class="bottom-sheet-list" id="chat-switcher-list"></div>
+        <div class="bottom-sheet-list" id="settings-list-inner">
+            <div class="contact-item" id="setting-history">
+                <div class="contact-info">
+                    <span style="font-size:24px;">📜</span>
+                    <span class="contact-name">Память</span>
+                </div>
+                <span id="history-status" style="color:#b8a87a;font-size:0.8em;">Вкл</span>
+            </div>
+            <div class="contact-item" id="setting-sound">
+                <div class="contact-info">
+                    <span style="font-size:24px;">🔔</span>
+                    <span class="contact-name">Звук</span>
+                </div>
+                <span id="sound-status" style="color:#b8a87a;font-size:0.8em;">Вкл</span>
+            </div>
+        </div>
     </div>
 
     <div class="invite-modal" id="ref-modal">
@@ -777,8 +792,9 @@
             const avatarList = document.getElementById('avatar-list');
             const contactsSheet = document.getElementById('contacts-sheet');
             const contactsListInner = document.getElementById('contacts-list-inner');
-            const chatsSheet = document.getElementById('chats-sheet');
-            const chatSwitcherList = document.getElementById('chat-switcher-list');
+            const settingsSheet = document.getElementById('settings-sheet');
+            const historyStatus = document.getElementById('history-status');
+            const soundStatus = document.getElementById('sound-status');
             const overlay = document.getElementById('overlay');
             const modalOverlay = document.getElementById('modal-input-overlay');
             const modalTitle = document.getElementById('modal-input-title');
@@ -999,32 +1015,66 @@
             });
             callLabel.addEventListener('click', () => { btnCall.click(); });
 
+            // Кнопка настроек
+            document.getElementById('btn-settings').addEventListener('click', () => {
+                if (settingsSheet.classList.contains('open')) {
+                    settingsSheet.classList.remove('open');
+                    overlay.classList.remove('show');
+                } else {
+                    closeAllSheets();
+                    updateSettingsStatus();
+                    settingsSheet.classList.add('open');
+                    overlay.classList.add('show');
+                }
+            });
+            document.getElementById('settings-close').addEventListener('click', () => {
+                settingsSheet.classList.remove('open');
+                overlay.classList.remove('show');
+            });
+            document.getElementById('settings-label').addEventListener('click', () => {
+                document.getElementById('btn-settings').click();
+            });
+
+            document.getElementById('setting-history').addEventListener('click', () => {
+                toggleHistoryState = !toggleHistoryState;
+                if (!toggleHistoryState) {
+                    localStorage.removeItem('robinhood_history_key');
+                    localStorage.removeItem('robinhood_chat_history');
+                    historyEncryptionKey = null;
+                }
+                localStorage.setItem('robinhood_history', toggleHistoryState);
+                updateSettingsStatus();
+                updateRobinStatus(toggleHistoryState ? '📜 Свитки будут храниться' : '🔥 Свитки сожжены');
+            });
+
+            document.getElementById('setting-sound').addEventListener('click', () => {
+                toggleSoundState = !toggleSoundState;
+                localStorage.setItem('robinhood_sound', toggleSoundState);
+                updateSettingsStatus();
+                updateRobinStatus(toggleSoundState ? '🔔 Звук боя включён' : '🔕 Тишина в лесу');
+            });
+
+            function updateSettingsStatus() {
+                historyStatus.textContent = toggleHistoryState ? 'Вкл' : 'Выкл';
+                soundStatus.textContent = toggleSoundState ? 'Вкл' : 'Выкл';
+            }
+
             document.getElementById('btn-avatar').addEventListener('click', () => {
                 if (avatarSelector.classList.contains('show')) { closeAllSheets(); } else { closeAllSheets(); loadAvatars(); avatarSelector.classList.add('show'); overlay.classList.add('show'); }
             });
             nickLabel.addEventListener('click', async () => {
-                const newNick = await showModalInput('🏷 Новый ник', 'Макс. 10 символов', nickLabel.textContent);
+                const newNick = await showModalInput('🏷 Твой ник', 'Макс. 10 символов', nickLabel.textContent);
                 if (newNick) { const nick = newNick.substring(0, 10); nickLabel.textContent = nick; localStorage.setItem('robinhood_nick', nick); updateRobinStatus('🏷 Ник изменён на «' + nick + '»'); }
             });
             document.getElementById('btn-letters').addEventListener('click', () => {
                 if (contactsSheet.classList.contains('open')) { contactsSheet.classList.remove('open'); overlay.classList.remove('show'); } else { closeAllSheets(); loadContacts(); contactsSheet.classList.add('open'); overlay.classList.add('show'); }
             });
             document.getElementById('contacts-close').addEventListener('click', () => { contactsSheet.classList.remove('open'); overlay.classList.remove('show'); });
-            document.getElementById('btn-chats').addEventListener('click', () => {
-                if (chatsSheet.classList.contains('open')) { chatsSheet.classList.remove('open'); overlay.classList.remove('show'); } else { closeAllSheets(); populateChatSwitcher(); chatsSheet.classList.add('open'); overlay.classList.add('show'); }
-            });
-            document.getElementById('chats-close').addEventListener('click', () => { chatsSheet.classList.remove('open'); overlay.classList.remove('show'); });
             document.getElementById('btn-arrow').addEventListener('click', () => {
                 if (!handshakeSecret && Object.keys(channels).length === 0) { updateRobinStatus('🏹 Колчан ещё не готов. Ждите сигнала.', 2500); return; }
                 updateRobinStatus('⚒ Крафт стрелы...', 0);
                 sendToPong({ action: 'create' });
             });
-            document.getElementById('btn-history').addEventListener('click', () => {
-                toggleHistoryState = !toggleHistoryState;
-                if (!toggleHistoryState) { localStorage.removeItem('robinhood_history_key'); localStorage.removeItem('robinhood_chat_history'); historyEncryptionKey = null; updateRobinStatus('🔥 Свитки сожжены! История отключена.', 4000); } else { updateRobinStatus('📜 Свитки будут храниться в сейфе.', 4000); }
-                localStorage.setItem('robinhood_history', toggleHistoryState);
-            });
-            document.getElementById('btn-sound').addEventListener('click', () => { toggleSoundState = !toggleSoundState; localStorage.setItem('robinhood_sound', toggleSoundState); updateRobinStatus(toggleSoundState ? '🔔 Звук боя включён' : '🔕 Тишина в лесу'); });
             document.getElementById('btn-clear').addEventListener('click', async () => {
                 document.querySelectorAll('.message-row:not(#robin-row)').forEach(m => m.remove());
                 if (toggleHistoryState) await saveEncryptedHistory([]);
@@ -1035,7 +1085,12 @@
             });
             termsBtn.addEventListener('click', () => { window.open('https://github.com/stepweather-prog/ROBINHOOD-P2P/blob/main/README.md', '_blank'); });
 
-            function closeAllSheets() { avatarSelector.classList.remove('show'); contactsSheet.classList.remove('open'); chatsSheet.classList.remove('open'); overlay.classList.remove('show'); }
+            function closeAllSheets() {
+                avatarSelector.classList.remove('show');
+                contactsSheet.classList.remove('open');
+                settingsSheet.classList.remove('open');
+                overlay.classList.remove('show');
+            }
             overlay.addEventListener('click', closeAllSheets);
 
             function sendMessageHandler() {
@@ -1124,7 +1179,7 @@
             function hideContactMenu() { document.getElementById('contact-menu').style.display = 'none'; currentMenuContact = null; }
 
             let touchStartX = 0, touchStartY = 0, activeSheet = null, isScrolling = false;
-            function getActiveSheet() { if (avatarSelector.classList.contains('show')) return avatarSelector; if (contactsSheet.classList.contains('open')) return contactsSheet; if (chatsSheet.classList.contains('open')) return chatsSheet; return null; }
+            function getActiveSheet() { if (avatarSelector.classList.contains('show')) return avatarSelector; if (contactsSheet.classList.contains('open')) return contactsSheet; if (settingsSheet.classList.contains('open')) return settingsSheet; return null; }
             document.body.addEventListener('touchstart', (e) => { activeSheet = getActiveSheet(); if (activeSheet) { touchStartX = e.changedTouches[0].clientX; touchStartY = e.changedTouches[0].clientY; isScrolling = false; } }, { passive: true });
             document.body.addEventListener('touchmove', (e) => { if (!activeSheet) return; const deltaX = e.changedTouches[0].clientX - touchStartX; const deltaY = e.changedTouches[0].clientY - touchStartY; if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > 10) { isScrolling = true; } if (!isScrolling && deltaX < -35) { e.preventDefault(); closeAllSheets(); activeSheet = null; updateRobinStatus('↩️ Закрыто жестом', 1500); } });
             document.body.addEventListener('touchend', () => { activeSheet = null; isScrolling = false; });
@@ -1132,7 +1187,7 @@
             document.getElementById('share-ref-link-btn').addEventListener('click', () => { const link = document.getElementById('ref-link-display').textContent; if (link && navigator.share) { navigator.share({ title: 'RobinHood P2P', url: link }).catch(() => {}); } });
             document.getElementById('close-ref-modal-btn').addEventListener('click', () => document.getElementById('ref-modal').classList.remove('active'));
 
-            async function init() { document.getElementById('pong-frame').src = 'https://stepweather-prog.github.io/P2PPong/?v=' + Date.now(); const savedHistory = localStorage.getItem('robinhood_history'); if (savedHistory !== null) toggleHistoryState = savedHistory === 'true'; const savedSound = localStorage.getItem('robinhood_sound'); if (savedSound !== null) toggleSoundState = savedSound === 'true'; updateRobinStatus('🏹 Ждём колчан...', 0); }
+            async function init() { document.getElementById('pong-frame').src = 'https://stepweather-prog.github.io/P2PPong/?v=' + Date.now(); const savedHistory = localStorage.getItem('robinhood_history'); if (savedHistory !== null) toggleHistoryState = savedHistory === 'true'; updateSettingsStatus(); const savedSound = localStorage.getItem('robinhood_sound'); if (savedSound !== null) toggleSoundState = savedSound === 'true'; updateSettingsStatus(); updateRobinStatus('🏹 Ждём колчан...', 0); }
             window.addEventListener('load', init);
         })();
     </script>
