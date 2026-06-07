@@ -888,7 +888,7 @@
                 sendToPong({ action: 'create' });
             });
 
-            // === Приём сообщений от P2PPong ===
+             === Приём сообщений от P2PPong ===
             window.addEventListener('message', async (event) => {
                 if (event.origin !== PONGPONG_ORIGIN) return;
                 const data = event.data; if (!data || !data.type) return;
