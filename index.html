@@ -8,6 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>RobinHood P2P</title>
     <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" sizes="192x192" href="assets/avatars/256--120.png">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.12.2/lottie.min.js"></script>
     <style>
     :root, [data-theme="forest"] { --bg-primary: #1a2a1f; --bg-secondary: #0d1a0c; --accent: #c4a24b; --accent-light: #e8d5a3; --accent-glow: rgba(196,162,75,0.5); --text: #e8e2c7; --text-bright: #f5e6b8; --text-dim: #b8a87a; --border: #c4a24b; --btn-bg: rgba(196,162,75,0.1); --btn-border: rgba(196,162,75,0.3); --btn-hover: rgba(196,162,75,0.25); --sheet-bg: linear-gradient(145deg, #1e2a1a 0%, #0f180d 100%); --input-bg: rgba(20,30,18,0.9); --input-focus: rgba(25,38,22,0.95); --msg-bg: rgba(30,40,25,0.85); --msg-accent: #c4a24b; --robin-bg: rgba(50,70,40,0.9); --robin-accent: #e8c97a; --overlay-bg: rgba(0,0,0,0.6); --call-bg: linear-gradient(135deg, rgba(25,35,20,0.98), rgba(15,25,12,0.98)); }
@@ -122,6 +123,7 @@
     .online-dot { width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:4px; }
     .online-dot.online { background:#4caf50; box-shadow:0 0 6px #4caf50; }
     .online-dot.offline { background:#666; }
+    .invite-modal.active { display: flex; }   
 </style>
 </head>
 <body>
@@ -136,6 +138,9 @@
         <div class="header-btn" id="btn-arrow"><img src="assets/3.png" alt="arrow"></div>
         <div class="header-btn" id="btn-clear"><img src="assets/6.png" alt="clear"></div>
         <div class="header-btn" id="btn-call" title="Позвонить"><img src="assets/phone-go.png" alt="call"></div>
+        <div class="header-btn" id="btn-video" title="Видеозвонок"><span style="font-size:22px;">📹</span></div>
+        <div class="header-btn" id="btn-file" title="Прикрепить файл"><span style="font-size:22px;">📎</span></div>
+        <div class="header-btn" id="btn-self-destruct" title="Самоуничтожение"><span style="font-size:22px;">💣</span></div>
         <div class="header-btn" id="btn-settings"><span style="font-size:22px;">⚙️</span></div>
     </div>
     <div class="header-row-3">
@@ -934,7 +939,14 @@
     if (configFileInput) { configFileInput.addEventListener('change', e => { const file = e.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = ev => { if (tunnelConfigInput) tunnelConfigInput.value = ev.target.result; }; reader.readAsText(file); }); }
     document.getElementById('btn-save-tunnel')?.addEventListener('click', () => { const config = tunnelConfigInput?.value.trim(); if (!config) { updateRobinStatus('❌ Вставьте конфиг'); return; } addTunnelConfig(config); tunnelConfigModal?.classList.remove('active'); if (tunnelConfigInput) tunnelConfigInput.value = ''; updateRobinStatus('✅ Конфиг сохранён'); });
     document.getElementById('btn-cancel-tunnel-config')?.addEventListener('click', () => { tunnelConfigModal?.classList.remove('active'); if (tunnelConfigInput) tunnelConfigInput.value = ''; });
-
+     document.getElementById('setting-tunnel')?.addEventListener('click', () => {
+    if (savedConfigs.length === 0) {
+        tunnelConfigModal?.classList.add('active');
+    } else {
+        if (tunnelToggle) tunnelToggle.checked = !tunnelToggle.checked;
+        window._toggleTunnel();
+    }
+});
     // === Эмодзи и предпросмотр ссылок ===
     const emojis = ['😀','😂','🤣','😍','😘','😜','😎','🤩','🥳','😢','😡','👍','👎','❤️','🔥','🎉','💀','🏹','🌲','🏰','🦊','🐺','✨','⚔️','🛡️','🍺','🍗','🏕️','🌙','☀️','🌟','💪','🤝','🙏','👑','💰','🎯','📞','💬','🔔','❌','✅','🎵','📜','⚜️'];
     if (emojiGrid) { emojiGrid.innerHTML = ''; emojis.forEach(e => { const span = document.createElement('span'); span.textContent = e; span.addEventListener('click', () => { msgInput.value += e; msgInput.focus(); }); emojiGrid.appendChild(span); }); }
