@@ -323,9 +323,9 @@
         <span>👍</span><span>❤️</span><span>😂</span><span>😮</span><span>😢</span><span>🔥</span>
     </div>
     <iframe id="pong-frame" src="" style="display:none;" title="p2p engine"></iframe>
-
-    <script>
-        (function() {
+<input type="file" id="file-input" style="display:none;" multiple>
+<script>
+    (function() {
             // === Часть 1: Основные переменные DOM ===
             const pongFrame = document.getElementById('pong-frame');
             const chatBox = document.getElementById('chat-box');
@@ -694,19 +694,25 @@
             callLabel.addEventListener('click', () => btnCall.click());
 
             // === Часть 13: Отправка файлов ===
-            btnFile = document.getElementById('btn-file'); // для совместимости, если кнопка есть
-            if (btnFile) btnFile.addEventListener('click', () => fileInput.click());
-            fileInput.addEventListener('change', () => {
-                Array.from(fileInput.files).forEach(file => {
-                    const reader = new FileReader();
-                    reader.onload = () => {
-                        const base64 = reader.result.split(',')[1];
-                        sendFileMessage({ name: file.name, size: file.size, type: file.type, data: base64 });
-                    };
-                    reader.readAsDataURL(file);
-                });
-                fileInput.value = '';
-            });
+           const btnFile = document.getElementById('btn-file');
+if (btnFile) {
+    btnFile.addEventListener('click', () => {
+        if (fileInput) fileInput.click();
+    });
+}
+if (fileInput) {
+    fileInput.addEventListener('change', () => {
+        Array.from(fileInput.files).forEach(file => {
+            const reader = new FileReader();
+            reader.onload = () => {
+                const base64 = reader.result.split(',')[1];
+                sendFileMessage({ name: file.name, size: file.size, type: file.type, data: base64 });
+            };
+            reader.readAsDataURL(file);
+        });
+        fileInput.value = '';
+    });
+}
 
             function sendFileMessage(fileData) {
                 if (!activeChannelId || !channels[activeChannelId]) return;
