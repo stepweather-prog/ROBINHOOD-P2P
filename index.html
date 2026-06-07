@@ -694,12 +694,15 @@
             callLabel.addEventListener('click', () => btnCall.click());
 
             // === Часть 13: Отправка файлов ===
-           const btnFile = document.getElementById('btn-file');
+const btnFile = document.getElementById('btn-file');
+const fileInput = document.getElementById('file-input');
+
 if (btnFile) {
     btnFile.addEventListener('click', () => {
         if (fileInput) fileInput.click();
     });
 }
+
 if (fileInput) {
     fileInput.addEventListener('change', () => {
         Array.from(fileInput.files).forEach(file => {
@@ -714,41 +717,7 @@ if (fileInput) {
     });
 }
 
-            function sendFileMessage(fileData) {
-                if (!activeChannelId || !channels[activeChannelId]) return;
-                const payload = { type: 'file', name: fileData.name, size: fileData.size, mime: fileData.type || 'application/octet-stream', data: fileData.data, time: Date.now() };
-                sendToPong({ action: 'send', text: '__FILE__' + JSON.stringify(payload), channelId: activeChannelId });
-                appendFileMessage('Вы', payload, profileAvatarSmall.src);
-            }
-
-            function appendFileMessage(sender, fileData, avatarSrc) {
-                const sizeStr = fileData.size < 1024 ? fileData.size + ' B' : (fileData.size < 1048576 ? (fileData.size / 1024).toFixed(1) + ' KB' : (fileData.size / 1048576).toFixed(1) + ' MB');
-                const row = document.createElement('div');
-                row.className = 'message-row';
-                row.innerHTML = `<img src="${avatarSrc}" class="avatar" alt="avatar">
-                    <div class="msg-body"><div class="msg-sender">${safeHtml(sender)}</div>
-                    <div class="msg-file" data-file="${safeHtml(fileData.name)}" data-mime="${fileData.mime}" data-filedata="${fileData.data}">
-                    <span class="msg-file-icon">📄</span><div class="msg-file-info"><div class="msg-file-name">${safeHtml(fileData.name)}</div>
-                    <div class="msg-file-size">${sizeStr}</div></div></div>
-                    <div class="msg-status">${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div></div>`;
-                chatBox.insertBefore(row, typingIndicator);
-                chatBox.scrollTop = chatBox.scrollHeight;
-                row.querySelector('.msg-file').addEventListener('click', function() {
-                    const data = this.dataset.filedata;
-                    const mime = this.dataset.mime;
-                    const name = this.dataset.name;
-                    const byteString = atob(data);
-                    const ab = new ArrayBuffer(byteString.length);
-                    const ia = new Uint8Array(ab);
-                    for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
-                    const blob = new Blob([ab], { type: mime });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a'); a.href = url; a.download = name; a.click();
-                    setTimeout(() => URL.revokeObjectURL(url), 10000);
-                });
-            }
-
-            // === Часть 14: Самоуничтожающиеся сообщения (упрощено) ===
+// === Часть 14: Самоуничтожающиеся сообщения (упрощено) ===
             let selfDestructMode = false;
             const btnSelfDestruct = document.getElementById('btn-self-destruct');
             if (btnSelfDestruct) {
