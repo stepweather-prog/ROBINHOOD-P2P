@@ -1020,8 +1020,8 @@ if (fileInput) {
 
             // === Часть 23: Приём сообщений от P2PPong ===
             window.addEventListener('message', async (event) => {
-             //  if (event.origin !== PONGPONG_ORIGIN) return;
-                if (event.source !== pongFrame.contentWindow) return;
+               if (event.origin !== PONGPONG_ORIGIN) return;
+              //  if (event.source !== pongFrame.contentWindow) return;
                 const data = event.data;
                 if (!data || !data.type) return;
 
