@@ -921,6 +921,8 @@
                             try { localStorage.setItem('robinhood_contacts', JSON.stringify(contacts)); } catch(e) {}
                         }
                         sendToPong({ action: 'send', text: '__PROFILE__' + JSON.stringify({ nick: nickLabel?.textContent || 'Лучник', avatar: profileAvatarSmall?.src || 'assets/avatars/001-.png' }), channelId: data.channelId });
+                        document.getElementById('ref-modal')?.classList.remove('active');
+                         updateRobinStatus('✅ Колчан открыт!');
                         break;
                     case 'channel-restored':
                         channels[data.channelId] = { secret: data.secret, role: data.role };
