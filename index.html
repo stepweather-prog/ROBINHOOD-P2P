@@ -129,7 +129,7 @@
     <div class="header">
         <div class="header-row-1">
             <span class="header-title-text">ROBINHOOD P2P</span><span class="header-shield">🏹</span><span style="flex:1;"></span>
-            <button class="terms-btn" id="btn-terms">⚜ условия</button><span class="header-version">v5.4</span>
+            <button class="terms-btn" id="btn-terms">⚜ условия</button><span class="header-version">v1.2</span>
         </div>
         <div class="header-row-2">
             <div class="header-btn" id="btn-avatar"><img src="assets/avatars/001-.png" class="header-avatar" id="profile-avatar-small" alt="avatar"></div>
@@ -162,11 +162,19 @@
     </div>
 
     <div id="call-panel" style="display:none;position:fixed;bottom:0;left:0;width:100%;z-index:50;padding:15px;text-align:center;">
+              <div id="local-video-container" style="display:none; position:fixed; bottom:80px; right:10px; width:120px; height:160px; z-index:60; border:2px solid var(--border); border-radius:12px; overflow:hidden; background:#000;">
+    <video id="local-video" autoplay muted playsinline style="width:100%;height:100%;object-fit:cover;"></video>
+</div>
+<div id="remote-video-container" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; z-index:55; background:#000;">
+    <video id="remote-video" autoplay playsinline style="width:100%;height:100%;object-fit:contain;"></video>
+</div>
         <div id="call-status" style="font-size:1em;margin-bottom:10px;">📞 Входящий вызов...</div>
         <div style="display:flex;justify-content:center;gap:20px;align-items:center;">
             <button id="call-accept" style="width:70px;height:70px;border-radius:50%;background:rgba(76,175,80,0.3);border:2px solid #4caf50;cursor:pointer;padding:12px;"><img src="assets/phone-go.png" style="width:100%;height:100%;object-fit:contain;"></button>
             <button id="call-reject" style="width:70px;height:70px;border-radius:50%;background:rgba(244,67,54,0.3);border:2px solid #f44336;cursor:pointer;padding:12px;"><img src="assets/phone-stop.png" style="width:100%;height:100%;object-fit:contain;"></button>
             <button id="call-speaker" style="display:none;width:60px;height:60px;border-radius:50%;background:rgba(196,162,75,0.3);border:2px solid var(--border);font-size:24px;cursor:pointer;">🔊</button>
+            <button id="call-mic" style="display:none;width:60px;height:60px;border-radius:50%;background:rgba(196,162,75,0.3);border:2px solid var(--border);font-size:24px;cursor:pointer;">🎤</button>
+            <button id="call-camera" style="display:none;width:60px;height:60px;border-radius:50%;background:rgba(196,162,75,0.3);border:2px solid var(--border);font-size:24px;cursor:pointer;">📸</button>
             <button id="call-end" style="display:none;width:70px;height:70px;border-radius:50%;background:rgba(244,67,54,0.3);border:2px solid #f44336;cursor:pointer;padding:12px;"><img src="assets/phone-stop.png" style="width:100%;height:100%;object-fit:contain;"></button>
         </div>
     </div>
@@ -387,7 +395,12 @@
                 if (stream) stream.getTracks().forEach(t => pc.addTrack(t, stream));
                 pc.ontrack = e => {
                     if (e.streams && e.streams[0]) {
-                        if (videoCallActive && callId === 'main') { /* видео */ }
+                        if (videoCallActive && callId === 'main') {
+            const remoteVideo = document.getElementById('remote-video');
+            const remoteVideoContainer = document.getElementById('remote-video-container');
+            if (remoteVideo) remoteVideo.srcObject = e.streams[0];
+            if (remoteVideoContainer) remoteVideoContainer.style.display = 'block';
+            }
                         else { const a = new Audio(); a.srcObject = e.streams[0]; a.play().catch(()=>{}); }
                     }
                 };
@@ -446,12 +459,22 @@
                 const stream = await getMediaStream(enableVideo);
                 if (!stream) return;
                 localStreams['main'] = stream;
+                if (enableVideo) {
+                const localVideo = document.getElementById('local-video');
+                const localVideoContainer = document.getElementById('local-video-container');
+                if (localVideo) localVideo.srcObject = stream;
+                if (localVideoContainer) localVideoContainer.style.display = 'block';
+               }
                 if (callPanel) callPanel.style.display = 'block';
                 if (callStatus) callStatus.textContent = enableVideo ? '📹 Видеовызов...' : '📞 Вызов...';
                 if (callAccept) callAccept.style.display = 'none';
                 if (callReject) callReject.style.display = 'none';
                 if (callEnd) callEnd.style.display = 'inline-block';
                 if (callSpeaker) callSpeaker.style.display = 'inline-block';
+                const callMic = document.getElementById('call-mic');
+               const callCamera = document.getElementById('call-camera');
+               if (callMic) callMic.addEventListener('click', toggleMic);
+               if (callCamera) callCamera.addEventListener('click', toggleCamera);
                 playRingback();
                 const pc = createPeerConn(stream, 'main'); peerConnections['main'] = pc;
                 setupDataChannel(pc, 'main');
@@ -472,11 +495,36 @@
                 if (callReject) callReject.style.display = 'inline-block';
                 if (callEnd) callEnd.style.display = 'none';
                 if (callSpeaker) callSpeaker.style.display = 'none';
+                if (callMic) callMic.style.display = 'none';
+                if (callCamera) callCamera.style.display = 'none';
+                const localVideo = document.getElementById('local-video');
+                const remoteVideo = document.getElementById('remote-video');
+                const localVideoContainer = document.getElementById('local-video-container');
+                const remoteVideoContainer = document.getElementById('remote-video-container');
+                if (localVideo) localVideo.srcObject = null;
+                if (remoteVideo) remoteVideo.srcObject = null;
+                if (localVideoContainer) localVideoContainer.style.display = 'none';
+                if (remoteVideoContainer) remoteVideoContainer.style.display = 'none';
                 updateRobinStatus('📞 Звонок завершён');
             }
 
             function toggleSpeaker() { speakerOn = !speakerOn; if (callSpeaker) callSpeaker.textContent = speakerOn ? '🔊' : '🔇'; }
-
+               function toggleMic() {
+    const stream = localStreams['main'];
+    if (stream) {
+        micOn = !micOn;
+        stream.getAudioTracks().forEach(t => t.enabled = micOn);
+        if (callMic) callMic.textContent = micOn ? '🎤' : '🚫';
+    }
+}
+function toggleCamera() {
+    const stream = localStreams['main'];
+    if (stream) {
+        cameraOn = !cameraOn;
+        stream.getVideoTracks().forEach(t => t.enabled = cameraOn);
+        if (callCamera) callCamera.textContent = cameraOn ? '📸' : '🚫';
+    }
+}
             // === Отправка в P2PPong ===
             function sendToPong(msg) {
                 if (!msg) return;
@@ -958,6 +1006,8 @@
             // === Кнопки звонков ===
             if (btnCall) btnCall.addEventListener('click', () => { if (callActive) { endCall(); return; } startCall(false); });
             if (btnVideo) btnVideo.addEventListener('click', () => { if (callActive) { endCall(); return; } startCall(true); });
+            if (callMic) callMic.style.display = 'none';
+            if (callCamera) callCamera.style.display = 'none';
             if (callReject) callReject.addEventListener('click', () => { stopRingtone(); sendCallSignal('__HANGUP__'); if (callPanel) callPanel.style.display = 'none'; updateRobinStatus('📞 Вызов отклонён'); });
             if (callEnd) callEnd.addEventListener('click', endCall);
             if (callSpeaker) callSpeaker.addEventListener('click', toggleSpeaker);
@@ -965,7 +1015,11 @@
 
             // === Кнопка стрелы и инициализация ===
             document.getElementById('btn-arrow')?.addEventListener('click', () => { if (!handshakeSecret && Object.keys(channels).length === 0) { updateRobinStatus('🏹 Колчан ещё не готов. Ждите сигнала.', 2500); return; } updateRobinStatus('⚒ Крафт стрелы [' + (currentServer === 'workers' ? 'Warp' : 'Шервуд') + ']...', 0); sendToPong({ action: 'create' }); });
-
+             document.getElementById('cancel-arrow-btn')?.addEventListener('click', () => {
+          sendToPong({ action: 'cancel-create' });
+          document.getElementById('ref-modal')?.classList.remove('active');
+           updateRobinStatus('⏹ Стрела отменена');
+      });
             // === Индикация сети ===
             window.addEventListener('online', () => { updateRobinStatus('🌐 Сеть восстановлена', 2000); if (pongFrame) pongFrame.src = 'https://stepweather-prog.github.io/P2PPong/?v=' + Date.now(); });
             window.addEventListener('offline', () => { updateRobinStatus('⚠️ Нет подключения к сети', 0); });
