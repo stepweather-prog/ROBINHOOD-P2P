@@ -84,211 +84,110 @@
     </style>
 </head>
 <body>
-<div class="header">
-    <div class="header-row-1">
-        <span class="header-title-text">ROBINHOOD P2P</span>
-        <span class="header-shield">🏹</span>
-        <span style="flex:1;"></span>
-        <a href="https://github.com/stepweather-prog/ROBINHOOD-P2P/blob/main/README.md" target="_blank" style="font-size:0.55em;color:#b8a87a;">условия</a>
-        <span class="header-version">v2.0</span>
-    </div>
-    <div class="header-row-2">
-        <div class="header-btn" id="btn-avatar"><img src="assets/avatars/001-.png" class="header-avatar" id="profile-avatar-small"></div>
-        <div class="header-btn" id="btn-letters"><img src="assets/1.png" style="width:24px;height:24px;"></div>
-        <div class="header-btn" id="btn-chats"><img src="assets/2.png" style="width:24px;height:24px;"></div>
-        <div class="header-btn" id="btn-arrow"><img src="assets/3.png" style="width:24px;height:24px;"></div>
-        <div class="header-btn" id="btn-history"><img src="assets/4.png" style="width:24px;height:24px;"></div>
-        <div class="header-btn" id="btn-sound"><img src="assets/5.png" style="width:24px;height:24px;"></div>
-        <div class="header-btn" id="btn-clear"><img src="assets/6.png" style="width:24px;height:24px;"></div>
-    </div>
-    <div class="header-row-3">
-       <span class="header-label" id="nick-label">Лучник</span>
-       <span class="header-label">Лучники</span>
-       <span class="header-label">Чаты</span>
-       <span class="header-label">Стрела</span>
-       <span class="header-label">Память</span>
-       <span class="header-label">Звук</span>
-       <span class="header-label">Курить</span>
-    </div>
-</div>
-
-<div class="chat-area" id="chat-box">
-    <div class="message-row" id="robin-row">
-        <img src="assets/avatars/231-icon-11433690.png" class="avatar" id="robin-avatar">
-        <div class="msg-body"><div class="msg-sender">Robin Hood</div><div id="robin-text">Святые сокеты стабильны !</div></div>
-    </div>
-</div>
-
-<div class="input-area">
-    <input type="text" id="msg-input" placeholder="Пустить стрелу">
-    <img src="assets/bow.png" class="bow-button" id="send-btn" alt="Отправить">
-</div>
-
-<div class="overlay" id="overlay"></div>
-<div class="avatar-selector" id="avatar-selector"><p>🏹 Выбери лучника 🏹</p><div id="avatar-list"></div></div>
-
-<div class="bottom-sheet" id="contacts-sheet">
-    <div class="bottom-sheet-header"><span>🏹 Лучники Шервуда</span><button class="bottom-sheet-close" id="contacts-close">✕</button></div>
-    <div class="bottom-sheet-list" id="contacts-list-inner"></div>
-</div>
-
-<div class="bottom-sheet" id="chats-sheet">
-    <div class="bottom-sheet-header"><span>🏹 Перестрелки</span><button class="bottom-sheet-close" id="chats-close">✕</button></div>
-    <div class="bottom-sheet-list" id="chat-switcher-list"></div>
-</div>
-
-<div class="invite-modal" id="ref-modal">
-    <div class="invite-dialog">
-        <h3>🏹 Стрела готова 🏹</h3>
-        <div class="code-display" id="ref-link-display"></div>
-        <button id="share-ref-link-btn">Поделиться...</button>
-        <button id="close-ref-modal-btn" style="background:#4a3a2a;margin-top:5px;">Закрыть</button>
-    </div>
-</div>
-
-<div id="contact-menu" class="contact-menu" style="display:none;">
-    <div class="contact-menu-item" id="menu-rename">✎ Переименовать</div>
-    <div class="contact-menu-item" id="menu-avatar">🖼 Сменить аватар</div>
-    <div class="contact-menu-item" id="menu-delete">🔥 Уволить лучника!</div>
-    <button id="menu-cancel">Отмена</button>
-</div>
-
-<div id="archer-container" class="archer-container"></div>
-
-<iframe id="pong-frame" src="" style="display:none;"></iframe>
-
-<script>
+    <script>
+   (function() {
+    // === Часть 1: Основные переменные DOM ===
     const pongFrame = document.getElementById('pong-frame');
+    const chatBox = document.getElementById('chat-box');
+    const msgInput = document.getElementById('msg-input');
+    const robinText = document.getElementById('robin-text');
+    const profileAvatarSmall = document.getElementById('profile-avatar-small');
+    const nickLabel = document.getElementById('nick-label');
+    const avatarSelector = document.getElementById('avatar-selector');
+    const avatarList = document.getElementById('avatar-list');
+    const contactsSheet = document.getElementById('contacts-sheet');
+    const contactsListInner = document.getElementById('contacts-list-inner');
+    const settingsSheet = document.getElementById('settings-sheet');
+    const overlay = document.getElementById('overlay');
+    const modalOverlay = document.getElementById('modal-input-overlay');
+    const modalTitle = document.getElementById('modal-input-title');
+    const modalField = document.getElementById('modal-input-field');
+    const modalOk = document.getElementById('modal-input-ok');
+    const modalCancel = document.getElementById('modal-input-cancel');
+    const termsBtn = document.getElementById('btn-terms');
+    const btnCall = document.getElementById('btn-call');
+    const callLabel = document.getElementById('call-label');
+    const callPanel = document.getElementById('call-panel');
+    const callStatus = document.getElementById('call-status');
+    const callAccept = document.getElementById('call-accept');
+    const callReject = document.getElementById('call-reject');
+    const callSpeaker = document.getElementById('call-speaker');
+    const callEnd = document.getElementById('call-end');
+    const emojiPanel = document.getElementById('emoji-panel');
+    const emojiGrid = document.getElementById('emoji-grid');
+    const btnEmoji = document.getElementById('btn-emoji');
+    const tunnelConfigModal = document.getElementById('tunnel-config-modal');
+    const tunnelConfigInput = document.getElementById('tunnel-config-input');
+    const configFileInput = document.getElementById('config-file-input');
+    const serverToggle = document.getElementById('server-toggle');
+    const serverLabel = document.getElementById('server-label');
+    const typingIndicator = document.getElementById('typing-indicator');
+    const cancelArrowBtn = document.getElementById('cancel-arrow-btn');
+    const sendBtn = document.getElementById('send-btn');
+    const historyStatus = document.getElementById('history-status');
+    const soundStatus = document.getElementById('sound-status');
+    const tunnelToggle = document.getElementById('tunnel-toggle');
+    const themeIcon = document.getElementById('theme-icon');
+    const themeName = document.getElementById('theme-name');
+    const bowContainer = document.getElementById('bow-above-send');
+
+    // === Часть 2: Константы и глобальные состояния ===
+    const PONGPONG_ORIGIN = 'https://stepweather-prog.github.io';
+    const WORKERS_URL = 'https://robincall.stephanclaps-491.workers.dev';
+    const RENDER_URL = 'https://p2ppong.onrender.com';
+
+    let modalResolve = null;
     let handshakeSecret = null;
     let channels = {};
     let activeChannelId = null;
     let deferredPrompt = null;
+    let toggleHistoryState = true;
+    let toggleSoundState = true;
+    let activeContact = null;
+    let historyEncryptionKey = null; // только в памяти
+    let robinDefaultText = robinText ? robinText.textContent : 'Святые сокеты стабильны!';
+    let robinTimer = null;
+    let currentMenuContact = null;
+    let profileSent = {};
+    let peerConnections = {};
+    let localStreams = {};
+    let dataChannels = {};
+    let callActive = false;
+    let videoCallActive = false;
+    let speakerOn = true;
+    let cameraOn = true;
+    let micOn = true;
+    let ringtoneAudio = null;
+    let ringbackAudio = null;
+    let savedConfigs = [];
+    let activeTunnel = null;
+    let currentServer = 'render';
+    let pendingIceCandidates = {};
+    let typingTimers = {};
+    let contactOnlineStatus = {};
+    let audioPool = {};
+    let selfDestructTimers = {};
+    let activeReactionMsgId = null;
+    let messageReactions = {};
+    let meshPeers = {};
+    let cachedHistory = [];
 
-    window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; });
-(function() {
-    var pongFrame = document.getElementById('pong-frame');
-    var chatBox = document.getElementById('chat-box');
-    var msgInput = document.getElementById('msg-input');
-    var robinText = document.getElementById('robin-text');
-    var profileAvatarSmall = document.getElementById('profile-avatar-small');
-    var nickLabel = document.getElementById('nick-label');
-    var avatarSelector = document.getElementById('avatar-selector');
-    var avatarList = document.getElementById('avatar-list');
-    var contactsSheet = document.getElementById('contacts-sheet');
-    var contactsListInner = document.getElementById('contacts-list-inner');
-    var settingsSheet = document.getElementById('settings-sheet');
-    var overlay = document.getElementById('overlay');
-    var modalOverlay = document.getElementById('modal-input-overlay');
-    var modalTitle = document.getElementById('modal-input-title');
-    var modalField = document.getElementById('modal-input-field');
-    var modalOk = document.getElementById('modal-input-ok');
-    var modalCancel = document.getElementById('modal-input-cancel');
-    var termsBtn = document.getElementById('btn-terms');
-    var btnCall = document.getElementById('btn-call');
-    var btnVideo = document.getElementById('btn-video');
-    var callLabel = document.getElementById('call-label');
-    var videoLabel = document.getElementById('video-label');
-    var callPanel = document.getElementById('call-panel');
-    var callStatus = document.getElementById('call-status');
-    var callAccept = document.getElementById('call-accept');
-    var callReject = document.getElementById('call-reject');
-    var callSpeaker = document.getElementById('call-speaker');
-    var callCamera = document.getElementById('call-camera');
-    var callMic = document.getElementById('call-mic');
-    var callEnd = document.getElementById('call-end');
-    var emojiPanel = document.getElementById('emoji-panel');
-    var emojiGrid = document.getElementById('emoji-grid');
-    var btnEmoji = document.getElementById('btn-emoji');
-    var btnFile = document.getElementById('btn-file');
-    var fileInput = document.getElementById('file-input');
-    var btnSelfDestruct = document.getElementById('btn-self-destruct');
-    var tunnelConfigModal = document.getElementById('tunnel-config-modal');
-    var tunnelConfigInput = document.getElementById('tunnel-config-input');
-    var configFileInput = document.getElementById('config-file-input');
-    var tunnelEnableToggle = document.getElementById('tunnel-enable-toggle');
-    var tunnelList = document.getElementById('tunnel-list');
-    var settingAddTunnel = document.getElementById('setting-add-tunnel');
-    var typingIndicator = document.getElementById('typing-indicator');
-    var cancelArrowBtn = document.getElementById('cancel-arrow-btn');
-    var remoteVideo = document.getElementById('remote-video');
-    var localVideo = document.getElementById('local-video');
-    var remoteVideoContainer = document.getElementById('remote-video-container');
-    var localVideoContainer = document.getElementById('local-video-container');
-    var videoControls = document.getElementById('video-controls');
-    var vcFullscreen = document.getElementById('vc-fullscreen');
-    var reactionPicker = document.getElementById('reaction-picker');
-    var qrCodeDiv = document.getElementById('qr-code');
-    var toggleHistory = document.getElementById('toggle-history');
-    var toggleSound = document.getElementById('toggle-sound');
-    var serverToggle = document.getElementById('server-toggle');
-    var themeEditorModal = document.getElementById('theme-editor-modal');
-    var linkPreviewModal = document.getElementById('link-preview-modal');
-    var linkPreviewContent = document.getElementById('link-preview-content');
-        const PONGPONG_ORIGIN = 'https://stepweather-prog.github.io'; // Ваш домен с GitHub Pages
+    try { savedConfigs = JSON.parse(localStorage.getItem('robinhood_tunnels') || '[]'); } catch(e) {}
+    try { currentServer = localStorage.getItem('robinhood_server') || 'render'; } catch(e) {}
+    try { messageReactions = JSON.parse(localStorage.getItem('robinhood_reactions') || '{}'); } catch(e) {}
 
-    var modalResolve = null;
-    var handshakeSecret = null;
-    var channels = {};
-    var activeChannelId = null;
-    var deferredPrompt = null;
-    var toggleHistoryState = true;
-    var toggleSoundState = true;
-    var activeContact = null;
-    var historyEncryptionKey = null; // только в памяти, не сохраняется
-    var robinDefaultText = robinText ? robinText.textContent : 'Святые сокеты стабильны!';
-    var robinTimer = null;
-    var currentMenuContact = null;
-    var profileSent = {};
-    var peerConnections = {};
-    var localStreams = {};
-    var dataChannels = {};
-    var callActive = false;
-    var videoCallActive = false;
-    var speakerOn = true;
-    var cameraOn = true;
-    var micOn = true;
-    var ringtoneAudio = null;
-    var ringbackAudio = null;
-    var savedConfigs = [];
-    var activeTunnel = null;
-    var currentServer = 'render';
-    var pendingIceCandidates = {};
-    var typingTimers = {};
-    var contactOnlineStatus = {};
-    var audioPool = {};
-    var selfDestructTimers = {};
-    var activeReactionMsgId = null;
-    var messageReactions = {};
-    var meshPeers = {};
-    var WORKERS_URL = 'https://robincall.stephanclaps-491.workers.dev';
-    var RENDER_URL = 'https://p2ppong.onrender.com';
-
-    try {
-        savedConfigs = JSON.parse(localStorage.getItem('robinhood_tunnels') || '[]');
-    } catch(e) { savedConfigs = []; }
-    try {
-        currentServer = localStorage.getItem('robinhood_server') || 'render';
-    } catch(e) { currentServer = 'render'; }
-    try {
-        messageReactions = JSON.parse(localStorage.getItem('robinhood_reactions') || '{}');
-    } catch(e) { messageReactions = {}; }
-
-    var themes = [
-        { id: 'forest', icon: '🏹', name: 'Лес' },
-        { id: 'sunset', icon: '🌅', name: 'Закат' },
-        { id: 'ocean', icon: '🌊', name: 'Океан' },
-        { id: 'rose', icon: '🌹', name: 'Роза' },
-        { id: 'amber', icon: '🍯', name: 'Янтарь' },
-        { id: 'mint', icon: '🌿', name: 'Мята' },
-        { id: 'lavender', icon: '💜', name: 'Лаванда' },
-        { id: 'cherry', icon: '🍒', name: 'Вишня' }
+    const themes = [
+        { id: 'forest', icon: '🏹', name: 'Лес' }, { id: 'sunset', icon: '🌅', name: 'Закат' },
+        { id: 'ocean', icon: '🌊', name: 'Океан' }, { id: 'rose', icon: '🌹', name: 'Роза' },
+        { id: 'amber', icon: '🍯', name: 'Янтарь' }, { id: 'mint', icon: '🌿', name: 'Мята' },
+        { id: 'lavender', icon: '💜', name: 'Лаванда' }, { id: 'cherry', icon: '🍒', name: 'Вишня' }
     ];
-    var currentTheme = 'forest';
-    try { currentTheme = localStorage.getItem('robinhood_theme') || 'forest'; } catch(e) {}
-        // Функция безопасного экранирования HTML (против XSS)
+    let currentTheme = localStorage.getItem('robinhood_theme') || 'forest';
+
+    // === Часть 3: Безопасное экранирование и вспомогательные функции ===
     function safeHtml(str) {
         if (!str) return '';
-        var div = document.createElement('div');
+        const div = document.createElement('div');
         div.textContent = str;
         return div.innerHTML;
     }
@@ -298,12 +197,8 @@
             { urls: "stun:stun.l.google.com:19302" },
             { urls: "stun:stun1.l.google.com:19302" },
             {
-                urls: [
-                    "turn:openrelay.metered.ca:80?transport=tcp",
-                    "turn:openrelay.metered.ca:443?transport=tcp"
-                ],
-                username: "openrelayproject",
-                credential: "openrelayproject"
+                urls: ["turn:openrelay.metered.ca:80?transport=tcp", "turn:openrelay.metered.ca:443?transport=tcp"],
+                username: "openrelayproject", credential: "openrelayproject"
             }
         ];
     }
@@ -313,7 +208,7 @@
             audioPool[filename] = new Audio('assets/sounds/' + filename);
             audioPool[filename].volume = 0.5;
         }
-        var a = audioPool[filename];
+        const a = audioPool[filename];
         a.currentTime = 0;
         return a;
     }
@@ -328,76 +223,65 @@
     function stopRingtone() { if (ringtoneAudio) { ringtoneAudio.pause(); ringtoneAudio.loop = false; ringtoneAudio = null; } }
     function playRingback() { stopRingback(); ringbackAudio = getAudio('Welk.mp3'); ringbackAudio.loop = true; ringbackAudio.volume = 0.5; ringbackAudio.play().catch(function() {}); }
     function stopRingback() { if (ringbackAudio) { ringbackAudio.pause(); ringbackAudio.loop = false; ringbackAudio = null; } }
-    function playCallStart() { var a = getAudio('open.mp3'); a.volume = 0.7; a.play().catch(function() {}); }
-    function playCallEnd() { var a = getAudio('exet.mp3'); a.volume = 0.7; a.play().catch(function() {}); }
-        async function generateAESKey() {
-        return await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]);
-    }
+    function playCallStart() { const a = getAudio('open.mp3'); a.volume = 0.7; a.play().catch(function() {}); }
+    function playCallEnd() { const a = getAudio('exet.mp3'); a.volume = 0.7; a.play().catch(function() {}); }
+
+    // === Часть 4: Криптография ===
+    async function generateAESKey() { return await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]); }
     async function exportAESKey(key) {
-        var raw = await crypto.subtle.exportKey("raw", key);
-        return btoa(Array.from(new Uint8Array(raw), function(b) { return String.fromCharCode(b); }).join(''));
+        const raw = await crypto.subtle.exportKey("raw", key);
+        return btoa(Array.from(new Uint8Array(raw), b => String.fromCharCode(b)).join(''));
     }
     async function importAESKey(base64key) {
-        var raw = Uint8Array.from(atob(base64key), function(c) { return c.charCodeAt(0); });
+        const raw = Uint8Array.from(atob(base64key), c => c.charCodeAt(0));
         return await crypto.subtle.importKey("raw", raw, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
     }
     async function aesEncrypt(plaintext, key) {
-        var iv = crypto.getRandomValues(new Uint8Array(12));
-        var encoded = new TextEncoder().encode(plaintext);
-        var ciphertext = await crypto.subtle.encrypt({ name: "AES-GCM", iv: iv }, key, encoded);
+        const iv = crypto.getRandomValues(new Uint8Array(12));
+        const encoded = new TextEncoder().encode(plaintext);
+        const ciphertext = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, encoded);
         return JSON.stringify({
-            iv: btoa(Array.from(iv, function(b) { return String.fromCharCode(b); }).join('')),
-            data: btoa(Array.from(new Uint8Array(ciphertext), function(b) { return String.fromCharCode(b); }).join(''))
+            iv: btoa(Array.from(iv, b => String.fromCharCode(b)).join('')),
+            data: btoa(Array.from(new Uint8Array(ciphertext), b => String.fromCharCode(b)).join(''))
         });
     }
     async function aesDecrypt(payloadStr, key) {
         try {
-            var payload = JSON.parse(payloadStr);
-            var iv = Uint8Array.from(atob(payload.iv), function(c) { return c.charCodeAt(0); });
-            var data = Uint8Array.from(atob(payload.data), function(c) { return c.charCodeAt(0); });
-            var decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv: iv }, key, data);
+            const payload = JSON.parse(payloadStr);
+            const iv = Uint8Array.from(atob(payload.iv), c => c.charCodeAt(0));
+            const data = Uint8Array.from(atob(payload.data), c => c.charCodeAt(0));
+            const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, data);
             return new TextDecoder().decode(decrypted);
         } catch(e) { return null; }
     }
-    async function getHistoryKey() {
-        if (!historyEncryptionKey) {
-            historyEncryptionKey = await generateAESKey();
-        }
-    }
-        async function saveEncryptedHistory(messages) {
+    async function getHistoryKey() { if (!historyEncryptionKey) historyEncryptionKey = await generateAESKey(); }
+
+    // === Часть 5: История (только в памяти) ===
+    async function saveEncryptedHistory(messages) {
         if (!toggleHistoryState) return;
         if (!historyEncryptionKey) await getHistoryKey();
-        try {
-            var json = JSON.stringify(messages);
-            var encrypted = await aesEncrypt(json, historyEncryptionKey);
-            // Не сохраняем в localStorage, только в памяти
-        } catch(e) { console.error('Failed to save history:', e); }
+        try { cachedHistory = messages; } catch(e) {}
     }
-
-    var cachedHistory = []; // замена localStorage для текущей сессии
 
     async function loadEncryptedHistory() {
         if (!toggleHistoryState) return [];
         if (!historyEncryptionKey) await getHistoryKey();
-        // Попробуем загрузить из localStorage старую зашифрованную историю (если осталась)
-        var stored = null;
-        try { stored = localStorage.getItem('robinhood_chat_history'); } catch(e) {}
+        const stored = localStorage.getItem('robinhood_chat_history');
         if (stored) {
             try {
-                var decrypted = await aesDecrypt(stored, historyEncryptionKey);
+                const decrypted = await aesDecrypt(stored, historyEncryptionKey);
                 if (decrypted) {
                     cachedHistory = JSON.parse(decrypted);
-                    // После успешной загрузки удаляем старый ключ из localStorage, чтобы не маячил
                     localStorage.removeItem('robinhood_chat_history');
                 }
             } catch(e) { cachedHistory = []; }
         }
         return cachedHistory;
     }
-        function showModalInput(title, placeholder, defaultValue) {
-        if (placeholder === undefined) placeholder = '';
-        if (defaultValue === undefined) defaultValue = '';
-        return new Promise(function(resolve) {
+
+    // === Часть 6: Модальный ввод ===
+    function showModalInput(title, placeholder = '', defaultValue = '') {
+        return new Promise(resolve => {
             modalResolve = resolve;
             modalTitle.textContent = title;
             modalField.placeholder = placeholder;
@@ -410,56 +294,50 @@
         modalOverlay.classList.remove('active');
         if (modalResolve) { modalResolve(value); modalResolve = null; }
     }
-    modalOk.addEventListener('click', function() { hideModalInput(modalField.value.trim()); });
-    modalCancel.addEventListener('click', function() { hideModalInput(null); });
-    modalField.addEventListener('keypress', function(e) { if (e.key === 'Enter') hideModalInput(modalField.value.trim()); });
-    modalOverlay.addEventListener('click', function(e) { if (e.target === modalOverlay) hideModalInput(null); });
-        function sendToPong(msg) {
+    modalOk.addEventListener('click', () => hideModalInput(modalField.value.trim()));
+    modalCancel.addEventListener('click', () => hideModalInput(null));
+    modalField.addEventListener('keypress', e => { if (e.key === 'Enter') hideModalInput(modalField.value.trim()); });
+    modalOverlay.addEventListener('click', e => { if (e.target === modalOverlay) hideModalInput(null); });
+
+    // === Часть 7: Отправка сообщений в P2PPong ===
+    function sendToPong(msg) {
         if (!msg) return;
         if (activeChannelId && channels[activeChannelId]) {
             msg.secret = channels[activeChannelId].secret;
             msg.channelId = activeChannelId;
         }
-        if (handshakeSecret && msg.action === 'handshake') {
-            msg.handshake = handshakeSecret;
-        }
+        if (handshakeSecret && msg.action === 'handshake') msg.handshake = handshakeSecret;
         msg.server = currentServer;
-        if (pongFrame && pongFrame.contentWindow) {
+        if (pongFrame.contentWindow) {
             pongFrame.contentWindow.postMessage(msg, PONGPONG_ORIGIN);
         }
     }
-    function sendCallSignal(text) {
-        sendToPong({ action: 'send', text: text, channelId: activeChannelId });
-    }
-        async function getMediaStream(enableVideo) {
+    function sendCallSignal(text) { sendToPong({ action: 'send', text, channelId: activeChannelId }); }
+
+    // === Часть 8: WebRTC - создание PeerConnection ===
+    async function getMediaStream(enableVideo = false) {
         try {
             return await navigator.mediaDevices.getUserMedia({
                 audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-                video: enableVideo || false
+                video: enableVideo
             });
         } catch(e) { updateRobinStatus('❌ Нет доступа к микрофону/камере'); return null; }
     }
 
     function createPeerConn(stream, callId) {
-        var pc = new RTCPeerConnection({ iceServers: getIceServers(), iceTransportPolicy: 'all' });
-        if (stream) {
-            stream.getTracks().forEach(function(t) { pc.addTrack(t, stream); });
-        }
-        pc.ontrack = function(e) {
+        const pc = new RTCPeerConnection({ iceServers: getIceServers(), iceTransportPolicy: 'all' });
+        if (stream) stream.getTracks().forEach(t => pc.addTrack(t, stream));
+        pc.ontrack = e => {
             if (e.streams && e.streams[0]) {
                 if (videoCallActive && callId === 'main') {
-                    if (remoteVideo) remoteVideo.srcObject = e.streams[0];
-                    if (remoteVideoContainer) remoteVideoContainer.style.display = 'block';
-                    if (videoControls) videoControls.classList.add('active');
+                    // видео обрабатывается отдельно
                 } else {
-                    var a = new Audio(); a.srcObject = e.streams[0]; a.play().catch(function() {});
+                    const a = new Audio(); a.srcObject = e.streams[0]; a.play().catch(() => {});
                 }
             }
         };
-        pc.onicecandidate = function(e) {
-            if (e.candidate) sendCallSignal('__ICE__' + JSON.stringify({ candidate: e.candidate, callId: callId }));
-        };
-        pc.oniceconnectionstatechange = function() {
+        pc.onicecandidate = e => { if (e.candidate) sendCallSignal('__ICE__' + JSON.stringify({ candidate: e.candidate, callId })); };
+        pc.oniceconnectionstatechange = () => {
             if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') {
                 if (callStatus) callStatus.textContent = '✅ Разговор';
             }
@@ -470,15 +348,17 @@
         };
         return pc;
     }
-        function setupDataChannel(pc, callId) {
+
+    // === Часть 9: DataChannel только для инициатора ===
+    function setupDataChannel(pc, callId) {
         try {
-            var dc = pc.createDataChannel('sherwood', { ordered: true });
+            const dc = pc.createDataChannel('sherwood', { ordered: true });
             dataChannels[callId] = dc;
-            dc.onopen = function() {};
-            dc.onclose = function() { delete dataChannels[callId]; };
-            dc.onmessage = function(e) {
+            dc.onopen = () => {};
+            dc.onclose = () => { delete dataChannels[callId]; };
+            dc.onmessage = e => {
                 try {
-                    var msg = JSON.parse(e.data);
+                    const msg = JSON.parse(e.data);
                     if (msg.type === 'file') handleDataChannelFile(msg);
                 } catch(err) {}
             };
@@ -487,62 +367,58 @@
 
     function handleDataChannelFile(msg) {
         updateRobinStatus('📎 Получен файл: ' + safeHtml(msg.name), 3000);
-        var byteString = atob(msg.data);
-        var ab = new ArrayBuffer(byteString.length);
-        var ia = new Uint8Array(ab);
-        for (var i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
-        var blob = new Blob([ab], { type: msg.mime });
-        var url = URL.createObjectURL(blob);
-        var a = document.createElement('a'); a.href = url; a.download = msg.name; a.click();
-        setTimeout(function() { URL.revokeObjectURL(url); }, 10000);
+        const byteString = atob(msg.data);
+        const ab = new ArrayBuffer(byteString.length);
+        const ia = new Uint8Array(ab);
+        for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
+        const blob = new Blob([ab], { type: msg.mime });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = msg.name; a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 10000);
     }
-        function cleanupPeer(callId) {
+
+    // === Часть 10: Очистка пиров и ICE ===
+    function cleanupPeer(callId) {
         if (peerConnections[callId]) { peerConnections[callId].close(); delete peerConnections[callId]; }
-        if (localStreams[callId]) { localStreams[callId].getTracks().forEach(function(t) { t.stop(); }); delete localStreams[callId]; }
+        if (localStreams[callId]) { localStreams[callId].getTracks().forEach(t => t.stop()); delete localStreams[callId]; }
         if (dataChannels[callId]) { try { dataChannels[callId].close(); } catch(e) {} delete dataChannels[callId]; }
         delete pendingIceCandidates[callId];
         delete meshPeers[callId];
     }
 
-    function flushIceCandidates(callId) {
-        var pc = peerConnections[callId || 'main'];
+    function flushIceCandidates(callId = 'main') {
+        const pc = peerConnections[callId];
         if (!pc || !pc.remoteDescription || !pc.remoteDescription.type) return;
-        var candidates = pendingIceCandidates[callId || 'main'] || [];
-        for (var i = 0; i < candidates.length; i++) {
-            try { pc.addIceCandidate(new RTCIceCandidate(candidates[i])).catch(function() {}); } catch(e) {}
+        const candidates = pendingIceCandidates[callId] || [];
+        for (const c of candidates) {
+            try { pc.addIceCandidate(new RTCIceCandidate(c)).catch(() => {}); } catch(e) {}
         }
-        delete pendingIceCandidates[callId || 'main'];
+        delete pendingIceCandidates[callId];
     }
-        async function startCall(enableVideo) {
+
+    // === Часть 11: Звонки ===
+    async function startCall(enableVideo = false) {
         if (callActive) return;
         if (!activeChannelId || !channels[activeChannelId]) {
             updateRobinStatus('🏹 Сначала воспользуйся стрелой!', 3000);
             return;
         }
         videoCallActive = enableVideo;
-        var stream = await getMediaStream(enableVideo);
+        const stream = await getMediaStream(enableVideo);
         if (!stream) return;
         localStreams['main'] = stream;
-        if (enableVideo) {
-            if (localVideo) localVideo.srcObject = stream;
-            if (localVideoContainer) localVideoContainer.style.display = 'block';
-            if (videoControls) videoControls.classList.add('active');
-        }
-        if (callPanel) callPanel.style.display = 'block';
-        if (callStatus) callStatus.textContent = enableVideo ? '📹 Видеовызов...' : '📞 Вызов...';
-        if (callAccept) callAccept.style.display = 'none';
-        if (callReject) callReject.style.display = 'none';
-        if (callEnd) callEnd.style.display = 'inline-block';
-        if (callSpeaker) callSpeaker.style.display = 'inline-block';
-        if (callCamera) callCamera.style.display = enableVideo ? 'inline-block' : 'none';
-        if (callMic) callMic.style.display = enableVideo ? 'inline-block' : 'none';
+        callPanel.style.display = 'block';
+        callStatus.textContent = enableVideo ? '📹 Видеовызов...' : '📞 Вызов...';
+        callAccept.style.display = 'none';
+        callReject.style.display = 'none';
+        callEnd.style.display = 'inline-block';
+        callSpeaker.style.display = 'inline-block';
         playRingback();
-        var pc = createPeerConn(stream, 'main');
+        const pc = createPeerConn(stream, 'main');
         peerConnections['main'] = pc;
-        // DataChannel создаётся только здесь (инициатор)
         setupDataChannel(pc, 'main');
-        pc.ondatachannel = function(e) { /* игнорируем, т.к. мы инициатор */ };
-        var offer = await pc.createOffer();
+        pc.ondatachannel = () => {};
+        const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
         sendCallSignal('__OFFER__' + JSON.stringify({ sdp: offer, video: enableVideo }));
         callActive = true;
@@ -552,146 +428,135 @@
         callActive = false; videoCallActive = false;
         stopRingtone(); stopRingback(); playCallEnd();
         sendCallSignal('__HANGUP__');
-        Object.keys(peerConnections).forEach(function(k) { cleanupPeer(k); });
-        Object.keys(localStreams).forEach(function(k) {
-            if (localStreams[k]) localStreams[k].getTracks().forEach(function(t) { t.stop(); });
+        Object.keys(peerConnections).forEach(k => cleanupPeer(k));
+        Object.keys(localStreams).forEach(k => {
+            if (localStreams[k]) localStreams[k].getTracks().forEach(t => t.stop());
         });
         localStreams = {}; peerConnections = {}; pendingIceCandidates = {}; meshPeers = {}; dataChannels = {};
-        if (callPanel) callPanel.style.display = 'none';
-        if (callAccept) callAccept.style.display = 'inline-block';
-        if (callReject) callReject.style.display = 'inline-block';
-        if (callEnd) callEnd.style.display = 'none';
-        if (callSpeaker) callSpeaker.style.display = 'none';
-        if (callCamera) callCamera.style.display = 'none';
-        if (callMic) callMic.style.display = 'none';
-        if (remoteVideo) remoteVideo.srcObject = null;
-        if (localVideo) localVideo.srcObject = null;
-        if (remoteVideoContainer) remoteVideoContainer.style.display = 'none';
-        if (localVideoContainer) localVideoContainer.style.display = 'none';
-        if (videoControls) videoControls.classList.remove('active');
+        callPanel.style.display = 'none';
+        callAccept.style.display = 'inline-block';
+        callReject.style.display = 'inline-block';
+        callEnd.style.display = 'none';
+        callSpeaker.style.display = 'none';
         updateRobinStatus('📞 Звонок завершён');
     }
-        function toggleSpeaker() {
+
+    function toggleSpeaker() {
         speakerOn = !speakerOn;
         if (callSpeaker) callSpeaker.textContent = speakerOn ? '🔊' : '🔇';
     }
-    function toggleCamera() {
-        if (localStreams['main']) {
-            cameraOn = !cameraOn;
-            localStreams['main'].getVideoTracks().forEach(function(t) { t.enabled = cameraOn; });
-            if (callCamera) callCamera.textContent = cameraOn ? '📸' : '🚫';
-        }
-    }
-    function toggleMic() {
-        if (localStreams['main']) {
-            micOn = !micOn;
-            localStreams['main'].getAudioTracks().forEach(function(t) { t.enabled = micOn; });
-            if (callMic) callMic.textContent = micOn ? '🎤' : '🔇';
-        }
-    }
-    function toggleFullscreen() {
-        if (!remoteVideoContainer || remoteVideoContainer.style.display === 'none') return;
-        if (!document.fullscreenElement) {
-            remoteVideoContainer.requestFullscreen().catch(function() {});
-        } else {
-            document.exitFullscreen();
-        }
-    }
-        function sendFileMessage(fileData) {
-        if (!activeChannelId || !channels[activeChannelId]) return;
-        var payload = { type: 'file', name: fileData.name, size: fileData.size, mime: fileData.type || 'application/octet-stream', data: fileData.data, time: Date.now() };
-        sendToPong({ action: 'send', text: '__FILE__' + JSON.stringify(payload), channelId: activeChannelId });
-        appendFileMessage('Вы', payload, profileAvatarSmall ? profileAvatarSmall.src : 'assets/avatars/001-.png');
-    }
 
-    function appendFileMessage(sender, fileData, avatarSrc) {
-        var sizeStr = fileData.size < 1024 ? fileData.size + ' B' : (fileData.size < 1048576 ? (fileData.size / 1024).toFixed(1) + ' KB' : (fileData.size / 1048576).toFixed(1) + ' MB');
-        var row = document.createElement('div');
-        row.className = 'message-row';
-        row.innerHTML = '<img src="' + avatarSrc + '" class="avatar" alt="avatar">' +
-            '<div class="msg-body"><div class="msg-sender">' + safeHtml(sender) + '</div>' +
-            '<div class="msg-file" data-file="' + safeHtml(fileData.name) + '" data-mime="' + fileData.mime + '" data-filedata="' + fileData.data + '">' +
-            '<span class="msg-file-icon">📄</span><div class="msg-file-info"><div class="msg-file-name">' + safeHtml(fileData.name) + '</div>' +
-            '<div class="msg-file-size">' + sizeStr + '</div></div></div>' +
-            '<div class="msg-status">' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + '</div></div>';
-        chatBox.insertBefore(row, typingIndicator);
-        chatBox.scrollTop = chatBox.scrollHeight;
-        row.querySelector('.msg-file').addEventListener('click', function() {
-            var data = this.dataset.filedata;
-            var mime = this.dataset.mime;
-            var name = this.dataset.name;
-            var byteString = atob(data);
-            var ab = new ArrayBuffer(byteString.length);
-            var ia = new Uint8Array(ab);
-            for (var i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
-            var blob = new Blob([ab], { type: mime });
-            var url = URL.createObjectURL(blob);
-            var a = document.createElement('a'); a.href = url; a.download = name; a.click();
-            setTimeout(function() { URL.revokeObjectURL(url); }, 10000);
-        });
-    }
+    // === Часть 12: Кнопки звонков ===
+    btnCall.addEventListener('click', () => { if (callActive) { endCall(); return; } startCall(false); });
+    callReject.addEventListener('click', () => { stopRingtone(); sendCallSignal('__HANGUP__'); callPanel.style.display = 'none'; updateRobinStatus('📞 Вызов отклонён'); });
+    callEnd.addEventListener('click', endCall);
+    callSpeaker.addEventListener('click', toggleSpeaker);
+    callLabel.addEventListener('click', () => btnCall.click());
 
-    btnFile.addEventListener('click', function() { fileInput.click(); });
-    fileInput.addEventListener('change', function() {
-        Array.from(fileInput.files).forEach(function(file) {
-            var reader = new FileReader();
-            reader.onload = function() {
-                var base64 = reader.result.split(',')[1];
+    // === Часть 13: Отправка файлов ===
+    btnFile = document.getElementById('btn-file'); // для совместимости, если кнопка есть
+    if (btnFile) btnFile.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', () => {
+        Array.from(fileInput.files).forEach(file => {
+            const reader = new FileReader();
+            reader.onload = () => {
+                const base64 = reader.result.split(',')[1];
                 sendFileMessage({ name: file.name, size: file.size, type: file.type, data: base64 });
             };
             reader.readAsDataURL(file);
         });
         fileInput.value = '';
     });
-        var selfDestructMode = false;
-    btnSelfDestruct.addEventListener('click', function() {
-        selfDestructMode = !selfDestructMode;
-        btnSelfDestruct.style.borderColor = selfDestructMode ? '#f44336' : '';
-        btnSelfDestruct.style.background = selfDestructMode ? 'rgba(244,67,54,0.2)' : '';
-        updateRobinStatus(selfDestructMode ? '💣 Режим самоуничтожения: ВКЛ' : '💣 Режим самоуничтожения: ВЫКЛ', 2000);
-    });
+
+    function sendFileMessage(fileData) {
+        if (!activeChannelId || !channels[activeChannelId]) return;
+        const payload = { type: 'file', name: fileData.name, size: fileData.size, mime: fileData.type || 'application/octet-stream', data: fileData.data, time: Date.now() };
+        sendToPong({ action: 'send', text: '__FILE__' + JSON.stringify(payload), channelId: activeChannelId });
+        appendFileMessage('Вы', payload, profileAvatarSmall.src);
+    }
+
+    function appendFileMessage(sender, fileData, avatarSrc) {
+        const sizeStr = fileData.size < 1024 ? fileData.size + ' B' : (fileData.size < 1048576 ? (fileData.size / 1024).toFixed(1) + ' KB' : (fileData.size / 1048576).toFixed(1) + ' MB');
+        const row = document.createElement('div');
+        row.className = 'message-row';
+        row.innerHTML = `<img src="${avatarSrc}" class="avatar" alt="avatar">
+            <div class="msg-body"><div class="msg-sender">${safeHtml(sender)}</div>
+            <div class="msg-file" data-file="${safeHtml(fileData.name)}" data-mime="${fileData.mime}" data-filedata="${fileData.data}">
+            <span class="msg-file-icon">📄</span><div class="msg-file-info"><div class="msg-file-name">${safeHtml(fileData.name)}</div>
+            <div class="msg-file-size">${sizeStr}</div></div></div>
+            <div class="msg-status">${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div></div>`;
+        chatBox.insertBefore(row, typingIndicator);
+        chatBox.scrollTop = chatBox.scrollHeight;
+        row.querySelector('.msg-file').addEventListener('click', function() {
+            const data = this.dataset.filedata;
+            const mime = this.dataset.mime;
+            const name = this.dataset.name;
+            const byteString = atob(data);
+            const ab = new ArrayBuffer(byteString.length);
+            const ia = new Uint8Array(ab);
+            for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
+            const blob = new Blob([ab], { type: mime });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.href = url; a.download = name; a.click();
+            setTimeout(() => URL.revokeObjectURL(url), 10000);
+        });
+    }
+
+    // === Часть 14: Самоуничтожающиеся сообщения (упрощено) ===
+    let selfDestructMode = false;
+    const btnSelfDestruct = document.getElementById('btn-self-destruct');
+    if (btnSelfDestruct) {
+        btnSelfDestruct.addEventListener('click', () => {
+            selfDestructMode = !selfDestructMode;
+            btnSelfDestruct.style.borderColor = selfDestructMode ? '#f44336' : '';
+            btnSelfDestruct.style.background = selfDestructMode ? 'rgba(244,67,54,0.2)' : '';
+            updateRobinStatus(selfDestructMode ? '💣 Режим самоуничтожения: ВКЛ' : '💣 Режим самоуничтожения: ВЫКЛ', 2000);
+        });
+    }
 
     function sendSelfDestructMessage(text, duration) {
         if (!activeChannelId || !channels[activeChannelId]) return;
-        var payload = { type: 'selfdestruct', text: text, duration: duration || 30, time: Date.now() };
+        const payload = { type: 'selfdestruct', text, duration: duration || 30, time: Date.now() };
         sendToPong({ action: 'send', text: '__SELFDESTRUCT__' + JSON.stringify(payload), channelId: activeChannelId });
-        appendSelfDestructMessage('Вы', text, profileAvatarSmall ? profileAvatarSmall.src : 'assets/avatars/001-.png', duration || 30);
+        appendSelfDestructMessage('Вы', text, profileAvatarSmall.src, duration || 30);
     }
 
     function appendSelfDestructMessage(sender, text, avatarSrc, duration) {
-        var msgId = 'msg_' + Date.now();
-        var row = document.createElement('div');
+        const msgId = 'msg_' + Date.now();
+        const row = document.createElement('div');
         row.className = 'message-row'; row.id = msgId;
-        row.innerHTML = '<img src="' + avatarSrc + '" class="avatar" alt="avatar">' +
-            '<div class="msg-body"><div class="msg-sender">' + safeHtml(sender) + '</div>' +
-            '<div>' + safeHtml(text) + '<span class="msg-self-destruct">💣' + duration + 'с</span></div>' +
-            '<div class="msg-status">' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + '</div></div>';
+        row.innerHTML = `<img src="${avatarSrc}" class="avatar" alt="avatar">
+            <div class="msg-body"><div class="msg-sender">${safeHtml(sender)}</div>
+            <div>${safeHtml(text)}<span class="msg-self-destruct">💣${duration}с</span></div>
+            <div class="msg-status">${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div></div>`;
         chatBox.insertBefore(row, typingIndicator);
         chatBox.scrollTop = chatBox.scrollHeight;
-        var remaining = duration;
-        var timer = setInterval(function() {
+        let remaining = duration;
+        const timer = setInterval(() => {
             remaining--;
-            var sdSpan = row.querySelector('.msg-self-destruct');
+            const sdSpan = row.querySelector('.msg-self-destruct');
             if (sdSpan) sdSpan.textContent = '💣' + remaining + 'с';
-            if (remaining <= 0) { clearInterval(timer); row.classList.add('self-destruct'); setTimeout(function() { if (row.parentNode) row.remove(); }, 500); }
+            if (remaining <= 0) { clearInterval(timer); row.classList.add('self-destruct'); setTimeout(() => { if (row.parentNode) row.remove(); }, 500); }
         }, 1000);
         selfDestructTimers[msgId] = timer;
     }
-        function showReactionPicker(msgElement, event) {
+
+    // === Часть 15: Реакции на сообщения ===
+    const reactionPicker = document.getElementById('reaction-picker');
+    function showReactionPicker(msgElement, event) {
         if (!msgElement || !reactionPicker) return;
-        var rect = msgElement.getBoundingClientRect();
+        const rect = msgElement.getBoundingClientRect();
         reactionPicker.style.display = 'flex';
         reactionPicker.style.top = (rect.top - 40) + 'px';
         reactionPicker.style.left = Math.min(rect.left, window.innerWidth - 200) + 'px';
         activeReactionMsgId = msgElement.dataset.msgid || msgElement.id;
     }
-
     if (reactionPicker) {
-        reactionPicker.querySelectorAll('span').forEach(function(span) {
-            span.addEventListener('click', function() {
+        reactionPicker.querySelectorAll('span').forEach(span => {
+            span.addEventListener('click', () => {
                 if (!activeReactionMsgId || !activeChannelId) return;
-                var emoji = span.textContent;
-                sendToPong({ action: 'send', text: '__REACTION__' + JSON.stringify({ msgId: activeReactionMsgId, emoji: emoji }), channelId: activeChannelId });
+                const emoji = span.textContent;
+                sendToPong({ action: 'send', text: '__REACTION__' + JSON.stringify({ msgId: activeReactionMsgId, emoji }), channelId: activeChannelId });
                 addReactionToMessage(activeReactionMsgId, emoji, true);
                 reactionPicker.style.display = 'none';
                 activeReactionMsgId = null;
@@ -700,22 +565,22 @@
     }
 
     function addReactionToMessage(msgId, emoji, fromNetwork) {
-        var row = document.getElementById(msgId);
+        const row = document.getElementById(msgId);
         if (!row) return;
-        var reactionsDiv = row.querySelector('.msg-reactions');
+        let reactionsDiv = row.querySelector('.msg-reactions');
         if (!reactionsDiv) {
             reactionsDiv = document.createElement('div'); reactionsDiv.className = 'msg-reactions';
-            var msgBody = row.querySelector('.msg-body'); if (msgBody) msgBody.appendChild(reactionsDiv);
+            const msgBody = row.querySelector('.msg-body'); if (msgBody) msgBody.appendChild(reactionsDiv);
         }
-        var existing = reactionsDiv.querySelector('[data-emoji="' + emoji + '"]');
+        const existing = reactionsDiv.querySelector(`[data-emoji="${emoji}"]`);
         if (existing) {
-            var count = parseInt(existing.dataset.count || 1) + 1;
+            const count = parseInt(existing.dataset.count || 1) + 1;
             existing.textContent = emoji + ' ' + count; existing.dataset.count = count;
         } else {
-            var spanEl = document.createElement('span'); spanEl.className = 'msg-reaction'; spanEl.dataset.emoji = emoji; spanEl.dataset.count = 1;
+            const spanEl = document.createElement('span'); spanEl.className = 'msg-reaction'; spanEl.dataset.emoji = emoji; spanEl.dataset.count = 1;
             spanEl.textContent = emoji + ' 1';
-            spanEl.addEventListener('click', function() {
-                sendToPong({ action: 'send', text: '__REACTION__' + JSON.stringify({ msgId: msgId, emoji: emoji }), channelId: activeChannelId });
+            spanEl.addEventListener('click', () => {
+                sendToPong({ action: 'send', text: '__REACTION__' + JSON.stringify({ msgId, emoji }), channelId: activeChannelId });
                 addReactionToMessage(msgId, emoji, true);
             });
             reactionsDiv.appendChild(spanEl);
@@ -726,27 +591,29 @@
             try { localStorage.setItem('robinhood_reactions', JSON.stringify(messageReactions)); } catch(e) {}
         }
     }
-        async function exportContacts() {
-        var contacts = [];
+
+    // === Часть 16: Экспорт/импорт контактов ===
+    async function exportContacts() {
+        let contacts = [];
         try { contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]'); } catch(e) {}
         if (!historyEncryptionKey) await getHistoryKey();
-        var json = JSON.stringify(contacts);
-        var encrypted = await aesEncrypt(json, historyEncryptionKey);
-        var blob = new Blob([encrypted], { type: 'application/json' });
-        var url = URL.createObjectURL(blob);
-        var a = document.createElement('a'); a.href = url; a.download = 'robinhood_contacts_backup.enc'; a.click();
+        const json = JSON.stringify(contacts);
+        const encrypted = await aesEncrypt(json, historyEncryptionKey);
+        const blob = new Blob([encrypted], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = 'robinhood_contacts_backup.enc'; a.click();
         URL.revokeObjectURL(url);
         updateRobinStatus('📤 Контакты экспортированы (зашифрованы)', 2500);
     }
 
     async function importContacts(file) {
-        var reader = new FileReader();
-        reader.onload = async function() {
+        const reader = new FileReader();
+        reader.onload = async () => {
             try {
                 if (!historyEncryptionKey) await getHistoryKey();
-                var decrypted = await aesDecrypt(reader.result, historyEncryptionKey);
+                const decrypted = await aesDecrypt(reader.result, historyEncryptionKey);
                 if (!decrypted) { updateRobinStatus('❌ Неверный ключ расшифровки', 3000); return; }
-                var contacts = JSON.parse(decrypted);
+                const contacts = JSON.parse(decrypted);
                 localStorage.setItem('robinhood_contacts', JSON.stringify(contacts));
                 loadContacts();
                 updateRobinStatus('📥 Контакты импортированы!', 2500);
@@ -754,216 +621,190 @@
         };
         reader.readAsText(file);
     }
-        function generateQR(data) {
-        if (!qrCodeDiv) return;
-        qrCodeDiv.innerHTML = '';
+
+    // === Часть 17: QR-коды (без секрета) ===
+    function generateQR(data) {
+        const qrDiv = document.getElementById('qr-code');
+        if (!qrDiv) return;
+        qrDiv.innerHTML = '';
         if (typeof QRCode !== 'undefined') {
-            try { new QRCode(qrCodeDiv, { text: data, width: 120, height: 120, colorDark: '#c4a24b', colorLight: '#0a1208' }); } catch(e) {}
+            try { new QRCode(qrDiv, { text: data, width: 120, height: 120, colorDark: '#c4a24b', colorLight: '#0a1208' }); } catch(e) {}
         }
     }
 
     function showContactQR(contact) {
         if (!contact || !contact.pubkey) return;
-        var link = 'https://stepweather-prog.github.io/ROBINHOOD-P2P/?id=' + contact.pubkey + '&server=' + currentServer;
+        const link = `https://stepweather-prog.github.io/ROBINHOOD-P2P/?id=${contact.pubkey}&server=${currentServer}`;
         generateQR(link);
-        var refLinkDisplay = document.getElementById('ref-link-display');
-        if (refLinkDisplay) refLinkDisplay.textContent = link;
-        var refModal = document.getElementById('ref-modal');
-        if (refModal) refModal.classList.add('active');
+        document.getElementById('ref-link-display').textContent = link;
+        document.getElementById('ref-modal').classList.add('active');
     }
 
     function generateP2PQR() {
         if (!activeChannelId || !channels[activeChannelId]) { updateRobinStatus('❌ Нет активного канала', 3000); return; }
-        var sessionData = JSON.stringify({ channelId: activeChannelId, server: currentServer }); // секрет не включаем
+        const sessionData = JSON.stringify({ channelId: activeChannelId, server: currentServer });
         generateQR(sessionData);
-        var refLinkDisplay = document.getElementById('ref-link-display');
-        if (refLinkDisplay) refLinkDisplay.textContent = 'Отсканируйте QR-код на устройстве получателя';
-        var refModal = document.getElementById('ref-modal');
-        if (refModal) refModal.classList.add('active');
+        document.getElementById('ref-link-display').textContent = 'Отсканируйте QR-код на устройстве получателя';
+        document.getElementById('ref-modal').classList.add('active');
         updateRobinStatus('📱 QR-код для прямого P2P соединения', 3000);
     }
-        function detectLinks(text) {
-        var urlRegex = /(https?:\/\/[^\s]+)/g;
+
+    // === Часть 18: Предпросмотр ссылок ===
+    function detectLinks(text) {
+        const urlRegex = /(https?:\/\/[^\s]+)/g;
         return text.match(urlRegex) || [];
     }
 
     function showLinkPreview(url) {
+        const linkPreviewModal = document.getElementById('link-preview-modal');
+        const linkPreviewContent = document.getElementById('link-preview-content');
         if (!linkPreviewContent) return;
         linkPreviewContent.innerHTML = '';
-        var div = document.createElement('div');
+        const div = document.createElement('div');
         div.className = 'link-preview';
-        div.innerHTML = '<div class="link-preview-info"><div class="link-preview-title">🔗 Внешняя ссылка</div>' +
-            '<div class="link-preview-url">' + safeHtml(url) + '</div><div class="link-preview-desc">Нажмите чтобы открыть</div></div>';
-        div.addEventListener('click', function() { window.open(url, '_blank'); });
+        div.innerHTML = `<div class="link-preview-info"><div class="link-preview-title">🔗 Внешняя ссылка</div>
+            <div class="link-preview-url">${safeHtml(url)}</div><div class="link-preview-desc">Нажмите чтобы открыть</div></div>`;
+        div.addEventListener('click', () => window.open(url, '_blank'));
         linkPreviewContent.appendChild(div);
         if (linkPreviewModal) linkPreviewModal.classList.add('active');
     }
-        function updateTunnelUI() {
-        if (!tunnelEnableToggle || !tunnelList || !settingAddTunnel) return;
-        if (savedConfigs.length === 0) {
-            tunnelEnableToggle.checked = false; tunnelEnableToggle.parentElement.classList.add('disabled');
-            tunnelList.style.display = 'none'; settingAddTunnel.style.display = 'none'; activeTunnel = null;
-        } else {
-            tunnelEnableToggle.parentElement.classList.remove('disabled');
-            tunnelList.style.display = 'block'; settingAddTunnel.style.display = 'block';
-            if (activeTunnel === null || activeTunnel >= savedConfigs.length) {
-                activeTunnel = savedConfigs.length - 1; tunnelEnableToggle.checked = true;
-                try { localStorage.setItem('robinhood_active_tunnel', activeTunnel); } catch(e) {}
-            } else { tunnelEnableToggle.checked = true; }
-            tunnelList.innerHTML = '';
-            savedConfigs.forEach(function(cfg, idx) {
-                var div = document.createElement('div');
-                div.className = 'settings-select-item' + (activeTunnel === idx ? ' active' : '');
-                div.innerHTML = safeHtml(cfg.name) + '<span class="delete-tunnel" data-idx="' + idx + '">✕</span>';
-                div.addEventListener('click', function(e) {
-                    if (e.target.classList.contains('delete-tunnel')) {
-                        e.stopPropagation();
-                        var index = parseInt(e.target.dataset.idx);
-                        savedConfigs.splice(index, 1);
-                        try { localStorage.setItem('robinhood_tunnels', JSON.stringify(savedConfigs)); } catch(ex) {}
-                        updateTunnelUI();
-                    } else {
-                        activeTunnel = idx; tunnelEnableToggle.checked = true;
-                        try { localStorage.setItem('robinhood_active_tunnel', activeTunnel); } catch(ex) {}
-                        updateTunnelUI();
-                    }
-                });
-                tunnelList.appendChild(div);
-            });
+
+    // === Часть 19: Туннели ===
+    function updateTunnelUI() {
+        if (!tunnelToggle || !savedConfigs.length) {
+            if (tunnelToggle) tunnelToggle.parentElement.classList.add('disabled');
+            return;
+        }
+        tunnelToggle.parentElement.classList.remove('disabled');
+        if (activeTunnel === null || activeTunnel >= savedConfigs.length) {
+            activeTunnel = savedConfigs.length - 1;
+            tunnelToggle.checked = true;
+            try { localStorage.setItem('robinhood_active_tunnel', activeTunnel); } catch(e) {}
         }
     }
 
     function addTunnelConfig(config) {
-        savedConfigs.push({ name: 'Конфиг ' + (savedConfigs.length + 1), config: config });
+        savedConfigs.push({ name: 'Конфиг ' + (savedConfigs.length + 1), config });
         try { localStorage.setItem('robinhood_tunnels', JSON.stringify(savedConfigs)); } catch(e) {}
         updateTunnelUI();
     }
-        if (toggleHistory) {
-        toggleHistory.addEventListener('change', function() {
-            toggleHistoryState = this.checked;
-            if (!toggleHistoryState) {
-                historyEncryptionKey = null;
-                cachedHistory = [];
-                try { localStorage.removeItem('robinhood_history_key'); localStorage.removeItem('robinhood_chat_history'); } catch(e) {}
-            }
-            try { localStorage.setItem('robinhood_history', toggleHistoryState); } catch(e) {}
-            updateRobinStatus(toggleHistoryState ? '📜 Свитки будут храниться' : '🔥 Свитки сожжены');
-        });
-    }
-    if (toggleSound) {
-        toggleSound.addEventListener('change', function() {
-            toggleSoundState = this.checked;
-            try { localStorage.setItem('robinhood_sound', toggleSoundState); } catch(e) {}
-            updateRobinStatus(toggleSoundState ? '🔔 Звук боя включён' : '🔕 Тишина в лесу');
-        });
-    }
-    if (serverToggle) {
-        serverToggle.checked = currentServer === 'workers';
-        serverToggle.addEventListener('change', function() {
-            currentServer = this.checked ? 'workers' : 'render';
-            try { localStorage.setItem('robinhood_server', currentServer); } catch(e) {}
-            updateRobinStatus('🌐 Сервер: ' + (currentServer === 'workers' ? 'Workers' : 'Render'));
-        });
-    }
-    if (tunnelEnableToggle) {
-        tunnelEnableToggle.addEventListener('change', function() {
-            if (savedConfigs.length === 0) { this.checked = false; return; }
-            if (!this.checked) { activeTunnel = null; try { localStorage.removeItem('robinhood_active_tunnel'); } catch(e) {} }
-            else {
-                if (activeTunnel === null || activeTunnel >= savedConfigs.length) activeTunnel = savedConfigs.length - 1;
-                try { localStorage.setItem('robinhood_active_tunnel', activeTunnel); } catch(e) {}
-            }
-            updateTunnelUI();
-        });
-    }
-    if (settingAddTunnel) {
-        settingAddTunnel.addEventListener('click', function() { if (tunnelConfigModal) tunnelConfigModal.classList.add('active'); });
-    }
-        var btnLoadFile = document.getElementById('btn-load-file');
-    if (btnLoadFile) btnLoadFile.addEventListener('click', function() { if (configFileInput) configFileInput.click(); });
-    if (configFileInput) {
-        configFileInput.addEventListener('change', function(e) {
-            var file = e.target.files[0]; if (!file) return;
-            var reader = new FileReader();
-            reader.onload = function(ev) { if (tunnelConfigInput) tunnelConfigInput.value = ev.target.result; };
-            reader.readAsText(file);
-        });
-    }
-    var btnSaveTunnel = document.getElementById('btn-save-tunnel');
-    if (btnSaveTunnel) btnSaveTunnel.addEventListener('click', function() {
-        var config = tunnelConfigInput ? tunnelConfigInput.value.trim() : '';
+
+    window._toggleTunnel = function() {
+        if (savedConfigs.length === 0) {
+            tunnelConfigModal.classList.add('active');
+            tunnelToggle.checked = false;
+            return;
+        }
+        if (tunnelToggle.checked) { activeTunnel = savedConfigs.length - 1; }
+        else { activeTunnel = null; }
+        localStorage.setItem('robinhood_active_tunnel', activeTunnel !== null ? activeTunnel : '');
+        updateRobinStatus(activeTunnel !== null ? '🔒 Туннель включён' : '🔓 Туннель выключен');
+    };
+
+    document.getElementById('btn-load-file').addEventListener('click', () => configFileInput.click());
+    configFileInput.addEventListener('change', e => {
+        const file = e.target.files[0]; if (!file) return;
+        const reader = new FileReader();
+        reader.onload = ev => { tunnelConfigInput.value = ev.target.result; };
+        reader.readAsText(file);
+    });
+    document.getElementById('btn-save-tunnel').addEventListener('click', () => {
+        const config = tunnelConfigInput.value.trim();
         if (!config) { updateRobinStatus('❌ Вставьте конфиг'); return; }
         addTunnelConfig(config);
-        if (tunnelConfigModal) tunnelConfigModal.classList.remove('active');
-        if (tunnelConfigInput) tunnelConfigInput.value = '';
+        tunnelConfigModal.classList.remove('active');
+        tunnelConfigInput.value = '';
         updateRobinStatus('✅ Конфиг сохранён');
     });
-    var btnCancelTunnelConfig = document.getElementById('btn-cancel-tunnel-config');
-    if (btnCancelTunnelConfig) btnCancelTunnelConfig.addEventListener('click', function() {
-        if (tunnelConfigModal) tunnelConfigModal.classList.remove('active');
-        if (tunnelConfigInput) tunnelConfigInput.value = '';
+    document.getElementById('btn-cancel-tunnel-config').addEventListener('click', () => {
+        tunnelConfigModal.classList.remove('active');
+        tunnelConfigInput.value = '';
     });
-    var settingExportContacts = document.getElementById('setting-export-contacts');
-    if (settingExportContacts) settingExportContacts.addEventListener('click', exportContacts);
-    var settingImportContacts = document.getElementById('setting-import-contacts');
-    if (settingImportContacts) settingImportContacts.addEventListener('click', function() {
-        var input = document.createElement('input'); input.type = 'file'; input.accept = '.enc,.json';
-        input.addEventListener('change', function(e) { if (e.target.files[0]) importContacts(e.target.files[0]); });
-        input.click();
+
+    // === Часть 20: Настройки (история, звук, сервер, тема) ===
+    document.getElementById('setting-history').addEventListener('click', () => {
+        toggleHistoryState = !toggleHistoryState;
+        if (!toggleHistoryState) {
+            historyEncryptionKey = null;
+            cachedHistory = [];
+            try { localStorage.removeItem('robinhood_history_key'); localStorage.removeItem('robinhood_chat_history'); } catch(e) {}
+        }
+        localStorage.setItem('robinhood_history', toggleHistoryState);
+        historyStatus.textContent = toggleHistoryState ? 'Вкл' : 'Выкл';
+        updateRobinStatus(toggleHistoryState ? '📜 Свитки будут храниться' : '🔥 Свитки сожжены');
     });
-    var btnCloseLinkPreview = document.getElementById('btn-close-link-preview');
-    if (btnCloseLinkPreview) btnCloseLinkPreview.addEventListener('click', function() { if (linkPreviewModal) linkPreviewModal.classList.remove('active'); });
-        if (btnCall) btnCall.addEventListener('click', function() { if (callActive) { endCall(); return; } startCall(false); });
-    if (btnVideo) btnVideo.addEventListener('click', function() { if (callActive) { endCall(); return; } startCall(true); });
-    if (callReject) callReject.addEventListener('click', function() { stopRingtone(); sendCallSignal('__HANGUP__'); if (callPanel) callPanel.style.display = 'none'; updateRobinStatus('📞 Вызов отклонён'); });
-    if (callEnd) callEnd.addEventListener('click', endCall);
-    if (callSpeaker) callSpeaker.addEventListener('click', toggleSpeaker);
-    if (callCamera) callCamera.addEventListener('click', toggleCamera);
-    if (callMic) callMic.addEventListener('click', toggleMic);
-    if (vcFullscreen) vcFullscreen.addEventListener('click', toggleFullscreen);
-    if (callLabel) callLabel.addEventListener('click', function() { if (btnCall) btnCall.click(); });
-    if (videoLabel) videoLabel.addEventListener('click', function() { if (btnVideo) btnVideo.click(); });
-    if (cancelArrowBtn) cancelArrowBtn.addEventListener('click', function() {
-        sendToPong({ action: 'cancel-create' });
-        var refModal = document.getElementById('ref-modal'); if (refModal) refModal.classList.remove('active');
-        updateRobinStatus('⏹ Стрела отменена', 2000);
+
+    document.getElementById('setting-sound').addEventListener('click', () => {
+        toggleSoundState = !toggleSoundState;
+        localStorage.setItem('robinhood_sound', toggleSoundState);
+        soundStatus.textContent = toggleSoundState ? 'Вкл' : 'Выкл';
+        updateRobinStatus(toggleSoundState ? '🔔 Звук боя включён' : '🔕 Тишина в лесу');
     });
-        var emojis = ['😀','😂','🤣','😍','😘','😜','😎','🤩','🥳','😢','😡','👍','👎','❤️','🔥','🎉','💀','🏹','🌲','🏰','🦊','🐺','✨','⚔️','🛡️','🍺','🍗','🏕️','🌙','☀️','🌟','💪','🤝','🙏','👑','💰','🎯','📞','💬','🔔','❌','✅','🎵','📜','⚜️'];
-    if (emojiGrid) {
-        emojiGrid.innerHTML = '';
-        emojis.forEach(function(e) {
-            var span = document.createElement('span'); span.textContent = e;
-            span.addEventListener('click', function() { if (msgInput) { msgInput.value += e; msgInput.focus(); } });
-            emojiGrid.appendChild(span);
-        });
+
+    window._toggleServer = function() {
+        currentServer = serverToggle.checked ? 'workers' : 'render';
+        localStorage.setItem('robinhood_server', currentServer);
+        serverLabel.textContent = currentServer === 'workers' ? 'Workers' : 'Render';
+        updateRobinStatus('🌐 Сервер: ' + (currentServer === 'workers' ? 'Workers' : 'Render'));
+    };
+
+    serverToggle.checked = currentServer === 'workers';
+    serverLabel.textContent = currentServer === 'workers' ? 'Workers' : 'Render';
+
+    document.getElementById('setting-theme').addEventListener('click', () => {
+        const idx = themes.findIndex(t => t.id === currentTheme);
+        const next = themes[(idx + 1) % themes.length];
+        applyTheme(next.id);
+    });
+
+    function applyTheme(id) {
+        currentTheme = id;
+        document.documentElement.setAttribute('data-theme', id);
+        localStorage.setItem('robinhood_theme', id);
+        const t = themes.find(th => th.id === id);
+        if (t) {
+            themeIcon.textContent = t.icon;
+            themeName.textContent = t.name;
+        }
     }
-    if (btnEmoji) btnEmoji.addEventListener('click', function() { if (emojiPanel) emojiPanel.style.display = emojiPanel.style.display === 'block' ? 'none' : 'block'; });
-    document.addEventListener('click', function(e) {
+
+    // === Часть 21: Эмодзи ===
+    const emojis = ['😀','😂','🤣','😍','😘','😜','😎','🤩','🥳','😢','😡','👍','👎','❤️','🔥','🎉','💀','🏹','🌲','🏰','🦊','🐺','✨','⚔️','🛡️','🍺','🍗','🏕️','🌙','☀️','🌟','💪','🤝','🙏','👑','💰','🎯','📞','💬','🔔','❌','✅','🎵','📜','⚜️'];
+    emojiGrid.innerHTML = '';
+    emojis.forEach(e => {
+        const span = document.createElement('span');
+        span.textContent = e;
+        span.addEventListener('click', () => { msgInput.value += e; msgInput.focus(); });
+        emojiGrid.appendChild(span);
+    });
+    btnEmoji.addEventListener('click', () => { emojiPanel.style.display = emojiPanel.style.display === 'block' ? 'none' : 'block'; });
+    document.addEventListener('click', e => {
         if (emojiPanel && !emojiPanel.contains(e.target) && e.target !== btnEmoji) emojiPanel.style.display = 'none';
         if (reactionPicker && !reactionPicker.contains(e.target)) { reactionPicker.style.display = 'none'; activeReactionMsgId = null; }
     });
-        var typingTimeout = null;
-    if (msgInput) {
-        msgInput.addEventListener('input', function() {
-            if (!activeChannelId || !channels[activeChannelId]) return;
-            sendToPong({ action: 'send', text: '__TYPING__', channelId: activeChannelId });
-            clearTimeout(typingTimeout);
-            typingTimeout = setTimeout(function() { if (typingIndicator) typingIndicator.textContent = ''; }, 2000);
-        });
-    }
 
-    var btnArrow = document.getElementById('btn-arrow');
-    if (btnArrow) btnArrow.addEventListener('click', function() {
+    // === Часть 22: Индикатор набора и стрела ===
+    let typingTimeout = null;
+    msgInput.addEventListener('input', () => {
+        if (!activeChannelId || !channels[activeChannelId]) return;
+        sendToPong({ action: 'send', text: '__TYPING__', channelId: activeChannelId });
+        clearTimeout(typingTimeout);
+        typingTimeout = setTimeout(() => { typingIndicator.textContent = ''; }, 2000);
+    });
+
+    document.getElementById('btn-arrow').addEventListener('click', () => {
         if (!handshakeSecret && Object.keys(channels).length === 0) { updateRobinStatus('🏹 Колчан ещё не готов. Ждите сигнала.', 2500); return; }
         updateRobinStatus('⚒ Крафт стрелы [' + (currentServer === 'workers' ? 'Warp' : 'Шервуд') + ']...', 0);
         sendToPong({ action: 'create' });
     });
-        window.addEventListener('message', async function(event) {
+
+    // === Часть 23: Приём сообщений от P2PPong ===
+    window.addEventListener('message', async (event) => {
         if (event.origin !== PONGPONG_ORIGIN) return;
-        if (!pongFrame || event.source !== pongFrame.contentWindow) return;
-        var data = event.data;
+        if (event.source !== pongFrame.contentWindow) return;
+        const data = event.data;
         if (!data || !data.type) return;
-        
+
         switch (data.type) {
             case 'pong-ready':
                 handshakeSecret = data.handshake;
@@ -971,38 +812,32 @@
                 break;
             case 'handshake-ok':
                 updateRobinStatus('🏹 Тетива натянута! Лучники готовы!', 2000);
-                var urlParams = new URLSearchParams(window.location.search);
+                const urlParams = new URLSearchParams(window.location.search);
                 if (urlParams.get('id') && urlParams.get('key')) {
                     currentServer = urlParams.get('server') || 'render';
-                    if (serverToggle) serverToggle.checked = currentServer === 'workers';
+                    serverToggle.checked = currentServer === 'workers';
+                    serverLabel.textContent = currentServer === 'workers' ? 'Workers' : 'Render';
                     updateRobinStatus('📨 Принимаю стрелу...', 0);
                     sendToPong({ action: 'accept', id: urlParams.get('id'), key: urlParams.get('key') });
                 }
                 break;
             case 'session-created':
-                var refLinkDisplay = document.getElementById('ref-link-display');
-                if (refLinkDisplay) refLinkDisplay.textContent = data.fullLink;
-                generateQR(data.fullLink);
-                var refModal = document.getElementById('ref-modal');
-                if (refModal) refModal.classList.add('active');
-                navigator.clipboard.writeText(data.fullLink).catch(function() {});
+                document.getElementById('ref-link-display').textContent = data.fullLink;
+                document.getElementById('ref-modal').classList.add('active');
+                navigator.clipboard.writeText(data.fullLink).catch(() => {});
                 break;
-                        case 'channel-open':
+            case 'channel-open':
                 channels[data.channelId] = { secret: data.secret, role: data.role };
                 if (!activeChannelId) activeChannelId = data.channelId;
                 contactOnlineStatus[data.channelId] = true;
                 playQuiverAnimation();
-                var contacts = [];
+                let contacts = [];
                 try { contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]'); } catch(e) {}
-                if (!contacts.find(function(c) { return c.pubkey === data.channelId; })) {
+                if (!contacts.find(c => c.pubkey === data.channelId)) {
                     contacts.push({ pubkey: data.channelId, name: 'Лучник', avatar: 'assets/avatars/001-.png', status: 'confirmed' });
                     try { localStorage.setItem('robinhood_contacts', JSON.stringify(contacts)); } catch(e) {}
                 }
-                sendToPong({
-                    action: 'send',
-                    text: '__PROFILE__' + JSON.stringify({ nick: nickLabel ? nickLabel.textContent : 'Лучник', avatar: profileAvatarSmall ? profileAvatarSmall.src : 'assets/avatars/001-.png' }),
-                    channelId: data.channelId
-                });
+                sendToPong({ action: 'send', text: '__PROFILE__' + JSON.stringify({ nick: nickLabel.textContent, avatar: profileAvatarSmall.src }), channelId: data.channelId });
                 break;
             case 'channel-restored':
                 channels[data.channelId] = { secret: data.secret, role: data.role };
@@ -1010,146 +845,140 @@
                 updateRobinStatus('🔄 Колчан восстановлен', 2000);
                 break;
             case 'restored-channels':
-                if (data.channels) {
-                    data.channels.forEach(function(ch) {
-                        channels[ch.channelId] = { secret: ch.secret, role: ch.role };
-                        if (!activeChannelId) activeChannelId = ch.channelId;
-                    });
-                    updateRobinStatus('🔄 Колчаны восстановлены (' + data.channels.length + ')', 2000);
-                    loadContacts();
-                }
+                data.channels.forEach(ch => {
+                    channels[ch.channelId] = { secret: ch.secret, role: ch.role };
+                    if (!activeChannelId) activeChannelId = ch.channelId;
+                });
+                updateRobinStatus('🔄 Колчаны восстановлены (' + data.channels.length + ')', 2000);
+                loadContacts();
                 break;
-                            case 'message':
+            case 'message':
                 if (!data.channelId || !data.text || !channels[data.channelId]) break;
-                if (typeof data.text === 'string' && data.text === '__TYPING__') {
-                    if (typingIndicator) typingIndicator.textContent = '✍️ Лучник натягивает тетиву...';
+                if (data.text === '__TYPING__') {
+                    typingIndicator.textContent = '✍️ Лучник натягивает тетиву...';
                     clearTimeout(typingTimers[data.channelId]);
-                    typingTimers[data.channelId] = setTimeout(function() { if (typingIndicator) typingIndicator.textContent = ''; }, 2500);
+                    typingTimers[data.channelId] = setTimeout(() => typingIndicator.textContent = '', 2500);
                     return;
                 }
-                if (typeof data.text === 'string' && data.text.indexOf('__OFFER__') === 0) {
-                    var parsed = JSON.parse(data.text.replace('__OFFER__', ''));
-                    var offer = parsed.sdp || parsed; var isVideo = parsed.video || false;
-                    videoCallActive = isVideo;
-                    if (callPanel) callPanel.style.display = 'block';
-                    if (callStatus) callStatus.textContent = isVideo ? '📹 Входящий видеовызов...' : '📞 Входящий вызов...';
-                    if (callAccept) callAccept.style.display = 'inline-block';
-                    if (callReject) callReject.style.display = 'inline-block';
-                    if (callEnd) callEnd.style.display = 'none';
-                    if (callSpeaker) callSpeaker.style.display = 'none';
-                    if (callCamera) callCamera.style.display = 'none';
-                    if (callMic) callMic.style.display = 'none';
+                if (data.text.startsWith('__OFFER__')) {
+                    const parsed = JSON.parse(data.text.replace('__OFFER__', ''));
+                    const offer = parsed.sdp || parsed;
+                    videoCallActive = parsed.video || false;
+                    callPanel.style.display = 'block';
+                    callStatus.textContent = videoCallActive ? '📹 Входящий видеовызов...' : '📞 Входящий вызов...';
+                    callAccept.style.display = 'inline-block';
+                    callReject.style.display = 'inline-block';
+                    callEnd.style.display = 'none';
+                    callSpeaker.style.display = 'none';
                     playRingtone();
-                    if (callAccept) {
-                        callAccept.onclick = async function() {
-                            stopRingtone(); if (callStatus) callStatus.textContent = '📞 Соединение...';
-                            if (callAccept) callAccept.style.display = 'none'; if (callReject) callReject.style.display = 'none';
-                            if (callEnd) callEnd.style.display = 'inline-block'; if (callSpeaker) callSpeaker.style.display = 'inline-block';
-                            if (isVideo) { if (callCamera) callCamera.style.display = 'inline-block'; if (callMic) callMic.style.display = 'inline-block'; }
-                            playCallStart();
-                            var stream = await getMediaStream(isVideo);
-                            if (!stream) { if (callPanel) callPanel.style.display = 'none'; return; }
-                            localStreams['main'] = stream;
-                            if (isVideo) { if (localVideo) localVideo.srcObject = stream; if (localVideoContainer) localVideoContainer.style.display = 'block'; if (videoControls) videoControls.classList.add('active'); }
-                            var pc = createPeerConn(stream, 'main');
-                            peerConnections['main'] = pc;
-                            // На принимающей стороне DataChannel не создаём, ждём удалённый
-                            pc.ondatachannel = function(e) {
-                                dataChannels['main'] = e.channel;
-                                e.channel.onmessage = function(ev) {
-                                    try {
-                                        var msg = JSON.parse(ev.data);
-                                        if (msg.type === 'file') handleDataChannelFile(msg);
-                                    } catch(err) {}
-                                };
+                    callAccept.onclick = async () => {
+                        stopRingtone();
+                        callStatus.textContent = '📞 Соединение...';
+                        callAccept.style.display = 'none';
+                        callReject.style.display = 'none';
+                        callEnd.style.display = 'inline-block';
+                        callSpeaker.style.display = 'inline-block';
+                        playCallStart();
+                        const stream = await getMediaStream(videoCallActive);
+                        if (!stream) { callPanel.style.display = 'none'; return; }
+                        localStreams['main'] = stream;
+                        const pc = createPeerConn(stream, 'main');
+                        peerConnections['main'] = pc;
+                        pc.ondatachannel = e => {
+                            dataChannels['main'] = e.channel;
+                            e.channel.onmessage = ev => {
+                                try {
+                                    const msg = JSON.parse(ev.data);
+                                    if (msg.type === 'file') handleDataChannelFile(msg);
+                                } catch(err) {}
                             };
-                            await pc.setRemoteDescription(new RTCSessionDescription(offer));
-                            var answer = await pc.createAnswer();
-                            await pc.setLocalDescription(answer);
-                            sendCallSignal('__ANSWER__' + JSON.stringify(answer));
-                            callActive = true;
-                            flushIceCandidates('main');
                         };
-                    }
-                    if (callReject) {
-                        callReject.onclick = function() { stopRingtone(); sendCallSignal('__HANGUP__'); if (callPanel) callPanel.style.display = 'none'; updateRobinStatus('📞 Вызов отклонён'); };
+                        await pc.setRemoteDescription(new RTCSessionDescription(offer));
+                        const answer = await pc.createAnswer();
+                        await pc.setLocalDescription(answer);
+                        sendCallSignal('__ANSWER__' + JSON.stringify(answer));
+                        callActive = true;
+                        flushIceCandidates('main');
+                    };
+                    callReject.onclick = () => { stopRingtone(); sendCallSignal('__HANGUP__'); callPanel.style.display = 'none'; updateRobinStatus('📞 Вызов отклонён'); };
+                    return;
+                }
+                if (data.text.startsWith('__ANSWER__')) {
+                    stopRingback();
+                    callStatus.textContent = '✅ Разговор';
+                    const answer = JSON.parse(data.text.replace('__ANSWER__', ''));
+                    if (peerConnections['main']) {
+                        peerConnections['main'].setRemoteDescription(new RTCSessionDescription(answer))
+                            .then(() => flushIceCandidates('main'));
                     }
                     return;
                 }
-                if (typeof data.text === 'string' && data.text.indexOf('__ANSWER__') === 0) {
-                    stopRingback(); if (callStatus) callStatus.textContent = '✅ Разговор';
-                    var answer = JSON.parse(data.text.replace('__ANSWER__', ''));
-                    if (peerConnections['main']) { peerConnections['main'].setRemoteDescription(new RTCSessionDescription(answer)).then(function() { flushIceCandidates('main'); }); }
-                    return;
-                }
-                if (typeof data.text === 'string' && data.text.indexOf('__ICE__') === 0) {
+                if (data.text.startsWith('__ICE__')) {
                     try {
-                        var iceData = JSON.parse(data.text.replace('__ICE__', ''));
-                        var callId = iceData.callId || 'main'; var candidate = iceData.candidate || iceData;
+                        const iceData = JSON.parse(data.text.replace('__ICE__', ''));
+                        const callId = iceData.callId || 'main';
+                        const candidate = iceData.candidate || iceData;
                         if (!pendingIceCandidates[callId]) pendingIceCandidates[callId] = [];
-                        pendingIceCandidates[callId].push(candidate); flushIceCandidates(callId);
+                        pendingIceCandidates[callId].push(candidate);
+                        flushIceCandidates(callId);
                     } catch(e) {}
                     return;
                 }
                 if (data.text === '__HANGUP__') {
                     if (callActive) { endCall(); updateRobinStatus('📞 Собеседник завершил звонок'); }
-                    else { stopRingtone(); if (callPanel) callPanel.style.display = 'none'; updateRobinStatus('📞 Вызов отменён'); }
+                    else { stopRingtone(); callPanel.style.display = 'none'; updateRobinStatus('📞 Вызов отменён'); }
                     return;
                 }
-                                if (typeof data.text === 'string' && data.text.indexOf('__FILE__') === 0) {
+                if (data.text.startsWith('__FILE__')) {
                     try {
-                        var fileData = JSON.parse(data.text.replace('__FILE__', ''));
-                        var contactsForFile = [];
-                        try { contactsForFile = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]'); } catch(e) {}
-                        var contact = contactsForFile.find(function(c) { return c.pubkey === data.channelId; });
-                        var senderName = contact ? contact.name : (data.sender || 'Друг');
-                        var senderAvatar = contact ? contact.avatar : 'assets/avatars/001-.png';
-                        appendFileMessage(senderName, fileData, senderAvatar);
+                        const fileData = JSON.parse(data.text.replace('__FILE__', ''));
+                        const contactsArr = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
+                        const contact = contactsArr.find(c => c.pubkey === data.channelId);
+                        appendFileMessage(contact ? contact.name : 'Друг', fileData, contact ? contact.avatar : 'assets/avatars/001-.png');
                         contactOnlineStatus[data.channelId] = true;
                         if (toggleSoundState) playSound('bow_shot.mp3');
                     } catch(e) {}
                     return;
                 }
-                if (typeof data.text === 'string' && data.text.indexOf('__SELFDESTRUCT__') === 0) {
+                if (data.text.startsWith('__SELFDESTRUCT__')) {
                     try {
-                        var sdData = JSON.parse(data.text.replace('__SELFDESTRUCT__', ''));
-                        var contactsForSD = [];
-                        try { contactsForSD = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]'); } catch(e) {}
-                        var contact = contactsForSD.find(function(c) { return c.pubkey === data.channelId; });
-                        var senderName = contact ? contact.name : (data.sender || 'Друг');
-                        var senderAvatar = contact ? contact.avatar : 'assets/avatars/001-.png';
-                        appendSelfDestructMessage(senderName, sdData.text, senderAvatar, sdData.duration);
+                        const sdData = JSON.parse(data.text.replace('__SELFDESTRUCT__', ''));
+                        const contactsArr = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
+                        const contact = contactsArr.find(c => c.pubkey === data.channelId);
+                        appendSelfDestructMessage(contact ? contact.name : 'Друг', sdData.text, contact ? contact.avatar : 'assets/avatars/001-.png', sdData.duration);
                         contactOnlineStatus[data.channelId] = true;
                         if (toggleSoundState) playSound('bow_shot.mp3');
                     } catch(e) {}
                     return;
                 }
-                if (typeof data.text === 'string' && data.text.indexOf('__REACTION__') === 0) {
-                    try { var rData = JSON.parse(data.text.replace('__REACTION__', '')); addReactionToMessage(rData.msgId, rData.emoji, true); } catch(e) {}
-                    return;
-                }
-                if (typeof data.text === 'string' && data.text.indexOf('__PROFILE__') === 0) {
+                if (data.text.startsWith('__REACTION__')) {
                     try {
-                        var p = JSON.parse(data.text.replace('__PROFILE__', ''));
-                        var cs = []; try { cs = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]'); } catch(e) {}
-                        var c = cs.find(function(c) { return c.pubkey === data.channelId; });
-                        if (c) { c.name = p.nick || c.name; c.avatar = p.avatar || c.avatar; try { localStorage.setItem('robinhood_contacts', JSON.stringify(cs)); } catch(e) {} }
+                        const rData = JSON.parse(data.text.replace('__REACTION__', ''));
+                        addReactionToMessage(rData.msgId, rData.emoji, true);
                     } catch(e) {}
                     return;
                 }
-                                // Обычное сообщение
-                var contactsForMsg = [];
-                try { contactsForMsg = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]'); } catch(e) {}
-                var contact = contactsForMsg.find(function(c) { return c.pubkey === data.channelId; });
-                var senderName = contact ? contact.name : (data.sender || 'Друг');
-                var senderAvatar = contact ? contact.avatar : 'assets/avatars/001-.png';
+                if (data.text.startsWith('__PROFILE__')) {
+                    try {
+                        const p = JSON.parse(data.text.replace('__PROFILE__', ''));
+                        const cs = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
+                        const c = cs.find(c => c.pubkey === data.channelId);
+                        if (c) { c.name = p.nick || c.name; c.avatar = p.avatar || c.avatar; localStorage.setItem('robinhood_contacts', JSON.stringify(cs)); }
+                    } catch(e) {}
+                    return;
+                }
+                // Обычное сообщение
+                const contactsArr = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
+                const contact = contactsArr.find(c => c.pubkey === data.channelId);
+                const senderName = contact ? contact.name : 'Друг';
+                const senderAvatar = contact ? contact.avatar : 'assets/avatars/001-.png';
                 appendMessage(senderName, data.text, senderAvatar);
                 contactOnlineStatus[data.channelId] = true;
                 if (toggleHistoryState) {
-                    loadEncryptedHistory().then(function(hist) {
+                    loadEncryptedHistory().then(hist => {
                         hist.push({
                             text: data.text, sender: 'friend', recipient: 'me',
-                            senderName: senderName, avatar: senderAvatar,
+                            senderName, avatar: senderAvatar,
                             time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                         });
                         saveEncryptedHistory(hist);
@@ -1158,69 +987,367 @@
                 if (toggleSoundState) playSound('bow_shot.mp3');
                 break;
             case 'install-prompt':
-                if (deferredPrompt) { deferredPrompt.prompt(); deferredPrompt.userChoice.then(function(r) { if (r.outcome === 'accepted') updateRobinStatus('🏹 Приложение устанавливается', 2000); deferredPrompt = null; }); }
-                else { updateRobinStatus('Откройте в браузере для установки', 3000); }
+                if (deferredPrompt) {
+                    deferredPrompt.prompt();
+                    deferredPrompt.userChoice.then(r => {
+                        if (r.outcome === 'accepted') updateRobinStatus('🏹 Приложение устанавливается', 2000);
+                        deferredPrompt = null;
+                    });
+                } else updateRobinStatus('Откройте в браузере для установки', 3000);
                 break;
             case 'status': updateRobinStatus(data.text, data.duration || 3000); break;
             case 'error': updateRobinStatus('⚠ ' + data.text, 4000); break;
         }
     });
 
-    window.addEventListener('beforeinstallprompt', function(e) { e.preventDefault(); deferredPrompt = e; });
-            // Загрузка аватара и ника
-    var savedAvatar = null;
-    try { savedAvatar = localStorage.getItem('robinhood_avatar'); } catch(e) {}
-    if (savedAvatar && profileAvatarSmall) {
-        profileAvatarSmall.src = savedAvatar;
-        var robinAvatar = document.getElementById('robin-avatar');
-        if (robinAvatar) robinAvatar.src = savedAvatar;
-    }
-    var savedNick = null;
-    try { savedNick = localStorage.getItem('robinhood_nick'); } catch(e) {}
-    if (savedNick && nickLabel) nickLabel.textContent = savedNick.substring(0, 10);
+    window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredPrompt = e; });
 
-    // Кнопка настроек
-    var btnSettings = document.getElementById('btn-settings');
-    if (btnSettings) {
-        btnSettings.addEventListener('click', function() {
-            if (!settingsSheet || !overlay) return;
-            if (settingsSheet.classList.contains('open')) { settingsSheet.classList.remove('open'); overlay.classList.remove('show'); }
-            else { closeAllSheets(); updateTunnelUI(); settingsSheet.classList.add('open'); overlay.classList.add('show'); }
-        });
-    }
-    var settingsClose = document.getElementById('settings-close');
-    if (settingsClose) settingsClose.addEventListener('click', function() { if (settingsSheet) settingsSheet.classList.remove('open'); if (overlay) overlay.classList.remove('show'); });
-    var settingsLabel = document.getElementById('settings-label');
-    if (settingsLabel) settingsLabel.addEventListener('click', function() { if (btnSettings) btnSettings.click(); });
-    var settingTheme = document.getElementById('setting-theme');
-    if (settingTheme) settingTheme.addEventListener('click', function() {
-        var idx = themes.findIndex(function(t) { return t.id === currentTheme; });
-        var next = themes[(idx + 1) % themes.length]; applyTheme(next.id);
-    });
+    // === Аватары, контакты, интерфейс ===
+    const savedAvatar = localStorage.getItem('robinhood_avatar');
+    if (savedAvatar) { profileAvatarSmall.src = savedAvatar; document.getElementById('robin-avatar').src = savedAvatar; }
+    const savedNick = localStorage.getItem('robinhood_nick');
+    if (savedNick) nickLabel.textContent = savedNick.substring(0, 10);
 
     function closeAllSheets() {
-        if (avatarSelector) avatarSelector.classList.remove('show');
-        if (contactsSheet) contactsSheet.classList.remove('open');
-        if (settingsSheet) settingsSheet.classList.remove('open');
-        if (overlay) overlay.classList.remove('show');
+        avatarSelector.classList.remove('show');
+        contactsSheet.classList.remove('open');
+        settingsSheet.classList.remove('open');
+        overlay.classList.remove('show');
     }
-    if (overlay) overlay.addEventListener('click', closeAllSheets);
 
+    overlay.addEventListener('click', closeAllSheets);
+    document.getElementById('btn-settings').addEventListener('click', () => {
+        if (settingsSheet.classList.contains('open')) { settingsSheet.classList.remove('open'); overlay.classList.remove('show'); }
+        else { closeAllSheets(); settingsSheet.classList.add('open'); overlay.classList.add('show'); }
+    });
+    document.getElementById('settings-close').addEventListener('click', () => { settingsSheet.classList.remove('open'); overlay.classList.remove('show'); });
+    document.getElementById('settings-label').addEventListener('click', () => document.getElementById('btn-settings').click());
+
+    document.getElementById('btn-avatar').addEventListener('click', () => {
+        if (avatarSelector.classList.contains('show')) closeAllSheets();
+        else { closeAllSheets(); loadAvatars(); avatarSelector.classList.add('show'); overlay.classList.add('show'); }
+    });
+
+    nickLabel.addEventListener('click', async () => {
+        const newNick = await showModalInput('🏷 Твой ник', 'Макс. 10 символов', nickLabel.textContent);
+        if (newNick) {
+            const nick = newNick.substring(0, 10);
+            nickLabel.textContent = nick;
+            localStorage.setItem('robinhood_nick', nick);
+            updateRobinStatus('🏷 Ник изменён на «' + nick + '»');
+        }
+    });
+
+    document.getElementById('btn-letters').addEventListener('click', () => {
+        if (contactsSheet.classList.contains('open')) { contactsSheet.classList.remove('open'); overlay.classList.remove('show'); }
+        else { closeAllSheets(); loadContacts(); contactsSheet.classList.add('open'); overlay.classList.add('show'); }
+    });
+    document.getElementById('contacts-close').addEventListener('click', () => { contactsSheet.classList.remove('open'); overlay.classList.remove('show'); });
+
+    document.getElementById('btn-clear').addEventListener('click', async () => {
+        chatBox.querySelectorAll('.message-row:not(#robin-row)').forEach(m => m.remove());
+        if (toggleHistoryState) await saveEncryptedHistory([]);
+        else localStorage.removeItem('robinhood_chat_history');
+        localStorage.removeItem('robinhood_history_key');
+        historyEncryptionKey = null;
+        cachedHistory = [];
+        localStorage.removeItem('robinhood_contacts');
+        channels = {};
+        activeChannelId = null;
+        activeContact = null;
+        profileSent = {};
+        contactOnlineStatus = {};
+        pendingIceCandidates = {};
+        if (callActive) endCall();
+        Object.values(selfDestructTimers).forEach(clearInterval);
+        selfDestructTimers = {};
+        contactsListInner.innerHTML = '';
+        playSound('clear cache.mp3');
+        setTimeout(() => {
+            const anim = document.createElement('div'); anim.className = 'smoke-anim'; document.body.appendChild(anim);
+            if (typeof lottie !== 'undefined') lottie.loadAnimation({ container: anim, renderer: 'canvas', loop: true, autoplay: true, path: 'assets/smoke.json' });
+            setTimeout(() => anim.remove(), 6500);
+        }, 2000);
+        updateRobinStatus('🚬 Робин Гуд сжёг весь лагерь! Всё чисто.', 8000);
+    });
+
+    termsBtn.addEventListener('click', () => window.open('https://github.com/stepweather-prog/ROBINHOOD-P2P/blob/main/README.md', '_blank'));
+
+    // === Отправка сообщения ===
+    async function sendMessageHandler() {
+        const text = msgInput.value.trim();
+        if (!text) return;
+        if (!activeChannelId || !channels[activeChannelId]) { updateRobinStatus('❌ Нет активного колчана.', 2500); return; }
+        if (!profileSent[activeChannelId]) {
+            profileSent[activeChannelId] = true;
+            sendToPong({ action: 'send', text: '__PROFILE__' + JSON.stringify({ nick: nickLabel.textContent, avatar: profileAvatarSmall.src }), channelId: activeChannelId });
+        }
+        if (selfDestructMode) {
+            const durationStr = await showModalInput('💣 Время самоуничтожения (сек)', '30', '30');
+            if (durationStr === null || durationStr === undefined || durationStr === '') return;
+            const sec = parseInt(durationStr) || 30;
+            sendSelfDestructMessage(text, sec);
+            selfDestructMode = false;
+            if (btnSelfDestruct) { btnSelfDestruct.style.borderColor = ''; btnSelfDestruct.style.background = ''; }
+        } else {
+            sendToPong({ action: 'send', text, channelId: activeChannelId });
+            appendMessage('Вы', text, profileAvatarSmall.src);
+        }
+        msgInput.value = '';
+        typingIndicator.textContent = '';
+        clearTimeout(typingTimeout);
+        playArcherAnimation();
+        playBowAnimation();
+        if (toggleSoundState) playSound('shot.mp3');
+    }
+    sendBtn.addEventListener('click', sendMessageHandler);
+    msgInput.addEventListener('keypress', e => { if (e.key === 'Enter') sendMessageHandler(); });
+
+    function appendMessage(sender, text, avatarSrc, timeStr = null) {
+        const msgId = 'msg_' + Date.now();
+        const row = document.createElement('div');
+        row.className = 'message-row';
+        row.id = msgId;
+        row.dataset.msgid = msgId;
+        const finalTime = timeStr || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const links = detectLinks(text);
+        let displayText = safeHtml(text);
+        if (links.length > 0) {
+            links.forEach(url => {
+                displayText = displayText.replace(safeHtml(url), `<a href="${url}" target="_blank" class="msg-link">${safeHtml(url)}</a>`);
+            });
+        }
+        row.innerHTML = `<img src="${avatarSrc}" class="avatar" alt="avatar">
+            <div class="msg-body"><div class="msg-sender">${safeHtml(sender)}</div>
+            <div class="msg-text">${displayText}</div>
+            <div class="msg-status">${finalTime}</div></div>`;
+        chatBox.insertBefore(row, typingIndicator);
+        chatBox.scrollTop = chatBox.scrollHeight;
+
+        let pressTimer;
+        row.addEventListener('mousedown', () => { pressTimer = setTimeout(() => showReactionPicker(row, event), 500); });
+        row.addEventListener('mouseup', () => clearTimeout(pressTimer));
+        row.addEventListener('mouseleave', () => clearTimeout(pressTimer));
+        row.addEventListener('touchstart', () => { pressTimer = setTimeout(() => showReactionPicker(row, event), 500); }, { passive: true });
+        row.addEventListener('touchend', () => clearTimeout(pressTimer));
+        row.addEventListener('touchmove', () => clearTimeout(pressTimer));
+        row.querySelectorAll('.msg-link').forEach(link => {
+            link.addEventListener('click', e => { e.preventDefault(); showLinkPreview(link.href); });
+        });
+
+        if (messageReactions[msgId]) {
+            Object.keys(messageReactions[msgId]).forEach(emoji => {
+                for (let i = 0; i < messageReactions[msgId][emoji]; i++) addReactionToMessage(msgId, emoji, false);
+            });
+        }
+    }
+
+    function updateRobinStatus(text, duration = 4000) {
+        clearTimeout(robinTimer);
+        robinText.style.transition = 'none';
+        robinText.style.opacity = 1;
+        robinText.textContent = text;
+        if (duration > 0) {
+            robinTimer = setTimeout(() => {
+                robinText.style.transition = 'opacity 0.6s ease';
+                robinText.style.opacity = 0;
+                const onEnd = () => {
+                    robinText.removeEventListener('transitionend', onEnd);
+                    robinText.style.transition = 'none';
+                    robinText.textContent = robinDefaultText;
+                    robinText.style.opacity = 1;
+                };
+                robinText.addEventListener('transitionend', onEnd);
+            }, duration);
+        }
+    }
+
+    // Анимации
+    let archerAnimation = null, quiverAnim = null, bowAnim = null, currentArrowContainer = null;
+
+    function playArcherAnimation() {
+        if (currentArrowContainer && currentArrowContainer.parentNode) currentArrowContainer.parentNode.removeChild(currentArrowContainer);
+        if (archerAnimation) { archerAnimation.destroy(); archerAnimation = null; }
+        const wrapper = document.createElement('span'); wrapper.className = 'robin-arrow-container';
+        wrapper.style.width = '100px'; wrapper.style.height = '50px'; wrapper.style.display = 'inline-block'; wrapper.style.verticalAlign = 'middle';
+        currentArrowContainer = wrapper;
+        robinText.textContent = '';
+        robinText.appendChild(wrapper);
+        if (typeof lottie !== 'undefined') {
+            archerAnimation = lottie.loadAnimation({ container: wrapper, renderer: 'canvas', loop: false, autoplay: true, path: 'assets/Archer.json' });
+            archerAnimation.addEventListener('complete', () => {
+                if (wrapper.parentNode) wrapper.parentNode.removeChild(wrapper);
+                currentArrowContainer = null; archerAnimation = null;
+                robinText.textContent = robinDefaultText;
+            });
+        }
+    }
+
+    function playBowAnimation() {
+        if (bowAnim) { bowAnim.destroy(); bowAnim = null; }
+        bowContainer.style.display = 'block';
+        if (typeof lottie !== 'undefined') {
+            bowAnim = lottie.loadAnimation({ container: bowContainer, renderer: 'canvas', loop: false, autoplay: true, path: 'assets/bow.json' });
+            bowAnim.addEventListener('complete', () => { bowContainer.style.display = 'none'; bowAnim = null; });
+        }
+    }
+
+    function playQuiverAnimation() {
+        if (currentArrowContainer && currentArrowContainer.parentNode) currentArrowContainer.parentNode.removeChild(currentArrowContainer);
+        if (quiverAnim) { quiverAnim.destroy(); quiverAnim = null; }
+        const wrapper = document.createElement('span'); wrapper.className = 'robin-arrow-container';
+        wrapper.style.width = '100px'; wrapper.style.height = '50px'; wrapper.style.display = 'inline-block'; wrapper.style.verticalAlign = 'middle';
+        currentArrowContainer = wrapper;
+        robinText.textContent = '✅ ';
+        robinText.appendChild(wrapper);
+        if (typeof lottie !== 'undefined') {
+            quiverAnim = lottie.loadAnimation({ container: wrapper, renderer: 'canvas', loop: false, autoplay: true, path: 'assets/docking/animation.json' });
+            quiverAnim.addEventListener('complete', () => {
+                if (wrapper.parentNode) wrapper.parentNode.removeChild(wrapper);
+                currentArrowContainer = null; quiverAnim = null;
+            });
+        }
+        setTimeout(() => {
+            if (wrapper.parentNode) wrapper.remove();
+            robinText.textContent = robinDefaultText;
+        }, 5000);
+    }
+
+    // Списки аватаров и контактов
+    const avatars = ['assets/avatars/001-.png','assets/avatars/002--1.png','assets/avatars/003-icon-8033085.png','assets/avatars/009--7.png','assets/avatars/010--8.png','assets/avatars/018--16.png','assets/avatars/022--20.png','assets/avatars/037--35.png','assets/avatars/043--41.png','assets/avatars/048--46.png','assets/avatars/050--48.png','assets/avatars/052--50.png','assets/avatars/053--51.png','assets/avatars/056--54.png','assets/avatars/066--64.png','assets/avatars/077-icon-8033092.png','assets/avatars/083-icon-11885568.png','assets/avatars/094-icon-18926716.png','assets/avatars/108--83.png','assets/avatars/147-icon-6081840.png','assets/avatars/148-icon-5532632.png','assets/avatars/149-icon-4132697.png','assets/avatars/150-icon-10756654.png','assets/avatars/153-icon-4964924.png','assets/avatars/154-icon-4261075.png','assets/avatars/156-icon-4132828.png','assets/avatars/158--116.png','assets/avatars/160-icon-2332597.png','assets/avatars/162-icon-6237595.png','assets/avatars/167-icon-1920840.png','assets/avatars/168-icon-228268.png','assets/avatars/169-icon-5613167.png','assets/avatars/173-icon-1615623.png','assets/avatars/183-icon-5840846.png','assets/avatars/186-icon-6237499.png','assets/avatars/188-icon-6267517.png','assets/avatars/203-icon-3516506.png','assets/avatars/216-icon-5504960.png','assets/avatars/221-icon-9530256.png','assets/avatars/226-icon-9669507.png','assets/avatars/227-icon-9623471.png','assets/avatars/229-icon-10032172.png','assets/avatars/230-icon-10049316.png','assets/avatars/232-icon-11434002.png','assets/avatars/234-icon-10756328.png','assets/avatars/245-icon-16150697.png','assets/avatars/246-icon-16150730.png','assets/avatars/249-icon-17159913.png','assets/avatars/250-icon-17159758.png','assets/avatars/251-icon-17159744.png','assets/avatars/253-icon-18426073.png','assets/avatars/254-icon-18621065.png','assets/avatars/255-icon-18926692.png','assets/avatars/256--120.png'];
+
+    function loadAvatars() {
+        avatarList.innerHTML = '';
+        avatars.forEach(src => {
+            const img = document.createElement('img'); img.src = src; img.className = 'avatar-option';
+            img.addEventListener('click', () => {
+                profileAvatarSmall.src = src;
+                document.getElementById('robin-avatar').src = src;
+                localStorage.setItem('robinhood_avatar', src);
+                updateRobinStatus('🖼 Аватар обновлён');
+                closeAllSheets();
+            });
+            avatarList.appendChild(img);
+        });
+    }
+
+    function loadAvatarsForFriend(contact) {
+        avatarList.innerHTML = '';
+        avatars.forEach(src => {
+            const img = document.createElement('img'); img.src = src; img.className = 'avatar-option';
+            img.addEventListener('click', () => {
+                const contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
+                const c = contacts.find(c => c.pubkey === contact.pubkey);
+                if (c) { c.avatar = src; localStorage.setItem('robinhood_contacts', JSON.stringify(contacts)); loadContacts(); updateChatWithContact(c); }
+                closeAllSheets();
+            });
+            avatarList.appendChild(img);
+        });
+        avatarSelector.classList.add('show');
+        overlay.classList.add('show');
+    }
+
+    function loadContacts() {
+        const contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
+        const confirmed = contacts.filter(c => c.status === 'confirmed');
+        contactsListInner.innerHTML = '';
+        if (confirmed.length) {
+            confirmed.forEach(c => {
+                const div = document.createElement('div'); div.className = 'contact-item';
+                const isOnline = contactOnlineStatus[c.pubkey] || false;
+                div.innerHTML = `<div class="contact-info"><span class="online-dot ${isOnline ? 'online' : 'offline'}"></span><img src="${c.avatar || 'assets/avatars/001-.png'}" class="contact-avatar" alt="avatar"><span class="contact-name">${safeHtml(c.name)}</span></div><button class="delete-contact" data-pubkey="${c.pubkey}">✖</button>`;
+                div.querySelector('.contact-info').addEventListener('click', () => {
+                    activeChannelId = c.pubkey;
+                    openChatWithContact(c);
+                    contactsSheet.classList.remove('open');
+                    overlay.classList.remove('show');
+                });
+                div.querySelector('.delete-contact').addEventListener('click', e => { e.stopPropagation(); if (confirm('Убить лучника ' + c.name + '?')) deleteContact(c.pubkey); });
+                let pressTimer;
+                div.addEventListener('mousedown', () => { pressTimer = setTimeout(() => showContactMenu(c), 600); });
+                div.addEventListener('mouseup', () => clearTimeout(pressTimer));
+                div.addEventListener('mouseleave', () => clearTimeout(pressTimer));
+                div.addEventListener('touchstart', () => { pressTimer = setTimeout(() => showContactMenu(c), 600); }, { passive: true });
+                div.addEventListener('touchend', () => clearTimeout(pressTimer));
+                div.addEventListener('touchmove', () => clearTimeout(pressTimer));
+                contactsListInner.appendChild(div);
+            });
+        } else {
+            updateRobinStatus('🏹 Лучников нет! Создайте стрелу, чтобы пригласить.', 3000);
+        }
+    }
+
+    function deleteContact(pubkey) {
+        let contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
+        contacts = contacts.filter(c => c.pubkey !== pubkey);
+        localStorage.setItem('robinhood_contacts', JSON.stringify(contacts));
+        if (activeChannelId === pubkey) { delete channels[pubkey]; activeChannelId = Object.keys(channels)[0] || null; }
+        loadContacts();
+        updateRobinStatus('🔥 Стрелок уволен из Шервуда', 2000);
+    }
+
+    function openChatWithContact(contact) {
+        activeContact = contact;
+        chatBox.querySelectorAll('.message-row:not(#robin-row)').forEach(m => m.remove());
+        typingIndicator.textContent = '';
+        updateRobinStatus('💬 Перестрелка с ' + contact.name + ' открыта', 3000);
+        loadChatHistory(contact.pubkey);
+    }
+
+    function updateChatWithContact(contact) {
+        if (activeContact && activeContact.pubkey === contact.pubkey) activeContact = contact;
+    }
+
+    async function loadChatHistory(contactPubkey) {
+        if (toggleHistoryState) {
+            const hist = await loadEncryptedHistory();
+            hist.forEach(msg => {
+                appendMessage(
+                    msg.sender === 'me' ? 'Вы' : (msg.senderName || msg.sender.slice(0, 8)),
+                    msg.text,
+                    msg.avatar || 'assets/avatars/001-.png',
+                    msg.time
+                );
+            });
+        }
+    }
+
+    function showContactMenu(contact) {
+        currentMenuContact = contact;
+        const menu = document.getElementById('contact-menu'); menu.style.display = 'block';
+        document.getElementById('menu-rename').onclick = async () => {
+            hideContactMenu();
+            const newName = await showModalInput('✎ Новое имя лучника', 'Имя', contact.name);
+            if (newName) {
+                const contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
+                const c = contacts.find(c => c.pubkey === contact.pubkey);
+                if (c) { c.name = newName.substring(0, 15); localStorage.setItem('robinhood_contacts', JSON.stringify(contacts)); loadContacts(); updateChatWithContact(c); }
+            }
+        };
+        document.getElementById('menu-avatar').onclick = () => { hideContactMenu(); loadAvatarsForFriend(contact); };
+        document.getElementById('menu-delete').onclick = () => { hideContactMenu(); if (confirm('Убить лучника ' + contact.name + '?')) deleteContact(contact.pubkey); };
+        document.getElementById('menu-cancel').onclick = hideContactMenu;
+    }
+
+    function hideContactMenu() { document.getElementById('contact-menu').style.display = 'none'; currentMenuContact = null; }
+
+    document.getElementById('share-ref-link-btn').addEventListener('click', () => {
+        const link = document.getElementById('ref-link-display').textContent;
+        if (link && navigator.share) navigator.share({ title: 'RobinHood P2P', url: link }).catch(() => {});
+    });
+    document.getElementById('close-ref-modal-btn').addEventListener('click', () => document.getElementById('ref-modal').classList.remove('active'));
+
+    // Инициализация
     async function init() {
         applyTheme(currentTheme);
-        loadVisualTheme();
-        var timestamp = Date.now();
-        if (pongFrame) pongFrame.src = 'https://stepweather-prog.github.io/P2PPong/?v=' + timestamp;
-        var savedHistory = null;
-        try { savedHistory = localStorage.getItem('robinhood_history'); } catch(e) {}
+        pongFrame.src = 'https://stepweather-prog.github.io/P2PPong/?v=' + Date.now();
+        const savedHistory = localStorage.getItem('robinhood_history');
         if (savedHistory !== null) toggleHistoryState = savedHistory === 'true';
-        if (toggleHistory) toggleHistory.checked = toggleHistoryState;
-        var savedSound = null;
-        try { savedSound = localStorage.getItem('robinhood_sound'); } catch(e) {}
+        historyStatus.textContent = toggleHistoryState ? 'Вкл' : 'Выкл';
+        const savedSound = localStorage.getItem('robinhood_sound');
         if (savedSound !== null) toggleSoundState = savedSound === 'true';
-        if (toggleSound) toggleSound.checked = toggleSoundState;
-        var savedActive = null;
-        try { savedActive = localStorage.getItem('robinhood_active_tunnel'); } catch(e) {}
+        soundStatus.textContent = toggleSoundState ? 'Вкл' : 'Выкл';
+        const savedActive = localStorage.getItem('robinhood_active_tunnel');
         if (savedActive !== null && savedActive !== '') activeTunnel = parseInt(savedActive);
         updateTunnelUI();
         updateRobinStatus('🏹 Ждём колчан...', 0);
