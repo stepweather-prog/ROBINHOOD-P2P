@@ -1207,16 +1207,10 @@ if (fileInput) {
                         if (toggleSoundState) playSound('bow_shot.mp3');
                         break;
                     case 'install-prompt':
-                        if (deferredPrompt) {
-                            deferredPrompt.prompt();
-                            deferredPrompt.userChoice.then(r => {
-                                if (r.outcome === 'accepted') updateRobinStatus('🏹 Приложение устанавливается', 2000);
-                                deferredPrompt = null;
-                            });
-                        } else updateRobinStatus('Откройте в браузере для установки', 3000);
-                        break;
-                    case 'status': updateRobinStatus(data.text, data.duration || 3000); break;
-                    case 'error': updateRobinStatus('⚠ ' + data.text, 4000); break;
+    // Не вызываем prompt() автоматически — это требует жеста пользователя.
+    // Просто информируем, что можно установить приложение вручную.
+    updateRobinStatus('📲 Приложение можно установить (меню браузера)', 4000);
+    break;
                 }
             });
 
