@@ -1292,11 +1292,10 @@
             });
             document.getElementById('close-ref-modal-btn')?.addEventListener('click', () => document.getElementById('ref-modal')?.classList.remove('active'));
                 
-         window.addEventListener('online', () => { updateRobinStatus('🌐 Сеть восстановлена', 2000); if (pongFrame) { pongFrame.src = 'https://stepweather-prog.github.io/P2PPong/?v=' + Date.now(); } });
-        window.addEventListener('load', init);})();
+                     window.addEventListener('online', () => { updateRobinStatus('🌐 Сеть восстановлена', 2000); if (pongFrame) { pongFrame.src = 'https://stepweather-prog.github.io/P2PPong/?v=' + Date.now(); } });
+            window.addEventListener('offline', () => { updateRobinStatus('⚠️ Нет подключения к сети', 0); });
 
-
-                async function init() {  
+            async function init() {  
                 applyTheme(currentTheme); pongFrame.src = 'https://stepweather-prog.github.io/P2PPong/?v=' + Date.now();
                 const savedHistory = localStorage.getItem('robinhood_history');
                 if (savedHistory !== null) toggleHistoryState = savedHistory === 'true';
