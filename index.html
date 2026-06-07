@@ -1,1684 +1,3 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-    <meta http-equiv="Pragma" content="no-cache">
-    <meta http-equiv="Expires" content="0">
-    <title>RobinHood P2P</title>
-    <link rel="manifest" href="manifest.json">
-    <link rel="icon" type="image/png" sizes="192x192" href="assets/avatars/001-.png">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.12.2/lottie.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
-    <style>
-        :root {
-            --btn-radius: 12px;
-            --btn-size: 44px;
-            --font-size-base: 16px;
-        }
-        
-        [data-theme="forest"] {
-            --bg-primary: #1a2a1f;
-            --bg-secondary: #0d1a0c;
-            --accent: #c4a24b;
-            --accent-light: #e8d5a3;
-            --accent-glow: rgba(196, 162, 75, 0.5);
-            --text: #e8e2c7;
-            --text-bright: #f5e6b8;
-            --text-dim: #b8a87a;
-            --border: #c4a24b;
-            --btn-bg: rgba(196, 162, 75, 0.1);
-            --btn-border: rgba(196, 162, 75, 0.3);
-            --btn-hover: rgba(196, 162, 75, 0.25);
-            --sheet-bg: linear-gradient(145deg, #1e2a1a 0%, #0f180d 100%);
-            --input-bg: rgba(20, 30, 18, 0.9);
-            --input-focus: rgba(25, 38, 22, 0.95);
-            --msg-bg: rgba(30, 40, 25, 0.85);
-            --msg-accent: #c4a24b;
-            --robin-bg: rgba(50, 70, 40, 0.9);
-            --robin-accent: #e8c97a;
-            --overlay-bg: rgba(0, 0, 0, 0.6);
-            --call-bg: linear-gradient(135deg, rgba(25, 35, 20, 0.98), rgba(15, 25, 12, 0.98));
-        }
-        
-        [data-theme="sunset"] {
-            --bg-primary: #2a1a2f;
-            --bg-secondary: #180a1d;
-            --accent: #c44b8a;
-            --accent-light: #e890c0;
-            --accent-glow: rgba(196, 75, 138, 0.5);
-            --text: #f0c8e0;
-            --text-bright: #fae0f0;
-            --text-dim: #b870a0;
-            --border: #c44b8a;
-            --btn-bg: rgba(196, 75, 138, 0.1);
-            --btn-border: rgba(196, 75, 138, 0.3);
-            --btn-hover: rgba(196, 75, 138, 0.25);
-            --sheet-bg: linear-gradient(145deg, #2a1a28 0%, #180a15 100%);
-            --input-bg: rgba(30, 15, 25, 0.9);
-            --input-focus: rgba(38, 18, 30, 0.95);
-            --msg-bg: rgba(40, 20, 30, 0.85);
-            --msg-accent: #c44b8a;
-            --robin-bg: rgba(60, 30, 45, 0.9);
-            --robin-accent: #e890c0;
-            --overlay-bg: rgba(0, 0, 0, 0.7);
-            --call-bg: linear-gradient(135deg, rgba(35, 15, 28, 0.98), rgba(20, 8, 15, 0.98));
-        }
-        
-        [data-theme="ocean"] {
-            --bg-primary: #1a2a2f;
-            --bg-secondary: #0a181d;
-            --accent: #4b9ec4;
-            --accent-light: #90d0e8;
-            --accent-glow: rgba(75, 158, 196, 0.5);
-            --text: #c8e8f0;
-            --text-bright: #e0f5fa;
-            --text-dim: #7098b0;
-            --border: #4b9ec4;
-            --btn-bg: rgba(75, 158, 196, 0.1);
-            --btn-border: rgba(75, 158, 196, 0.3);
-            --btn-hover: rgba(75, 158, 196, 0.25);
-            --sheet-bg: linear-gradient(145deg, #1a282e 0%, #0a1518 100%);
-            --input-bg: rgba(15, 25, 30, 0.9);
-            --input-focus: rgba(18, 32, 38, 0.95);
-            --msg-bg: rgba(20, 30, 38, 0.85);
-            --msg-accent: #4b9ec4;
-            --robin-bg: rgba(30, 48, 58, 0.9);
-            --robin-accent: #90d0e8;
-            --overlay-bg: rgba(0, 0, 0, 0.7);
-            --call-bg: linear-gradient(135deg, rgba(15, 25, 30, 0.98), rgba(8, 15, 20, 0.98));
-        }
-        
-        [data-theme="rose"] {
-            --bg-primary: #2a1a22;
-            --bg-secondary: #1a0a12;
-            --accent: #c44b6e;
-            --accent-light: #e890b0;
-            --accent-glow: rgba(196, 75, 110, 0.5);
-            --text: #f0c8d8;
-            --text-bright: #fae0e8;
-            --text-dim: #b87090;
-            --border: #c44b6e;
-            --btn-bg: rgba(196, 75, 110, 0.1);
-            --btn-border: rgba(196, 75, 110, 0.3);
-            --btn-hover: rgba(196, 75, 110, 0.25);
-            --sheet-bg: linear-gradient(145deg, #2a1a22 0%, #180a12 100%);
-            --input-bg: rgba(30, 15, 22, 0.9);
-            --input-focus: rgba(38, 18, 28, 0.95);
-            --msg-bg: rgba(40, 20, 28, 0.85);
-            --msg-accent: #c44b6e;
-            --robin-bg: rgba(60, 30, 42, 0.9);
-            --robin-accent: #e890b0;
-            --overlay-bg: rgba(0, 0, 0, 0.7);
-            --call-bg: linear-gradient(135deg, rgba(35, 15, 22, 0.98), rgba(20, 8, 12, 0.98));
-        }
-        
-        [data-theme="amber"] {
-            --bg-primary: #2a221a;
-            --bg-secondary: #1a120a;
-            --accent: #c48b4b;
-            --accent-light: #e8c090;
-            --accent-glow: rgba(196, 139, 75, 0.5);
-            --text: #f0d8c0;
-            --text-bright: #fae8d0;
-            --text-dim: #b89870;
-            --border: #c48b4b;
-            --btn-bg: rgba(196, 139, 75, 0.1);
-            --btn-border: rgba(196, 139, 75, 0.3);
-            --btn-hover: rgba(196, 139, 75, 0.25);
-            --sheet-bg: linear-gradient(145deg, #2a2018 0%, #181008 100%);
-            --input-bg: rgba(30, 22, 15, 0.9);
-            --input-focus: rgba(38, 28, 18, 0.95);
-            --msg-bg: rgba(40, 28, 20, 0.85);
-            --msg-accent: #c48b4b;
-            --robin-bg: rgba(60, 42, 30, 0.9);
-            --robin-accent: #e8c090;
-            --overlay-bg: rgba(0, 0, 0, 0.7);
-            --call-bg: linear-gradient(135deg, rgba(35, 22, 15, 0.98), rgba(20, 10, 5, 0.98));
-        }
-        
-        [data-theme="mint"] {
-            --bg-primary: #1a2f25;
-            --bg-secondary: #0a1d15;
-            --accent: #4bc49e;
-            --accent-light: #90e8d0;
-            --accent-glow: rgba(75, 196, 158, 0.5);
-            --text: #c8f0e0;
-            --text-bright: #e0faf0;
-            --text-dim: #70b098;
-            --border: #4bc49e;
-            --btn-bg: rgba(75, 196, 158, 0.1);
-            --btn-border: rgba(75, 196, 158, 0.3);
-            --btn-hover: rgba(75, 196, 158, 0.25);
-            --sheet-bg: linear-gradient(145deg, #1a2a20 0%, #0a1810 100%);
-            --input-bg: rgba(15, 30, 22, 0.9);
-            --input-focus: rgba(18, 38, 28, 0.95);
-            --msg-bg: rgba(20, 38, 28, 0.85);
-            --msg-accent: #4bc49e;
-            --robin-bg: rgba(30, 58, 42, 0.9);
-            --robin-accent: #90e8d0;
-            --overlay-bg: rgba(0, 0, 0, 0.7);
-            --call-bg: linear-gradient(135deg, rgba(15, 30, 22, 0.98), rgba(5, 20, 12, 0.98));
-        }
-        
-        [data-theme="lavender"] {
-            --bg-primary: #1e1a2f;
-            --bg-secondary: #0e0a1d;
-            --accent: #8a6bc4;
-            --accent-light: #b890e8;
-            --accent-glow: rgba(138, 107, 196, 0.5);
-            --text: #d0c8f0;
-            --text-bright: #e0d8fa;
-            --text-dim: #9080b0;
-            --border: #8a6bc4;
-            --btn-bg: rgba(138, 107, 196, 0.1);
-            --btn-border: rgba(138, 107, 196, 0.3);
-            --btn-hover: rgba(138, 107, 196, 0.25);
-            --sheet-bg: linear-gradient(145deg, #1e1a2a 0%, #0e0a18 100%);
-            --input-bg: rgba(20, 15, 30, 0.9);
-            --input-focus: rgba(25, 18, 38, 0.95);
-            --msg-bg: rgba(25, 20, 38, 0.85);
-            --msg-accent: #8a6bc4;
-            --robin-bg: rgba(38, 30, 55, 0.9);
-            --robin-accent: #b890e8;
-            --overlay-bg: rgba(0, 0, 0, 0.7);
-            --call-bg: linear-gradient(135deg, rgba(20, 15, 30, 0.98), rgba(10, 8, 20, 0.98));
-        }
-        
-        [data-theme="cherry"] {
-            --bg-primary: #2a1a1f;
-            --bg-secondary: #1a0a0f;
-            --accent: #c44b5e;
-            --accent-light: #e8909e;
-            --accent-glow: rgba(196, 75, 94, 0.5);
-            --text: #f0c8d0;
-            --text-bright: #fae0e5;
-            --text-dim: #b07080;
-            --border: #c44b5e;
-            --btn-bg: rgba(196, 75, 94, 0.1);
-            --btn-border: rgba(196, 75, 94, 0.3);
-            --btn-hover: rgba(196, 75, 94, 0.25);
-            --sheet-bg: linear-gradient(145deg, #2a1a1e 0%, #180a0e 100%);
-            --input-bg: rgba(30, 15, 18, 0.9);
-            --input-focus: rgba(38, 18, 22, 0.95);
-            --msg-bg: rgba(40, 20, 24, 0.85);
-            --msg-accent: #c44b5e;
-            --robin-bg: rgba(60, 30, 36, 0.9);
-            --robin-accent: #e8909e;
-            --overlay-bg: rgba(0, 0, 0, 0.7);
-            --call-bg: linear-gradient(135deg, rgba(35, 15, 18, 0.98), rgba(20, 5, 8, 0.98));
-        }
-        
-        [data-theme="custom"] {}
-        
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
-        }
-        
-        html, body {
-            margin: 0;
-            padding: 0;
-            height: 100%;
-            overflow: hidden;
-            -webkit-text-size-adjust: 100%;
-        }
-        
-        body {
-            background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
-            color: var(--text);
-            font-family: 'Segoe UI', 'Inter', 'Georgia', serif;
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-            height: 100dvh;
-            position: relative;
-        }
-        
-        body::before {
-            content: "";
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-image: url('assets/background.webp');
-            background-size: cover;
-            background-position: center 30%;
-            background-repeat: no-repeat;
-            z-index: 0;
-            opacity: 0.4;
-        }
-        
-        @media (max-width: 500px) and (orientation: portrait) {
-            body::before {
-                background-position: center center;
-            }
-        }
-        
-        body::after {
-            content: "";
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: radial-gradient(circle at 20% 30%, rgba(30, 40, 25, 0.65), rgba(10, 20, 8, 0.85));
-            z-index: 0;
-        }
-        
-        .header {
-            background: linear-gradient(135deg, rgba(25, 35, 20, 0.96), rgba(15, 25, 12, 0.98));
-            border-bottom: 2px solid var(--border);
-            backdrop-filter: blur(8px);
-            z-index: 10;
-            padding: 8px 12px;
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            position: relative;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-        }
-        
-        .header-row-1 {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .header-title-text {
-            font-size: 1.3em;
-            font-weight: bold;
-            background: linear-gradient(135deg, var(--accent-light), var(--accent));
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
-            letter-spacing: 1px;
-        }
-        
-        .header-shield {
-            font-size: 1.1em;
-            filter: drop-shadow(0 0 3px var(--accent-glow));
-        }
-        
-        .header-version {
-            font-size: 0.65em;
-            color: var(--text-dim);
-        }
-        
-        .header-row-2 {
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-        }
-        
-        .header-row-3 {
-            display: flex;
-            justify-content: space-around;
-        }
-        
-        .header-btn {
-            width: var(--btn-size);
-            height: var(--btn-size);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            border-radius: var(--btn-radius);
-            font-size: 22px;
-            position: relative;
-            transition: all 0.2s ease;
-            background: var(--btn-bg);
-            border: 1px solid var(--btn-border);
-        }
-        
-        .header-btn:hover {
-            background: var(--btn-hover);
-            transform: scale(1.05);
-            border-color: var(--accent);
-        }
-        
-        .header-btn img {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            padding: 6px;
-        }
-        
-        .header-label {
-            font-size: 0.6em;
-            color: var(--text-dim);
-            text-align: center;
-            width: var(--btn-size);
-            cursor: pointer;
-            font-weight: bold;
-            white-space: nowrap;
-            letter-spacing: 0.5px;
-        }
-        
-        .header-avatar {
-            width: 34px;
-            height: 34px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 2px solid var(--border);
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-        }
-        
-        .chat-area {
-            flex: 1;
-            overflow-y: auto;
-            padding: 12px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            background: rgba(10, 18, 8, 0.35);
-            scrollbar-width: none;
-            position: relative;
-            z-index: 1;
-        }
-        
-        .chat-area::-webkit-scrollbar {
-            display: none;
-        }
-        
-        .message-row {
-            display: flex;
-            align-items: flex-start;
-            gap: 10px;
-            background: var(--msg-bg);
-            backdrop-filter: blur(8px);
-            padding: 10px 12px;
-            border-radius: 16px;
-            border-left: 3px solid var(--msg-accent);
-            transition: all 0.2s ease;
-            animation: messageSlideIn 0.3s ease;
-            position: relative;
-        }
-        
-        @keyframes messageSlideIn {
-            from {
-                opacity: 0;
-                transform: translateX(-10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
-        }
-        
-        .message-row.self-destruct {
-            animation: msgFadeOut 0.5s ease forwards;
-        }
-        
-        @keyframes msgFadeOut {
-            to {
-                opacity: 0;
-                transform: translateY(-10px);
-                height: 0;
-                padding: 0;
-                margin: 0;
-            }
-        }
-        
-        .input-area {
-            background: linear-gradient(135deg, rgba(25, 35, 20, 0.96), rgba(15, 25, 12, 0.98));
-            backdrop-filter: blur(8px);
-            padding: 10px;
-            padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
-            display: flex;
-            gap: 8px;
-            align-items: center;
-            border-top: 1px solid var(--border);
-            position: relative;
-            z-index: 1;
-        }
-        
-        input, textarea {
-            flex: 1;
-            background: var(--input-bg);
-            border: 1px solid var(--border);
-            padding: 12px;
-            color: var(--text);
-            border-radius: 12px;
-            font-size: var(--font-size-base);
-            outline: none;
-            font-family: 'Segoe UI', 'Inter', monospace;
-            transition: all 0.2s;
-        }
-        
-        input:focus, textarea:focus {
-            border-color: var(--accent-light);
-            box-shadow: 0 0 8px var(--accent-glow);
-            background: var(--input-focus);
-        }
-        
-        .bow-button {
-            width: var(--btn-size);
-            height: var(--btn-size);
-            cursor: pointer;
-            transition: transform 0.1s ease;
-            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
-        }
-        
-        .bow-button:active {
-            transform: scale(0.92);
-        }
-        
-        .avatar {
-            width: 44px;
-            height: 44px;
-            border-radius: 50%;
-            object-fit: cover;
-            background-color: #2a3a25;
-            flex-shrink: 0;
-            border: 2px solid var(--border);
-        }
-        
-        .msg-body {
-            flex: 1;
-            min-width: 0;
-        }
-        
-        .msg-sender {
-            font-weight: 900;
-            color: var(--text-bright);
-            font-size: 0.95em;
-            text-shadow: 0 1px 2px rgba(0,0,0,0.5);
-            letter-spacing: 0.3px;
-        }
-        
-        .msg-body div {
-            font-size: 0.95em;
-            line-height: 1.4;
-            color: var(--text);
-        }
-        
-        .msg-body .msg-text a {
-            color: var(--accent-light);
-            text-decoration: underline;
-            cursor: pointer;
-        }
-        
-        .msg-status {
-            font-size: 0.65em;
-            color: var(--text-dim);
-            text-align: right;
-            margin-top: 4px;
-        }
-        
-        .msg-reactions {
-            display: flex;
-            gap: 4px;
-            margin-top: 4px;
-            flex-wrap: wrap;
-        }
-        
-        .msg-reaction {
-            background: var(--btn-bg);
-            border: 1px solid var(--btn-border);
-            border-radius: 10px;
-            padding: 2px 6px;
-            font-size: 0.75em;
-            cursor: pointer;
-            transition: all 0.15s;
-        }
-        
-        .msg-reaction:hover {
-            background: var(--btn-hover);
-            border-color: var(--accent);
-        }
-        
-        .msg-file {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            background: var(--btn-bg);
-            border: 1px solid var(--btn-border);
-            border-radius: 10px;
-            padding: 8px;
-            margin-top: 4px;
-            cursor: pointer;
-            transition: all 0.15s;
-        }
-        
-        .msg-file:hover {
-            background: var(--btn-hover);
-            border-color: var(--accent);
-        }
-        
-        .msg-file-icon {
-            font-size: 1.5em;
-        }
-        
-        .msg-file-info {
-            flex: 1;
-            min-width: 0;
-        }
-        
-        .msg-file-name {
-            font-size: 0.8em;
-            color: var(--text-bright);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        
-        .msg-file-size {
-            font-size: 0.65em;
-            color: var(--text-dim);
-        }
-        
-        .msg-self-destruct {
-            display: inline-block;
-            background: rgba(244,67,54,0.2);
-            border: 1px solid rgba(244,67,54,0.4);
-            border-radius: 8px;
-            padding: 2px 6px;
-            font-size: 0.65em;
-            color: #f44336;
-            margin-left: 4px;
-        }
-        
-        .link-preview {
-            background: var(--btn-bg);
-            border: 1px solid var(--btn-border);
-            border-radius: 10px;
-            padding: 8px;
-            margin-top: 4px;
-            cursor: pointer;
-            transition: all 0.15s;
-            display: flex;
-            gap: 8px;
-            align-items: center;
-        }
-        
-        .link-preview:hover {
-            background: var(--btn-hover);
-            border-color: var(--accent);
-        }
-        
-        .link-preview-info {
-            flex: 1;
-            min-width: 0;
-        }
-        
-        .link-preview-title {
-            font-size: 0.8em;
-            color: var(--text-bright);
-            font-weight: bold;
-        }
-        
-        .link-preview-desc {
-            font-size: 0.65em;
-            color: var(--text-dim);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        
-        .link-preview-url {
-            font-size: 0.6em;
-            color: var(--accent-light);
-        }
-        
-        #robin-row {
-            background: var(--robin-bg);
-            border-left: 3px solid var(--robin-accent);
-            box-shadow: 0 2px 12px rgba(0,0,0,0.2);
-        }
-        
-        #robin-text {
-            font-weight: 700;
-            font-size: 0.9em;
-            color: var(--text-bright);
-            text-shadow: 0 1px 3px rgba(0,0,0,0.6);
-        }
-        
-        .bottom-sheet, .avatar-selector {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: min(85%, 380px);
-            height: 100%;
-            background: var(--sheet-bg);
-            border-right: 2px solid var(--border);
-            z-index: 200;
-            transform: translateX(-100%);
-            transition: transform 0.35s cubic-bezier(0.2, 0.9, 0.4, 1.1);
-            overflow-y: auto;
-            backdrop-filter: blur(16px);
-            box-shadow: 8px 0 30px rgba(0, 0, 0, 0.5);
-            -webkit-overflow-scrolling: touch;
-        }
-        
-        .bottom-sheet.open, .avatar-selector.show {
-            transform: translateX(0);
-        }
-        
-        .bottom-sheet-header {
-            padding: 20px 20px 12px;
-            font-weight: bold;
-            color: var(--accent-light);
-            border-bottom: 1px solid var(--border);
-            margin-bottom: 8px;
-            font-size: 1.1em;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: rgba(0, 0, 0, 0.2);
-        }
-        
-        .bottom-sheet-close {
-            background: none;
-            border: none;
-            color: var(--accent-light);
-            font-size: 26px;
-            cursor: pointer;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s;
-        }
-        
-        .bottom-sheet-close:hover {
-            background: var(--btn-hover);
-            transform: rotate(90deg);
-        }
-        
-        .bottom-sheet-list {
-            padding: 8px 16px;
-        }
-        
-        .contact-item, .tunnel-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 12px;
-            margin: 6px 0;
-            border-radius: 14px;
-            background: rgba(255, 245, 215, 0.05);
-            border: 1px solid var(--btn-border);
-            cursor: pointer;
-            color: var(--text);
-            transition: all 0.2s;
-        }
-        
-        .contact-item:hover, .tunnel-item:hover {
-            background: var(--btn-hover);
-            border-color: var(--accent);
-            transform: translateX(5px);
-        }
-        
-        .tunnel-item.active {
-            border-color: var(--accent);
-            background: var(--btn-hover);
-        }
-        
-        .contact-info {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            flex: 1;
-        }
-        
-        .contact-avatar {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 2px solid var(--border);
-        }
-        
-        .contact-name {
-            font-weight: 600;
-            font-size: 1em;
-            color: var(--accent-light);
-        }
-        
-        .delete-contact {
-            background: none;
-            border: none;
-            color: #c97a5a;
-            font-size: 20px;
-            cursor: pointer;
-            padding: 8px;
-            border-radius: 8px;
-            transition: all 0.2s;
-            flex-shrink: 0;
-        }
-        
-        .delete-contact:hover {
-            background: rgba(201, 122, 90, 0.2);
-            transform: scale(1.1);
-        }
-        
-        .avatar-selector {
-            padding: 20px;
-        }
-        
-        .avatar-selector p {
-            color: var(--accent-light);
-            margin: 0 0 16px;
-            font-size: 1.1em;
-            text-align: center;
-        }
-        
-        #avatar-list {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            justify-content: center;
-        }
-        
-        .avatar-option {
-            width: 55px;
-            height: 55px;
-            border-radius: 50%;
-            object-fit: cover;
-            margin: 4px;
-            cursor: pointer;
-            border: 2px solid transparent;
-            transition: all 0.2s;
-        }
-        
-        .avatar-option:hover {
-            border-color: var(--accent-light);
-            transform: scale(1.1);
-        }
-        
-        .overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: var(--overlay-bg);
-            backdrop-filter: blur(4px);
-            display: none;
-            z-index: 190;
-        }
-        
-        .overlay.show {
-            display: block;
-        }
-        
-        .modal-overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.85);
-            backdrop-filter: blur(8px);
-            z-index: 300;
-            justify-content: center;
-            align-items: center;
-        }
-        
-        .modal-overlay.active {
-            display: flex;
-        }
-        
-        .modal-dialog {
-            background: var(--sheet-bg);
-            padding: 24px;
-            border-radius: 24px;
-            width: 85%;
-            max-width: 400px;
-            text-align: center;
-            border: 2px solid var(--border);
-            max-height: 85vh;
-            overflow-y: auto;
-            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
-        }
-        
-        .modal-dialog h3 {
-            color: var(--accent-light);
-            margin: 0 0 16px;
-            font-size: 1.3em;
-        }
-        
-        .modal-dialog button {
-            width: 100%;
-            padding: 12px;
-            margin-top: 8px;
-            border: none;
-            border-radius: 12px;
-            font-size: 14px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.2s;
-            background: var(--btn-bg);
-            border: 1px solid var(--btn-border);
-            color: var(--text);
-        }
-        
-        .modal-dialog button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-            background: var(--btn-hover);
-            border-color: var(--accent);
-        }
-        
-        .btn-primary {
-            background: linear-gradient(135deg, var(--accent), var(--accent));
-            color: #1a1f0f;
-            border: none;
-        }
-        
-        .btn-dark {
-            background: #4a3a2a;
-            color: #eee;
-            border: none;
-        }
-        
-        .code-display {
-            background: #0a1208;
-            border: 1px solid var(--border);
-            color: var(--accent-light);
-            border-radius: 12px;
-            padding: 12px;
-            font-size: 0.8em;
-            word-break: break-all;
-            margin: 16px 0;
-            text-align: center;
-            user-select: all;
-            font-family: monospace;
-        }
-        
-        .contact-menu {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: var(--sheet-bg);
-            border: 2px solid var(--border);
-            border-radius: 20px;
-            padding: 12px;
-            z-index: 400;
-            min-width: 240px;
-            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
-        }
-        
-        .contact-menu-item {
-            padding: 12px;
-            cursor: pointer;
-            border-radius: 12px;
-            margin-bottom: 6px;
-            font-size: 0.95em;
-            color: var(--text);
-            transition: all 0.2s;
-        }
-        
-        .contact-menu-item:hover {
-            background: var(--btn-hover);
-            transform: translateX(5px);
-        }
-        
-        #menu-cancel {
-            background: #4a3a2a;
-            border: none;
-            padding: 10px;
-            border-radius: 10px;
-            color: white;
-            cursor: pointer;
-            width: 100%;
-            margin-top: 8px;
-        }
-        
-        .robin-arrow-container {
-            display: inline-block;
-            vertical-align: middle;
-            margin-left: 8px;
-            background: transparent !important;
-        }
-        
-        .avatar-selector::-webkit-scrollbar, .bottom-sheet::-webkit-scrollbar {
-            display: none;
-        }
-        
-        .avatar-selector, .bottom-sheet {
-            scrollbar-width: none;
-        }
-        
-        .smoke-anim {
-            position: fixed;
-            bottom: 50%;
-            left: 50%;
-            transform: translate(-50%, 50%);
-            width: 280px;
-            height: 280px;
-            z-index: 500;
-            pointer-events: none;
-            animation: smokeRise 3s ease-out forwards;
-        }
-        
-        @keyframes smokeRise {
-            0% {
-                opacity: 1;
-                transform: translate(-50%, 50%) scale(0.5);
-            }
-            100% {
-                opacity: 0;
-                transform: translate(-50%, -100%) scale(1.5);
-            }
-        }
-        
-        .modal-input-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.75);
-            z-index: 500;
-            display: none;
-            justify-content: center;
-            align-items: center;
-        }
-        
-        .modal-input-overlay.active {
-            display: flex;
-        }
-        
-        .modal-input-dialog {
-            background: var(--sheet-bg);
-            border: 2px solid var(--border);
-            border-radius: 20px;
-            padding: 20px;
-            width: 85%;
-            max-width: 340px;
-            text-align: center;
-        }
-        
-        .modal-input-dialog h3 {
-            color: var(--accent-light);
-            margin: 0 0 12px;
-            font-size: 1.1em;
-        }
-        
-        .modal-input-dialog input {
-            width: 100%;
-            margin-bottom: 12px;
-        }
-        
-        .modal-input-dialog .modal-btns {
-            display: flex;
-            gap: 8px;
-        }
-        
-        .modal-input-dialog .modal-btns button {
-            flex: 1;
-            padding: 10px;
-            border-radius: 10px;
-            border: none;
-            font-weight: bold;
-            cursor: pointer;
-        }
-        
-        .btn-gold {
-            background: linear-gradient(135deg, var(--accent), var(--accent));
-            color: #1a1f0f;
-        }
-        
-        .terms-btn {
-            background: none;
-            border: 1px solid var(--btn-border);
-            color: var(--text-dim);
-            padding: 4px 8px;
-            border-radius: 8px;
-            font-size: 0.6em;
-            cursor: pointer;
-            white-space: nowrap;
-            transition: all 0.2s;
-        }
-        
-        .terms-btn:hover {
-            background: var(--btn-hover);
-            border-color: var(--accent);
-        }
-        
-        #call-panel {
-            background: var(--call-bg);
-            border-top: 2px solid var(--border);
-        }
-        
-        #call-status {
-            color: var(--accent-light);
-        }
-        
-        #emoji-panel {
-            scrollbar-width: thin;
-            scrollbar-color: var(--border) transparent;
-        }
-        
-        #emoji-grid span {
-            font-size: 24px;
-            cursor: pointer;
-            padding: 6px;
-            border-radius: 8px;
-            transition: all 0.15s;
-        }
-        
-        #emoji-grid span:hover {
-            background: var(--btn-hover);
-            transform: scale(1.2);
-        }
-        
-        .toggle-switch {
-            position: relative;
-            display: inline-block;
-            width: 48px;
-            height: 26px;
-            flex-shrink: 0;
-        }
-        
-        .toggle-switch input {
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-        
-        .toggle-slider {
-            position: absolute;
-            cursor: pointer;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(255,255,255,0.1);
-            border-radius: 26px;
-            border: 2px solid var(--border);
-            transition: all 0.3s;
-        }
-        
-        .toggle-slider:before {
-            content: "";
-            position: absolute;
-            height: 18px;
-            width: 18px;
-            left: 2px;
-            bottom: 2px;
-            background: var(--text-dim);
-            border-radius: 50%;
-            transition: all 0.3s;
-        }
-        
-        .toggle-switch input:checked + .toggle-slider {
-            background: #4caf50;
-            border-color: #4caf50;
-        }
-        
-        .toggle-switch input:checked + .toggle-slider:before {
-            transform: translateX(22px);
-            background: white;
-        }
-        
-        .toggle-switch.disabled {
-            opacity: 0.3;
-            pointer-events: none;
-        }
-        
-        .typing-indicator {
-            font-size: 0.7em;
-            color: var(--text-dim);
-            padding: 2px 12px;
-            font-style: italic;
-            min-height: 18px;
-        }
-        
-        .online-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            display: inline-block;
-            margin-right: 4px;
-        }
-        
-        .online-dot.online {
-            background: #4caf50;
-            box-shadow: 0 0 6px #4caf50;
-        }
-        
-        .online-dot.offline {
-            background: #666;
-        }
-        
-        #remote-video-container {
-            display: none;
-            position: fixed;
-            top: 50px;
-            right: 10px;
-            width: 150px;
-            height: 200px;
-            z-index: 500;
-            border: 2px solid var(--border);
-            border-radius: 12px;
-            overflow: hidden;
-            background: #000;
-        }
-        
-        #remote-video {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-        
-        #local-video-container {
-            display: none;
-            position: fixed;
-            bottom: 80px;
-            right: 10px;
-            width: 100px;
-            height: 140px;
-            z-index: 500;
-            border: 2px solid var(--accent);
-            border-radius: 12px;
-            overflow: hidden;
-            background: #000;
-        }
-        
-        #local-video {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-        
-        .video-controls {
-            display: none;
-            position: fixed;
-            bottom: 140px;
-            right: 10px;
-            z-index: 501;
-            gap: 8px;
-        }
-        
-        .video-controls.active {
-            display: flex;
-        }
-        
-        .video-btn {
-            width: 36px;
-            height: 36px;
-            border-radius: 12px;
-            background: rgba(0,0,0,0.6);
-            border: 1px solid var(--btn-border);
-            color: var(--text);
-            font-size: 16px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s;
-        }
-        
-        .video-btn:hover {
-            background: var(--btn-hover);
-            border-color: var(--accent);
-        }
-        
-        .reaction-picker {
-            position: absolute;
-            background: var(--sheet-bg);
-            border: 2px solid var(--border);
-            border-radius: 16px;
-            padding: 6px;
-            z-index: 500;
-            display: none;
-            gap: 4px;
-        }
-        
-        .reaction-picker span {
-            font-size: 20px;
-            cursor: pointer;
-            padding: 4px;
-            border-radius: 8px;
-            transition: all 0.15s;
-        }
-        
-        .reaction-picker span:hover {
-            background: var(--btn-hover);
-            transform: scale(1.2);
-        }
-        
-        .settings-select {
-            margin-top: 8px;
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-        
-        .settings-select-item {
-            padding: 10px 12px;
-            border-radius: 10px;
-            cursor: pointer;
-            background: var(--btn-bg);
-            border: 1px solid var(--btn-border);
-            color: var(--text);
-            font-size: 0.9em;
-            transition: all 0.15s;
-        }
-        
-        .settings-select-item:hover {
-            background: var(--btn-hover);
-            border-color: var(--accent);
-        }
-        
-        .settings-select-item.active {
-            background: var(--btn-hover);
-            border-color: var(--accent);
-        }
-        
-        .settings-select-item .delete-tunnel {
-            float: right;
-            color: #c97a5a;
-            cursor: pointer;
-            padding: 0 4px;
-        }
-        
-        /* Theme Editor Styles */
-        .theme-editor {
-            padding: 0;
-        }
-        
-        .theme-editor .section {
-            margin-bottom: 16px;
-        }
-        
-        .theme-editor .section-title {
-            font-size: 0.8em;
-            color: var(--text-dim);
-            text-align: left;
-            margin-bottom: 8px;
-            padding-left: 4px;
-        }
-        
-        .theme-editor .element-selector {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-            margin-bottom: 12px;
-        }
-        
-        .theme-editor .element-chip {
-            padding: 8px 14px;
-            border-radius: 20px;
-            font-size: 0.8em;
-            cursor: pointer;
-            background: var(--btn-bg);
-            border: 1px solid var(--btn-border);
-            color: var(--text);
-            transition: all 0.15s;
-            white-space: nowrap;
-        }
-        
-        .theme-editor .element-chip:hover {
-            background: var(--btn-hover);
-            border-color: var(--accent);
-        }
-        
-        .theme-editor .element-chip.active {
-            background: var(--btn-hover);
-            border-color: var(--accent);
-            color: var(--accent-light);
-        }
-        
-        .theme-editor .color-square {
-            width: 100%;
-            height: 150px;
-            border-radius: 12px;
-            border: 1px solid var(--border);
-            cursor: crosshair;
-            position: relative;
-            margin-bottom: 12px;
-            touch-action: none;
-        }
-        
-        .theme-editor .color-square-cursor {
-            position: absolute;
-            width: 16px;
-            height: 16px;
-            border-radius: 50%;
-            border: 2px solid white;
-            box-shadow: 0 0 4px rgba(0,0,0,0.5);
-            pointer-events: none;
-            transform: translate(-50%, -50%);
-        }
-        
-        .theme-editor .hue-slider {
-            width: 100%;
-            height: 20px;
-            border-radius: 10px;
-            border: 1px solid var(--border);
-            cursor: pointer;
-            position: relative;
-            margin-bottom: 12px;
-            touch-action: none;
-            background: linear-gradient(to right, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000);
-        }
-        
-        .theme-editor .hue-slider-cursor {
-            position: absolute;
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            border: 2px solid white;
-            box-shadow: 0 0 4px rgba(0,0,0,0.5);
-            pointer-events: none;
-            transform: translate(-50%, -50%);
-            top: 50%;
-        }
-        
-        .theme-editor .slider-row {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 10px;
-        }
-        
-        .theme-editor .slider-row label {
-            width: 90px;
-            font-size: 0.75em;
-            color: var(--text-dim);
-            text-align: right;
-            flex-shrink: 0;
-        }
-        
-        .theme-editor .slider-row input[type=range] {
-            flex: 1;
-            -webkit-appearance: none;
-            height: 6px;
-            border-radius: 3px;
-            background: var(--btn-border);
-            outline: none;
-            border: none;
-            padding: 0;
-        }
-        
-        .theme-editor .slider-row input[type=range]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            width: 22px;
-            height: 22px;
-            border-radius: 50%;
-            background: var(--accent);
-            cursor: pointer;
-            border: 2px solid var(--border);
-        }
-        
-        .theme-editor .slider-row .slider-val {
-            width: 36px;
-            font-size: 0.7em;
-            color: var(--text-dim);
-            text-align: center;
-        }
-        
-        .theme-editor .preview-box {
-            border-radius: 14px;
-            padding: 12px;
-            margin: 12px 0;
-            border: 1px solid var(--btn-border);
-            background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
-        }
-        
-        .theme-editor .preview-box .preview-btn {
-            display: inline-block;
-            width: 32px;
-            height: 32px;
-            border-radius: var(--btn-radius);
-            background: var(--btn-bg);
-            border: 1px solid var(--btn-border);
-            margin: 2px;
-        }
-        
-        .theme-editor .preview-box .preview-text {
-            font-size: 0.7em;
-            color: var(--text);
-            margin: 4px 0;
-        }
-        
-        .theme-editor .preview-box .preview-title {
-            font-size: 0.8em;
-            font-weight: bold;
-            background: linear-gradient(135deg, var(--accent-light), var(--accent));
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
-        }
-        
-        .theme-editor .btn-row {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-        
-        .theme-editor .btn-row button {
-            flex: 1;
-            min-width: 80px;
-        }
-    </style>
-</head>
-<body>
-
-<div class="header">
-    <div class="header-row-1">
-        <span class="header-title-text">ROBINHOOD P2P</span>
-        <span class="header-shield">🏹</span>
-        <span style="flex:1;"></span>
-        <button class="terms-btn" id="btn-terms">⚜ условия</button>
-        <span class="header-version">v5.6</span>
-    </div>
-    <div class="header-row-2">
-        <div class="header-btn" id="btn-avatar"><img src="assets/avatars/001-.png" class="header-avatar" id="profile-avatar-small" alt="avatar"></div>
-        <div class="header-btn" id="btn-letters"><img src="assets/1.png" alt="contacts"></div>
-        <div class="header-btn" id="btn-arrow"><img src="assets/3.png" alt="arrow"></div>
-        <div class="header-btn" id="btn-clear"><img src="assets/6.png" alt="clear"></div>
-        <div class="header-btn" id="btn-call" title="Позвонить"><img src="assets/phone-go.png" alt="call"></div>
-        <div class="header-btn" id="btn-video" title="Видеозвонок"><span style="font-size:22px;">📹</span></div>
-        <div class="header-btn" id="btn-settings"><span style="font-size:22px;">⚙️</span></div>
-    </div>
-    <div class="header-row-3">
-        <span class="header-label" id="nick-label">Твой ник</span>
-        <span class="header-label">Лучники</span>
-        <span class="header-label">Стрела</span>
-        <span class="header-label">Курить</span>
-        <span class="header-label" id="call-label">Звонок</span>
-        <span class="header-label" id="video-label">Видео</span>
-        <span class="header-label" id="settings-label">Настройки</span>
-    </div>
-</div>
-
-<div class="chat-area" id="chat-box">
-    <div class="message-row" id="robin-row">
-        <img src="assets/avatars/231-icon-11433690.png" class="avatar" id="robin-avatar" alt="robin">
-        <div class="msg-body">
-            <div class="msg-sender">Robin Hood</div>
-            <div id="robin-text">Святые сокеты стабильны!</div>
-        </div>
-    </div>
-    <div class="typing-indicator" id="typing-indicator"></div>
-</div>
-
-<div class="input-area">
-    <button class="header-btn" id="btn-emoji" style="flex-shrink:0;width:38px;height:38px;font-size:18px;">😊</button>
-    <button class="header-btn" id="btn-file" style="flex-shrink:0;width:38px;height:38px;font-size:16px;">📎</button>
-    <button class="header-btn" id="btn-self-destruct" style="flex-shrink:0;width:38px;height:38px;font-size:14px;">💣</button>
-    <input type="text" id="msg-input" placeholder="Пустить стрелу" autocomplete="off">
-    <img src="assets/bow.png" class="bow-button" id="send-btn" alt="Отправить">
-    <input type="file" id="file-input" style="display:none;" multiple>
-</div>
-
-<div id="emoji-panel" style="display:none;position:fixed;bottom:60px;left:0;width:100%;background:linear-gradient(135deg,rgba(25,35,20,0.98),rgba(15,25,12,0.98));border-top:2px solid var(--border);z-index:50;padding:10px;max-height:200px;overflow-y:auto;">
-    <div id="emoji-grid" style="display:grid;grid-template-columns:repeat(8,1fr);gap:8px;text-align:center;"></div>
-</div>
-
-<div id="call-panel" style="display:none;position:fixed;bottom:0;left:0;width:100%;z-index:50;padding:15px;text-align:center;">
-    <div id="call-status" style="font-size:1em;margin-bottom:10px;">📞 Входящий вызов...</div>
-    <div style="display:flex;justify-content:center;gap:20px;align-items:center;">
-        <button class="header-btn" id="call-accept" style="width:70px;height:70px;border-radius:50%;background:rgba(76,175,80,0.3);border:2px solid #4caf50;"><img src="assets/phone-go.png" style="width:100%;height:100%;object-fit:contain;"></button>
-        <button class="header-btn" id="call-reject" style="width:70px;height:70px;border-radius:50%;background:rgba(244,67,54,0.3);border:2px solid #f44336;"><img src="assets/phone-stop.png" style="width:100%;height:100%;object-fit:contain;"></button>
-        <button class="header-btn" id="call-speaker" style="display:none;width:60px;height:60px;border-radius:12px;">🔊</button>
-        <button class="header-btn" id="call-camera" style="display:none;width:60px;height:60px;border-radius:12px;">📸</button>
-        <button class="header-btn" id="call-mic" style="display:none;width:60px;height:60px;border-radius:12px;">🎤</button>
-        <button class="header-btn" id="call-end" style="display:none;width:70px;height:70px;border-radius:50%;background:rgba(244,67,54,0.3);border:2px solid #f44336;"><img src="assets/phone-stop.png" style="width:100%;height:100%;object-fit:contain;"></button>
-    </div>
-</div>
-
-<div id="remote-video-container"><video id="remote-video" autoplay playsinline></video></div>
-<div id="local-video-container"><video id="local-video" autoplay playsinline muted></video></div>
-<div class="video-controls" id="video-controls">
-    <button class="video-btn" id="vc-fullscreen" title="На весь экран">⛶</button>
-</div>
-
-<div class="overlay" id="overlay"></div>
-<div class="avatar-selector" id="avatar-selector"><p>🏹 Выбери лучника 🏹</p><div id="avatar-list"></div></div>
-<div class="bottom-sheet" id="contacts-sheet"><div class="bottom-sheet-header"><span>🏹 Лучники Шервуда</span><button class="bottom-sheet-close" id="contacts-close">✕</button></div><div class="bottom-sheet-list" id="contacts-list-inner"></div></div>
-
-<div class="bottom-sheet" id="settings-sheet">
-    <div class="bottom-sheet-header"><span>⚙️ Настройки</span><button class="bottom-sheet-close" id="settings-close">✕</button></div>
-    <div class="bottom-sheet-list" id="settings-list-inner">
-        <div class="contact-item" id="setting-history">
-            <div class="contact-info"><span style="font-size:24px;">📜</span><span class="contact-name">Память</span></div>
-            <label class="toggle-switch"><input type="checkbox" id="toggle-history" checked><span class="toggle-slider"></span></label>
-        </div>
-        <div class="contact-item" id="setting-sound">
-            <div class="contact-info"><span style="font-size:24px;">🔔</span><span class="contact-name">Звук</span></div>
-            <label class="toggle-switch"><input type="checkbox" id="toggle-sound" checked><span class="toggle-slider"></span></label>
-        </div>
-        <div class="contact-item" id="setting-theme">
-            <div class="contact-info"><span style="font-size:24px;" id="theme-icon">🏹</span><span class="contact-name">Тема</span></div>
-            <span id="theme-name" style="color:var(--text-dim);font-size:0.8em;">Лес</span>
-        </div>
-        <div class="contact-item" id="setting-server">
-            <div class="contact-info"><span style="font-size:24px;">🌐</span><span class="contact-name">Сервер</span></div>
-            <label class="toggle-switch"><input type="checkbox" id="server-toggle"><span class="toggle-slider"></span></label>
-        </div>
-        <div class="contact-item" id="setting-tunnel-header">
-            <div class="contact-info"><span style="font-size:24px;">🔒</span><span class="contact-name">Туннель</span></div>
-            <label class="toggle-switch"><input type="checkbox" id="tunnel-enable-toggle"><span class="toggle-slider"></span></label>
-        </div>
-        <div class="settings-select" id="tunnel-list" style="display:none;"></div>
-        <div class="contact-item" id="setting-add-tunnel" style="display:none;">
-            <div class="contact-info"><span style="font-size:24px;">➕</span><span class="contact-name">Добавить конфиг</span></div>
-        </div>
-        <div class="contact-item" id="setting-export-contacts">
-            <div class="contact-info"><span style="font-size:24px;">📤</span><span class="contact-name">Экспорт контактов</span></div>
-        </div>
-        <div class="contact-item" id="setting-import-contacts">
-            <div class="contact-info"><span style="font-size:24px;">📥</span><span class="contact-name">Импорт контактов</span></div>
-        </div>
-        <div class="contact-item" id="setting-custom-css">
-            <div class="contact-info"><span style="font-size:24px;">🎨</span><span class="contact-name">Редактор темы</span></div>
-        </div>
-    </div>
-</div>
-
-<div class="modal-overlay" id="ref-modal">
-    <div class="modal-dialog">
-        <h3>🏹 Стрела готова 🏹</h3>
-        <div class="code-display" id="ref-link-display"></div>
-        <div id="qr-code" style="display:flex;justify-content:center;margin:12px 0;"></div>
-        <button class="btn-primary" id="share-ref-link-btn">📤 Поделиться</button>
-        <button class="btn-dark" id="cancel-arrow-btn">⏹ Отмена</button>
-        <button class="btn-dark" id="close-ref-modal-btn">Закрыть</button>
-    </div>
-</div>
-
-<div class="modal-overlay" id="tunnel-config-modal">
-    <div class="modal-dialog">
-        <h3>➕ Добавить конфиг</h3>
-        <button class="btn-primary" id="btn-load-file">📂 Загрузить из файла</button>
-        <div style="margin:12px 0;color:var(--text-dim);">или вставьте текст конфига:</div>
-        <textarea id="tunnel-config-input" placeholder="[Interface]&#10;PrivateKey = ...&#10;Address = ...&#10;..." style="width:100%;height:120px;background:var(--input-bg);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:0.7em;font-family:monospace;resize:vertical;"></textarea>
-        <button class="btn-primary" id="btn-save-tunnel">💾 Сохранить</button>
-        <button class="btn-dark" id="btn-cancel-tunnel-config">Отмена</button>
-        <input type="file" id="config-file-input" accept=".conf" style="display:none;">
-    </div>
-</div>
-
-<div class="modal-overlay" id="theme-editor-modal">
-    <div class="modal-dialog theme-editor" style="max-width:420px;">
-        <h3>🎨 Редактор темы</h3>
-        <div class="section">
-            <div class="section-title">Элемент</div>
-            <div class="element-selector" id="element-selector">
-                <span class="element-chip active" data-element="bg">Фон</span>
-                <span class="element-chip" data-element="accent">Акцент</span>
-                <span class="element-chip" data-element="text">Текст</span>
-                <span class="element-chip" data-element="textBright">Заголовки</span>
-                <span class="element-chip" data-element="msgBg">Сообщения</span>
-                <span class="element-chip" data-element="inputBg">Поле ввода</span>
-            </div>
-        </div>
-        <div class="section">
-            <div class="section-title">Цвет</div>
-            <div class="color-square" id="color-square"><div class="color-square-cursor" id="color-cursor"></div></div>
-            <div class="hue-slider" id="hue-slider"><div class="hue-slider-cursor" id="hue-cursor"></div></div>
-        </div>
-        <div class="section">
-            <div class="slider-row"><label>Прозрачность</label><input type="range" id="alpha-slider" min="0" max="100" value="100"><span class="slider-val" id="alpha-val">100%</span></div>
-            <div class="slider-row"><label>Размер кнопок</label><input type="range" id="btn-size-slider" min="32" max="64" value="44"><span class="slider-val" id="btn-size-val">44px</span></div>
-            <div class="slider-row"><label>Скругление</label><input type="range" id="btn-radius-slider" min="4" max="24" value="12"><span class="slider-val" id="btn-radius-val">12px</span></div>
-            <div class="slider-row"><label>Размер шрифта</label><input type="range" id="font-size-slider" min="12" max="22" value="16"><span class="slider-val" id="font-size-val">16px</span></div>
-        </div>
-        <div class="section">
-            <div class="section-title">Предпросмотр</div>
-            <div class="preview-box" id="preview-box">
-                <div class="preview-title">ROBINHOOD P2P</div>
-                <div class="preview-text">Привет, лучник!</div>
-                <div style="margin-top:6px;"><span class="preview-btn"></span><span class="preview-btn"></span><span class="preview-btn"></span></div>
-                <div class="preview-text" style="color:var(--text-dim);margin-top:4px;">⚜ условия v5.6</div>
-            </div>
-        </div>
-        <div class="btn-row">
-            <button class="btn-dark" id="btn-random-theme">🎲 Случайная</button>
-            <button class="btn-primary" id="btn-save-theme">💾 Сохранить</button>
-        </div>
-        <button class="btn-dark" id="btn-reset-theme" style="margin-top:8px;">🔄 Сбросить</button>
-        <button class="btn-dark" id="btn-close-theme-editor" style="margin-top:5px;">Закрыть</button>
-    </div>
-</div>
-
-<div class="modal-overlay" id="link-preview-modal">
-    <div class="modal-dialog">
-        <h3>🔗 Предпросмотр ссылки</h3>
-        <div id="link-preview-content"></div>
-        <button class="btn-dark" id="btn-close-link-preview">Закрыть</button>
-    </div>
-</div>
-
-<div id="contact-menu" class="contact-menu" style="display:none;">
-    <div class="contact-menu-item" id="menu-rename">✎ Переименовать</div>
-    <div class="contact-menu-item" id="menu-avatar">🖼 Сменить аватар</div>
-    <div class="contact-menu-item" id="menu-qr">📱 QR-код контакта</div>
-    <div class="contact-menu-item" id="menu-delete">🔥 Уволить лучника</div>
-    <button id="menu-cancel">Отмена</button>
-</div>
-
-<div class="reaction-picker" id="reaction-picker">
-    <span>👍</span><span>❤️</span><span>😂</span><span>😮</span><span>😢</span><span>🔥</span>
-</div>
-
-<div id="bow-above-send" style="position:fixed;bottom:70px;right:15px;width:120px;height:120px;z-index:100;pointer-events:none;display:none;"></div>
-<div class="modal-input-overlay" id="modal-input-overlay">
-    <div class="modal-input-dialog">
-        <h3 id="modal-input-title">Введите текст</h3>
-        <input type="text" id="modal-input-field" placeholder="" autocomplete="off">
-        <div class="modal-btns">
-            <button class="btn-dark" id="modal-input-cancel">Отмена</button>
-            <button class="btn-gold" id="modal-input-ok">✓ Готово</button>
-        </div>
-    </div>
-</div>
-<iframe id="pong-frame" src="" style="display:none;" title="p2p engine"></iframe>
-
 <script>
 (function() {
     // Объявление переменных
@@ -1740,8 +59,7 @@
     var themeEditorModal = document.getElementById('theme-editor-modal');
     var linkPreviewModal = document.getElementById('link-preview-modal');
     var linkPreviewContent = document.getElementById('link-preview-content');
-
-    // ========== Theme Editor ==========
+        // ========== Theme Editor ==========
     var currentEditElement = 'bg';
     var currentHue = 42;
     var currentSat = 60;
@@ -1816,23 +134,40 @@
         currentBri = hsla.l;
         currentAlpha = hsla.a;
 
-        document.getElementById('color-square').style.background = 'linear-gradient(to bottom, #000, transparent), linear-gradient(to right, #fff, hsl(' + currentHue + ',100%,50%))';
-        document.getElementById('color-cursor').style.left = currentSat + '%';
-        document.getElementById('color-cursor').style.top = currentBri + '%';
-        document.getElementById('hue-cursor').style.left = (currentHue/360*100) + '%';
-        document.getElementById('alpha-slider').value = Math.round(currentAlpha*100);
-        document.getElementById('alpha-val').textContent = Math.round(currentAlpha*100) + '%';
+        var colorSquare = document.getElementById('color-square');
+        var colorCursor = document.getElementById('color-cursor');
+        var hueCursor = document.getElementById('hue-cursor');
+        var alphaSlider = document.getElementById('alpha-slider');
+        var alphaVal = document.getElementById('alpha-val');
+        var btnSizeSlider = document.getElementById('btn-size-slider');
+        var btnSizeVal = document.getElementById('btn-size-val');
+        var btnRadiusSlider = document.getElementById('btn-radius-slider');
+        var btnRadiusVal = document.getElementById('btn-radius-val');
+        var fontSizeSlider = document.getElementById('font-size-slider');
+        var fontSizeVal = document.getElementById('font-size-val');
 
-        document.getElementById('btn-size-slider').value = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--btn-size')) || 44;
-        document.getElementById('btn-size-val').textContent = document.getElementById('btn-size-slider').value + 'px';
-        document.getElementById('btn-radius-slider').value = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--btn-radius')) || 12;
-        document.getElementById('btn-radius-val').textContent = document.getElementById('btn-radius-slider').value + 'px';
-        document.getElementById('font-size-slider').value = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--font-size-base')) || 16;
-        document.getElementById('font-size-val').textContent = document.getElementById('font-size-slider').value + 'px';
+        if (colorSquare) colorSquare.style.background = 'linear-gradient(to bottom, #000, transparent), linear-gradient(to right, #fff, hsl(' + currentHue + ',100%,50%))';
+        if (colorCursor) {
+            colorCursor.style.left = currentSat + '%';
+            colorCursor.style.top = currentBri + '%';
+        }
+        if (hueCursor) hueCursor.style.left = (currentHue/360*100) + '%';
+        if (alphaSlider) alphaSlider.value = Math.round(currentAlpha*100);
+        if (alphaVal) alphaVal.textContent = Math.round(currentAlpha*100) + '%';
 
-        document.querySelectorAll('#element-selector .element-chip').forEach(function(chip) {
-            chip.classList.toggle('active', chip.dataset.element === currentEditElement);
-        });
+        if (btnSizeSlider) btnSizeSlider.value = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--btn-size')) || 44;
+        if (btnSizeVal) btnSizeVal.textContent = (btnSizeSlider ? btnSizeSlider.value : 44) + 'px';
+        if (btnRadiusSlider) btnRadiusSlider.value = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--btn-radius')) || 12;
+        if (btnRadiusVal) btnRadiusVal.textContent = (btnRadiusSlider ? btnRadiusSlider.value : 12) + 'px';
+        if (fontSizeSlider) fontSizeSlider.value = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--font-size-base')) || 16;
+        if (fontSizeVal) fontSizeVal.textContent = (fontSizeSlider ? fontSizeSlider.value : 16) + 'px';
+
+        var elementSelector = document.getElementById('element-selector');
+        if (elementSelector) {
+            elementSelector.querySelectorAll('.element-chip').forEach(function(chip) {
+                chip.classList.toggle('active', chip.dataset.element === currentEditElement);
+            });
+        }
     }
 
     function applyColorToElement(elementId) {
@@ -1864,186 +199,236 @@
     }
 
     function updateColorFromSquare(x, y) {
-        var rect = document.getElementById('color-square').getBoundingClientRect();
+        var colorSquare = document.getElementById('color-square');
+        if (!colorSquare) return;
+        var rect = colorSquare.getBoundingClientRect();
         currentSat = Math.round(Math.max(0, Math.min(100, (x - rect.left) / rect.width * 100)));
         currentBri = Math.round(Math.max(0, Math.min(100, (y - rect.top) / rect.height * 100)));
-        document.getElementById('color-cursor').style.left = currentSat + '%';
-        document.getElementById('color-cursor').style.top = currentBri + '%';
+        var colorCursor = document.getElementById('color-cursor');
+        if (colorCursor) {
+            colorCursor.style.left = currentSat + '%';
+            colorCursor.style.top = currentBri + '%';
+        }
         applyColorToElement(currentEditElement);
     }
 
     // Color square event handlers
-    document.getElementById('color-square').addEventListener('mousedown', function(e) {
-        updateColorFromSquare(e.clientX, e.clientY);
-        var moveFn = function(ev) { updateColorFromSquare(ev.clientX, ev.clientY); };
-        var upFn = function() {
-            document.removeEventListener('mousemove', moveFn);
-            document.removeEventListener('mouseup', upFn);
-        };
-        document.addEventListener('mousemove', moveFn);
-        document.addEventListener('mouseup', upFn);
-    });
-    
-    document.getElementById('color-square').addEventListener('touchstart', function(e) {
-        e.preventDefault();
-        updateColorFromSquare(e.touches[0].clientX, e.touches[0].clientY);
-        var moveFn = function(ev) { updateColorFromSquare(ev.touches[0].clientX, ev.touches[0].clientY); };
-        var upFn = function() {
-            document.removeEventListener('touchmove', moveFn);
-            document.removeEventListener('touchend', upFn);
-        };
-        document.addEventListener('touchmove', moveFn, {passive: false});
-        document.addEventListener('touchend', upFn);
-    });
+    var colorSquare = document.getElementById('color-square');
+    if (colorSquare) {
+        colorSquare.addEventListener('mousedown', function(e) {
+            updateColorFromSquare(e.clientX, e.clientY);
+            var moveFn = function(ev) { updateColorFromSquare(ev.clientX, ev.clientY); };
+            var upFn = function() {
+                document.removeEventListener('mousemove', moveFn);
+                document.removeEventListener('mouseup', upFn);
+            };
+            document.addEventListener('mousemove', moveFn);
+            document.addEventListener('mouseup', upFn);
+        });
+        
+        colorSquare.addEventListener('touchstart', function(e) {
+            e.preventDefault();
+            updateColorFromSquare(e.touches[0].clientX, e.touches[0].clientY);
+            var moveFn = function(ev) { updateColorFromSquare(ev.touches[0].clientX, ev.touches[0].clientY); };
+            var upFn = function() {
+                document.removeEventListener('touchmove', moveFn);
+                document.removeEventListener('touchend', upFn);
+            };
+            document.addEventListener('touchmove', moveFn, {passive: false});
+            document.addEventListener('touchend', upFn);
+        });
+    }
 
     // Hue slider event handlers
-    document.getElementById('hue-slider').addEventListener('mousedown', function(e) {
-        var rect = this.getBoundingClientRect();
-        currentHue = Math.round(Math.max(0, Math.min(360, (e.clientX - rect.left) / rect.width * 360)));
-        document.getElementById('hue-cursor').style.left = (currentHue/360*100) + '%';
-        document.getElementById('color-square').style.background = 'linear-gradient(to bottom, #000, transparent), linear-gradient(to right, #fff, hsl(' + currentHue + ',100%,50%))';
-        applyColorToElement(currentEditElement);
-        
-        var moveFn = function(ev) {
-            currentHue = Math.round(Math.max(0, Math.min(360, (ev.clientX - rect.left) / rect.width * 360)));
-            document.getElementById('hue-cursor').style.left = (currentHue/360*100) + '%';
-            document.getElementById('color-square').style.background = 'linear-gradient(to bottom, #000, transparent), linear-gradient(to right, #fff, hsl(' + currentHue + ',100%,50%))';
+    var hueSlider = document.getElementById('hue-slider');
+    if (hueSlider) {
+        hueSlider.addEventListener('mousedown', function(e) {
+            var rect = this.getBoundingClientRect();
+            currentHue = Math.round(Math.max(0, Math.min(360, (e.clientX - rect.left) / rect.width * 360)));
+            var hueCursor = document.getElementById('hue-cursor');
+            var colorSquareEl = document.getElementById('color-square');
+            if (hueCursor) hueCursor.style.left = (currentHue/360*100) + '%';
+            if (colorSquareEl) colorSquareEl.style.background = 'linear-gradient(to bottom, #000, transparent), linear-gradient(to right, #fff, hsl(' + currentHue + ',100%,50%))';
             applyColorToElement(currentEditElement);
-        };
-        var upFn = function() {
-            document.removeEventListener('mousemove', moveFn);
-            document.removeEventListener('mouseup', upFn);
-        };
-        document.addEventListener('mousemove', moveFn);
-        document.addEventListener('mouseup', upFn);
-    });
-    
-    document.getElementById('hue-slider').addEventListener('touchstart', function(e) {
-        e.preventDefault();
-        var rect = this.getBoundingClientRect();
-        currentHue = Math.round(Math.max(0, Math.min(360, (e.touches[0].clientX - rect.left) / rect.width * 360)));
-        document.getElementById('hue-cursor').style.left = (currentHue/360*100) + '%';
-        document.getElementById('color-square').style.background = 'linear-gradient(to bottom, #000, transparent), linear-gradient(to right, #fff, hsl(' + currentHue + ',100%,50%))';
-        applyColorToElement(currentEditElement);
+            
+            var moveFn = function(ev) {
+                currentHue = Math.round(Math.max(0, Math.min(360, (ev.clientX - rect.left) / rect.width * 360)));
+                if (hueCursor) hueCursor.style.left = (currentHue/360*100) + '%';
+                if (colorSquareEl) colorSquareEl.style.background = 'linear-gradient(to bottom, #000, transparent), linear-gradient(to right, #fff, hsl(' + currentHue + ',100%,50%))';
+                applyColorToElement(currentEditElement);
+            };
+            var upFn = function() {
+                document.removeEventListener('mousemove', moveFn);
+                document.removeEventListener('mouseup', upFn);
+            };
+            document.addEventListener('mousemove', moveFn);
+            document.addEventListener('mouseup', upFn);
+        });
         
-        var moveFn = function(ev) {
-            currentHue = Math.round(Math.max(0, Math.min(360, (ev.touches[0].clientX - rect.left) / rect.width * 360)));
-            document.getElementById('hue-cursor').style.left = (currentHue/360*100) + '%';
-            document.getElementById('color-square').style.background = 'linear-gradient(to bottom, #000, transparent), linear-gradient(to right, #fff, hsl(' + currentHue + ',100%,50%))';
+        hueSlider.addEventListener('touchstart', function(e) {
+            e.preventDefault();
+            var rect = this.getBoundingClientRect();
+            currentHue = Math.round(Math.max(0, Math.min(360, (e.touches[0].clientX - rect.left) / rect.width * 360)));
+            var hueCursor = document.getElementById('hue-cursor');
+            var colorSquareEl = document.getElementById('color-square');
+            if (hueCursor) hueCursor.style.left = (currentHue/360*100) + '%';
+            if (colorSquareEl) colorSquareEl.style.background = 'linear-gradient(to bottom, #000, transparent), linear-gradient(to right, #fff, hsl(' + currentHue + ',100%,50%))';
             applyColorToElement(currentEditElement);
-        };
-        var upFn = function() {
-            document.removeEventListener('touchmove', moveFn);
-            document.removeEventListener('touchend', upFn);
-        };
-        document.addEventListener('touchmove', moveFn, {passive: false});
-        document.addEventListener('touchend', upFn);
-    });
+            
+            var moveFn = function(ev) {
+                currentHue = Math.round(Math.max(0, Math.min(360, (ev.touches[0].clientX - rect.left) / rect.width * 360)));
+                if (hueCursor) hueCursor.style.left = (currentHue/360*100) + '%';
+                if (colorSquareEl) colorSquareEl.style.background = 'linear-gradient(to bottom, #000, transparent), linear-gradient(to right, #fff, hsl(' + currentHue + ',100%,50%))';
+                applyColorToElement(currentEditElement);
+            };
+            var upFn = function() {
+                document.removeEventListener('touchmove', moveFn);
+                document.removeEventListener('touchend', upFn);
+            };
+            document.addEventListener('touchmove', moveFn, {passive: false});
+            document.addEventListener('touchend', upFn);
+        });
+    }
 
     // Slider event handlers
-    document.getElementById('alpha-slider').addEventListener('input', function() {
-        currentAlpha = this.value/100;
-        document.getElementById('alpha-val').textContent = this.value + '%';
-        var hex = hslaToHex(currentHue, currentSat, currentBri);
-        var alphaHex = hex + Math.round(currentAlpha*255).toString(16).padStart(2, '0');
-        if (elementMap[currentEditElement]) {
-            document.documentElement.style.setProperty(elementMap[currentEditElement].cssVar, alphaHex);
-            themeOverrides[elementMap[currentEditElement].cssVar] = alphaHex;
-        }
-    });
-    
-    document.getElementById('btn-size-slider').addEventListener('input', function() {
-        document.getElementById('btn-size-val').textContent = this.value + 'px';
-        document.documentElement.style.setProperty('--btn-size', this.value + 'px');
-    });
-    
-    document.getElementById('btn-radius-slider').addEventListener('input', function() {
-        document.getElementById('btn-radius-val').textContent = this.value + 'px';
-        document.documentElement.style.setProperty('--btn-radius', this.value + 'px');
-    });
-    
-    document.getElementById('font-size-slider').addEventListener('input', function() {
-        document.getElementById('font-size-val').textContent = this.value + 'px';
-        document.documentElement.style.setProperty('--font-size-base', this.value + 'px');
-    });
-
-    // Element selector
-    document.getElementById('element-selector').addEventListener('click', function(e) {
-        if (e.target.classList.contains('element-chip')) {
-            currentEditElement = e.target.dataset.element;
-            updateThemeEditorUI();
-        }
-    });
-
-    // Random theme
-    document.getElementById('btn-random-theme').addEventListener('click', function() {
-        var elements = Object.keys(elementMap);
-        elements.forEach(function(elId) {
-            currentEditElement = elId;
-            currentHue = Math.floor(Math.random()*360);
-            currentSat = 30 + Math.floor(Math.random()*50);
-            currentBri = 25 + Math.floor(Math.random()*55);
-            applyColorToElement(elId);
-        });
-        
-        var randomBtnSize = 36 + Math.floor(Math.random()*28);
-        document.getElementById('btn-size-slider').value = randomBtnSize;
-        document.getElementById('btn-size-val').textContent = randomBtnSize + 'px';
-        document.documentElement.style.setProperty('--btn-size', randomBtnSize + 'px');
-        
-        var randomRadius = 6 + Math.floor(Math.random()*18);
-        document.getElementById('btn-radius-slider').value = randomRadius;
-        document.getElementById('btn-radius-val').textContent = randomRadius + 'px';
-        document.documentElement.style.setProperty('--btn-radius', randomRadius + 'px');
-        
-        updateThemeEditorUI();
-    });
-
-    // Save theme
-    document.getElementById('btn-save-theme').addEventListener('click', function() {
-        var customTheme = {
-            overrides: themeOverrides,
-            btnSize: document.getElementById('btn-size-slider').value,
-            btnRadius: document.getElementById('btn-radius-slider').value,
-            fontSize: document.getElementById('font-size-slider').value
-        };
-        try {
-            localStorage.setItem('robinhood_theme_visual', JSON.stringify(customTheme));
-        } catch(e) {
-            console.error('Failed to save theme:', e);
-        }
-        themeEditorModal.classList.remove('active');
-        updateRobinStatus('🎨 Тема сохранена', 2000);
-    });
-
-    // Reset theme
-    document.getElementById('btn-reset-theme').addEventListener('click', function() {
-        themeOverrides = {};
-        Object.keys(elementMap).forEach(function(elId) {
-            document.documentElement.style.removeProperty(elementMap[elId].cssVar);
-            if (elementMap[elId].pairVar) {
-                document.documentElement.style.removeProperty(elementMap[elId].pairVar);
+    var alphaSlider = document.getElementById('alpha-slider');
+    if (alphaSlider) {
+        alphaSlider.addEventListener('input', function() {
+            currentAlpha = this.value/100;
+            var alphaVal = document.getElementById('alpha-val');
+            if (alphaVal) alphaVal.textContent = this.value + '%';
+            var hex = hslaToHex(currentHue, currentSat, currentBri);
+            var alphaHex = hex + Math.round(currentAlpha*255).toString(16).padStart(2, '0');
+            if (elementMap[currentEditElement]) {
+                document.documentElement.style.setProperty(elementMap[currentEditElement].cssVar, alphaHex);
+                themeOverrides[elementMap[currentEditElement].cssVar] = alphaHex;
             }
         });
-        
-        ['--accent-glow','--border','--msg-accent','--robin-accent','--bg-secondary',
-         '--btn-size','--btn-radius','--font-size-base'].forEach(function(v) {
-            document.documentElement.style.removeProperty(v);
+    }
+    
+    var btnSizeSlider = document.getElementById('btn-size-slider');
+    if (btnSizeSlider) {
+        btnSizeSlider.addEventListener('input', function() {
+            var btnSizeVal = document.getElementById('btn-size-val');
+            if (btnSizeVal) btnSizeVal.textContent = this.value + 'px';
+            document.documentElement.style.setProperty('--btn-size', this.value + 'px');
         });
-        
-        try {
-            localStorage.removeItem('robinhood_theme_visual');
-        } catch(e) {
-            console.error('Failed to remove theme:', e);
-        }
-        updateThemeEditorUI();
-        updateRobinStatus('🎨 Тема сброшена', 2000);
-    });
+    }
+    
+    var btnRadiusSlider = document.getElementById('btn-radius-slider');
+    if (btnRadiusSlider) {
+        btnRadiusSlider.addEventListener('input', function() {
+            var btnRadiusVal = document.getElementById('btn-radius-val');
+            if (btnRadiusVal) btnRadiusVal.textContent = this.value + 'px';
+            document.documentElement.style.setProperty('--btn-radius', this.value + 'px');
+        });
+    }
+    
+    var fontSizeSlider = document.getElementById('font-size-slider');
+    if (fontSizeSlider) {
+        fontSizeSlider.addEventListener('input', function() {
+            var fontSizeVal = document.getElementById('font-size-val');
+            if (fontSizeVal) fontSizeVal.textContent = this.value + 'px';
+            document.documentElement.style.setProperty('--font-size-base', this.value + 'px');
+        });
+    }
+
+    // Element selector
+    var elementSelector = document.getElementById('element-selector');
+    if (elementSelector) {
+        elementSelector.addEventListener('click', function(e) {
+            if (e.target.classList.contains('element-chip')) {
+                currentEditElement = e.target.dataset.element;
+                updateThemeEditorUI();
+            }
+        });
+    }
+
+    // Random theme
+    var btnRandomTheme = document.getElementById('btn-random-theme');
+    if (btnRandomTheme) {
+        btnRandomTheme.addEventListener('click', function() {
+            var elements = Object.keys(elementMap);
+            elements.forEach(function(elId) {
+                currentEditElement = elId;
+                currentHue = Math.floor(Math.random()*360);
+                currentSat = 30 + Math.floor(Math.random()*50);
+                currentBri = 25 + Math.floor(Math.random()*55);
+                applyColorToElement(elId);
+            });
+            
+            var randomBtnSize = 36 + Math.floor(Math.random()*28);
+            var btnSizeSliderEl = document.getElementById('btn-size-slider');
+            var btnSizeValEl = document.getElementById('btn-size-val');
+            if (btnSizeSliderEl) btnSizeSliderEl.value = randomBtnSize;
+            if (btnSizeValEl) btnSizeValEl.textContent = randomBtnSize + 'px';
+            document.documentElement.style.setProperty('--btn-size', randomBtnSize + 'px');
+            
+            var randomRadius = 6 + Math.floor(Math.random()*18);
+            var btnRadiusSliderEl = document.getElementById('btn-radius-slider');
+            var btnRadiusValEl = document.getElementById('btn-radius-val');
+            if (btnRadiusSliderEl) btnRadiusSliderEl.value = randomRadius;
+            if (btnRadiusValEl) btnRadiusValEl.textContent = randomRadius + 'px';
+            document.documentElement.style.setProperty('--btn-radius', randomRadius + 'px');
+            
+            updateThemeEditorUI();
+        });
+    }
+
+    // Save theme
+    var btnSaveTheme = document.getElementById('btn-save-theme');
+    if (btnSaveTheme) {
+        btnSaveTheme.addEventListener('click', function() {
+            var customTheme = {
+                overrides: themeOverrides,
+                btnSize: (document.getElementById('btn-size-slider') || {}).value || 44,
+                btnRadius: (document.getElementById('btn-radius-slider') || {}).value || 12,
+                fontSize: (document.getElementById('font-size-slider') || {}).value || 16
+            };
+            try {
+                localStorage.setItem('robinhood_theme_visual', JSON.stringify(customTheme));
+            } catch(e) {
+                console.error('Failed to save theme:', e);
+            }
+            if (themeEditorModal) themeEditorModal.classList.remove('active');
+            updateRobinStatus('🎨 Тема сохранена', 2000);
+        });
+    }
+
+    // Reset theme
+    var btnResetTheme = document.getElementById('btn-reset-theme');
+    if (btnResetTheme) {
+        btnResetTheme.addEventListener('click', function() {
+            themeOverrides = {};
+            Object.keys(elementMap).forEach(function(elId) {
+                document.documentElement.style.removeProperty(elementMap[elId].cssVar);
+                if (elementMap[elId].pairVar) {
+                    document.documentElement.style.removeProperty(elementMap[elId].pairVar);
+                }
+            });
+            
+            ['--accent-glow','--border','--msg-accent','--robin-accent','--bg-secondary',
+             '--btn-size','--btn-radius','--font-size-base'].forEach(function(v) {
+                document.documentElement.style.removeProperty(v);
+            });
+            
+            try {
+                localStorage.removeItem('robinhood_theme_visual');
+            } catch(e) {
+                console.error('Failed to remove theme:', e);
+            }
+            updateThemeEditorUI();
+            updateRobinStatus('🎨 Тема сброшена', 2000);
+        });
+    }
 
     // Close theme editor
-    document.getElementById('btn-close-theme-editor').addEventListener('click', function() {
-        themeEditorModal.classList.remove('active');
-    });
+    var btnCloseThemeEditor = document.getElementById('btn-close-theme-editor');
+    if (btnCloseThemeEditor) {
+        btnCloseThemeEditor.addEventListener('click', function() {
+            if (themeEditorModal) themeEditorModal.classList.remove('active');
+        });
+    }
 
     // Load visual theme
     function loadVisualTheme() {
@@ -2066,12 +451,17 @@
     }
 
     // Open theme editor from settings
-    document.getElementById('setting-custom-css').addEventListener('click', function() {
-        settingsSheet.classList.remove('open');
-        overlay.classList.remove('show');
-        themeEditorModal.classList.add('active');
-        updateThemeEditorUI();
-    });
+    var settingCustomCss = document.getElementById('setting-custom-css');
+    if (settingCustomCss) {
+        settingCustomCss.addEventListener('click', function() {
+            if (settingsSheet) settingsSheet.classList.remove('open');
+            if (overlay) overlay.classList.remove('show');
+            if (themeEditorModal) {
+                themeEditorModal.classList.add('active');
+                updateThemeEditorUI();
+            }
+        });
+    }
 
     // ========== Rest of application logic ==========
     var modalResolve = null;
@@ -2083,7 +473,7 @@
     var toggleSoundState = true;
     var activeContact = null;
     var historyEncryptionKey = null;
-    var robinDefaultText = robinText.textContent;
+    var robinDefaultText = robinText ? robinText.textContent : 'Святые сокеты стабильны!';
     var robinTimer = null;
     var currentMenuContact = null;
     var profileSent = {};
@@ -2093,6 +483,7 @@
     var currentArrowContainer = null;
     var peerConnections = {};
     var localStreams = {};
+    var dataChannels = {};
     var callActive = false;
     var videoCallActive = false;
     var speakerOn = true;
@@ -2162,12 +553,13 @@
         }
         var t = themes.find(function(th) { return th.id === id; });
         if (t) {
-            document.getElementById('theme-icon').textContent = t.icon;
-            document.getElementById('theme-name').textContent = t.name;
+            var themeIcon = document.getElementById('theme-icon');
+            var themeName = document.getElementById('theme-name');
+            if (themeIcon) themeIcon.textContent = t.icon;
+            if (themeName) themeName.textContent = t.name;
         }
     }
-
-    function getAudio(filename) {
+        function getAudio(filename) {
         if (!audioPool[filename]) {
             audioPool[filename] = new Audio('assets/sounds/' + filename);
             audioPool[filename].volume = 0.5;
@@ -2482,7 +874,74 @@
             }
         };
         
+        // Создаем data channel для основного звонка
+        if (callId === 'main') {
+            try {
+                var dc = pc.createDataChannel('sherwood', { ordered: true });
+                dataChannels[callId] = dc;
+                
+                dc.onopen = function() {
+                    console.log('Data channel opened for', callId);
+                };
+                
+                dc.onclose = function() {
+                    console.log('Data channel closed for', callId);
+                    delete dataChannels[callId];
+                };
+                
+                dc.onmessage = function(e) {
+                    try {
+                        var msg = JSON.parse(e.data);
+                        if (msg.type === 'file') {
+                            handleDataChannelFile(msg);
+                        }
+                    } catch(err) {
+                        console.error('Data channel message error:', err);
+                    }
+                };
+            } catch(e) {
+                console.error('Failed to create data channel:', e);
+            }
+        }
+        
+        pc.ondatachannel = function(e) {
+            dataChannels[callId] = e.channel;
+            e.channel.onopen = function() {
+                console.log('Remote data channel opened for', callId);
+            };
+            e.channel.onclose = function() {
+                delete dataChannels[callId];
+            };
+            e.channel.onmessage = function(ev) {
+                try {
+                    var msg = JSON.parse(ev.data);
+                    if (msg.type === 'file') {
+                        handleDataChannelFile(msg);
+                    }
+                } catch(err) {
+                    console.error('Remote data channel message error:', err);
+                }
+            };
+        };
+        
         return pc;
+    }
+
+    function handleDataChannelFile(msg) {
+        updateRobinStatus('📎 Получен файл: ' + msg.name, 3000);
+        var byteString = atob(msg.data);
+        var ab = new ArrayBuffer(byteString.length);
+        var ia = new Uint8Array(ab);
+        for (var i = 0; i < byteString.length; i++) {
+            ia[i] = byteString.charCodeAt(i);
+        }
+        var blob = new Blob([ab], { type: msg.mime });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = msg.name;
+        a.click();
+        URL.revokeObjectURL(url);
     }
 
     function cleanupPeer(callId) {
@@ -2494,7 +953,14 @@
             localStreams[callId].getTracks().forEach(function(t) { t.stop(); });
             delete localStreams[callId];
         }
+        if (dataChannels[callId]) {
+            try {
+                dataChannels[callId].close();
+            } catch(e) {}
+            delete dataChannels[callId];
+        }
         delete pendingIceCandidates[callId];
+        delete meshPeers[callId];
     }
 
     function flushIceCandidates(callId) {
@@ -2625,23 +1091,7 @@
             document.exitFullscreen();
         }
     }
-
-    async function addMeshPeer(offerSdp) {
-        var stream = localStreams['main'];
-        if (!stream) return;
-        
-        var meshId = 'mesh_' + Date.now();
-        var pc = createPeerConn(stream, meshId);
-        peerConnections[meshId] = pc;
-        
-        await pc.setRemoteDescription(new RTCSessionDescription(offerSdp));
-        var answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer);
-        sendCallSignal('__MESH_ANSWER__' + JSON.stringify({ sdp: answer, meshId: meshId }));
-        flushIceCandidates(meshId);
-    }
-
-    function sendFileMessage(fileData) {
+        function sendFileMessage(fileData) {
         if (!activeChannelId || !channels[activeChannelId]) return;
         
         var payload = {
@@ -2768,7 +1218,9 @@
             if (remaining <= 0) {
                 clearInterval(timer);
                 row.classList.add('self-destruct');
-                setTimeout(function() { row.remove(); }, 500);
+                setTimeout(function() { 
+                    if (row.parentNode) row.remove(); 
+                }, 500);
             }
         }, 1000);
         
@@ -2776,6 +1228,7 @@
     }
 
     function showReactionPicker(msgElement, event) {
+        if (!msgElement || !reactionPicker) return;
         var rect = msgElement.getBoundingClientRect();
         reactionPicker.style.display = 'flex';
         reactionPicker.style.top = (rect.top - 40) + 'px';
@@ -2783,20 +1236,22 @@
         activeReactionMsgId = msgElement.dataset.msgid || msgElement.id;
     }
 
-    reactionPicker.querySelectorAll('span').forEach(function(span) {
-        span.addEventListener('click', function() {
-            if (!activeReactionMsgId || !activeChannelId) return;
-            var emoji = span.textContent;
-            sendToPong({
-                action: 'send',
-                text: '__REACTION__' + JSON.stringify({ msgId: activeReactionMsgId, emoji: emoji }),
-                channelId: activeChannelId
+    if (reactionPicker) {
+        reactionPicker.querySelectorAll('span').forEach(function(span) {
+            span.addEventListener('click', function() {
+                if (!activeReactionMsgId || !activeChannelId) return;
+                var emoji = span.textContent;
+                sendToPong({
+                    action: 'send',
+                    text: '__REACTION__' + JSON.stringify({ msgId: activeReactionMsgId, emoji: emoji }),
+                    channelId: activeChannelId
+                });
+                addReactionToMessage(activeReactionMsgId, emoji, true);
+                reactionPicker.style.display = 'none';
+                activeReactionMsgId = null;
             });
-            addReactionToMessage(activeReactionMsgId, emoji, true);
-            reactionPicker.style.display = 'none';
-            activeReactionMsgId = null;
         });
-    });
+    }
 
     function addReactionToMessage(msgId, emoji, fromNetwork) {
         var row = document.getElementById(msgId);
@@ -2806,7 +1261,8 @@
         if (!reactionsDiv) {
             reactionsDiv = document.createElement('div');
             reactionsDiv.className = 'msg-reactions';
-            row.querySelector('.msg-body').appendChild(reactionsDiv);
+            var msgBody = row.querySelector('.msg-body');
+            if (msgBody) msgBody.appendChild(reactionsDiv);
         }
         
         var existing = reactionsDiv.querySelector('[data-emoji="' + emoji + '"]');
@@ -2886,36 +1342,56 @@
     }
 
     function generateQR(link) {
+        if (!qrCodeDiv) return;
         qrCodeDiv.innerHTML = '';
         if (typeof QRCode !== 'undefined') {
-            new QRCode(qrCodeDiv, {
-                text: link,
-                width: 120,
-                height: 120,
-                colorDark: '#c4a24b',
-                colorLight: '#0a1208'
-            });
+            try {
+                new QRCode(qrCodeDiv, {
+                    text: link,
+                    width: 120,
+                    height: 120,
+                    colorDark: '#c4a24b',
+                    colorLight: '#0a1208'
+                });
+            } catch(e) {
+                console.error('Failed to generate QR code:', e);
+                qrCodeDiv.textContent = 'QR код недоступен';
+            }
         }
     }
 
     function showContactQR(contact) {
+        if (!contact || !contact.pubkey) return;
+        
         var link = 'https://stepweather-prog.github.io/ROBINHOOD-P2P/?id=' + contact.pubkey +
-                   '&key=' + (channels[contact.pubkey] ? channels[contact.pubkey].tempKey || '' : '') +
                    '&server=' + currentServer;
         
-        qrCodeDiv.innerHTML = '';
-        if (typeof QRCode !== 'undefined') {
-            new QRCode(qrCodeDiv, {
-                text: link,
-                width: 200,
-                height: 200,
-                colorDark: '#c4a24b',
-                colorLight: '#0a1208'
-            });
+        if (qrCodeDiv) {
+            qrCodeDiv.innerHTML = '';
+            if (typeof QRCode !== 'undefined') {
+                try {
+                    new QRCode(qrCodeDiv, {
+                        text: link,
+                        width: 200,
+                        height: 200,
+                        colorDark: '#c4a24b',
+                        colorLight: '#0a1208'
+                    });
+                } catch(e) {
+                    console.error('Failed to generate QR:', e);
+                }
+            }
         }
         
-        document.getElementById('ref-link-display').textContent = link;
-        document.getElementById('ref-modal').classList.add('active');
+        var refLinkDisplay = document.getElementById('ref-link-display');
+        if (refLinkDisplay) {
+            refLinkDisplay.textContent = link;
+        }
+        
+        var refModal = document.getElementById('ref-modal');
+        if (refModal) {
+            refModal.classList.add('active');
+        }
     }
 
     function generateP2PQR() {
@@ -2930,19 +1406,29 @@
             server: currentServer
         });
         
-        qrCodeDiv.innerHTML = '';
-        if (typeof QRCode !== 'undefined') {
-            new QRCode(qrCodeDiv, {
-                text: sessionData,
-                width: 250,
-                height: 250,
-                colorDark: '#c4a24b',
-                colorLight: '#0a1208'
-            });
+        if (qrCodeDiv) {
+            qrCodeDiv.innerHTML = '';
+            if (typeof QRCode !== 'undefined') {
+                try {
+                    new QRCode(qrCodeDiv, {
+                        text: sessionData,
+                        width: 250,
+                        height: 250,
+                        colorDark: '#c4a24b',
+                        colorLight: '#0a1208'
+                    });
+                } catch(e) {
+                    console.error('Failed to generate QR:', e);
+                }
+            }
         }
         
-        document.getElementById('ref-link-display').textContent = 'Отсканируйте этот QR-код на устройстве получателя';
-        document.getElementById('ref-modal').classList.add('active');
+        var refLinkDisplay = document.getElementById('ref-link-display');
+        if (refLinkDisplay) refLinkDisplay.textContent = 'Отсканируйте этот QR-код на устройстве получателя';
+        
+        var refModal = document.getElementById('ref-modal');
+        if (refModal) refModal.classList.add('active');
+        
         updateRobinStatus('📱 QR-код для прямого P2P соединения', 3000);
     }
 
@@ -2952,14 +1438,17 @@
     }
 
     function showLinkPreview(url) {
+        if (!linkPreviewContent) return;
         linkPreviewContent.innerHTML = '<div class="link-preview" onclick="window.open(\'' + url + '\', \'_blank\')">' +
                                        '<div class="link-preview-info"><div class="link-preview-title">🔗 Внешняя ссылка</div>' +
                                        '<div class="link-preview-url">' + url + '</div>' +
                                        '<div class="link-preview-desc">Нажмите чтобы открыть</div></div></div>';
-        linkPreviewModal.classList.add('active');
+        if (linkPreviewModal) linkPreviewModal.classList.add('active');
     }
 
     function updateTunnelUI() {
+        if (!tunnelEnableToggle || !tunnelList || !settingAddTunnel) return;
+        
         if (savedConfigs.length === 0) {
             tunnelEnableToggle.checked = false;
             tunnelEnableToggle.parentElement.classList.add('disabled');
@@ -3029,182 +1518,229 @@
         }
         updateTunnelUI();
     }
-
-    // Event handlers for settings
-    toggleHistory.addEventListener('change', function() {
-        toggleHistoryState = this.checked;
-        if (!toggleHistoryState) {
-            try {
-                localStorage.removeItem('robinhood_history_key');
-                localStorage.removeItem('robinhood_chat_history');
-            } catch(e) {
-                console.error('Failed to clear history:', e);
-            }
-            historyEncryptionKey = null;
-        }
-        try {
-            localStorage.setItem('robinhood_history', toggleHistoryState);
-        } catch(e) {
-            console.error('Failed to save history setting:', e);
-        }
-        updateRobinStatus(toggleHistoryState ? '📜 Свитки будут храниться' : '🔥 Свитки сожжены');
-    });
-
-    toggleSound.addEventListener('change', function() {
-        toggleSoundState = this.checked;
-        try {
-            localStorage.setItem('robinhood_sound', toggleSoundState);
-        } catch(e) {
-            console.error('Failed to save sound setting:', e);
-        }
-        updateRobinStatus(toggleSoundState ? '🔔 Звук боя включён' : '🔕 Тишина в лесу');
-    });
-
-    serverToggle.checked = currentServer === 'workers';
-    serverToggle.addEventListener('change', function() {
-        currentServer = this.checked ? 'workers' : 'render';
-        try {
-            localStorage.setItem('robinhood_server', currentServer);
-        } catch(e) {
-            console.error('Failed to save server setting:', e);
-        }
-        updateRobinStatus('🌐 Сервер: ' + (currentServer === 'workers' ? 'Workers' : 'Render'));
-    });
-
-    tunnelEnableToggle.addEventListener('change', function() {
-        if (savedConfigs.length === 0) {
-            this.checked = false;
-            return;
-        }
-        if (!this.checked) {
-            activeTunnel = null;
-            try {
-                localStorage.removeItem('robinhood_active_tunnel');
-            } catch(e) {
-                console.error('Failed to remove active tunnel:', e);
-            }
-        } else {
-            if (activeTunnel === null || activeTunnel >= savedConfigs.length) {
-                activeTunnel = savedConfigs.length - 1;
+        // Event handlers for settings
+    if (toggleHistory) {
+        toggleHistory.addEventListener('change', function() {
+            toggleHistoryState = this.checked;
+            if (!toggleHistoryState) {
+                try {
+                    localStorage.removeItem('robinhood_history_key');
+                    localStorage.removeItem('robinhood_chat_history');
+                } catch(e) {
+                    console.error('Failed to clear history:', e);
+                }
+                historyEncryptionKey = null;
             }
             try {
-                localStorage.setItem('robinhood_active_tunnel', activeTunnel);
+                localStorage.setItem('robinhood_history', toggleHistoryState);
             } catch(e) {
-                console.error('Failed to save active tunnel:', e);
+                console.error('Failed to save history setting:', e);
             }
-        }
-        updateTunnelUI();
-    });
-
-    settingAddTunnel.addEventListener('click', function() {
-        tunnelConfigModal.classList.add('active');
-    });
-
-    document.getElementById('btn-load-file').addEventListener('click', function() {
-        configFileInput.click();
-    });
-
-    configFileInput.addEventListener('change', function(e) {
-        var file = e.target.files[0];
-        if (!file) return;
-        var reader = new FileReader();
-        reader.onload = function(ev) {
-            tunnelConfigInput.value = ev.target.result;
-        };
-        reader.readAsText(file);
-    });
-
-    document.getElementById('btn-save-tunnel').addEventListener('click', function() {
-        var config = tunnelConfigInput.value.trim();
-        if (!config) {
-            updateRobinStatus('❌ Вставьте конфиг');
-            return;
-        }
-        addTunnelConfig(config);
-        tunnelConfigModal.classList.remove('active');
-        tunnelConfigInput.value = '';
-        updateRobinStatus('✅ Конфиг сохранён');
-    });
-
-    document.getElementById('btn-cancel-tunnel-config').addEventListener('click', function() {
-        tunnelConfigModal.classList.remove('active');
-        tunnelConfigInput.value = '';
-    });
-
-    document.getElementById('setting-export-contacts').addEventListener('click', exportContacts);
-    document.getElementById('setting-import-contacts').addEventListener('click', function() {
-        var input = document.createElement('input');
-        input.type = 'file';
-        input.accept = '.enc,.json';
-        input.addEventListener('change', function(e) {
-            if (e.target.files[0]) importContacts(e.target.files[0]);
+            updateRobinStatus(toggleHistoryState ? '📜 Свитки будут храниться' : '🔥 Свитки сожжены');
         });
-        input.click();
-    });
+    }
 
-    document.getElementById('btn-close-link-preview').addEventListener('click', function() {
-        linkPreviewModal.classList.remove('active');
-    });
+    if (toggleSound) {
+        toggleSound.addEventListener('change', function() {
+            toggleSoundState = this.checked;
+            try {
+                localStorage.setItem('robinhood_sound', toggleSoundState);
+            } catch(e) {
+                console.error('Failed to save sound setting:', e);
+            }
+            updateRobinStatus(toggleSoundState ? '🔔 Звук боя включён' : '🔕 Тишина в лесу');
+        });
+    }
+
+    if (serverToggle) {
+        serverToggle.checked = currentServer === 'workers';
+        serverToggle.addEventListener('change', function() {
+            currentServer = this.checked ? 'workers' : 'render';
+            try {
+                localStorage.setItem('robinhood_server', currentServer);
+            } catch(e) {
+                console.error('Failed to save server setting:', e);
+            }
+            updateRobinStatus('🌐 Сервер: ' + (currentServer === 'workers' ? 'Workers' : 'Render'));
+        });
+    }
+
+    if (tunnelEnableToggle) {
+        tunnelEnableToggle.addEventListener('change', function() {
+            if (savedConfigs.length === 0) {
+                this.checked = false;
+                return;
+            }
+            if (!this.checked) {
+                activeTunnel = null;
+                try {
+                    localStorage.removeItem('robinhood_active_tunnel');
+                } catch(e) {
+                    console.error('Failed to remove active tunnel:', e);
+                }
+            } else {
+                if (activeTunnel === null || activeTunnel >= savedConfigs.length) {
+                    activeTunnel = savedConfigs.length - 1;
+                }
+                try {
+                    localStorage.setItem('robinhood_active_tunnel', activeTunnel);
+                } catch(e) {
+                    console.error('Failed to save active tunnel:', e);
+                }
+            }
+            updateTunnelUI();
+        });
+    }
+
+    if (settingAddTunnel) {
+        settingAddTunnel.addEventListener('click', function() {
+            if (tunnelConfigModal) tunnelConfigModal.classList.add('active');
+        });
+    }
+
+    var btnLoadFile = document.getElementById('btn-load-file');
+    if (btnLoadFile) {
+        btnLoadFile.addEventListener('click', function() {
+            if (configFileInput) configFileInput.click();
+        });
+    }
+
+    if (configFileInput) {
+        configFileInput.addEventListener('change', function(e) {
+            var file = e.target.files[0];
+            if (!file) return;
+            var reader = new FileReader();
+            reader.onload = function(ev) {
+                if (tunnelConfigInput) tunnelConfigInput.value = ev.target.result;
+            };
+            reader.readAsText(file);
+        });
+    }
+
+    var btnSaveTunnel = document.getElementById('btn-save-tunnel');
+    if (btnSaveTunnel) {
+        btnSaveTunnel.addEventListener('click', function() {
+            var config = tunnelConfigInput ? tunnelConfigInput.value.trim() : '';
+            if (!config) {
+                updateRobinStatus('❌ Вставьте конфиг');
+                return;
+            }
+            addTunnelConfig(config);
+            if (tunnelConfigModal) tunnelConfigModal.classList.remove('active');
+            if (tunnelConfigInput) tunnelConfigInput.value = '';
+            updateRobinStatus('✅ Конфиг сохранён');
+        });
+    }
+
+    var btnCancelTunnelConfig = document.getElementById('btn-cancel-tunnel-config');
+    if (btnCancelTunnelConfig) {
+        btnCancelTunnelConfig.addEventListener('click', function() {
+            if (tunnelConfigModal) tunnelConfigModal.classList.remove('active');
+            if (tunnelConfigInput) tunnelConfigInput.value = '';
+        });
+    }
+
+    var settingExportContacts = document.getElementById('setting-export-contacts');
+    if (settingExportContacts) {
+        settingExportContacts.addEventListener('click', exportContacts);
+    }
+
+    var settingImportContacts = document.getElementById('setting-import-contacts');
+    if (settingImportContacts) {
+        settingImportContacts.addEventListener('click', function() {
+            var input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.enc,.json';
+            input.addEventListener('change', function(e) {
+                if (e.target.files[0]) importContacts(e.target.files[0]);
+            });
+            input.click();
+        });
+    }
+
+    var btnCloseLinkPreview = document.getElementById('btn-close-link-preview');
+    if (btnCloseLinkPreview) {
+        btnCloseLinkPreview.addEventListener('click', function() {
+            if (linkPreviewModal) linkPreviewModal.classList.remove('active');
+        });
+    }
 
     // Call button handlers
-    btnCall.addEventListener('click', function() {
-        if (callActive) {
-            endCall();
-            return;
-        }
-        startCall(false);
-    });
+    if (btnCall) {
+        btnCall.addEventListener('click', function() {
+            if (callActive) {
+                endCall();
+                return;
+            }
+            startCall(false);
+        });
+    }
 
-    btnVideo.addEventListener('click', function() {
-        if (callActive) {
-            endCall();
-            return;
-        }
-        startCall(true);
-    });
+    if (btnVideo) {
+        btnVideo.addEventListener('click', function() {
+            if (callActive) {
+                endCall();
+                return;
+            }
+            startCall(true);
+        });
+    }
 
-    callReject.addEventListener('click', function() {
-        stopRingtone();
-        sendCallSignal('__HANGUP__');
-        callPanel.style.display = 'none';
-        updateRobinStatus('📞 Вызов отклонён');
-    });
+    if (callReject) {
+        callReject.addEventListener('click', function() {
+            stopRingtone();
+            sendCallSignal('__HANGUP__');
+            callPanel.style.display = 'none';
+            updateRobinStatus('📞 Вызов отклонён');
+        });
+    }
 
-    callEnd.addEventListener('click', endCall);
-    callSpeaker.addEventListener('click', toggleSpeaker);
-    callCamera.addEventListener('click', toggleCamera);
-    callMic.addEventListener('click', toggleMic);
-    vcFullscreen.addEventListener('click', toggleFullscreen);
-    callLabel.addEventListener('click', function() { btnCall.click(); });
-    videoLabel.addEventListener('click', function() { btnVideo.click(); });
+    if (callEnd) callEnd.addEventListener('click', endCall);
+    if (callSpeaker) callSpeaker.addEventListener('click', toggleSpeaker);
+    if (callCamera) callCamera.addEventListener('click', toggleCamera);
+    if (callMic) callMic.addEventListener('click', toggleMic);
+    if (vcFullscreen) vcFullscreen.addEventListener('click', toggleFullscreen);
+    if (callLabel) callLabel.addEventListener('click', function() { if (btnCall) btnCall.click(); });
+    if (videoLabel) videoLabel.addEventListener('click', function() { if (btnVideo) btnVideo.click(); });
 
-    cancelArrowBtn.addEventListener('click', function() {
-        sendToPong({ action: 'cancel-create' });
-        document.getElementById('ref-modal').classList.remove('active');
-        updateRobinStatus('⏹ Стрела отменена', 2000);
-    });
+    if (cancelArrowBtn) {
+        cancelArrowBtn.addEventListener('click', function() {
+            sendToPong({ action: 'cancel-create' });
+            var refModal = document.getElementById('ref-modal');
+            if (refModal) refModal.classList.remove('active');
+            updateRobinStatus('⏹ Стрела отменена', 2000);
+        });
+    }
 
     // Emoji panel
     var emojis = ['😀','😂','🤣','😍','😘','😜','😎','🤩','🥳','😢','😡','👍','👎','❤️','🔥','🎉','💀','🏹','🌲','🏰','🦊','🐺','✨','⚔️','🛡️','🍺','🍗','🏕️','🌙','☀️','🌟','💪','🤝','🙏','👑','💰','🎯','📞','💬','🔔','❌','✅','🎵','📜','⚜️'];
     
-    emojiGrid.innerHTML = emojis.map(function(e) {
-        return '<span onclick="window._insertEmoji(\'' + e + '\')">' + e + '</span>';
-    }).join('');
+    if (emojiGrid) {
+        emojiGrid.innerHTML = emojis.map(function(e) {
+            return '<span onclick="window._insertEmoji(\'' + e + '\')">' + e + '</span>';
+        }).join('');
+    }
     
     window._insertEmoji = function(e) {
-        msgInput.value += e;
-        msgInput.focus();
+        if (msgInput) {
+            msgInput.value += e;
+            msgInput.focus();
+        }
     };
 
-    btnEmoji.addEventListener('click', function() {
-        emojiPanel.style.display = emojiPanel.style.display === 'block' ? 'none' : 'block';
-    });
+    if (btnEmoji) {
+        btnEmoji.addEventListener('click', function() {
+            if (emojiPanel) {
+                emojiPanel.style.display = emojiPanel.style.display === 'block' ? 'none' : 'block';
+            }
+        });
+    }
 
     document.addEventListener('click', function(e) {
-        if (!emojiPanel.contains(e.target) && e.target !== btnEmoji) {
+        if (emojiPanel && !emojiPanel.contains(e.target) && e.target !== btnEmoji) {
             emojiPanel.style.display = 'none';
         }
-        if (!reactionPicker.contains(e.target)) {
+        if (reactionPicker && !reactionPicker.contains(e.target)) {
             reactionPicker.style.display = 'none';
             activeReactionMsgId = null;
         }
@@ -3212,29 +1748,34 @@
 
     // Message input handling
     var typingTimeout = null;
-    msgInput.addEventListener('input', function() {
-        if (!activeChannelId || !channels[activeChannelId]) return;
-        sendToPong({
-            action: 'send',
-            text: '__TYPING__',
-            channelId: activeChannelId
+    if (msgInput) {
+        msgInput.addEventListener('input', function() {
+            if (!activeChannelId || !channels[activeChannelId]) return;
+            sendToPong({
+                action: 'send',
+                text: '__TYPING__',
+                channelId: activeChannelId
+            });
+            clearTimeout(typingTimeout);
+            typingTimeout = setTimeout(function() {}, 2000);
         });
-        clearTimeout(typingTimeout);
-        typingTimeout = setTimeout(function() {}, 2000);
-    });
+    }
 
-    document.getElementById('btn-arrow').addEventListener('click', function() {
-        if (!handshakeSecret && Object.keys(channels).length === 0) {
-            updateRobinStatus('🏹 Колчан ещё не готов. Ждите сигнала.', 2500);
-            return;
-        }
-        updateRobinStatus('⚒ Крафт стрелы [' + (currentServer === 'workers' ? 'Warp' : 'Шервуд') + ']...', 0);
-        sendToPong({ action: 'create' });
-    });
+    var btnArrow = document.getElementById('btn-arrow');
+    if (btnArrow) {
+        btnArrow.addEventListener('click', function() {
+            if (!handshakeSecret && Object.keys(channels).length === 0) {
+                updateRobinStatus('🏹 Колчан ещё не готов. Ждите сигнала.', 2500);
+                return;
+            }
+            updateRobinStatus('⚒ Крафт стрелы [' + (currentServer === 'workers' ? 'Warp' : 'Шервуд') + ']...', 0);
+            sendToPong({ action: 'create' });
+        });
+    }
 
     // Pong frame message handler
     window.addEventListener('message', async function(event) {
-        if (!event.source || event.source !== pongFrame.contentWindow) return;
+        if (!event.source || !pongFrame || event.source !== pongFrame.contentWindow) return;
         var data = event.data;
         if (!data || !data.type) return;
         
@@ -3249,7 +1790,7 @@
                 var urlParams = new URLSearchParams(window.location.search);
                 if (urlParams.get('id') && urlParams.get('key')) {
                     currentServer = urlParams.get('server') || 'render';
-                    serverToggle.checked = currentServer === 'workers';
+                    if (serverToggle) serverToggle.checked = currentServer === 'workers';
                     updateRobinStatus('📨 Принимаю стрелу...', 0);
                     sendToPong({
                         action: 'accept',
@@ -3260,9 +1801,11 @@
                 break;
                 
             case 'session-created':
-                document.getElementById('ref-link-display').textContent = data.fullLink;
+                var refLinkDisplay = document.getElementById('ref-link-display');
+                if (refLinkDisplay) refLinkDisplay.textContent = data.fullLink;
                 generateQR(data.fullLink);
-                document.getElementById('ref-modal').classList.add('active');
+                var refModal = document.getElementById('ref-modal');
+                if (refModal) refModal.classList.add('active');
                 navigator.clipboard.writeText(data.fullLink).catch(function() {});
                 break;
                 
@@ -3275,7 +1818,6 @@
                 contactOnlineStatus[data.channelId] = true;
                 playQuiverAnimation();
                 
-                // Add to contacts if not exists
                 var contacts = [];
                 try {
                     contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
@@ -3300,8 +1842,8 @@
                 sendToPong({
                     action: 'send',
                     text: '__PROFILE__' + JSON.stringify({
-                        nick: nickLabel.textContent,
-                        avatar: profileAvatarSmall.src
+                        nick: nickLabel ? nickLabel.textContent : 'Лучник',
+                        avatar: profileAvatarSmall ? profileAvatarSmall.src : 'assets/avatars/001-.png'
                     }),
                     channelId: data.channelId
                 });
@@ -3333,83 +1875,86 @@
             case 'message':
                 if (!data.channelId || !data.text || !channels[data.channelId]) break;
                 
-                // Handle typing indicator
                 if (typeof data.text === 'string' && data.text === '__TYPING__') {
-                    typingIndicator.textContent = '✍️ Лучник натягивает тетиву...';
+                    if (typingIndicator) typingIndicator.textContent = '✍️ Лучник натягивает тетиву...';
                     clearTimeout(typingTimers[data.channelId]);
                     typingTimers[data.channelId] = setTimeout(function() {
-                        typingIndicator.textContent = '';
+                        if (typingIndicator) typingIndicator.textContent = '';
                     }, 2500);
                     return;
                 }
                 
-                // Handle call offer
                 if (typeof data.text === 'string' && data.text.indexOf('__OFFER__') === 0) {
                     var parsed = JSON.parse(data.text.replace('__OFFER__', ''));
                     var offer = parsed.sdp || parsed;
                     var isVideo = parsed.video || false;
                     videoCallActive = isVideo;
                     
-                    callPanel.style.display = 'block';
-                    callStatus.textContent = isVideo ? '📹 Входящий видеовызов...' : '📞 Входящий вызов...';
-                    callAccept.style.display = 'inline-block';
-                    callReject.style.display = 'inline-block';
-                    callEnd.style.display = 'none';
-                    callSpeaker.style.display = 'none';
-                    callCamera.style.display = 'none';
-                    callMic.style.display = 'none';
+                    if (callPanel) callPanel.style.display = 'block';
+                    if (callStatus) callStatus.textContent = isVideo ? '📹 Входящий видеовызов...' : '📞 Входящий вызов...';
+                    if (callAccept) callAccept.style.display = 'inline-block';
+                    if (callReject) callReject.style.display = 'inline-block';
+                    if (callEnd) callEnd.style.display = 'none';
+                    if (callSpeaker) callSpeaker.style.display = 'none';
+                    if (callCamera) callCamera.style.display = 'none';
+                    if (callMic) callMic.style.display = 'none';
                     playRingtone();
                     
-                    callAccept.onclick = async function() {
-                        stopRingtone();
-                        callStatus.textContent = '📞 Соединение...';
-                        callAccept.style.display = 'none';
-                        callReject.style.display = 'none';
-                        callEnd.style.display = 'inline-block';
-                        callSpeaker.style.display = 'inline-block';
-                        
-                        if (isVideo) {
-                            callCamera.style.display = 'inline-block';
-                            callMic.style.display = 'inline-block';
-                        }
-                        
-                        playCallStart();
-                        var stream = await getMediaStream(isVideo);
-                        if (!stream) {
-                            callPanel.style.display = 'none';
-                            return;
-                        }
-                        
-                        localStreams['main'] = stream;
-                        if (isVideo) {
-                            localVideo.srcObject = stream;
-                            localVideoContainer.style.display = 'block';
-                            videoControls.classList.add('active');
-                        }
-                        
-                        var pc = createPeerConn(stream, 'main');
-                        peerConnections['main'] = pc;
-                        await pc.setRemoteDescription(new RTCSessionDescription(offer));
-                        var answer = await pc.createAnswer();
-                        await pc.setLocalDescription(answer);
-                        sendCallSignal('__ANSWER__' + JSON.stringify(answer));
-                        callActive = true;
-                        flushIceCandidates('main');
-                    };
+                    if (callAccept) {
+                        callAccept.onclick = null;
+                        callAccept.onclick = async function() {
+                            stopRingtone();
+                            if (callStatus) callStatus.textContent = '📞 Соединение...';
+                            if (callAccept) callAccept.style.display = 'none';
+                            if (callReject) callReject.style.display = 'none';
+                            if (callEnd) callEnd.style.display = 'inline-block';
+                            if (callSpeaker) callSpeaker.style.display = 'inline-block';
+                            
+                            if (isVideo) {
+                                if (callCamera) callCamera.style.display = 'inline-block';
+                                if (callMic) callMic.style.display = 'inline-block';
+                            }
+                            
+                            playCallStart();
+                            var stream = await getMediaStream(isVideo);
+                            if (!stream) {
+                                if (callPanel) callPanel.style.display = 'none';
+                                return;
+                            }
+                            
+                            localStreams['main'] = stream;
+                            if (isVideo) {
+                                if (localVideo) localVideo.srcObject = stream;
+                                if (localVideoContainer) localVideoContainer.style.display = 'block';
+                                if (videoControls) videoControls.classList.add('active');
+                            }
+                            
+                            var pc = createPeerConn(stream, 'main');
+                            peerConnections['main'] = pc;
+                            await pc.setRemoteDescription(new RTCSessionDescription(offer));
+                            var answer = await pc.createAnswer();
+                            await pc.setLocalDescription(answer);
+                            sendCallSignal('__ANSWER__' + JSON.stringify(answer));
+                            callActive = true;
+                            flushIceCandidates('main');
+                        };
+                    }
                     
-                    callReject.onclick = function() {
-                        stopRingtone();
-                        sendCallSignal('__HANGUP__');
-                        callPanel.style.display = 'none';
-                        updateRobinStatus('📞 Вызов отклонён');
-                    };
+                    if (callReject) {
+                        callReject.onclick = null;
+                        callReject.onclick = function() {
+                            stopRingtone();
+                            sendCallSignal('__HANGUP__');
+                            if (callPanel) callPanel.style.display = 'none';
+                            updateRobinStatus('📞 Вызов отклонён');
+                        };
+                    }
                     return;
                 }
                 
-                // Handle call answer
                 if (typeof data.text === 'string' && data.text.indexOf('__ANSWER__') === 0) {
                     stopRingback();
-                    callStatus.textContent = '✅ Разговор';
+                    if (callStatus) callStatus.textContent = '✅ Разговор';
                     var answer = JSON.parse(data.text.replace('__ANSWER__', ''));
                     if (peerConnections['main']) {
                         peerConnections['main'].setRemoteDescription(new RTCSessionDescription(answer))
@@ -3418,7 +1963,6 @@
                     return;
                 }
                 
-                // Handle ICE candidates
                 if (typeof data.text === 'string' && data.text.indexOf('__ICE__') === 0) {
                     try {
                         var iceData = JSON.parse(data.text.replace('__ICE__', ''));
@@ -3433,45 +1977,29 @@
                     return;
                 }
                 
-                // Handle hangup
                 if (data.text === '__HANGUP__') {
                     if (callActive) {
                         endCall();
                         updateRobinStatus('📞 Собеседник завершил звонок');
                     } else {
                         stopRingtone();
-                        callPanel.style.display = 'none';
+                        if (callPanel) callPanel.style.display = 'none';
                         updateRobinStatus('📞 Вызов отменён');
                     }
                     return;
                 }
                 
-                // Handle mesh answer
-                if (typeof data.text === 'string' && data.text.indexOf('__MESH_ANSWER__') === 0) {
-                    try {
-                        var meshData = JSON.parse(data.text.replace('__MESH_ANSWER__', ''));
-                        if (peerConnections[meshData.meshId]) {
-                            peerConnections[meshData.meshId].setRemoteDescription(new RTCSessionDescription(meshData.sdp))
-                                .then(function() { flushIceCandidates(meshData.meshId); });
-                        }
-                    } catch(e) {
-                        console.error('Failed to parse mesh data:', e);
-                    }
-                    return;
-                }
-                
-                // Handle file message
                 if (typeof data.text === 'string' && data.text.indexOf('__FILE__') === 0) {
                     try {
                         var fileData = JSON.parse(data.text.replace('__FILE__', ''));
-                        var contacts2 = [];
+                        var contactsForFile = [];
                         try {
-                            contacts2 = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
+                            contactsForFile = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
                         } catch(e) {
                             console.error('Failed to load contacts:', e);
                         }
                         
-                        var contact = contacts2.find(function(c) { return c.pubkey === data.channelId; });
+                        var contact = contactsForFile.find(function(c) { return c.pubkey === data.channelId; });
                         var senderName = contact ? contact.name : (data.sender || 'Друг');
                         var senderAvatar = contact ? contact.avatar : 'assets/avatars/001-.png';
                         
@@ -3484,18 +2012,17 @@
                     return;
                 }
                 
-                // Handle self destruct message
                 if (typeof data.text === 'string' && data.text.indexOf('__SELFDESTRUCT__') === 0) {
                     try {
                         var sdData = JSON.parse(data.text.replace('__SELFDESTRUCT__', ''));
-                        var contacts2 = [];
+                        var contactsForSD = [];
                         try {
-                            contacts2 = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
+                            contactsForSD = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
                         } catch(e) {
                             console.error('Failed to load contacts:', e);
                         }
                         
-                        var contact = contacts2.find(function(c) { return c.pubkey === data.channelId; });
+                        var contact = contactsForSD.find(function(c) { return c.pubkey === data.channelId; });
                         var senderName = contact ? contact.name : (data.sender || 'Друг');
                         var senderAvatar = contact ? contact.avatar : 'assets/avatars/001-.png';
                         
@@ -3508,7 +2035,6 @@
                     return;
                 }
                 
-                // Handle reaction
                 if (typeof data.text === 'string' && data.text.indexOf('__REACTION__') === 0) {
                     try {
                         var rData = JSON.parse(data.text.replace('__REACTION__', ''));
@@ -3519,7 +2045,6 @@
                     return;
                 }
                 
-                // Handle profile update
                 if (typeof data.text === 'string' && data.text.indexOf('__PROFILE__') === 0) {
                     try {
                         var p = JSON.parse(data.text.replace('__PROFILE__', ''));
@@ -3546,14 +2071,15 @@
                     return;
                 }
                 
-                // Regular message                var contacts2 = [];
+                // Regular message
+                var contactsForMsg = [];
                 try {
-                    contacts2 = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
+                    contactsForMsg = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
                 } catch(e) {
                     console.error('Failed to load contacts:', e);
                 }
                 
-                var contact = contacts2.find(function(c) { return c.pubkey === data.channelId; });
+                var contact = contactsForMsg.find(function(c) { return c.pubkey === data.channelId; });
                 var senderName = contact ? contact.name : (data.sender || 'Друг');
                 var senderAvatar = contact ? contact.avatar : 'assets/avatars/001-.png';
                 
@@ -3614,9 +2140,10 @@
         console.error('Failed to load avatar:', e);
     }
     
-    if (savedAvatar) {
+    if (savedAvatar && profileAvatarSmall) {
         profileAvatarSmall.src = savedAvatar;
-        document.getElementById('robin-avatar').src = savedAvatar;
+        var robinAvatar = document.getElementById('robin-avatar');
+        if (robinAvatar) robinAvatar.src = savedAvatar;
     }
 
     // Load saved nick
@@ -3627,166 +2154,202 @@
         console.error('Failed to load nick:', e);
     }
     
-    if (savedNick) {
+    if (savedNick && nickLabel) {
         nickLabel.textContent = savedNick.substring(0, 10);
     }
 
     // Settings button
-    document.getElementById('btn-settings').addEventListener('click', function() {
-        if (settingsSheet.classList.contains('open')) {
-            settingsSheet.classList.remove('open');
-            overlay.classList.remove('show');
-        } else {
-            closeAllSheets();
-            updateTunnelUI();
-            settingsSheet.classList.add('open');
-            overlay.classList.add('show');
-        }
-    });
-
-    document.getElementById('settings-close').addEventListener('click', function() {
-        settingsSheet.classList.remove('open');
-        overlay.classList.remove('show');
-    });
-
-    document.getElementById('settings-label').addEventListener('click', function() {
-        document.getElementById('btn-settings').click();
-    });
-
-    document.getElementById('setting-theme').addEventListener('click', function() {
-        var idx = themes.findIndex(function(t) { return t.id === currentTheme; });
-        var next = themes[(idx + 1) % themes.length];
-        applyTheme(next.id);
-    });
-
-    // Avatar button
-    document.getElementById('btn-avatar').addEventListener('click', function() {
-        if (avatarSelector.classList.contains('show')) {
-            closeAllSheets();
-        } else {
-            closeAllSheets();
-            loadAvatars();
-            avatarSelector.classList.add('show');
-            overlay.classList.add('show');
-        }
-    });
-
-    // Nick label
-    nickLabel.addEventListener('click', async function() {
-        var newNick = await showModalInput('🏷 Твой ник', 'Макс. 10 символов', nickLabel.textContent);
-        if (newNick) {
-            var nick = newNick.substring(0, 10);
-            nickLabel.textContent = nick;
-            try {
-                localStorage.setItem('robinhood_nick', nick);
-            } catch(e) {
-                console.error('Failed to save nick:', e);
+    var btnSettings = document.getElementById('btn-settings');
+    if (btnSettings) {
+        btnSettings.addEventListener('click', function() {
+            if (!settingsSheet || !overlay) return;
+            if (settingsSheet.classList.contains('open')) {
+                settingsSheet.classList.remove('open');
+                overlay.classList.remove('show');
+            } else {
+                closeAllSheets();
+                updateTunnelUI();
+                settingsSheet.classList.add('open');
+                overlay.classList.add('show');
             }
-            updateRobinStatus('🏷 Ник изменён на «' + nick + '»');
-        }
-    });
-
-    // Contacts button
-    document.getElementById('btn-letters').addEventListener('click', function() {
-        if (contactsSheet.classList.contains('open')) {
-            contactsSheet.classList.remove('open');
-            overlay.classList.remove('show');
-        } else {
-            closeAllSheets();
-            loadContacts();
-            contactsSheet.classList.add('open');
-            overlay.classList.add('show');
-        }
-    });
-
-    document.getElementById('contacts-close').addEventListener('click', function() {
-        contactsSheet.classList.remove('open');
-        overlay.classList.remove('show');
-    });
-
-    // Clear button
-    document.getElementById('btn-clear').addEventListener('click', async function() {
-        document.querySelectorAll('.message-row:not(#robin-row)').forEach(function(m) { m.remove(); });
-        
-        if (toggleHistoryState) {
-            await saveEncryptedHistory([]);
-        } else {
-            try {
-                localStorage.removeItem('robinhood_chat_history');
-            } catch(e) {
-                console.error('Failed to clear history:', e);
-            }
-        }
-        
-        try {
-            localStorage.removeItem('robinhood_history_key');
-        } catch(e) {
-            console.error('Failed to remove history key:', e);
-        }
-        historyEncryptionKey = null;
-        
-        try {
-            localStorage.removeItem('robinhood_contacts');
-        } catch(e) {
-            console.error('Failed to remove contacts:', e);
-        }
-        
-        channels = {};
-        activeChannelId = null;
-        activeContact = null;
-        profileSent = {};
-        contactOnlineStatus = {};
-        pendingIceCandidates = {};
-        messageReactions = {};
-        
-        try {
-            localStorage.removeItem('robinhood_reactions');
-        } catch(e) {
-            console.error('Failed to remove reactions:', e);
-        }
-        
-        if (callActive) endCall();
-        Object.values(selfDestructTimers).forEach(clearInterval);
-        selfDestructTimers = {};
-        contactsListInner.innerHTML = '';
-        
-        playSound('clear cache.mp3');
-        
-        setTimeout(function() {
-            var anim = document.createElement('div');
-            anim.className = 'smoke-anim';
-            document.body.appendChild(anim);
-            if (typeof lottie !== 'undefined') {
-                lottie.loadAnimation({
-                    container: anim,
-                    renderer: 'canvas',
-                    loop: true,
-                    autoplay: true,
-                    path: 'assets/smoke.json'
-                });
-            }
-            setTimeout(function() { anim.remove(); }, 6500);
-        }, 2000);
-        
-        updateRobinStatus('🚬 Робин Гуд сжёг весь лагерь! Всё чисто.', 8000);
-    });
-
-    // Terms button
-    termsBtn.addEventListener('click', function() {
-        window.open('https://github.com/stepweather-prog/ROBINHOOD-P2P/blob/main/README.md', '_blank');
-    });
-
-    function closeAllSheets() {
-        avatarSelector.classList.remove('show');
-        contactsSheet.classList.remove('open');
-        settingsSheet.classList.remove('open');
-        overlay.classList.remove('show');
+        });
     }
 
-    overlay.addEventListener('click', closeAllSheets);
+    var settingsClose = document.getElementById('settings-close');
+    if (settingsClose) {
+        settingsClose.addEventListener('click', function() {
+            if (settingsSheet) settingsSheet.classList.remove('open');
+            if (overlay) overlay.classList.remove('show');
+        });
+    }
+
+    var settingsLabel = document.getElementById('settings-label');
+    if (settingsLabel) {
+        settingsLabel.addEventListener('click', function() {
+            if (btnSettings) btnSettings.click();
+        });
+    }
+
+    var settingTheme = document.getElementById('setting-theme');
+    if (settingTheme) {
+        settingTheme.addEventListener('click', function() {
+            var idx = themes.findIndex(function(t) { return t.id === currentTheme; });
+            var next = themes[(idx + 1) % themes.length];
+            applyTheme(next.id);
+        });
+    }
+
+    // Avatar button
+    var btnAvatar = document.getElementById('btn-avatar');
+    if (btnAvatar) {
+        btnAvatar.addEventListener('click', function() {
+            if (!avatarSelector || !overlay) return;
+            if (avatarSelector.classList.contains('show')) {
+                closeAllSheets();
+            } else {
+                closeAllSheets();
+                loadAvatars();
+                avatarSelector.classList.add('show');
+                overlay.classList.add('show');
+            }
+        });
+    }
+
+    // Nick label
+    if (nickLabel) {
+        nickLabel.addEventListener('click', async function() {
+            var newNick = await showModalInput('🏷 Твой ник', 'Макс. 10 символов', nickLabel.textContent);
+            if (newNick) {
+                var nick = newNick.substring(0, 10);
+                nickLabel.textContent = nick;
+                try {
+                    localStorage.setItem('robinhood_nick', nick);
+                } catch(e) {
+                    console.error('Failed to save nick:', e);
+                }
+                updateRobinStatus('🏷 Ник изменён на «' + nick + '»');
+            }
+        });
+    }
+
+    // Contacts button
+    var btnLetters = document.getElementById('btn-letters');
+    if (btnLetters) {
+        btnLetters.addEventListener('click', function() {
+            if (!contactsSheet || !overlay) return;
+            if (contactsSheet.classList.contains('open')) {
+                contactsSheet.classList.remove('open');
+                overlay.classList.remove('show');
+            } else {
+                closeAllSheets();
+                loadContacts();
+                contactsSheet.classList.add('open');
+                overlay.classList.add('show');
+            }
+        });
+    }
+
+    var contactsClose = document.getElementById('contacts-close');
+    if (contactsClose) {
+        contactsClose.addEventListener('click', function() {
+            if (contactsSheet) contactsSheet.classList.remove('open');
+            if (overlay) overlay.classList.remove('show');
+        });
+    }
+
+    // Clear button
+    var btnClear = document.getElementById('btn-clear');
+    if (btnClear) {
+        btnClear.addEventListener('click', async function() {
+            if (chatBox) {
+                chatBox.querySelectorAll('.message-row:not(#robin-row)').forEach(function(m) { m.remove(); });
+            }
+            
+            if (toggleHistoryState) {
+                await saveEncryptedHistory([]);
+            } else {
+                try {
+                    localStorage.removeItem('robinhood_chat_history');
+                } catch(e) {
+                    console.error('Failed to clear history:', e);
+                }
+            }
+            
+            try {
+                localStorage.removeItem('robinhood_history_key');
+            } catch(e) {
+                console.error('Failed to remove history key:', e);
+            }
+            historyEncryptionKey = null;
+            
+            try {
+                localStorage.removeItem('robinhood_contacts');
+            } catch(e) {
+                console.error('Failed to remove contacts:', e);
+            }
+            
+            channels = {};
+            activeChannelId = null;
+            activeContact = null;
+            profileSent = {};
+            contactOnlineStatus = {};
+            pendingIceCandidates = {};
+            messageReactions = {};
+            
+            try {
+                localStorage.removeItem('robinhood_reactions');
+            } catch(e) {
+                console.error('Failed to remove reactions:', e);
+            }
+            
+            if (callActive) endCall();
+            Object.values(selfDestructTimers).forEach(clearInterval);
+            selfDestructTimers = {};
+            if (contactsListInner) contactsListInner.innerHTML = '';
+            
+            playSound('clear cache.mp3');
+            
+            setTimeout(function() {
+                var anim = document.createElement('div');
+                anim.className = 'smoke-anim';
+                document.body.appendChild(anim);
+                if (typeof lottie !== 'undefined') {
+                    lottie.loadAnimation({
+                        container: anim,
+                        renderer: 'canvas',
+                        loop: true,
+                        autoplay: true,
+                        path: 'assets/smoke.json'
+                    });
+                }
+                setTimeout(function() { anim.remove(); }, 6500);
+            }, 2000);
+            
+            updateRobinStatus('🚬 Робин Гуд сжёг весь лагерь! Всё чисто.', 8000);
+        });
+    }
+
+    // Terms button
+    if (termsBtn) {
+        termsBtn.addEventListener('click', function() {
+            window.open('https://github.com/stepweather-prog/ROBINHOOD-P2P/blob/main/README.md', '_blank');
+        });
+    }
+
+    function closeAllSheets() {
+        if (avatarSelector) avatarSelector.classList.remove('show');
+        if (contactsSheet) contactsSheet.classList.remove('open');
+        if (settingsSheet) settingsSheet.classList.remove('open');
+        if (overlay) overlay.classList.remove('show');
+    }
+
+    if (overlay) {
+        overlay.addEventListener('click', closeAllSheets);
+    }
 
     // Send message handler
     async function sendMessageHandler() {
+        if (!msgInput) return;
         var text = msgInput.value.trim();
         if (!text) return;
         
@@ -3800,8 +2363,8 @@
             sendToPong({
                 action: 'send',
                 text: '__PROFILE__' + JSON.stringify({
-                    nick: nickLabel.textContent,
-                    avatar: profileAvatarSmall.src
+                    nick: nickLabel ? nickLabel.textContent : 'Лучник',
+                    avatar: profileAvatarSmall ? profileAvatarSmall.src : 'assets/avatars/001-.png'
                 }),
                 channelId: activeChannelId
             });
@@ -3813,31 +2376,40 @@
             var sec = parseInt(durationStr) || 30;
             sendSelfDestructMessage(text, sec);
             selfDestructMode = false;
-            btnSelfDestruct.style.borderColor = '';
-            btnSelfDestruct.style.background = '';
+            if (btnSelfDestruct) {
+                btnSelfDestruct.style.borderColor = '';
+                btnSelfDestruct.style.background = '';
+            }
         } else {
             sendToPong({
                 action: 'send',
                 text: text,
                 channelId: activeChannelId
             });
-            appendMessage('Вы', text, profileAvatarSmall.src);
+            appendMessage('Вы', text, profileAvatarSmall ? profileAvatarSmall.src : 'assets/avatars/001-.png');
         }
         
         msgInput.value = '';
-        typingIndicator.textContent = '';
+        if (typingIndicator) typingIndicator.textContent = '';
         clearTimeout(typingTimeout);
         playArcherAnimation();
         playBowAnimation();
         if (toggleSoundState) playSound('shot.mp3');
     }
 
-    document.getElementById('send-btn').addEventListener('click', sendMessageHandler);
-    msgInput.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') sendMessageHandler();
-    });
+    var sendBtn = document.getElementById('send-btn');
+    if (sendBtn) {
+        sendBtn.addEventListener('click', sendMessageHandler);
+    }
+    
+    if (msgInput) {
+        msgInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') sendMessageHandler();
+        });
+    }
 
     function appendMessage(sender, text, avatarSrc, timeStr) {
+        if (!chatBox) return;
         var msgId = 'msg_' + Date.now();
         var row = document.createElement('div');
         row.className = 'message-row';
@@ -3862,7 +2434,6 @@
         chatBox.insertBefore(row, typingIndicator);
         chatBox.scrollTop = chatBox.scrollHeight;
         
-        // Long press for reactions
         var pressTimer;
         row.addEventListener('mousedown', function() {
             pressTimer = setTimeout(function() {
@@ -3892,7 +2463,6 @@
             clearTimeout(pressTimer);
         });
         
-        // Handle link clicks
         row.querySelectorAll('.msg-link').forEach(function(link) {
             link.addEventListener('click', function(e) {
                 e.preventDefault();
@@ -3900,7 +2470,6 @@
             });
         });
         
-        // Add existing reactions
         if (messageReactions[msgId]) {
             Object.keys(messageReactions[msgId]).forEach(function(emoji) {
                 for (var i = 0; i < messageReactions[msgId][emoji]; i++) {
@@ -3911,6 +2480,7 @@
     }
 
     function updateRobinStatus(text, duration) {
+        if (!robinText) return;
         if (duration === undefined) duration = 4000;
         clearTimeout(robinTimer);
         robinText.style.transition = 'none';
@@ -3933,6 +2503,7 @@
     }
 
     function playArcherAnimation() {
+        if (!robinText) return;
         if (currentArrowContainer && currentArrowContainer.parentNode) {
             currentArrowContainer.parentNode.removeChild(currentArrowContainer);
         }
@@ -3974,6 +2545,7 @@
 
     function playBowAnimation() {
         var bowContainer = document.getElementById('bow-above-send');
+        if (!bowContainer) return;
         if (bowAnim) {
             bowAnim.destroy();
             bowAnim = null;
@@ -3997,6 +2569,10 @@
     }
 
     function playQuiverAnimation() {
+        if (!robinText) return;
+        if (window._quiverTimer) {
+            clearTimeout(window._quiverTimer);
+        }
         if (currentArrowContainer && currentArrowContainer.parentNode) {
             currentArrowContainer.parentNode.removeChild(currentArrowContainer);
         }
@@ -4034,7 +2610,7 @@
             });
         }
         
-        setTimeout(function() {
+        window._quiverTimer = setTimeout(function() {
             if (wrapper && wrapper.parentNode) {
                 wrapper.remove();
             }
@@ -4071,14 +2647,16 @@
     ];
 
     function loadAvatars() {
+        if (!avatarList) return;
         avatarList.innerHTML = '';
         avatars.forEach(function(src) {
             var img = document.createElement('img');
             img.src = src;
             img.className = 'avatar-option';
             img.addEventListener('click', function() {
-                profileAvatarSmall.src = src;
-                document.getElementById('robin-avatar').src = src;
+                if (profileAvatarSmall) profileAvatarSmall.src = src;
+                var robinAvatar = document.getElementById('robin-avatar');
+                if (robinAvatar) robinAvatar.src = src;
                 try {
                     localStorage.setItem('robinhood_avatar', src);
                 } catch(e) {
@@ -4092,6 +2670,7 @@
     }
 
     function loadAvatarsForFriend(contact) {
+        if (!avatarList || !avatarSelector || !overlay) return;
         avatarList.innerHTML = '';
         avatars.forEach(function(src) {
             var img = document.createElement('img');
@@ -4125,6 +2704,7 @@
     }
 
     function loadContacts() {
+        if (!contactsListInner) return;
         var contacts = [];
         try {
             contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
@@ -4151,8 +2731,8 @@
                 div.querySelector('.contact-info').addEventListener('click', function() {
                     activeChannelId = c.pubkey;
                     openChatWithContact(c);
-                    contactsSheet.classList.remove('open');
-                    overlay.classList.remove('show');
+                    if (contactsSheet) contactsSheet.classList.remove('open');
+                    if (overlay) overlay.classList.remove('show');
                 });
                 
                 div.querySelector('.delete-contact').addEventListener('click', function(e) {
@@ -4162,7 +2742,6 @@
                     }
                 });
                 
-                // Long press for contact menu
                 var pressTimer;
                 div.addEventListener('mousedown', function() {
                     pressTimer = setTimeout(function() {
@@ -4225,8 +2804,10 @@
 
     function openChatWithContact(contact) {
         activeContact = contact;
-        document.querySelectorAll('.message-row:not(#robin-row)').forEach(function(m) { m.remove(); });
-        typingIndicator.textContent = '';
+        if (chatBox) {
+            chatBox.querySelectorAll('.message-row:not(#robin-row)').forEach(function(m) { m.remove(); });
+        }
+        if (typingIndicator) typingIndicator.textContent = '';
         updateRobinStatus('💬 Перестрелка с ' + contact.name + ' открыта', 3000);
         loadChatHistory(contact.pubkey);
     }
@@ -4254,116 +2835,98 @@
     function showContactMenu(contact) {
         currentMenuContact = contact;
         var menu = document.getElementById('contact-menu');
+        if (!menu) return;
         menu.style.display = 'block';
         
-        document.getElementById('menu-rename').onclick = async function() {
-            hideContactMenu();
-            var newName = await showModalInput('✎ Новое имя лучника', 'Имя', contact.name);
-            if (newName) {
-                var contacts = [];
-                try {
-                    contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
-                } catch(e) {
-                    console.error('Failed to load contacts:', e);
-                }
-                
-                var c = contacts.find(function(c) { return c.pubkey === contact.pubkey; });
-                if (c) {
-                    c.name = newName.substring(0, 15);
+        var menuRename = document.getElementById('menu-rename');
+        var menuAvatar = document.getElementById('menu-avatar');
+        var menuQr = document.getElementById('menu-qr');
+        var menuDelete = document.getElementById('menu-delete');
+        var menuCancel = document.getElementById('menu-cancel');
+        
+        if (menuRename) {
+            menuRename.onclick = async function() {
+                hideContactMenu();
+                var newName = await showModalInput('✎ Новое имя лучника', 'Имя', contact.name);
+                if (newName) {
+                    var contacts = [];
                     try {
-                        localStorage.setItem('robinhood_contacts', JSON.stringify(contacts));
+                        contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
                     } catch(e) {
-                        console.error('Failed to save contacts:', e);
+                        console.error('Failed to load contacts:', e);
                     }
-                    loadContacts();
-                    updateChatWithContact(c);
+                    
+                    var c = contacts.find(function(c) { return c.pubkey === contact.pubkey; });
+                    if (c) {
+                        c.name = newName.substring(0, 15);
+                        try {
+                            localStorage.setItem('robinhood_contacts', JSON.stringify(contacts));
+                        } catch(e) {
+                            console.error('Failed to save contacts:', e);
+                        }
+                        loadContacts();
+                        updateChatWithContact(c);
+                    }
                 }
-            }
-        };
+            };
+        }
         
-        document.getElementById('menu-avatar').onclick = function() {
-            hideContactMenu();
-            loadAvatarsForFriend(contact);
-        };
+        if (menuAvatar) {
+            menuAvatar.onclick = function() {
+                hideContactMenu();
+                loadAvatarsForFriend(contact);
+            };
+        }
         
-        document.getElementById('menu-qr').onclick = function() {
-            hideContactMenu();
-            showContactQR(contact);
-        };
+        if (menuQr) {
+            menuQr.onclick = function() {
+                hideContactMenu();
+                showContactQR(contact);
+            };
+        }
         
-        document.getElementById('menu-delete').onclick = function() {
-            hideContactMenu();
-            if (confirm('Убить лучника ' + contact.name + '?')) {
-                deleteContact(contact.pubkey);
-            }
-        };
+        if (menuDelete) {
+            menuDelete.onclick = function() {
+                hideContactMenu();
+                if (confirm('Убить лучника ' + contact.name + '?')) {
+                    deleteContact(contact.pubkey);
+                }
+            };
+        }
         
-        document.getElementById('menu-cancel').onclick = hideContactMenu;
+        if (menuCancel) {
+            menuCancel.onclick = hideContactMenu;
+        }
     }
 
     function hideContactMenu() {
-        document.getElementById('contact-menu').style.display = 'none';
+        var menu = document.getElementById('contact-menu');
+        if (menu) menu.style.display = 'none';
         currentMenuContact = null;
     }
 
-    // Touch gesture handling
-    var touchStartX = 0;
-    var touchStartY = 0;
-    var activeSheet = null;
-    var isScrolling = false;
-
-    function getActiveSheet() {
-        if (avatarSelector.classList.contains('show')) return avatarSelector;
-        if (contactsSheet.classList.contains('open')) return contactsSheet;
-        if (settingsSheet.classList.contains('open')) return settingsSheet;
-        return null;
+    // Share and close buttons
+    var shareRefLinkBtn = document.getElementById('share-ref-link-btn');
+    if (shareRefLinkBtn) {
+        shareRefLinkBtn.addEventListener('click', function() {
+            var refLinkDisplay = document.getElementById('ref-link-display');
+            var link = refLinkDisplay ? refLinkDisplay.textContent : '';
+            if (link && navigator.share) {
+                navigator.share({
+                    title: 'RobinHood P2P',
+                    url: link
+                }).catch(function() {});
+            }
+        });
     }
 
-    document.body.addEventListener('touchstart', function(e) {
-        activeSheet = getActiveSheet();
-        if (activeSheet) {
-            touchStartX = e.changedTouches[0].clientX;
-            touchStartY = e.changedTouches[0].clientY;
-            isScrolling = false;
-        }
-    }, { passive: true });
-
-    document.body.addEventListener('touchmove', function(e) {
-        if (!activeSheet) return;
-        var deltaX = e.changedTouches[0].clientX - touchStartX;
-        var deltaY = e.changedTouches[0].clientY - touchStartY;
-        
-        if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > 10) {
-            isScrolling = true;
-        }
-        
-        if (!isScrolling && deltaX < -35) {
-            e.preventDefault();
-            closeAllSheets();
-            activeSheet = null;
-            updateRobinStatus('↩️ Закрыто жестом', 1500);
-        }
-    });
-
-    document.body.addEventListener('touchend', function() {
-        activeSheet = null;
-        isScrolling = false;
-    });
-
-    // Share and close buttons
-    document.getElementById('share-ref-link-btn').addEventListener('click', function() {
-        var link = document.getElementById('ref-link-display').textContent;
-        if (link && navigator.share) {
-            navigator.share({
-                title: 'RobinHood P2P',
-                url: link
-            }).catch(function() {});
-        }
-    });
-
-    document.getElementById('close-ref-modal-btn').addEventListener('click', function() {
-        document.getElementById('ref-modal').classList.remove('active');
-    });
+    var closeRefModalBtn = document.getElementById('close-ref-modal-btn');
+    if (closeRefModalBtn) {
+        closeRefModalBtn.addEventListener('click', function() {
+            var refModal = document.getElementById('ref-modal');
+            if (refModal) refModal.classList.remove('active');
+        });
+    }
 
     // Initialize application
     async function init() {
@@ -4371,9 +2934,10 @@
         loadVisualTheme();
         
         var timestamp = Date.now();
-        document.getElementById('pong-frame').src = 'https://stepweather-prog.github.io/P2PPong/?v=' + timestamp;
+        if (pongFrame) {
+            pongFrame.src = 'https://stepweather-prog.github.io/P2PPong/?v=' + timestamp;
+        }
         
-        // Load history setting
         var savedHistory = null;
         try {
             savedHistory = localStorage.getItem('robinhood_history');
@@ -4381,9 +2945,8 @@
             console.error('Failed to load history setting:', e);
         }
         if (savedHistory !== null) toggleHistoryState = savedHistory === 'true';
-        toggleHistory.checked = toggleHistoryState;
+        if (toggleHistory) toggleHistory.checked = toggleHistoryState;
         
-        // Load sound setting
         var savedSound = null;
         try {
             savedSound = localStorage.getItem('robinhood_sound');
@@ -4391,9 +2954,8 @@
             console.error('Failed to load sound setting:', e);
         }
         if (savedSound !== null) toggleSoundState = savedSound === 'true';
-        toggleSound.checked = toggleSoundState;
+        if (toggleSound) toggleSound.checked = toggleSoundState;
         
-        // Load active tunnel
         var savedActive = null;
         try {
             savedActive = localStorage.getItem('robinhood_active_tunnel');
@@ -4411,5 +2973,3 @@
     window.addEventListener('load', init);
 })();
 </script>
-</body>
-</html>
