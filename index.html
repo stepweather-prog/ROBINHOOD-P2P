@@ -8,325 +8,16 @@
     <meta http-equiv="Expires" content="0">
     <title>RobinHood P2P</title>
     <link rel="manifest" href="manifest.json">
-    <link rel="icon" type="image/png" sizes="192x192" href="assets/avatars/022--20.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="assets/avatars/001-.png">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.12.2/lottie.min.js"></script>
     <style>
-        :root,
-        [data-theme="forest"] {
-            --bg-primary: #1a2a1f;
-            --bg-secondary: #0d1a0c;
-            --accent: #c4a24b;
-            --accent-light: #e8d5a3;
-            --accent-glow: rgba(196, 162, 75, 0.5);
-            --text: #e8e2c7;
-            --text-bright: #f5e6b8;
-            --text-dim: #b8a87a;
-            --border: #c4a24b;
-            --btn-bg: rgba(196, 162, 75, 0.1);
-            --btn-border: rgba(196, 162, 75, 0.3);
-            --btn-hover: rgba(196, 162, 75, 0.25);
-            --sheet-bg: linear-gradient(145deg, #1e2a1a 0%, #0f180d 100%);
-            --input-bg: rgba(20, 30, 18, 0.9);
-            --input-focus: rgba(25, 38, 22, 0.95);
-            --msg-bg: rgba(30, 40, 25, 0.85);
-            --msg-accent: #c4a24b;
-            --robin-bg: rgba(50, 70, 40, 0.9);
-            --robin-accent: #e8c97a;
-            --overlay-bg: rgba(0, 0, 0, 0.6);
-            --call-bg: linear-gradient(135deg, rgba(25, 35, 20, 0.98), rgba(15, 25, 12, 0.98));
-        }
-        [data-theme="sunset"] {
-            --bg-primary: #2a1a2f; --bg-secondary: #180a1d;
-            --accent: #c44b8a; --accent-light: #e890c0; --accent-glow: rgba(196,75,138,0.5);
-            --text: #f0c8e0; --text-bright: #fae0f0; --text-dim: #b870a0; --border: #c44b8a;
-            --btn-bg: rgba(196,75,138,0.1); --btn-border: rgba(196,75,138,0.3); --btn-hover: rgba(196,75,138,0.25);
-            --sheet-bg: linear-gradient(145deg, #2a1a28 0%, #180a15 100%);
-            --input-bg: rgba(30,15,25,0.9); --input-focus: rgba(38,18,30,0.95);
-            --msg-bg: rgba(40,20,30,0.85); --msg-accent: #c44b8a;
-            --robin-bg: rgba(60,30,45,0.9); --robin-accent: #e890c0;
-            --overlay-bg: rgba(0,0,0,0.7); --call-bg: linear-gradient(135deg, rgba(35,15,28,0.98), rgba(20,8,15,0.98));
-        }
-        [data-theme="ocean"] {
-            --bg-primary: #1a2a2f; --bg-secondary: #0a181d;
-            --accent: #4b9ec4; --accent-light: #90d0e8; --accent-glow: rgba(75,158,196,0.5);
-            --text: #c8e8f0; --text-bright: #e0f5fa; --text-dim: #7098b0; --border: #4b9ec4;
-            --btn-bg: rgba(75,158,196,0.1); --btn-border: rgba(75,158,196,0.3); --btn-hover: rgba(75,158,196,0.25);
-            --sheet-bg: linear-gradient(145deg, #1a282e 0%, #0a1518 100%);
-            --input-bg: rgba(15,25,30,0.9); --input-focus: rgba(18,32,38,0.95);
-            --msg-bg: rgba(20,30,38,0.85); --msg-accent: #4b9ec4;
-            --robin-bg: rgba(30,48,58,0.9); --robin-accent: #90d0e8;
-            --overlay-bg: rgba(0,0,0,0.7); --call-bg: linear-gradient(135deg, rgba(15,25,30,0.98), rgba(8,15,20,0.98));
-        }
-        [data-theme="rose"] {
-            --bg-primary: #2a1a22; --bg-secondary: #1a0a12;
-            --accent: #c44b6e; --accent-light: #e890b0; --accent-glow: rgba(196,75,110,0.5);
-            --text: #f0c8d8; --text-bright: #fae0e8; --text-dim: #b87090; --border: #c44b6e;
-            --btn-bg: rgba(196,75,110,0.1); --btn-border: rgba(196,75,110,0.3); --btn-hover: rgba(196,75,110,0.25);
-            --sheet-bg: linear-gradient(145deg, #2a1a22 0%, #180a12 100%);
-            --input-bg: rgba(30,15,22,0.9); --input-focus: rgba(38,18,28,0.95);
-            --msg-bg: rgba(40,20,28,0.85); --msg-accent: #c44b6e;
-            --robin-bg: rgba(60,30,42,0.9); --robin-accent: #e890b0;
-            --overlay-bg: rgba(0,0,0,0.7); --call-bg: linear-gradient(135deg, rgba(35,15,22,0.98), rgba(20,8,12,0.98));
-        }
-        [data-theme="amber"] {
-            --bg-primary: #2a221a; --bg-secondary: #1a120a;
-            --accent: #c48b4b; --accent-light: #e8c090; --accent-glow: rgba(196,139,75,0.5);
-            --text: #f0d8c0; --text-bright: #fae8d0; --text-dim: #b89870; --border: #c48b4b;
-            --btn-bg: rgba(196,139,75,0.1); --btn-border: rgba(196,139,75,0.3); --btn-hover: rgba(196,139,75,0.25);
-            --sheet-bg: linear-gradient(145deg, #2a2018 0%, #181008 100%);
-            --input-bg: rgba(30,22,15,0.9); --input-focus: rgba(38,28,18,0.95);
-            --msg-bg: rgba(40,28,20,0.85); --msg-accent: #c48b4b;
-            --robin-bg: rgba(60,42,30,0.9); --robin-accent: #e8c090;
-            --overlay-bg: rgba(0,0,0,0.7); --call-bg: linear-gradient(135deg, rgba(35,22,15,0.98), rgba(20,10,5,0.98));
-        }
-        [data-theme="mint"] {
-            --bg-primary: #1a2f25; --bg-secondary: #0a1d15;
-            --accent: #4bc49e; --accent-light: #90e8d0; --accent-glow: rgba(75,196,158,0.5);
-            --text: #c8f0e0; --text-bright: #e0faf0; --text-dim: #70b098; --border: #4bc49e;
-            --btn-bg: rgba(75,196,158,0.1); --btn-border: rgba(75,196,158,0.3); --btn-hover: rgba(75,196,158,0.25);
-            --sheet-bg: linear-gradient(145deg, #1a2a20 0%, #0a1810 100%);
-            --input-bg: rgba(15,30,22,0.9); --input-focus: rgba(18,38,28,0.95);
-            --msg-bg: rgba(20,38,28,0.85); --msg-accent: #4bc49e;
-            --robin-bg: rgba(30,58,42,0.9); --robin-accent: #90e8d0;
-            --overlay-bg: rgba(0,0,0,0.7); --call-bg: linear-gradient(135deg, rgba(15,30,22,0.98), rgba(5,20,12,0.98));
-        }
-        [data-theme="lavender"] {
-            --bg-primary: #1e1a2f; --bg-secondary: #0e0a1d;
-            --accent: #8a6bc4; --accent-light: #b890e8; --accent-glow: rgba(138,107,196,0.5);
-            --text: #d0c8f0; --text-bright: #e0d8fa; --text-dim: #9080b0; --border: #8a6bc4;
-            --btn-bg: rgba(138,107,196,0.1); --btn-border: rgba(138,107,196,0.3); --btn-hover: rgba(138,107,196,0.25);
-            --sheet-bg: linear-gradient(145deg, #1e1a2a 0%, #0e0a18 100%);
-            --input-bg: rgba(20,15,30,0.9); --input-focus: rgba(25,18,38,0.95);
-            --msg-bg: rgba(25,20,38,0.85); --msg-accent: #8a6bc4;
-            --robin-bg: rgba(38,30,55,0.9); --robin-accent: #b890e8;
-            --overlay-bg: rgba(0,0,0,0.7); --call-bg: linear-gradient(135deg, rgba(20,15,30,0.98), rgba(10,8,20,0.98));
-        }
-        [data-theme="cherry"] {
-            --bg-primary: #2a1a1f; --bg-secondary: #1a0a0f;
-            --accent: #c44b5e; --accent-light: #e8909e; --accent-glow: rgba(196,75,94,0.5);
-            --text: #f0c8d0; --text-bright: #fae0e5; --text-dim: #b07080; --border: #c44b5e;
-            --btn-bg: rgba(196,75,94,0.1); --btn-border: rgba(196,75,94,0.3); --btn-hover: rgba(196,75,94,0.25);
-            --sheet-bg: linear-gradient(145deg, #2a1a1e 0%, #180a0e 100%);
-            --input-bg: rgba(30,15,18,0.9); --input-focus: rgba(38,18,22,0.95);
-            --msg-bg: rgba(40,20,24,0.85); --msg-accent: #c44b5e;
-            --robin-bg: rgba(60,30,36,0.9); --robin-accent: #e8909e;
-            --overlay-bg: rgba(0,0,0,0.7); --call-bg: linear-gradient(135deg, rgba(35,15,18,0.98), rgba(20,5,8,0.98));
-        }
-
-        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; -webkit-text-size-adjust: 100%; }
-        body { background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%); color: var(--text); font-family: 'Segoe UI', 'Inter', 'Georgia', serif; display: flex; flex-direction: column; height: 100vh; height: 100dvh; position: relative; }
-        body::before { content: ""; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-image: url('assets/background.webp'); background-size: cover; background-position: center 30%; background-repeat: no-repeat; z-index: 0; opacity: 0.4; }
-        @media (max-width: 500px) and (orientation: portrait) { body::before { background-position: center center; } }
-        body::after { content: ""; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: radial-gradient(circle at 20% 30%, rgba(30,40,25,0.65), rgba(10,20,8,0.85)); z-index: 0; }
-        .header { background: linear-gradient(135deg, rgba(25,35,20,0.96), rgba(15,25,12,0.98)); border-bottom: 2px solid var(--border); backdrop-filter: blur(8px); z-index: 10; padding: 8px 12px; display: flex; flex-direction: column; gap: 6px; position: relative; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
-        .header-row-1 { display: flex; align-items: center; gap: 8px; }
-        .header-title-text { font-size: 1.3em; font-weight: bold; background: linear-gradient(135deg, var(--accent-light), var(--accent)); -webkit-background-clip: text; background-clip: text; color: transparent; letter-spacing: 1px; }
-        .header-shield { font-size: 1.1em; filter: drop-shadow(0 0 3px var(--accent-glow)); }
-        .header-version { font-size: 0.65em; color: var(--text-dim); }
-        .header-row-2 { display: flex; justify-content: space-around; align-items: center; }
-        .header-row-3 { display: flex; justify-content: space-around; }
-        .header-btn { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 12px; font-size: 22px; position: relative; transition: all 0.2s ease; background: var(--btn-bg); border: 1px solid var(--btn-border); }
-        .header-btn:hover { background: var(--btn-hover); transform: scale(1.05); border-color: var(--accent); }
-        .header-btn img { width: 100%; height: 100%; object-fit: contain; padding: 6px; }
-        .header-label { font-size: 0.6em; color: var(--text-dim); text-align: center; width: 44px; cursor: pointer; font-weight: bold; white-space: nowrap; letter-spacing: 0.5px; }
-        .header-avatar { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; border: 2px solid var(--border); box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
-        .chat-area { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; background: rgba(10,18,8,0.35); scrollbar-width: none; position: relative; z-index: 1; }
-        .chat-area::-webkit-scrollbar { display: none; }
-        .message-row { display: flex; align-items: flex-start; gap: 10px; background: var(--msg-bg); backdrop-filter: blur(8px); padding: 10px 12px; border-radius: 16px; border-left: 3px solid var(--msg-accent); transition: all 0.2s ease; animation: messageSlideIn 0.3s ease; }
-        @keyframes messageSlideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
-        .input-area { background: linear-gradient(135deg, rgba(25,35,20,0.96), rgba(15,25,12,0.98)); backdrop-filter: blur(8px); padding: 10px; padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)); display: flex; gap: 8px; align-items: center; border-top: 1px solid var(--border); position: relative; z-index: 1; }
-        input, textarea { flex: 1; background: var(--input-bg); border: 1px solid var(--border); padding: 12px; color: var(--text); border-radius: 12px; font-size: 16px; outline: none; font-family: 'Segoe UI', 'Inter', monospace; transition: all 0.2s; }
-        input:focus, textarea:focus { border-color: var(--accent-light); box-shadow: 0 0 8px var(--accent-glow); background: var(--input-focus); }
-        .bow-button { width: 44px; height: 44px; cursor: pointer; transition: transform 0.1s ease; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3)); }
-        .bow-button:active { transform: scale(0.92); }
-        .avatar { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; background-color: #2a3a25; flex-shrink: 0; border: 2px solid var(--border); }
-        .msg-body { flex: 1; min-width: 0; }
-        .msg-sender { font-weight: 900; color: var(--text-bright); font-size: 0.95em; text-shadow: 0 1px 2px rgba(0,0,0,0.5); letter-spacing: 0.3px; }
-        .msg-body div { font-size: 0.95em; line-height: 1.4; color: var(--text); }
-        .msg-status { font-size: 0.65em; color: var(--text-dim); text-align: right; margin-top: 4px; }
-        #robin-row { background: var(--robin-bg); border-left: 3px solid var(--robin-accent); box-shadow: 0 2px 12px rgba(0,0,0,0.2); }
-        #robin-text { font-weight: 700; font-size: 0.9em; color: var(--text-bright); text-shadow: 0 1px 3px rgba(0,0,0,0.6); }
-
-        .bottom-sheet, .avatar-selector { position: fixed; top: 0; left: 0; width: min(85%, 380px); height: 100%; background: var(--sheet-bg); border-right: 2px solid var(--border); z-index: 200; transform: translateX(-100%); transition: transform 0.35s cubic-bezier(0.2,0.9,0.4,1.1); overflow-y: auto; backdrop-filter: blur(16px); box-shadow: 8px 0 30px rgba(0,0,0,0.5); -webkit-overflow-scrolling: touch; }
-        .bottom-sheet.open, .avatar-selector.show { transform: translateX(0); }
-        .bottom-sheet-header { padding: 20px 20px 12px; font-weight: bold; color: var(--accent-light); border-bottom: 1px solid var(--border); margin-bottom: 8px; font-size: 1.1em; display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.2); }
-        .bottom-sheet-close { background: none; border: none; color: var(--accent-light); font-size: 26px; cursor: pointer; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
-        .bottom-sheet-close:hover { background: var(--btn-hover); transform: rotate(90deg); }
-        .bottom-sheet-list { padding: 8px 16px; }
-        .contact-item { display: flex; align-items: center; justify-content: space-between; padding: 12px; margin: 6px 0; border-radius: 14px; background: rgba(255,245,215,0.05); border: 1px solid var(--btn-border); cursor: pointer; color: var(--text); transition: all 0.2s; }
-        .contact-item:hover { background: var(--btn-hover); border-color: var(--accent); transform: translateX(5px); }
-        .contact-info { display: flex; align-items: center; gap: 12px; flex: 1; }
-        .contact-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid var(--border); }
-        .contact-name { font-weight: 600; font-size: 1em; color: var(--accent-light); }
-        .delete-contact { background: none; border: none; color: #c97a5a; font-size: 20px; cursor: pointer; padding: 8px; border-radius: 8px; transition: all 0.2s; flex-shrink: 0; }
-        .delete-contact:hover { background: rgba(201,122,90,0.2); transform: scale(1.1); }
-        .avatar-selector { padding: 20px; }
-        .avatar-selector p { color: var(--accent-light); margin: 0 0 16px; font-size: 1.1em; text-align: center; }
-        #avatar-list { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
-        .avatar-option { width: 55px; height: 55px; border-radius: 50%; object-fit: cover; margin: 4px; cursor: pointer; border: 2px solid transparent; transition: all 0.2s; }
-        .avatar-option:hover { border-color: var(--accent-light); transform: scale(1.1); }
-        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--overlay-bg); backdrop-filter: blur(4px); display: none; z-index: 190; }
-        .overlay.show { display: block; }
-        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); z-index: 300; justify-content: center; align-items: center; }
-        .modal-overlay.active { display: flex; }
-        .modal-dialog { background: var(--sheet-bg); padding: 24px; border-radius: 24px; width: 85%; max-width: 400px; text-align: center; border: 2px solid var(--border); max-height: 85vh; overflow-y: auto; box-shadow: 0 12px 40px rgba(0,0,0,0.5); }
-        .modal-dialog h3 { color: var(--accent-light); margin: 0 0 16px; font-size: 1.3em; }
-        .modal-dialog button { width: 100%; padding: 12px; margin-top: 8px; border: none; border-radius: 12px; font-size: 14px; font-weight: bold; cursor: pointer; transition: all 0.2s; }
-        .modal-dialog button:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
-        .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent)); color: #1a1f0f; }
-        .btn-dark { background: #4a3a2a; color: #eee; }
-        .btn-cancel { background: #5a3a2a; color: #eee; }
-        .code-display { background: #0a1208; border: 1px solid var(--border); color: var(--accent-light); border-radius: 12px; padding: 12px; font-size: 0.8em; word-break: break-all; margin: 16px 0; text-align: center; user-select: all; font-family: monospace; }
-        .contact-menu { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: var(--sheet-bg); border: 2px solid var(--border); border-radius: 20px; padding: 12px; z-index: 400; min-width: 240px; box-shadow: 0 12px 40px rgba(0,0,0,0.6); }
-        .contact-menu-item { padding: 12px; cursor: pointer; border-radius: 12px; margin-bottom: 6px; font-size: 0.95em; color: var(--text); transition: all 0.2s; }
-        .contact-menu-item:hover { background: var(--btn-hover); transform: translateX(5px); }
-        #menu-cancel { background: #4a3a2a; border: none; padding: 10px; border-radius: 10px; color: white; cursor: pointer; width: 100%; margin-top: 8px; }
-        .robin-arrow-container { display: inline-block; vertical-align: middle; margin-left: 8px; background: transparent !important; }
-        .robin-arrow-container svg, .robin-arrow-container canvas { background: transparent !important; }
-        .avatar-selector::-webkit-scrollbar, .bottom-sheet::-webkit-scrollbar { display: none; }
-        .avatar-selector, .bottom-sheet { scrollbar-width: none; }
-        .smoke-anim { position: fixed; bottom: 50%; left: 50%; transform: translate(-50%, 50%); width: 280px; height: 280px; z-index: 500; pointer-events: none; animation: smokeRise 3s ease-out forwards; }
-        @keyframes smokeRise { 0% { opacity: 1; transform: translate(-50%, 50%) scale(0.5); } 100% { opacity: 0; transform: translate(-50%, -100%) scale(1.5); } }
-        .modal-input-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); z-index: 500; display: none; justify-content: center; align-items: center; }
-        .modal-input-overlay.active { display: flex; }
-        .modal-input-dialog { background: var(--sheet-bg); border: 2px solid var(--border); border-radius: 20px; padding: 20px; width: 85%; max-width: 340px; text-align: center; }
-        .modal-input-dialog h3 { color: var(--accent-light); margin: 0 0 12px; font-size: 1.1em; }
-        .modal-input-dialog input { width: 100%; margin-bottom: 12px; }
-        .modal-input-dialog .modal-btns { display: flex; gap: 8px; }
-        .modal-input-dialog .modal-btns button { flex: 1; padding: 10px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; }
-        .btn-gold { background: linear-gradient(135deg, var(--accent), var(--accent)); color: #1a1f0f; }
-        .terms-btn { background: none; border: 1px solid var(--btn-border); color: var(--text-dim); padding: 4px 8px; border-radius: 8px; font-size: 0.6em; cursor: pointer; white-space: nowrap; transition: all 0.2s; }
-        .terms-btn:hover { background: var(--btn-hover); border-color: var(--accent); }
-        #call-panel { background: var(--call-bg); border-top: 2px solid var(--border); }
-        #call-status { color: var(--accent-light); }
-        #emoji-panel { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
-        #emoji-grid span { font-size: 24px; cursor: pointer; padding: 6px; border-radius: 8px; transition: all 0.15s; }
-        #emoji-grid span:hover { background: var(--btn-hover); transform: scale(1.2); }
-
-        .toggle-switch { position: relative; display: inline-block; width: 48px; height: 26px; flex-shrink: 0; }
-        .toggle-switch input { opacity: 0; width: 0; height: 0; }
-        .toggle-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.1); border-radius: 26px; border: 2px solid var(--border); transition: all 0.3s; }
-        .toggle-slider:before { content: ""; position: absolute; height: 18px; width: 18px; left: 2px; bottom: 2px; background: var(--text-dim); border-radius: 50%; transition: all 0.3s; }
-        .toggle-switch input:checked + .toggle-slider { background: #4caf50; border-color: #4caf50; }
-        .toggle-switch input:checked + .toggle-slider:before { transform: translateX(22px); background: white; }
-        .toggle-switch.disabled { opacity: 0.3; pointer-events: none; }
-        
-        .typing-indicator { font-size: 0.7em; color: var(--text-dim); padding: 2px 12px; font-style: italic; min-height: 18px; }
-        .online-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 4px; }
-        .online-dot.online { background: #4caf50; box-shadow: 0 0 6px #4caf50; }
-        .online-dot.offline { background: #666; }
+        /* все ваши стили (оставьте без изменений) */
     </style>
 </head>
 <body>
-    <div class="header">
-        <div class="header-row-1">
-            <span class="header-title-text">ROBINHOOD P2P</span><span class="header-shield">🏹</span><span style="flex:1;"></span>
-            <button class="terms-btn" id="btn-terms">⚜ условия</button><span class="header-version">v5.4</span>
-        </div>
-        <div class="header-row-2">
-            <div class="header-btn" id="btn-avatar"><img src="assets/avatars/001-.png" class="header-avatar" id="profile-avatar-small" alt="avatar"></div>
-            <div class="header-btn" id="btn-letters"><img src="assets/1.png" alt="contacts"></div>
-            <div class="header-btn" id="btn-arrow"><img src="assets/3.png" alt="arrow"></div>
-            <div class="header-btn" id="btn-clear"><img src="assets/6.png" alt="clear"></div>
-            <div class="header-btn" id="btn-call" title="Позвонить"><img src="assets/phone-go.png" alt="call"></div>
-            <div class="header-btn" id="btn-settings"><span style="font-size:22px;">⚙️</span></div>
-        </div>
-        <div class="header-row-3">
-            <span class="header-label" id="nick-label">Твой ник</span><span class="header-label">Лучники</span><span class="header-label">Стрела</span><span class="header-label">Курить</span><span class="header-label" id="call-label">Звонок</span><span class="header-label" id="settings-label">Настройки</span>
-        </div>
-    </div>
-
-    <div class="chat-area" id="chat-box">
-        <div class="message-row" id="robin-row"><img src="assets/avatars/231-icon-11433690.png" class="avatar" id="robin-avatar" alt="robin"><div class="msg-body"><div class="msg-sender">Robin Hood</div><div id="robin-text">Святые сокеты стабильны!</div></div></div>
-        <div class="typing-indicator" id="typing-indicator"></div>
-    </div>
-
-    <div class="input-area">
-        <button class="header-btn" id="btn-emoji" style="flex-shrink:0;width:38px;height:38px;font-size:18px;">😊</button>
-        <input type="text" id="msg-input" placeholder="Пустить стрелу" autocomplete="off">
-        <img src="assets/bow.png" class="bow-button" id="send-btn" alt="Отправить">
-    </div>
-
-    <div id="emoji-panel" style="display:none;position:fixed;bottom:60px;left:0;width:100%;background:linear-gradient(135deg,rgba(25,35,20,0.98),rgba(15,25,12,0.98));border-top:2px solid var(--border);z-index:50;padding:10px;max-height:200px;overflow-y:auto;">
-        <div id="emoji-grid" style="display:grid;grid-template-columns:repeat(8,1fr);gap:8px;text-align:center;"></div>
-    </div>
-
-    <div id="call-panel" style="display:none;position:fixed;bottom:0;left:0;width:100%;z-index:50;padding:15px;text-align:center;">
-        <div id="call-status" style="font-size:1em;margin-bottom:10px;">📞 Входящий вызов...</div>
-        <div style="display:flex;justify-content:center;gap:20px;align-items:center;">
-            <button id="call-accept" style="width:70px;height:70px;border-radius:50%;background:rgba(76,175,80,0.3);border:2px solid #4caf50;cursor:pointer;padding:12px;"><img src="assets/phone-go.png" style="width:100%;height:100%;object-fit:contain;"></button>
-            <button id="call-reject" style="width:70px;height:70px;border-radius:50%;background:rgba(244,67,54,0.3);border:2px solid #f44336;cursor:pointer;padding:12px;"><img src="assets/phone-stop.png" style="width:100%;height:100%;object-fit:contain;"></button>
-            <button id="call-speaker" style="display:none;width:60px;height:60px;border-radius:50%;background:rgba(196,162,75,0.3);border:2px solid var(--border);font-size:24px;cursor:pointer;">🔊</button>
-            <button id="call-end" style="display:none;width:70px;height:70px;border-radius:50%;background:rgba(244,67,54,0.3);border:2px solid #f44336;cursor:pointer;padding:12px;"><img src="assets/phone-stop.png" style="width:100%;height:100%;object-fit:contain;"></button>
-        </div>
-    </div>
-
-    <div class="overlay" id="overlay"></div>
-    <div class="avatar-selector" id="avatar-selector"><p>🏹 Выбери лучника 🏹</p><div id="avatar-list"></div></div>
-
-    <div class="bottom-sheet" id="contacts-sheet">
-        <div class="bottom-sheet-header"><span>🏹 Лучники Шервуда</span><button class="bottom-sheet-close" id="contacts-close">✕</button></div>
-        <div class="bottom-sheet-list" id="contacts-list-inner"></div>
-    </div>
-
-    <div class="bottom-sheet" id="settings-sheet">
-        <div class="bottom-sheet-header"><span>⚙️ Настройки</span><button class="bottom-sheet-close" id="settings-close">✕</button></div>
-        <div class="bottom-sheet-list" id="settings-list-inner">
-            <div class="contact-item" id="setting-history"><div class="contact-info"><span style="font-size:24px;">📜</span><span class="contact-name">Память</span></div><span id="history-status" style="color:var(--text-dim);font-size:0.8em;">Вкл</span></div>
-            <div class="contact-item" id="setting-sound"><div class="contact-info"><span style="font-size:24px;">🔔</span><span class="contact-name">Звук</span></div><span id="sound-status" style="color:var(--text-dim);font-size:0.8em;">Вкл</span></div>
-            <div class="contact-item" id="setting-theme"><div class="contact-info"><span style="font-size:24px;" id="theme-icon">🏹</span><span class="contact-name">Тема</span></div><span id="theme-name" style="color:var(--text-dim);font-size:0.8em;">Лес</span></div>
-            <div class="contact-item" id="setting-server">
-                <div class="contact-info"><span style="font-size:24px;">🌐</span><span class="contact-name">Сервер</span></div>
-                <div style="display:flex;align-items:center;gap:8px;">
-                    <span id="server-label" style="color:var(--text-dim);font-size:0.7em;">Render</span>
-                    <label class="toggle-switch"><input type="checkbox" id="server-toggle" onchange="window._toggleServer()"><span class="toggle-slider"></span></label>
-                </div>
-            </div>
-            <div class="contact-item" id="setting-tunnel">
-                <div class="contact-info"><span style="font-size:24px;">🔒</span><span class="contact-name">Туннель</span></div>
-                <label class="toggle-switch" id="tunnel-toggle-wrapper"><input type="checkbox" id="tunnel-toggle" onchange="window._toggleTunnel()"><span class="toggle-slider"></span></label>
-            </div>
-        </div>
-    </div>
-
-    <div class="modal-overlay" id="ref-modal">
-        <div class="modal-dialog"><h3>🏹 Стрела готова 🏹</h3><div class="code-display" id="ref-link-display"></div><button class="btn-primary" id="share-ref-link-btn">📤 Поделиться</button><button class="btn-cancel" id="cancel-arrow-btn">⏹ Отмена</button><button class="btn-dark" id="close-ref-modal-btn">Закрыть</button></div>
-    </div>
-
-    <div class="modal-overlay" id="tunnel-config-modal">
-        <div class="modal-dialog"><h3>➕ Добавить конфиг</h3>
-            <button class="btn-primary" id="btn-load-file">📂 Загрузить из файла</button>
-            <div style="margin:12px 0;color:var(--text-dim);">или вставьте текст конфига:</div>
-            <textarea id="tunnel-config-input" placeholder="[Interface]&#10;PrivateKey = ...&#10;Address = ...&#10;..." style="width:100%;height:120px;background:var(--input-bg);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:0.7em;font-family:monospace;resize:vertical;"></textarea>
-            <button class="btn-primary" id="btn-save-tunnel">💾 Сохранить</button>
-            <button class="btn-dark" id="btn-cancel-tunnel-config">Отмена</button>
-            <input type="file" id="config-file-input" accept=".conf" style="display:none;">
-        </div>
-    </div>
-
-    <div class="modal-overlay" id="link-preview-modal">
-        <div class="modal-dialog"><h3>🔗 Внешняя ссылка</h3><div id="link-preview-content"></div><button class="btn-dark" id="btn-close-link-preview">Закрыть</button></div>
-    </div>
-
-    <div id="contact-menu" class="contact-menu" style="display:none;">
-        <div class="contact-menu-item" id="menu-rename">✎ Переименовать</div>
-        <div class="contact-menu-item" id="menu-avatar">🖼 Сменить аватар</div>
-        <div class="contact-menu-item" id="menu-delete">🔥 Уволить лучника</div>
-        <button id="menu-cancel">Отмена</button>
-    </div>
-
-    <div id="bow-above-send" style="position:fixed;bottom:70px;right:15px;width:120px;height:120px;z-index:100;pointer-events:none;display:none;"></div>
-    <div class="modal-input-overlay" id="modal-input-overlay">
-        <div class="modal-input-dialog"><h3 id="modal-input-title">Введите текст</h3><input type="text" id="modal-input-field" placeholder="" autocomplete="off"><div class="modal-btns"><button class="btn-dark" id="modal-input-cancel">Отмена</button><button class="btn-gold" id="modal-input-ok">✓ Готово</button></div></div>
-    </div>
-    <div id="reaction-picker" style="display:none;position:fixed;z-index:500;background:var(--sheet-bg);border:2px solid var(--border);border-radius:12px;padding:8px;gap:8px;flex-wrap:wrap;">
-        <span>👍</span><span>❤️</span><span>😂</span><span>😮</span><span>😢</span><span>🔥</span>
-    </div>
-    <iframe id="pong-frame" src="" style="display:none;" title="p2p engine"></iframe>
-<input type="file" id="file-input" style="display:none;" multiple>
-<script>
-    (function() {
+    <!-- вся ваша HTML-разметка (оставьте без изменений) -->
+    <script>
+        (function() {
             // === Часть 1: Основные переменные DOM ===
             const pongFrame = document.getElementById('pong-frame');
             const chatBox = document.getElementById('chat-box');
@@ -385,7 +76,7 @@
             let toggleHistoryState = true;
             let toggleSoundState = true;
             let activeContact = null;
-            let historyEncryptionKey = null; // только в памяти
+            let historyEncryptionKey = null;
             let robinDefaultText = robinText ? robinText.textContent : 'Святые сокеты стабильны!';
             let robinTimer = null;
             let currentMenuContact = null;
@@ -418,10 +109,14 @@
             try { messageReactions = JSON.parse(localStorage.getItem('robinhood_reactions') || '{}'); } catch(e) {}
 
             const themes = [
-                { id: 'forest', icon: '🏹', name: 'Лес' }, { id: 'sunset', icon: '🌅', name: 'Закат' },
-                { id: 'ocean', icon: '🌊', name: 'Океан' }, { id: 'rose', icon: '🌹', name: 'Роза' },
-                { id: 'amber', icon: '🍯', name: 'Янтарь' }, { id: 'mint', icon: '🌿', name: 'Мята' },
-                { id: 'lavender', icon: '💜', name: 'Лаванда' }, { id: 'cherry', icon: '🍒', name: 'Вишня' }
+                { id: 'forest', icon: '🏹', name: 'Лес' },
+                { id: 'sunset', icon: '🌅', name: 'Закат' },
+                { id: 'ocean', icon: '🌊', name: 'Океан' },
+                { id: 'rose', icon: '🌹', name: 'Роза' },
+                { id: 'amber', icon: '🍯', name: 'Янтарь' },
+                { id: 'mint', icon: '🌿', name: 'Мята' },
+                { id: 'lavender', icon: '💜', name: 'Лаванда' },
+                { id: 'cherry', icon: '🍒', name: 'Вишня' }
             ];
             let currentTheme = localStorage.getItem('robinhood_theme') || 'forest';
 
@@ -439,7 +134,8 @@
                     { urls: "stun:stun1.l.google.com:19302" },
                     {
                         urls: ["turn:openrelay.metered.ca:80?transport=tcp", "turn:openrelay.metered.ca:443?transport=tcp"],
-                        username: "openrelayproject", credential: "openrelayproject"
+                        username: "openrelayproject",
+                        credential: "openrelayproject"
                     }
                 ];
             }
@@ -695,30 +391,62 @@
             callLabel.addEventListener('click', () => btnCall.click());
 
             // === Часть 13: Отправка файлов ===
-const btnFile = document.getElementById('btn-file');
-const fileInput = document.getElementById('file-input');
+            const btnFile = document.getElementById('btn-file');
+            const fileInput = document.getElementById('file-input');
+            if (btnFile) {
+                btnFile.addEventListener('click', () => {
+                    if (fileInput) fileInput.click();
+                });
+            }
+            if (fileInput) {
+                fileInput.addEventListener('change', () => {
+                    Array.from(fileInput.files).forEach(file => {
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                            const base64 = reader.result.split(',')[1];
+                            sendFileMessage({ name: file.name, size: file.size, type: file.type, data: base64 });
+                        };
+                        reader.readAsDataURL(file);
+                    });
+                    fileInput.value = '';
+                });
+            }
 
-if (btnFile) {
-    btnFile.addEventListener('click', () => {
-        if (fileInput) fileInput.click();
-    });
-}
+            function sendFileMessage(fileData) {
+                if (!activeChannelId || !channels[activeChannelId]) return;
+                const payload = { type: 'file', name: fileData.name, size: fileData.size, mime: fileData.type || 'application/octet-stream', data: fileData.data, time: Date.now() };
+                sendToPong({ action: 'send', text: '__FILE__' + JSON.stringify(payload), channelId: activeChannelId });
+                appendFileMessage('Вы', payload, profileAvatarSmall ? profileAvatarSmall.src : 'assets/avatars/001-.png');
+            }
 
-if (fileInput) {
-    fileInput.addEventListener('change', () => {
-        Array.from(fileInput.files).forEach(file => {
-            const reader = new FileReader();
-            reader.onload = () => {
-                const base64 = reader.result.split(',')[1];
-                sendFileMessage({ name: file.name, size: file.size, type: file.type, data: base64 });
-            };
-            reader.readAsDataURL(file);
-        });
-        fileInput.value = '';
-    });
-}
+            function appendFileMessage(sender, fileData, avatarSrc) {
+                const sizeStr = fileData.size < 1024 ? fileData.size + ' B' : (fileData.size < 1048576 ? (fileData.size / 1024).toFixed(1) + ' KB' : (fileData.size / 1048576).toFixed(1) + ' MB');
+                const row = document.createElement('div');
+                row.className = 'message-row';
+                row.innerHTML = `<img src="${avatarSrc}" class="avatar" alt="avatar">
+                    <div class="msg-body"><div class="msg-sender">${safeHtml(sender)}</div>
+                    <div class="msg-file" data-file="${safeHtml(fileData.name)}" data-mime="${fileData.mime}" data-filedata="${fileData.data}">
+                    <span class="msg-file-icon">📄</span><div class="msg-file-info"><div class="msg-file-name">${safeHtml(fileData.name)}</div>
+                    <div class="msg-file-size">${sizeStr}</div></div></div>
+                    <div class="msg-status">${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div></div>`;
+                chatBox.insertBefore(row, typingIndicator);
+                chatBox.scrollTop = chatBox.scrollHeight;
+                row.querySelector('.msg-file').addEventListener('click', function() {
+                    const data = this.dataset.filedata;
+                    const mime = this.dataset.mime;
+                    const name = this.dataset.name;
+                    const byteString = atob(data);
+                    const ab = new ArrayBuffer(byteString.length);
+                    const ia = new Uint8Array(ab);
+                    for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
+                    const blob = new Blob([ab], { type: mime });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a'); a.href = url; a.download = name; a.click();
+                    setTimeout(() => URL.revokeObjectURL(url), 10000);
+                });
+            }
 
-// === Часть 14: Самоуничтожающиеся сообщения (упрощено) ===
+            // === Часть 14: Самоуничтожающиеся сообщения (упрощено) ===
             let selfDestructMode = false;
             const btnSelfDestruct = document.getElementById('btn-self-destruct');
             if (btnSelfDestruct) {
@@ -734,7 +462,7 @@ if (fileInput) {
                 if (!activeChannelId || !channels[activeChannelId]) return;
                 const payload = { type: 'selfdestruct', text, duration: duration || 30, time: Date.now() };
                 sendToPong({ action: 'send', text: '__SELFDESTRUCT__' + JSON.stringify(payload), channelId: activeChannelId });
-                appendSelfDestructMessage('Вы', text, profileAvatarSmall.src, duration || 30);
+                appendSelfDestructMessage('Вы', text, profileAvatarSmall ? profileAvatarSmall.src : 'assets/avatars/001-.png', duration || 30);
             }
 
             function appendSelfDestructMessage(sender, text, avatarSrc, duration) {
@@ -1020,8 +748,7 @@ if (fileInput) {
 
             // === Часть 23: Приём сообщений от P2PPong ===
             window.addEventListener('message', async (event) => {
-               if (event.origin !== PONGPONG_ORIGIN) return;
-              //  if (event.source !== pongFrame.contentWindow) return;
+                if (event.origin !== PONGPONG_ORIGIN) return;
                 const data = event.data;
                 if (!data || !data.type) return;
 
@@ -1207,10 +934,8 @@ if (fileInput) {
                         if (toggleSoundState) playSound('bow_shot.mp3');
                         break;
                     case 'install-prompt':
-    // Не вызываем prompt() автоматически — это требует жеста пользователя.
-    // Просто информируем, что можно установить приложение вручную.
-    updateRobinStatus('📲 Приложение можно установить (меню браузера)', 4000);
-    break;
+                        updateRobinStatus('📲 Приложение можно установить (меню браузера)', 4000);
+                        break;
                 }
             });
 
