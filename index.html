@@ -214,16 +214,18 @@
     </div>
 
     <div class="modal-overlay" id="ref-modal">
-        <div class="modal-dialog"><h3>🏹 Стрела готова 🏹</h3><div class="code-display" id="ref-link-display"></div><button class="btn-primary" id="share-ref-link-btn">📤 Поделиться</button><button class="btn-cancel" id="cancel-arrow-btn">⏹ Отмена</button><button class="btn-dark" id="close-ref-modal-btn">Закрыть</button></div>
+        <div class="modal-dialog"><h3>🏹 Стрела готова 🏹</h3><div class="code-display" id="ref-link-display"></div><button class="btn-primary" id="share-ref-link-btn">📤 Поделиться</button><button class="btn-cancel" id="cancel-arrow-btn" onclick="window._cancelArrow && window._cancelArrow()">⏹ Отмена</button>
+<button class="btn-dark" id="close-ref-modal-btn" onclick="document.getElementById('ref-modal').classList.remove('active')">Закрыть</button></div>
     </div>
 
-    <div class="modal-overlay" id="tunnel-config-modal">
+   <div class="modal-overlay" id="tunnel-config-modal">
         <div class="modal-dialog"><h3>➕ Добавить конфиг</h3>
-            <button class="btn-primary" id="btn-load-file">📂 Загрузить из файла</button>
+             <button class="btn-primary" id="btn-load-file">📂 Загрузить из файла</button>
             <div style="margin:12px 0;color:var(--text-dim);">или вставьте текст конфига:</div>
             <textarea id="tunnel-config-input" placeholder="[Interface]&#10;PrivateKey = ...&#10;Address = ...&#10;..." style="width:100%;height:120px;background:var(--input-bg);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:0.7em;font-family:monospace;resize:vertical;"></textarea>
             <button class="btn-primary" id="btn-save-tunnel">💾 Сохранить</button>
             <button class="btn-dark" id="btn-cancel-tunnel-config">Отмена</button>
+            <button class="btn-dark" id="btn-close-tunnel-config" onclick="document.getElementById('tunnel-config-modal').classList.remove('active')">Закрыть</button>
             <input type="file" id="config-file-input" accept=".conf" style="display:none;">
         </div>
     </div>
