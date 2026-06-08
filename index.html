@@ -123,6 +123,7 @@
         .online-dot { width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:4px; }
         .online-dot.online { background:#4caf50; box-shadow:0 0 6px #4caf50; }
         .online-dot.offline { background:#666; }
+        #reaction-picker { display: none; }
     </style>
 </head>
 <body>
@@ -151,7 +152,6 @@
     </div>
 </div>
     <div class="chat-area" id="chat-box">
-        
         <div class="typing-indicator" id="typing-indicator"></div>
     </div>
 
@@ -254,7 +254,6 @@
         <span>👍</span><span>❤️</span><span>😂</span><span>😮</span><span>😢</span><span>🔥</span>
     </div>
     <iframe id="pong-frame" src="" style="display:none;" title="p2p engine"></iframe>
-    
 
     <script>
         (function() {
@@ -403,14 +402,14 @@
             let meshPeers = {};
             let cachedHistory = [];
             let selfDestructMode = false;
-            let reactionMode = false;                // true — клик по эмодзи отправит реакцию
-            let reactionModeJustActivated = false;   // защита от мгновенного закрытия панели
-            let reactionTargetMsgId = null;          // ID сообщения, на которое ставим реакцию
+            let reactionMode = false;
+            let reactionModeJustActivated = false;
+            let reactionTargetMsgId = null;
             let voiceRecorder = null;
             let voiceChunks = [];
             let voiceStartTime = 0;
             let voiceTimer = null;
-           const MAX_VOICE_DURATION = 60;
+            const MAX_VOICE_DURATION = 60;
             try { savedConfigs = JSON.parse(localStorage.getItem('robinhood_tunnels') || '[]'); } catch(e) {}
             try { currentServer = localStorage.getItem('robinhood_server') || 'render'; } catch(e) {}
             try { messageReactions = JSON.parse(localStorage.getItem('robinhood_reactions') || '{}'); } catch(e) {}
@@ -903,32 +902,32 @@ function toggleCamera() {
                 if (links.length > 0) { links.forEach(url => { displayText = displayText.replace(safeHtml(url), `<a href="${url}" target="_blank" class="msg-link">${safeHtml(url)}</a>`); }); }
                 row.innerHTML = `<img src="${avatarSrc}" class="avatar" alt="avatar"><div class="msg-body"><div class="msg-sender">${safeHtml(sender)}</div><div class="msg-text">${displayText}</div><div class="msg-status">${finalTime}</div></div>`;
                 chatBox.insertBefore(row, typingIndicator); chatBox.scrollTop = chatBox.scrollHeight;
-                  let pressTimer;
-row.addEventListener('mousedown', (e) => {
-    pressTimer = setTimeout(() => {
-        if (!row || !emojiPanel) return;
-        reactionTargetMsgId = row.dataset.msgid || row.id;
-        reactionMode = true;
-        reactionModeJustActivated = true;
-        emojiPanel.style.display = 'block';
-    }, 500);
-});
-row.addEventListener('mouseup', () => clearTimeout(pressTimer));
-row.addEventListener('mouseleave', () => clearTimeout(pressTimer));
-row.addEventListener('touchstart', (e) => {
-    pressTimer = setTimeout(() => {
-        if (!row || !emojiPanel) return;
-        reactionTargetMsgId = row.dataset.msgid || row.id;
-        reactionMode = true;
-        reactionModeJustActivated = true;
-        emojiPanel.style.display = 'block';
-    }, 500);
-}, { passive: true });
-row.addEventListener('touchend', () => clearTimeout(pressTimer));
-row.addEventListener('touchmove', () => clearTimeout(pressTimer), { passive: true });
-               
+
+                // Обработчики для реакций: долгое нажатие открывает панель эмодзи в режиме реакций
+                let pressTimer;
+                row.addEventListener('mousedown', (e) => {
+                    pressTimer = setTimeout(() => {
+                        if (!row || !emojiPanel) return;
+                        reactionTargetMsgId = row.dataset.msgid || row.id;
+                        reactionMode = true;
+                        reactionModeJustActivated = true;
+                        emojiPanel.style.display = 'block';
+                    }, 500);
+                });
+                row.addEventListener('mouseup', () => clearTimeout(pressTimer));
+                row.addEventListener('mouseleave', () => clearTimeout(pressTimer));
+                row.addEventListener('touchstart', (e) => {
+                    pressTimer = setTimeout(() => {
+                        if (!row || !emojiPanel) return;
+                        reactionTargetMsgId = row.dataset.msgid || row.id;
+                        reactionMode = true;
+                        reactionModeJustActivated = true;
+                        emojiPanel.style.display = 'block';
+                    }, 500);
+                }, { passive: true });
                 row.addEventListener('touchend', () => clearTimeout(pressTimer));
-                row.addEventListener('touchmove', () => clearTimeout(pressTimer));
+                row.addEventListener('touchmove', () => clearTimeout(pressTimer), { passive: true });
+
                 row.querySelectorAll('.msg-link').forEach(link => { link.addEventListener('click', e => { e.preventDefault(); showLinkPreview(link.href); }); });
 
                 if (messageReactions[msgId]) { Object.keys(messageReactions[msgId]).forEach(emoji => { for (let i = 0; i < messageReactions[msgId][emoji]; i++) addReactionToMessage(msgId, emoji, false); }); }
@@ -1048,21 +1047,17 @@ row.addEventListener('touchmove', () => clearTimeout(pressTimer), { passive: tru
             }
 
             // === Файлы ===
-            
-            
             function sendFileMessage(fileData) { if (!activeChannelId || !channels[activeChannelId]) return; const payload = { type: 'file', name: fileData.name, size: fileData.size, mime: fileData.type || 'application/octet-stream', data: fileData.data, time: Date.now() }; sendToPong({ action: 'send', text: '__FILE__' + JSON.stringify(payload), channelId: activeChannelId }); appendFileMessage('Вы', payload, profileAvatarSmall?.src || 'assets/avatars/001-.png'); }
             function appendFileMessage(sender, fileData, avatarSrc) {
     const sizeStr = fileData.size < 1024 ? fileData.size + ' B' : (fileData.size < 1048576 ? (fileData.size / 1024).toFixed(1) + ' KB' : (fileData.size / 1048576).toFixed(1) + ' MB');
     const row = document.createElement('div'); row.className = 'message-row';
     const isAudio = fileData.mime && fileData.mime.startsWith('audio/');
     if (isAudio) {
-        // Голосовое сообщение – встраиваем плеер
         row.innerHTML = `<img src="${avatarSrc}" class="avatar" alt="avatar">
             <div class="msg-body"><div class="msg-sender">${safeHtml(sender)}</div>
             <audio controls src="data:${fileData.mime};base64,${fileData.data}" style="width:100%;max-width:250px;"></audio>
             <div class="msg-status">${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div></div>`;
     } else {
-        // Обычный файл (на будущее)
         row.innerHTML = `<img src="${avatarSrc}" class="avatar" alt="avatar">
             <div class="msg-body"><div class="msg-sender">${safeHtml(sender)}</div>
             <div class="msg-file" data-file="${safeHtml(fileData.name)}" data-mime="${fileData.mime}" data-filedata="${fileData.data}">
@@ -1108,48 +1103,46 @@ row.addEventListener('touchmove', () => clearTimeout(pressTimer), { passive: tru
 
             // === Эмодзи и предпросмотр ссылок ===
             const emojis = ['😀','😂','🤣','😍','😘','😜','😎','🤩','🥳','😢','😡','👍','👎','❤️','🔥','🎉','💀','🏹','🌲','🏰','🦊','🐺','✨','⚔️','🛡️','🍺','🍗','🏕️','🌙','☀️','🌟','💪','🤝','🙏','👑','💰','🎯','📞','💬','🔔','❌','✅','🎵','📜','⚜️'];
-            if (emojiGrid) { emojiGrid.innerHTML = ''; emojis.forEach(e => { const span = document.createElement('span'); span.textContent = e;
-            span.addEventListener('click', () => {
-    if (reactionMode && reactionTargetMsgId && activeChannelId) {
-        // Отправляем реакцию
-        sendToPong({
-            action: 'send',
-            text: '__REACTION__' + JSON.stringify({ msgId: reactionTargetMsgId, emoji: e }),
-            channelId: activeChannelId
-        });
-        addReactionToMessage(reactionTargetMsgId, e, true);
-        // Закрываем панель и выходим из режима реакций
-        if (emojiPanel) emojiPanel.style.display = 'none';
-        reactionMode = false;
-        reactionTargetMsgId = null;
-    } else {
-        // Обычный режим — вставка смайла в поле ввода
-        msgInput.value += e;
-        msgInput.focus();
-    }
-}); emojiGrid.appendChild(span); }); }
+            if (emojiGrid) { emojiGrid.innerHTML = ''; emojis.forEach(e => { const span = document.createElement('span'); span.textContent = e; span.addEventListener('click', () => {
+                if (reactionMode && reactionTargetMsgId && activeChannelId) {
+                    // Отправляем реакцию
+                    sendToPong({
+                        action: 'send',
+                        text: '__REACTION__' + JSON.stringify({ msgId: reactionTargetMsgId, emoji: e }),
+                        channelId: activeChannelId
+                    });
+                    addReactionToMessage(reactionTargetMsgId, e, true);
+                    // Закрываем панель и выходим из режима реакций
+                    if (emojiPanel) emojiPanel.style.display = 'none';
+                    reactionMode = false;
+                    reactionTargetMsgId = null;
+                } else {
+                    // Обычный режим — вставка смайла в поле ввода
+                    msgInput.value += e;
+                    msgInput.focus();
+                }
+            }); emojiGrid.appendChild(span); }); }
             if (btnEmoji) btnEmoji.addEventListener('click', () => { if (emojiPanel) emojiPanel.style.display = emojiPanel.style.display === 'block' ? 'none' : 'block'; });
-            document.addEventListener('click', e => { 
             document.addEventListener('click', e => {
-    // Если панель только что открыта для реакции – не закрываем её сразу
-    if (reactionModeJustActivated) {
-        reactionModeJustActivated = false;
-        return;
-    }
-    // Закрываем панель эмодзи, если кликнули вне её
-    if (emojiPanel && !emojiPanel.contains(e.target) && e.target !== btnEmoji) {
-        emojiPanel.style.display = 'none';
-        if (reactionMode) {
-            reactionMode = false;
-            reactionTargetMsgId = null;
-        }
-    }
-    // Закрываем панель быстрых реакций (если ещё используется)
-    if (reactionPicker && !reactionPicker.contains(e.target)) {
-        reactionPicker.style.display = 'none';
-        activeReactionMsgId = null;
-    }
-});
+                // Если панель только что открыта для реакции – не закрываем её сразу
+                if (reactionModeJustActivated) {
+                    reactionModeJustActivated = false;
+                    return;
+                }
+                // Закрываем панель эмодзи, если кликнули вне её
+                if (emojiPanel && !emojiPanel.contains(e.target) && e.target !== btnEmoji) {
+                    emojiPanel.style.display = 'none';
+                    if (reactionMode) {
+                        reactionMode = false;
+                        reactionTargetMsgId = null;
+                    }
+                }
+                // Закрываем панель быстрых реакций (если ещё используется)
+                if (reactionPicker && !reactionPicker.contains(e.target)) {
+                    reactionPicker.style.display = 'none';
+                    activeReactionMsgId = null;
+                }
+            });
             function detectLinks(text) { const urlRegex = /(https?:\/\/[^\s]+)/g; return text.match(urlRegex) || []; }
             function showLinkPreview(url) { if (!linkPreviewContent) return; linkPreviewContent.innerHTML = ''; const div = document.createElement('div'); div.className = 'link-preview'; div.innerHTML = `<div class="link-preview-info"><div class="link-preview-title">🔗 Внешняя ссылка</div><div class="link-preview-url">${safeHtml(url)}</div><div class="link-preview-desc">Нажмите чтобы открыть</div></div>`; div.addEventListener('click', () => window.open(url, '_blank')); linkPreviewContent.appendChild(div); if (linkPreviewModal) linkPreviewModal.classList.add('active'); }
             document.getElementById('btn-close-link-preview')?.addEventListener('click', () => { document.getElementById('link-preview-modal')?.classList.remove('active'); });
