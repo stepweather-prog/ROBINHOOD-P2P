@@ -405,6 +405,7 @@
             let cachedHistory = [];
             let selfDestructMode = false;
             let reactionMode = false;   // true — клик по эмодзи отправит реакцию, false — вставит в поле ввода
+            let reactionModeJustActivated = false;
             let reactionTargetMsgId = null; // ID сообщения, на которое ставим реакцию
             let voiceRecorder = null;
             let voiceChunks = [];
@@ -903,16 +904,14 @@ function toggleCamera() {
                 if (links.length > 0) { links.forEach(url => { displayText = displayText.replace(safeHtml(url), `<a href="${url}" target="_blank" class="msg-link">${safeHtml(url)}</a>`); }); }
                 row.innerHTML = `<img src="${avatarSrc}" class="avatar" alt="avatar"><div class="msg-body"><div class="msg-sender">${safeHtml(sender)}</div><div class="msg-text">${displayText}</div><div class="msg-status">${finalTime}</div></div>`;
                 chatBox.insertBefore(row, typingIndicator); chatBox.scrollTop = chatBox.scrollHeight;
-                let pressTimer;
-             row.addEventListener('mousedown', (e) => {
-            pressTimer = setTimeout(() => {
+                     let pressTimer;
+row.addEventListener('mousedown', (e) => {
+    pressTimer = setTimeout(() => {
         if (!row || !emojiPanel) return;
         reactionTargetMsgId = row.dataset.msgid || row.id;
         reactionMode = true;
-        const rect = row.getBoundingClientRect();
-        emojiPanel.style.display = 'block';
-        emojiPanel.style.top = (rect.top - emojiPanel.offsetHeight - 10) + 'px';
-        emojiPanel.style.left = Math.min(rect.left, window.innerWidth - emojiPanel.offsetWidth) + 'px';
+        reactionModeJustActivated = true;   // защита от мгновенного закрытия
+        emojiPanel.style.display = 'block'; // панель внизу (CSS задаёт position:fixed; bottom:...)
     }, 500);
 });
 row.addEventListener('mouseup', () => clearTimeout(pressTimer));
@@ -922,10 +921,8 @@ row.addEventListener('touchstart', (e) => {
         if (!row || !emojiPanel) return;
         reactionTargetMsgId = row.dataset.msgid || row.id;
         reactionMode = true;
-        const rect = row.getBoundingClientRect();
+        reactionModeJustActivated = true;
         emojiPanel.style.display = 'block';
-        emojiPanel.style.top = (rect.top - emojiPanel.offsetHeight - 10) + 'px';
-        emojiPanel.style.left = Math.min(rect.left, window.innerWidth - emojiPanel.offsetWidth) + 'px';
     }, 500);
 }, { passive: true });
 row.addEventListener('touchend', () => clearTimeout(pressTimer));
@@ -1164,11 +1161,15 @@ row.addEventListener('touchmove', () => clearTimeout(pressTimer));
     }
 }); emojiGrid.appendChild(span); }); }
             if (btnEmoji) btnEmoji.addEventListener('click', () => { if (emojiPanel) emojiPanel.style.display = emojiPanel.style.display === 'block' ? 'none' : 'block'; });
-document.addEventListener('click', e => {
+               document.addEventListener('click', e => {
+    // Если панель только что открыта – не закрываем её
+    if (reactionModeJustActivated) {
+        reactionModeJustActivated = false;
+        return;
+    }
     // Закрываем панель эмодзи, если кликнули вне её
     if (emojiPanel && !emojiPanel.contains(e.target) && e.target !== btnEmoji) {
         emojiPanel.style.display = 'none';
-        // Сбрасываем режим реакций, если он был включен
         if (reactionMode) {
             reactionMode = false;
             reactionTargetMsgId = null;
