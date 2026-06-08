@@ -903,18 +903,34 @@ function toggleCamera() {
                 if (links.length > 0) { links.forEach(url => { displayText = displayText.replace(safeHtml(url), `<a href="${url}" target="_blank" class="msg-link">${safeHtml(url)}</a>`); }); }
                 row.innerHTML = `<img src="${avatarSrc}" class="avatar" alt="avatar"><div class="msg-body"><div class="msg-sender">${safeHtml(sender)}</div><div class="msg-text">${displayText}</div><div class="msg-status">${finalTime}</div></div>`;
                 chatBox.insertBefore(row, typingIndicator); chatBox.scrollTop = chatBox.scrollHeight;
-
                 let pressTimer;
-            row.addEventListener('mousedown', (e) => {
-           pressTimer = setTimeout(() => showReactionPicker(row, e), 500);
-   });
-           row.addEventListener('mouseup', () => clearTimeout(pressTimer));
-             row.addEventListener('mouseleave', () => clearTimeout(pressTimer));
-             row.addEventListener('touchstart', (e) => {
-              pressTimer = setTimeout(() => showReactionPicker(row, e), 500);
-          }, { passive: true });
-            row.addEventListener('touchend', () => clearTimeout(pressTimer));
-              row.addEventListener('touchmove', () => clearTimeout(pressTimer));
+             row.addEventListener('mousedown', (e) => {
+            pressTimer = setTimeout(() => {
+        if (!row || !emojiPanel) return;
+        reactionTargetMsgId = row.dataset.msgid || row.id;
+        reactionMode = true;
+        const rect = row.getBoundingClientRect();
+        emojiPanel.style.display = 'block';
+        emojiPanel.style.top = (rect.top - emojiPanel.offsetHeight - 10) + 'px';
+        emojiPanel.style.left = Math.min(rect.left, window.innerWidth - emojiPanel.offsetWidth) + 'px';
+    }, 500);
+});
+row.addEventListener('mouseup', () => clearTimeout(pressTimer));
+row.addEventListener('mouseleave', () => clearTimeout(pressTimer));
+row.addEventListener('touchstart', (e) => {
+    pressTimer = setTimeout(() => {
+        if (!row || !emojiPanel) return;
+        reactionTargetMsgId = row.dataset.msgid || row.id;
+        reactionMode = true;
+        const rect = row.getBoundingClientRect();
+        emojiPanel.style.display = 'block';
+        emojiPanel.style.top = (rect.top - emojiPanel.offsetHeight - 10) + 'px';
+        emojiPanel.style.left = Math.min(rect.left, window.innerWidth - emojiPanel.offsetWidth) + 'px';
+    }, 500);
+}, { passive: true });
+row.addEventListener('touchend', () => clearTimeout(pressTimer));
+row.addEventListener('touchmove', () => clearTimeout(pressTimer), { passive: true });
+                
                 row.querySelectorAll('.msg-link').forEach(link => { link.addEventListener('click', e => { e.preventDefault(); showLinkPreview(link.href); }); });
 
                 if (messageReactions[msgId]) { Object.keys(messageReactions[msgId]).forEach(emoji => { for (let i = 0; i < messageReactions[msgId][emoji]; i++) addReactionToMessage(msgId, emoji, false); }); }
