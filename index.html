@@ -141,7 +141,7 @@
             <div class="header-btn" id="btn-settings"><span style="font-size:22px;">⚙️</span></div>
         </div>
         <div class="header-row-3">
-            <span class="header-label" id="nick-label">Твой ник</span><span class="header-label">Лучники</span><span class="header-label">Стрела</span><span class="header-label">Курить</span><span class="header-label" id="call-label">Звонок</span><span class="header-label">Видео</span><span class="header-label" id="settings-label">Настройки</span>
+            <span class="header-label" id="nick-label">Твой ник</span><span class="header-label">Лучники</span><span class="header-label">Стрела</span><span class="header-label">Курить</span><span class="header-label" id="call-label">Звонок</span><span class="header-label">Видео</span><span class="header-label" id="settings-label">Опции</span>
         </div>
     </div>
 
@@ -152,8 +152,8 @@
 
     <div class="input-area">
         <button class="header-btn" id="btn-emoji" style="flex-shrink:0;width:38px;height:38px;font-size:18px;">😊</button>
-        <button class="header-btn" id="btn-voice" style="flex-shrink:0;width:38px;height:38px;padding:6px;">
-    <img src="assets/phone-go-go.png" style="width:100%;height:100%;object-fit:contain;">
+        <button class="header-btn" id="btn-voice" style="flex-shrink:0;width:44px;height:44px;">
+    <img src="assets/phone-go-go.png" style="width:100%;height:100%;object-fit:contain;padding:6px;">
 </button>
         <input type="text" id="msg-input" placeholder="Пустить стрелу" autocomplete="off">
         <img src="assets/bow.png" class="bow-button" id="send-btn" alt="Отправить">
@@ -190,7 +190,7 @@
     </div>
 
     <div class="bottom-sheet" id="settings-sheet">
-        <div class="bottom-sheet-header"><span>⚙️ Настройки</span><button class="bottom-sheet-close" id="settings-close">✕</button></div>
+        <div class="bottom-sheet-header"><span>⚙️ Опции Шервуда</span><button class="bottom-sheet-close" id="settings-close">✕</button></div>
         <div class="bottom-sheet-list" id="settings-list-inner">
             <div class="contact-item" id="setting-history"><div class="contact-info"><span style="font-size:24px;">📜</span><span class="contact-name">Память</span></div><span id="history-status" style="color:var(--text-dim);font-size:0.8em;">Вкл</span></div>
             <div class="contact-item" id="setting-sound"><div class="contact-info"><span style="font-size:24px;">🔔</span><span class="contact-name">Звук</span></div><span id="sound-status" style="color:var(--text-dim);font-size:0.8em;">Вкл</span></div>
@@ -279,6 +279,8 @@
             const callReject = document.getElementById('call-reject');
             const callSpeaker = document.getElementById('call-speaker');
             const callEnd = document.getElementById('call-end');
+            const callMic = document.getElementById('call-mic');
+            const callCamera = document.getElementById('call-camera');
             const emojiPanel = document.getElementById('emoji-panel');
             const emojiGrid = document.getElementById('emoji-grid');
             const btnEmoji = document.getElementById('btn-emoji');
@@ -498,8 +500,8 @@
                 if (callReject) callReject.style.display = 'inline-block';
                 if (callEnd) callEnd.style.display = 'none';
                 if (callSpeaker) callSpeaker.style.display = 'none';
-                if (callMic) callMic.style.display = 'none';
-                if (callCamera) callCamera.style.display = 'none';
+                if (callMic) callMic.addEventListener('click', toggleMic);
+                if (callCamera) callCamera.addEventListener('click', toggleCamera);
                 const localVideo = document.getElementById('local-video');
                 const remoteVideo = document.getElementById('remote-video');
                 const localVideoContainer = document.getElementById('local-video-container');
@@ -1010,8 +1012,7 @@ function toggleCamera() {
             // === Кнопки звонков ===
             if (btnCall) btnCall.addEventListener('click', () => { if (callActive) { endCall(); return; } startCall(false); });
             if (btnVideo) btnVideo.addEventListener('click', () => { if (callActive) { endCall(); return; } startCall(true); });
-            if (callMic) callMic.addEventListener('click', toggleMic);
-            if (callCamera) callCamera.addEventListener('click', toggleCamera);
+            
             if (callReject) callReject.addEventListener('click', () => { stopRingtone(); sendCallSignal('__HANGUP__'); if (callPanel) callPanel.style.display = 'none'; updateRobinStatus('📞 Вызов отклонён'); });
             if (callEnd) callEnd.addEventListener('click', endCall);
             if (callSpeaker) callSpeaker.addEventListener('click', toggleSpeaker);
