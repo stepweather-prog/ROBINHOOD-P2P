@@ -1148,7 +1148,7 @@ row.addEventListener('touchmove', () => clearTimeout(pressTimer));
     }
 }); emojiGrid.appendChild(span); }); }
             if (btnEmoji) btnEmoji.addEventListener('click', () => { if (emojiPanel) emojiPanel.style.display = emojiPanel.style.display === 'block' ? 'none' : 'block'; });
-            document.addEventListener('click', e => {
+document.addEventListener('click', e => {
     // Закрываем панель эмодзи, если кликнули вне её
     if (emojiPanel && !emojiPanel.contains(e.target) && e.target !== btnEmoji) {
         emojiPanel.style.display = 'none';
@@ -1164,7 +1164,7 @@ row.addEventListener('touchmove', () => clearTimeout(pressTimer));
         activeReactionMsgId = null;
     }
 });
-}{ reactionPicker.style.display = 'none'; activeReactionMsgId = null; } });
+
             function detectLinks(text) { const urlRegex = /(https?:\/\/[^\s]+)/g; return text.match(urlRegex) || []; }
             function showLinkPreview(url) { if (!linkPreviewContent) return; linkPreviewContent.innerHTML = ''; const div = document.createElement('div'); div.className = 'link-preview'; div.innerHTML = `<div class="link-preview-info"><div class="link-preview-title">🔗 Внешняя ссылка</div><div class="link-preview-url">${safeHtml(url)}</div><div class="link-preview-desc">Нажмите чтобы открыть</div></div>`; div.addEventListener('click', () => window.open(url, '_blank')); linkPreviewContent.appendChild(div); if (linkPreviewModal) linkPreviewModal.classList.add('active'); }
             document.getElementById('btn-close-link-preview')?.addEventListener('click', () => { document.getElementById('link-preview-modal')?.classList.remove('active'); });
