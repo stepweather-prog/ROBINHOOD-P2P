@@ -249,9 +249,8 @@
             const P2PPONG_URL = 'https://stepweather-prog.github.io/P2PPong/';
             const isPWA = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone || false;
             const MAX_CHANNELS = isPWA ? 20 : 2;
-            let totalChannelsCreated = parseInt(localStorage.getItem('robinhood_total_channels') || '0');
             
-            // === Основные переменные DOM ===
+            // === DOM ===
             const pongFrame = document.getElementById('pong-frame');
             const chatBox = document.getElementById('chat-box');
             const msgInput = document.getElementById('msg-input');
@@ -302,7 +301,7 @@
             const linkPreviewModal = document.getElementById('link-preview-modal');
             const linkPreviewContent = document.getElementById('link-preview-content');
             
-            // === Глобальные состояния ===
+            // === СОСТОЯНИЯ ===
             let handshakeSecret = null;
             let channels = {};
             let activeChannelId = null;
@@ -342,7 +341,7 @@
             let voiceChunks = [];
             let voiceStartTime = 0;
             let voiceTimer = null;
-            let modalResolve = null; // КРИТИЧЕСКИ ВАЖНО для модального ввода
+            let modalResolve = null;
             const MAX_VOICE_DURATION = 60;
             try { savedConfigs = JSON.parse(localStorage.getItem('robinhood_tunnels') || '[]'); } catch(e) {}
             try { currentServer = localStorage.getItem('robinhood_server') || 'render'; } catch(e) {}
@@ -359,7 +358,7 @@
             function safeHtml(str) { if (!str) return ''; const div = document.createElement('div'); div.textContent = str; return div.innerHTML; }
             function getMaxChannels() { return isPWA ? 20 : 2; }
 
-            // === WebRTC и звонки ===
+            // === WebRTC ===
             function getIceServers() { return [{ urls: "stun:stun.l.google.com:19302" }, { urls: "stun:stun1.l.google.com:19302" }, { urls: ["turn:openrelay.metered.ca:80?transport=tcp","turn:openrelay.metered.ca:443?transport=tcp"], username:"openrelayproject", credential:"openrelayproject" }]; }
             function getAudio(filename) { if (!audioPool[filename]) { audioPool[filename] = new Audio('assets/sounds/' + filename); audioPool[filename].volume = 0.5; } const a = audioPool[filename]; a.currentTime = 0; return a; }
             function playSound(filename) { if (toggleSoundState) { try { getAudio(filename).play().catch(()=>{}); } catch(e) {} } }
@@ -418,8 +417,6 @@
                         }
                         document.getElementById('ref-modal')?.classList.remove('active');
                         playQuiverAnimation();
-                        totalChannelsCreated++;
-                        localStorage.setItem('robinhood_total_channels', totalChannelsCreated);
                         break;
                     case 'channel-restored': channels[data.channelId] = { secret: data.secret, role: data.role }; if (!activeChannelId) activeChannelId = data.channelId; updateRobinStatus('🔄 Колчан восстановлен', 2000); break;
                     case 'restored-channels': if (data.channels) { data.channels.forEach(ch => { channels[ch.channelId] = { secret: ch.secret, role: ch.role }; if (!activeChannelId) activeChannelId = ch.channelId; }); updateRobinStatus('🔄 Колчаны восстановлены (' + data.channels.length + ')', 2000); loadContacts(); } break;
@@ -455,13 +452,10 @@
             });
 
             // === beforeinstallprompt ===
-            window.addEventListener('beforeinstallprompt', e => {
-                // НЕ вызываем preventDefault, чтобы баннер мог показаться
-                deferredPrompt = e;
-            });
+            window.addEventListener('beforeinstallprompt', e => { deferredPrompt = e; });
             window.addEventListener('appinstalled', () => { updateRobinStatus('✅ Приложение установлено!', 5000); deferredPrompt = null; });
 
-            // === Криптография и история ===
+            // === Криптография истории ===
             async function generateAESKey() { return await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]); }
             async function exportAESKey(key) { const raw = await crypto.subtle.exportKey("raw", key); return btoa(Array.from(new Uint8Array(raw), b => String.fromCharCode(b)).join('')); }
             async function importAESKey(base64key) { const raw = Uint8Array.from(atob(base64key), c => c.charCodeAt(0)); return await crypto.subtle.importKey("raw", raw, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]); }
@@ -472,22 +466,14 @@
             async function loadEncryptedHistory() { if (!toggleHistoryState) return []; if (!historyEncryptionKey) await getHistoryKey(); const stored = localStorage.getItem('robinhood_chat_history'); if (stored) { try { const decrypted = await aesDecrypt(stored, historyEncryptionKey); if (decrypted) { cachedHistory = JSON.parse(decrypted); localStorage.removeItem('robinhood_chat_history'); } } catch(e) { cachedHistory = []; } } return cachedHistory; }
 
             // === Модальный ввод ===
-            function showModalInput(title, placeholder = '', defaultValue = '') {
-                return new Promise(resolve => {
-                    modalResolve = resolve;
-                    if (modalTitle) modalTitle.textContent = title;
-                    if (modalField) { modalField.placeholder = placeholder; modalField.value = defaultValue; }
-                    if (modalOverlay) modalOverlay.classList.add('active');
-                    if (modalField) modalField.focus();
-                });
-            }
+            function showModalInput(title, placeholder = '', defaultValue = '') { return new Promise(resolve => { modalResolve = resolve; if (modalTitle) modalTitle.textContent = title; if (modalField) { modalField.placeholder = placeholder; modalField.value = defaultValue; } if (modalOverlay) modalOverlay.classList.add('active'); if (modalField) modalField.focus(); }); }
             function hideModalInput(value) { if (modalOverlay) modalOverlay.classList.remove('active'); if (modalResolve) { modalResolve(value); modalResolve = null; } }
             if (modalOk) modalOk.addEventListener('click', () => hideModalInput(modalField?.value.trim()));
             if (modalCancel) modalCancel.addEventListener('click', () => hideModalInput(null));
             if (modalField) modalField.addEventListener('keypress', e => { if (e.key === 'Enter') hideModalInput(modalField.value.trim()); });
             if (modalOverlay) modalOverlay.addEventListener('click', e => { if (e.target === modalOverlay) hideModalInput(null); });
 
-            // === Интерфейсные обработчики ===
+            // === UI обработчики ===
             const savedAvatar = localStorage.getItem('robinhood_avatar');
             if (savedAvatar && profileAvatarSmall) { profileAvatarSmall.src = savedAvatar; document.getElementById('robin-avatar').src = savedAvatar; }
             const savedNick = localStorage.getItem('robinhood_nick');
@@ -515,7 +501,7 @@
             function appendMessage(sender, text, avatarSrc, timeStr = null) { const msgId = 'msg_' + Date.now(); const row = document.createElement('div'); row.className = 'message-row'; row.id = msgId; row.dataset.msgid = msgId; const finalTime = timeStr || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); const links = detectLinks(text); let displayText = safeHtml(text); if (links.length > 0) { links.forEach(url => { displayText = displayText.replace(safeHtml(url), `<a href="${url}" target="_blank" class="msg-link">${safeHtml(url)}</a>`); }); } row.innerHTML = `<img src="${avatarSrc}" class="avatar" alt="avatar"><div class="msg-body"><div class="msg-sender">${safeHtml(sender)}</div><div class="msg-text">${displayText}</div><div class="msg-status">${finalTime}</div></div>`; chatBox.insertBefore(row, typingIndicator); chatBox.scrollTop = chatBox.scrollHeight; let pressTimer; row.addEventListener('mousedown', () => { pressTimer = setTimeout(() => showReactionPicker(row, event), 500); }); row.addEventListener('mouseup', () => clearTimeout(pressTimer)); row.addEventListener('mouseleave', () => clearTimeout(pressTimer)); row.addEventListener('touchstart', () => { pressTimer = setTimeout(() => showReactionPicker(row, event), 500); }, { passive: true }); row.addEventListener('touchend', () => clearTimeout(pressTimer)); row.addEventListener('touchmove', () => clearTimeout(pressTimer)); row.querySelectorAll('.msg-link').forEach(link => { link.addEventListener('click', e => { e.preventDefault(); showLinkPreview(link.href); }); }); if (messageReactions[msgId]) { Object.keys(messageReactions[msgId]).forEach(emoji => { for (let i = 0; i < messageReactions[msgId][emoji]; i++) addReactionToMessage(msgId, emoji, false); }); } }
             function updateRobinStatus(text, duration = 4000) { if (!robinText) return; clearTimeout(robinTimer); robinText.style.transition = 'none'; robinText.style.opacity = 1; robinText.textContent = text; if (duration > 0) { robinTimer = setTimeout(() => { robinText.style.transition = 'opacity 0.6s ease'; robinText.style.opacity = 0; const onEnd = () => { robinText.removeEventListener('transitionend', onEnd); robinText.style.transition = 'none'; robinText.textContent = robinDefaultText; robinText.style.opacity = 1; }; robinText.addEventListener('transitionend', onEnd); }, duration); } }
 
-            // === Анимации ===
+            // === АНИМАЦИИ (ВОЗВРАЩЕНЫ) ===
             let archerAnimation = null, quiverAnim = null, bowAnim = null, currentArrowContainer = null;
             function playArcherAnimation() { if (!robinText) return; if (currentArrowContainer?.parentNode) currentArrowContainer.parentNode.removeChild(currentArrowContainer); if (archerAnimation) { archerAnimation.destroy(); archerAnimation = null; } const wrapper = document.createElement('span'); wrapper.className = 'robin-arrow-container'; wrapper.style.width = '100px'; wrapper.style.height = '50px'; wrapper.style.display = 'inline-block'; wrapper.style.verticalAlign = 'middle'; currentArrowContainer = wrapper; robinText.textContent = ''; robinText.appendChild(wrapper); if (typeof lottie !== 'undefined') { archerAnimation = lottie.loadAnimation({ container: wrapper, renderer: 'canvas', loop: false, autoplay: true, path: 'assets/Archer.json' }); archerAnimation.addEventListener('complete', () => { if (wrapper.parentNode) wrapper.parentNode.removeChild(wrapper); currentArrowContainer = null; archerAnimation = null; robinText.textContent = robinDefaultText; }); } }
             function playBowAnimation() { if (!bowContainer) return; if (bowAnim) { bowAnim.destroy(); bowAnim = null; } bowContainer.style.display = 'block'; if (typeof lottie !== 'undefined') { bowAnim = lottie.loadAnimation({ container: bowContainer, renderer: 'canvas', loop: false, autoplay: true, path: 'assets/bow.json' }); bowAnim.addEventListener('complete', () => { bowContainer.style.display = 'none'; bowAnim = null; }); } }
@@ -563,7 +549,7 @@
             document.getElementById('btn-cancel-tunnel-config')?.addEventListener('click', () => { tunnelConfigModal?.classList.remove('active'); if (tunnelConfigInput) tunnelConfigInput.value = ''; });
             document.getElementById('setting-tunnel')?.addEventListener('click', () => { if (savedConfigs.length === 0) { tunnelConfigModal?.classList.add('active'); } else { if (tunnelToggle) tunnelToggle.checked = !tunnelToggle.checked; window._toggleTunnel(); } });
 
-            // === Эмодзи и предпросмотр ссылок ===
+            // === Эмодзи и ссылки ===
             const emojis = ['😀','😂','🤣','😍','😘','😜','😎','🤩','🥳','😢','😡','👍','👎','❤️','🔥','🎉','💀','🏹','🌲','🏰','🦊','🐺','✨','⚔️','🛡️','🍺','🍗','🏕️','🌙','☀️','🌟','💪','🤝','🙏','👑','💰','🎯','📞','💬','🔔','❌','✅','🎵','📜','⚜️'];
             if (emojiGrid) { emojiGrid.innerHTML = ''; emojis.forEach(e => { const span = document.createElement('span'); span.textContent = e; span.addEventListener('click', () => { msgInput.value += e; msgInput.focus(); }); emojiGrid.appendChild(span); }); }
             if (btnEmoji) btnEmoji.addEventListener('click', () => { if (emojiPanel) emojiPanel.style.display = emojiPanel.style.display === 'block' ? 'none' : 'block'; });
@@ -585,7 +571,7 @@
             // === Голосовые сообщения ===
             if (btnVoice) { btnVoice.addEventListener('click', () => { if (voiceRecorder && voiceRecorder.state === 'recording') { voiceRecorder.stop(); btnVoice.style.background = ''; if (voiceTimer) clearInterval(voiceTimer); return; } navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => { if (currentServer === 'render') { updateRobinStatus('⚠️ Для голосовых сообщений переключите сервер на Warp', 3000); stream.getTracks().forEach(t => t.stop()); return; } voiceRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm; codecs=opus', audioBitsPerSecond: 16000 }); voiceChunks = []; voiceRecorder.ondataavailable = e => voiceChunks.push(e.data); voiceRecorder.onstop = () => { const blob = new Blob(voiceChunks, { type: 'audio/webm' }); const reader = new FileReader(); reader.onload = () => { const base64 = reader.result.split(',')[1]; sendFileMessage({ name: 'voice_message.webm', size: blob.size, type: 'audio/webm', data: base64 }); }; reader.readAsDataURL(blob); stream.getTracks().forEach(t => t.stop()); voiceRecorder = null; if (voiceTimer) clearInterval(voiceTimer); btnVoice.style.background = ''; }; voiceRecorder.start(); voiceStartTime = Date.now(); btnVoice.style.background = '#f44336'; voiceTimer = setInterval(() => { const elapsed = Math.floor((Date.now() - voiceStartTime) / 1000); if (elapsed >= MAX_VOICE_DURATION) { voiceRecorder.stop(); updateRobinStatus('⏰ Максимальная длительность — ' + MAX_VOICE_DURATION + ' сек.', 3000); } }, 1000); }).catch(() => updateRobinStatus('❌ Нет доступа к микрофону')); }); }
 
-            // === Кнопка стрелы (с ограничениями) ===
+            // === Кнопка стрелы ===
             document.getElementById('btn-arrow')?.addEventListener('click', () => {
                 if (!handshakeSecret && Object.keys(channels).length === 0) { updateRobinStatus('🏹 Колчан ещё не готов. Ждите сигнала.', 2500); return; }
                 if (Object.keys(channels).length >= getMaxChannels()) {
