@@ -123,7 +123,6 @@
         .online-dot { width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:4px; }
         .online-dot.online { background:#4caf50; box-shadow:0 0 6px #4caf50; }
         .online-dot.offline { background:#666; }
-        #reaction-picker { display: none; }
     </style>
 </head>
 <body>
@@ -404,9 +403,6 @@
             let meshPeers = {};
             let cachedHistory = [];
             let selfDestructMode = false;
-            let reactionMode = false;   // true — клик по эмодзи отправит реакцию, false — вставит в поле ввода
-            let reactionModeJustActivated = false;
-            let reactionTargetMsgId = null; // ID сообщения, на которое ставим реакцию
             let voiceRecorder = null;
             let voiceChunks = [];
             let voiceStartTime = 0;
@@ -734,74 +730,72 @@ function toggleCamera() {
                         if (data.text.startsWith('__REACTION__')) {
                             try { const rData = JSON.parse(data.text.replace('__REACTION__', '')); addReactionToMessage(rData.msgId, rData.emoji, true); } catch(e) {} return;
                         }
-                                                if (data.text.startsWith('__PROFILE__')) {
+                        if (data.text.startsWith('__PROFILE__')) {
                             try {
                                 const p = JSON.parse(data.text.replace('__PROFILE__', ''));
                                 const cs = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
                                 const c = cs.find(c => c.pubkey === data.channelId);
                                 if (c) { c.name = p.nick || c.name; c.avatar = p.avatar || c.avatar; localStorage.setItem('robinhood_contacts', JSON.stringify(cs)); }
-                            } catch(e) {}
-                            return;
+                            } catch(e) {} return;
                         }
-                // Обычное сообщение
-                activeChannelId = data.channelId;
-                let msgText = data.text;
-                let msgId = null;
-                if (typeof msgText === 'string' && msgText.startsWith('__MSG__')) {
-                    try {
-                        const parsed = JSON.parse(msgText.replace('__MSG__', ''));
-                        msgId = parsed.id;
-                        msgText = parsed.text;
-                    } catch(e) {}
+                        // Обычное сообщение
+                        activeChannelId = data.channelId;
+                        const contactsArr = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
+                        const contact = contactsArr.find(c => c.pubkey === data.channelId);
+                        const senderName = contact ? contact.name : (data.sender || 'Друг');
+                        const senderAvatar = contact ? contact.avatar : 'assets/avatars/001-.png';
+                        appendMessage(senderName, data.text, senderAvatar);
+                        contactOnlineStatus[data.channelId] = true;
+                        if (toggleHistoryState) {
+                            loadEncryptedHistory().then(hist => {
+                                hist.push({ text: data.text, sender: 'friend', recipient: 'me', senderName, avatar: senderAvatar, time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) });
+                                saveEncryptedHistory(hist);
+                            });
+                        }
+                        if (toggleSoundState) playSound('bow_shot.mp3');
+                        break;
+                    case 'install-prompt':
+                        if (deferredPrompt) { try { deferredPrompt.prompt(); } catch(e) {} deferredPrompt.userChoice?.then(r => { if (r.outcome === 'accepted') updateRobinStatus('🏹 Приложение устанавливается', 2000); deferredPrompt = null; }); }
+                        else updateRobinStatus('Откройте в браузере для установки', 3000);
+                        break;
+                    case 'status': updateRobinStatus(data.text, data.duration || 3000); break;
+                    case 'error': updateRobinStatus('⚠ ' + data.text, 4000); break;
                 }
-                const contactsArr = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
-                const contact = contactsArr.find(c => c.pubkey === data.channelId);
-                const senderName = contact ? contact.name : (data.sender || 'Друг');
-                const senderAvatar = contact ? contact.avatar : 'assets/avatars/250-icon-17159758.png';
-                appendMessage(senderName, msgText, senderAvatar, null, msgId);
-                contactOnlineStatus[data.channelId] = true;
-                if (toggleHistoryState) {
-                    loadEncryptedHistory().then(hist => {
-                        hist.push({ text: data.text, sender: 'friend', recipient: 'me', senderName, avatar: senderAvatar, time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) });
-                        saveEncryptedHistory(hist);
-                    });
-                }
-                if (toggleSoundState) playSound('bow_shot.mp3');
-                break;
-            } // конец switch
-        }); // конец window.addEventListener('message', ...)
+            });
 
-        // ===== ФУНКЦИИ ШИФРОВАНИЯ ИСТОРИИ =====
-        async function generateAESKey() { return await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]); }
-        async function exportAESKey(key) { const raw = await crypto.subtle.exportKey("raw", key); return btoa(Array.from(new Uint8Array(raw), b => String.fromCharCode(b)).join('')); }
-        async function importAESKey(base64key) { const raw = Uint8Array.from(atob(base64key), c => c.charCodeAt(0)); return await crypto.subtle.importKey("raw", raw, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]); }
-        async function aesEncrypt(plaintext, key) {
-            const iv = crypto.getRandomValues(new Uint8Array(12)); const encoded = new TextEncoder().encode(plaintext);
-            const ciphertext = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, encoded);
-            return JSON.stringify({ iv: btoa(Array.from(iv, b => String.fromCharCode(b)).join('')), data: btoa(Array.from(new Uint8Array(ciphertext), b => String.fromCharCode(b)).join('')) });
-        }
-        async function aesDecrypt(payloadStr, key) {
-            try {
-                const payload = JSON.parse(payloadStr); const iv = Uint8Array.from(atob(payload.iv), c => c.charCodeAt(0));
-                const data = Uint8Array.from(atob(payload.data), c => c.charCodeAt(0));
-                const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, data);
-                return new TextDecoder().decode(decrypted);
-            } catch(e) { return null; }
-        }
-        async function getHistoryKey() { if (!historyEncryptionKey) historyEncryptionKey = await generateAESKey(); }
-        async function saveEncryptedHistory(messages) { if (!toggleHistoryState) return; if (!historyEncryptionKey) await getHistoryKey(); cachedHistory = messages; }
-        async function loadEncryptedHistory() {
-            if (!toggleHistoryState) return []; if (!historyEncryptionKey) await getHistoryKey();
-            const stored = localStorage.getItem('robinhood_chat_history');
-            if (stored) { try { const decrypted = await aesDecrypt(stored, historyEncryptionKey); if (decrypted) { cachedHistory = JSON.parse(decrypted); localStorage.removeItem('robinhood_chat_history'); } } catch(e) { cachedHistory = []; } }
-            return cachedHistory;
-        }
+            window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredPrompt = e; });
 
-        // === Модальный ввод ===
-        function showModalInput(title, placeholder = '', defaultValue = '') {
-            return new Promise(resolve => {
-                modalResolve = resolve;
-                if (modalTitle) modalTitle.textContent = title;
+            // === Криптография и история ===
+            async function generateAESKey() { return await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]); }
+            async function exportAESKey(key) { const raw = await crypto.subtle.exportKey("raw", key); return btoa(Array.from(new Uint8Array(raw), b => String.fromCharCode(b)).join('')); }
+            async function importAESKey(base64key) { const raw = Uint8Array.from(atob(base64key), c => c.charCodeAt(0)); return await crypto.subtle.importKey("raw", raw, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]); }
+            async function aesEncrypt(plaintext, key) {
+                const iv = crypto.getRandomValues(new Uint8Array(12)); const encoded = new TextEncoder().encode(plaintext);
+                const ciphertext = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, encoded);
+                return JSON.stringify({ iv: btoa(Array.from(iv, b => String.fromCharCode(b)).join('')), data: btoa(Array.from(new Uint8Array(ciphertext), b => String.fromCharCode(b)).join('')) });
+            }
+            async function aesDecrypt(payloadStr, key) {
+                try {
+                    const payload = JSON.parse(payloadStr); const iv = Uint8Array.from(atob(payload.iv), c => c.charCodeAt(0));
+                    const data = Uint8Array.from(atob(payload.data), c => c.charCodeAt(0));
+                    const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, data);
+                    return new TextDecoder().decode(decrypted);
+                } catch(e) { return null; }
+            }
+            async function getHistoryKey() { if (!historyEncryptionKey) historyEncryptionKey = await generateAESKey(); }
+            async function saveEncryptedHistory(messages) { if (!toggleHistoryState) return; if (!historyEncryptionKey) await getHistoryKey(); cachedHistory = messages; }
+            async function loadEncryptedHistory() {
+                if (!toggleHistoryState) return []; if (!historyEncryptionKey) await getHistoryKey();
+                const stored = localStorage.getItem('robinhood_chat_history');
+                if (stored) { try { const decrypted = await aesDecrypt(stored, historyEncryptionKey); if (decrypted) { cachedHistory = JSON.parse(decrypted); localStorage.removeItem('robinhood_chat_history'); } } catch(e) { cachedHistory = []; } }
+                return cachedHistory;
+            }
+
+            // === Модальный ввод ===
+            function showModalInput(title, placeholder = '', defaultValue = '') {
+                return new Promise(resolve => {
+                    modalResolve = resolve;
+                    if (modalTitle) modalTitle.textContent = title;
                     if (modalField) { modalField.placeholder = placeholder; modalField.value = defaultValue; }
                     if (modalOverlay) modalOverlay.classList.add('active');
                     if (modalField) modalField.focus();
@@ -890,9 +884,8 @@ function toggleCamera() {
                     const sec = parseInt(durationStr) || 30; sendSelfDestructMessage(text, sec);
                     selfDestructMode = false; if (document.getElementById('self-destruct-status')) document.getElementById('self-destruct-status').textContent = 'Выкл';
                 } else {
-                    const msgId = 'msg_' + Date.now();
-sendToPong({ action: 'send', text: '__MSG__' + JSON.stringify({ id: msgId, text: text }), channelId: activeChannelId });
-                    appendMessage('Вы', text, profileAvatarSmall?.src || 'assets/avatars/250-icon-17159758.png', null, msgId);
+                    sendToPong({ action: 'send', text, channelId: activeChannelId });
+                    appendMessage('Вы', text, profileAvatarSmall?.src || 'assets/avatars/001-.png');
                 }
                 msgInput.value = ''; if (typingIndicator) typingIndicator.textContent = ''; clearTimeout(typingTimeout);
                 playArcherAnimation(); playBowAnimation(); if (toggleSoundState) playSound('shot.mp3');
@@ -900,41 +893,26 @@ sendToPong({ action: 'send', text: '__MSG__' + JSON.stringify({ id: msgId, text:
             sendBtn?.addEventListener('click', sendMessageHandler);
             msgInput?.addEventListener('keypress', e => { if (e.key === 'Enter') sendMessageHandler(); });
 
-            function appendMessage(sender, text, avatarSrc, timeStr = null, msgId = null) {
-    const finalId = msgId || 'msg_' + Date.now(); const row = document.createElement('div'); row.className = 'message-row'; row.id = finalId; row.dataset.msgid = finalId;
+            function appendMessage(sender, text, avatarSrc, timeStr = null) {
+                const msgId = 'msg_' + Date.now(); const row = document.createElement('div'); row.className = 'message-row'; row.id = msgId; row.dataset.msgid = msgId;
                 const finalTime = timeStr || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                 const links = detectLinks(text); let displayText = safeHtml(text);
                 if (links.length > 0) { links.forEach(url => { displayText = displayText.replace(safeHtml(url), `<a href="${url}" target="_blank" class="msg-link">${safeHtml(url)}</a>`); }); }
-                                row.innerHTML = `<img src="${avatarSrc}" class="avatar" alt="avatar"><div class="msg-body"><div class="msg-sender">${safeHtml(sender)}</div><div class="msg-text">${displayText}</div><div class="msg-status">${finalTime}</div></div>`;
+                row.innerHTML = `<img src="${avatarSrc}" class="avatar" alt="avatar"><div class="msg-body"><div class="msg-sender">${safeHtml(sender)}</div><div class="msg-text">${displayText}</div><div class="msg-status">${finalTime}</div></div>`;
                 chatBox.insertBefore(row, typingIndicator); chatBox.scrollTop = chatBox.scrollHeight;
 
                 let pressTimer;
-                row.addEventListener('mousedown', (e) => {
-                    pressTimer = setTimeout(() => {
-                        if (!row || !emojiPanel) return;
-                        reactionTargetMsgId = row.dataset.msgid || row.id;
-                        reactionMode = true;
-                        reactionModeJustActivated = true;
-                        emojiPanel.style.display = 'block';
-                    }, 500);
-                });
+                row.addEventListener('mousedown', () => { pressTimer = setTimeout(() => showReactionPicker(row, event), 500); });
                 row.addEventListener('mouseup', () => clearTimeout(pressTimer));
                 row.addEventListener('mouseleave', () => clearTimeout(pressTimer));
-                row.addEventListener('touchstart', (e) => {
-                    pressTimer = setTimeout(() => {
-                        if (!row || !emojiPanel) return;
-                        reactionTargetMsgId = row.dataset.msgid || row.id;
-                        reactionMode = true;
-                        reactionModeJustActivated = true;
-                        emojiPanel.style.display = 'block';
-                    }, 500);
-                }, { passive: true });
+                row.addEventListener('touchstart', () => { pressTimer = setTimeout(() => showReactionPicker(row, event), 500); }, { passive: true });
                 row.addEventListener('touchend', () => clearTimeout(pressTimer));
-                row.addEventListener('touchmove', () => clearTimeout(pressTimer), { passive: true });
-
+                row.addEventListener('touchmove', () => clearTimeout(pressTimer));
                 row.querySelectorAll('.msg-link').forEach(link => { link.addEventListener('click', e => { e.preventDefault(); showLinkPreview(link.href); }); });
 
                 if (messageReactions[msgId]) { Object.keys(messageReactions[msgId]).forEach(emoji => { for (let i = 0; i < messageReactions[msgId][emoji]; i++) addReactionToMessage(msgId, emoji, false); }); }
+            }
+
             function updateRobinStatus(text, duration = 4000) {
                 if (!robinText) return; clearTimeout(robinTimer);
                 robinText.style.transition = 'none'; robinText.style.opacity = 1; robinText.textContent = text;
@@ -1002,7 +980,7 @@ sendToPong({ action: 'send', text: '__MSG__' + JSON.stringify({ id: msgId, text:
                         div.innerHTML = `<div class="contact-info"><span class="online-dot ${isOnline ? 'online' : 'offline'}"></span><img src="${c.avatar || 'assets/avatars/001-.png'}" class="contact-avatar" alt="avatar"><span class="contact-name">${safeHtml(c.name)}</span></div><button class="delete-contact" data-pubkey="${c.pubkey}">✖</button>`;
                         div.querySelector('.contact-info')?.addEventListener('click', () => { activeChannelId = c.pubkey; openChatWithContact(c); contactsSheet?.classList.remove('open'); overlay?.classList.remove('show'); });
                         div.querySelector('.delete-contact')?.addEventListener('click', e => { e.stopPropagation(); if (confirm('Убить лучника ' + c.name + '?')) deleteContact(c.pubkey); });
-                                               
+                        let pressTimer; div.addEventListener('mousedown', () => { pressTimer = setTimeout(() => showContactMenu(c), 600); }); div.addEventListener('mouseup', () => clearTimeout(pressTimer)); div.addEventListener('mouseleave', () => clearTimeout(pressTimer)); div.addEventListener('touchstart', () => { pressTimer = setTimeout(() => showContactMenu(c), 600); }, { passive: true }); div.addEventListener('touchend', () => clearTimeout(pressTimer)); div.addEventListener('touchmove', () => clearTimeout(pressTimer));
                         contactsListInner.appendChild(div);
                     });
                 } else { updateRobinStatus('🏹 Лучников нет! Создайте стрелу, чтобы пригласить.', 3000); }
@@ -1021,15 +999,7 @@ sendToPong({ action: 'send', text: '__MSG__' + JSON.stringify({ id: msgId, text:
             function hideContactMenu() { document.getElementById('contact-menu').style.display = 'none'; currentMenuContact = null; }
 
             // === Реакции ===
-            function showReactionPicker(msgElement, event) {
-            if (!msgElement || !reactionPicker) return;
-            activeReactionMsgId = msgElement.dataset.msgid || msgElement.id;
-            const rect = msgElement.getBoundingClientRect();
-           reactionPicker.style.display = 'flex';
-           reactionPicker.style.top = (rect.top - 40) + 'px';
-          reactionPicker.style.left = Math.min(rect.left, window.innerWidth - 200) + 'px';
-          if (event) event.stopPropagation();
-     }
+            function showReactionPicker(msgElement, event) { if (!msgElement || !reactionPicker) return; const rect = msgElement.getBoundingClientRect(); reactionPicker.style.display = 'flex'; reactionPicker.style.top = (rect.top - 40) + 'px'; reactionPicker.style.left = Math.min(rect.left, window.innerWidth - 200) + 'px'; activeReactionMsgId = msgElement.dataset.msgid || msgElement.id; }
             if (reactionPicker) { reactionPicker.querySelectorAll('span').forEach(span => { span.addEventListener('click', () => { if (!activeReactionMsgId || !activeChannelId) return; const emoji = span.textContent; sendToPong({ action: 'send', text: '__REACTION__' + JSON.stringify({ msgId: activeReactionMsgId, emoji }), channelId: activeChannelId }); addReactionToMessage(activeReactionMsgId, emoji, true); reactionPicker.style.display = 'none'; activeReactionMsgId = null; }); }); }
             function addReactionToMessage(msgId, emoji, fromNetwork) {
                 const row = document.getElementById(msgId); if (!row) return; let reactionsDiv = row.querySelector('.msg-reactions');
@@ -1117,47 +1087,9 @@ sendToPong({ action: 'send', text: '__MSG__' + JSON.stringify({ id: msgId, text:
 
             // === Эмодзи и предпросмотр ссылок ===
             const emojis = ['😀','😂','🤣','😍','😘','😜','😎','🤩','🥳','😢','😡','👍','👎','❤️','🔥','🎉','💀','🏹','🌲','🏰','🦊','🐺','✨','⚔️','🛡️','🍺','🍗','🏕️','🌙','☀️','🌟','💪','🤝','🙏','👑','💰','🎯','📞','💬','🔔','❌','✅','🎵','📜','⚜️'];
-            if (emojiGrid) { emojiGrid.innerHTML = ''; emojis.forEach(e => { const span = document.createElement('span'); span.textContent = e; span.addEventListener('click', () => {
-    if (reactionMode && reactionTargetMsgId && activeChannelId) {
-        // Отправляем реакцию на сообщение
-        sendToPong({
-            action: 'send',
-            text: '__REACTION__' + JSON.stringify({ msgId: reactionTargetMsgId, emoji: e }),
-            channelId: activeChannelId
-        });
-        addReactionToMessage(reactionTargetMsgId, e, true);
-        // Закрываем панель и сбрасываем режим реакций
-        if (emojiPanel) emojiPanel.style.display = 'none';
-        reactionMode = false;
-        reactionTargetMsgId = null;
-    } else {
-        // Обычный режим – вставка смайла в поле ввода
-        msgInput.value += e;
-        msgInput.focus();
-    }
-}); emojiGrid.appendChild(span); }); }
+            if (emojiGrid) { emojiGrid.innerHTML = ''; emojis.forEach(e => { const span = document.createElement('span'); span.textContent = e; span.addEventListener('click', () => { msgInput.value += e; msgInput.focus(); }); emojiGrid.appendChild(span); }); }
             if (btnEmoji) btnEmoji.addEventListener('click', () => { if (emojiPanel) emojiPanel.style.display = emojiPanel.style.display === 'block' ? 'none' : 'block'; });
-               document.addEventListener('click', e => {
-    // Если панель только что открыта – не закрываем её
-    if (reactionModeJustActivated) {
-        reactionModeJustActivated = false;
-        return;
-    }
-    // Закрываем панель эмодзи, если кликнули вне её
-    if (emojiPanel && !emojiPanel.contains(e.target) && e.target !== btnEmoji) {
-        emojiPanel.style.display = 'none';
-        if (reactionMode) {
-            reactionMode = false;
-            reactionTargetMsgId = null;
-        }
-    }
-    // Закрываем панель быстрых реакций (если ещё используется)
-    if (reactionPicker && !reactionPicker.contains(e.target)) {
-        reactionPicker.style.display = 'none';
-        activeReactionMsgId = null;
-    }
-});
-
+            document.addEventListener('click', e => { if (emojiPanel && !emojiPanel.contains(e.target) && e.target !== btnEmoji) emojiPanel.style.display = 'none'; if (reactionPicker && !reactionPicker.contains(e.target)) { reactionPicker.style.display = 'none'; activeReactionMsgId = null; } });
             function detectLinks(text) { const urlRegex = /(https?:\/\/[^\s]+)/g; return text.match(urlRegex) || []; }
             function showLinkPreview(url) { if (!linkPreviewContent) return; linkPreviewContent.innerHTML = ''; const div = document.createElement('div'); div.className = 'link-preview'; div.innerHTML = `<div class="link-preview-info"><div class="link-preview-title">🔗 Внешняя ссылка</div><div class="link-preview-url">${safeHtml(url)}</div><div class="link-preview-desc">Нажмите чтобы открыть</div></div>`; div.addEventListener('click', () => window.open(url, '_blank')); linkPreviewContent.appendChild(div); if (linkPreviewModal) linkPreviewModal.classList.add('active'); }
             document.getElementById('btn-close-link-preview')?.addEventListener('click', () => { document.getElementById('link-preview-modal')?.classList.remove('active'); });
