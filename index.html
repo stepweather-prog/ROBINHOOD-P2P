@@ -766,6 +766,7 @@ if (toggleHistoryState) {
     });
 }
 if (toggleSoundState) playSound('bow_shot.mp3');
+                        break;
             async function generateAESKey() { return await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]); }
             async function exportAESKey(key) { const raw = await crypto.subtle.exportKey("raw", key); return btoa(Array.from(new Uint8Array(raw), b => String.fromCharCode(b)).join('')); }
             async function importAESKey(base64key) { const raw = Uint8Array.from(atob(base64key), c => c.charCodeAt(0)); return await crypto.subtle.importKey("raw", raw, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]); }
@@ -902,7 +903,29 @@ sendToPong({ action: 'send', text: '__MSG__' + JSON.stringify({ id: msgId, text:
                 row.innerHTML = `<img src="${avatarSrc}" class="avatar" alt="avatar"><div class="msg-body"><div class="msg-sender">${safeHtml(sender)}</div><div class="msg-text">${displayText}</div><div class="msg-status">${finalTime}</div></div>`;
                 chatBox.insertBefore(row, typingIndicator); chatBox.scrollTop = chatBox.scrollHeight;
                      let pressTimer;
-              
+              let pressTimer;
+row.addEventListener('mousedown', (e) => {
+    pressTimer = setTimeout(() => {
+        if (!row || !emojiPanel) return;
+        reactionTargetMsgId = row.dataset.msgid || row.id;
+        reactionMode = true;
+        reactionModeJustActivated = true;
+        emojiPanel.style.display = 'block';
+    }, 500);
+});
+row.addEventListener('mouseup', () => clearTimeout(pressTimer));
+row.addEventListener('mouseleave', () => clearTimeout(pressTimer));
+row.addEventListener('touchstart', (e) => {
+    pressTimer = setTimeout(() => {
+        if (!row || !emojiPanel) return;
+        reactionTargetMsgId = row.dataset.msgid || row.id;
+        reactionMode = true;
+        reactionModeJustActivated = true;
+        emojiPanel.style.display = 'block';
+    }, 500);
+}, { passive: true });
+row.addEventListener('touchend', () => clearTimeout(pressTimer));
+row.addEventListener('touchmove', () => clearTimeout(pressTimer), { passive: true });
                 row.querySelectorAll('.msg-link').forEach(link => { link.addEventListener('click', e => { e.preventDefault(); showLinkPreview(link.href); }); });
 
                 if (messageReactions[msgId]) { Object.keys(messageReactions[msgId]).forEach(emoji => { for (let i = 0; i < messageReactions[msgId][emoji]; i++) addReactionToMessage(msgId, emoji, false); }); }
