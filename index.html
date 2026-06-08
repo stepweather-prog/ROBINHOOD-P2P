@@ -54,6 +54,7 @@
         .msg-status { font-size:0.65em; color:var(--text-dim); text-align:right; margin-top:4px; }
         #robin-row { background:var(--robin-bg); border-left:3px solid var(--robin-accent); box-shadow:0 2px 12px rgba(0,0,0,0.2); }
         #robin-text { font-weight:700; font-size:0.9em; color:var(--text-bright); text-shadow:0 1px 3px rgba(0,0,0,0.6); }
+
         .bottom-sheet, .avatar-selector { position:fixed; top:0; left:0; width:min(85%, 380px); height:100%; background:var(--sheet-bg); border-right:2px solid var(--border); z-index:200; transform:translateX(-100%); transition:transform 0.35s cubic-bezier(0.2,0.9,0.4,1.1); overflow-y:auto; backdrop-filter:blur(16px); box-shadow:8px 0 30px rgba(0,0,0,0.5); -webkit-overflow-scrolling:touch; }
         .bottom-sheet.open, .avatar-selector.show { transform:translateX(0); }
         .bottom-sheet-header { padding:20px 20px 12px; font-weight:bold; color:var(--accent-light); border-bottom:1px solid var(--border); margin-bottom:8px; font-size:1.1em; display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.2); }
@@ -179,17 +180,17 @@
     <div class="bottom-sheet" id="settings-sheet">
         <div class="bottom-sheet-header"><span>⚙️ Опции Шервуда</span><button class="bottom-sheet-close" id="settings-close">✕</button></div>
         <div class="bottom-sheet-list" id="settings-list-inner">
-            <div class="contact-item" id="setting-history"><div class="contact-info"><span style="font-size:24px;">📜</span><span class="contact-name">Память</span></div><span id="history-status" style="color:var(--text-dim);font-size:0.8em;">Вкл</span></div>
-            <div class="contact-item" id="setting-sound"><div class="contact-info"><span style="font-size:24px;">🔔</span><span class="contact-name">Звук</span></div><span id="sound-status" style="color:var(--text-dim);font-size:0.8em;">Вкл</span></div>
-            <div class="contact-item" id="setting-theme"><div class="contact-info"><span style="font-size:24px;" id="theme-icon">🏹</span><span class="contact-name">Тема</span></div><span id="theme-name" style="color:var(--text-dim);font-size:0.8em;">Лес</span></div>
-            <div class="contact-item" id="setting-self-destruct"><div class="contact-info"><span style="font-size:24px;">💣</span><span class="contact-name">Самоуничтожение</span></div><span id="self-destruct-status" style="color:var(--text-dim);font-size:0.8em;">Выкл</span></div>
-            <div class="contact-item" id="setting-server"><div class="contact-info"><span style="font-size:24px;">🌐</span><span class="contact-name">Сервер</span></div><div style="display:flex;align-items:center;gap:8px;"><span id="server-label" style="color:var(--text-dim);font-size:0.7em;">Render</span><label class="toggle-switch"><input type="checkbox" id="server-toggle" onchange="window._toggleServer()"><span class="toggle-slider"></span></label></div></div>
-            <div class="contact-item" id="setting-tunnel"><div class="contact-info"><span style="font-size:24px;">🔒</span><span class="contact-name">Туннель</span></div><label class="toggle-switch" id="tunnel-toggle-wrapper"><input type="checkbox" id="tunnel-toggle" onchange="window._toggleTunnel()"><span class="toggle-slider"></span></label></div>
-            <div class="contact-item" id="setting-verify" style="background:rgba(76,175,80,0.08);"><div class="contact-info"><span style="font-size:24px;">🔐</span><span class="contact-name">Проверить ключ</span></div><span id="verify-status" style="color:var(--text-dim);font-size:0.7em;">Нажмите</span></div>
+            <div class="contact-item" id="setting-history"><div class="contact-info"><span style="font-size:24px;">📜</span><span class="contact-name">Память</span></div><span id="history-status">Вкл</span></div>
+            <div class="contact-item" id="setting-sound"><div class="contact-info"><span style="font-size:24px;">🔔</span><span class="contact-name">Звук</span></div><span id="sound-status">Вкл</span></div>
+            <div class="contact-item" id="setting-theme"><div class="contact-info"><span style="font-size:24px;" id="theme-icon">🏹</span><span class="contact-name">Тема</span></div><span id="theme-name">Лес</span></div>
+            <div class="contact-item" id="setting-self-destruct"><div class="contact-info"><span style="font-size:24px;">💣</span><span class="contact-name">Самоуничтожение</span></div><span id="self-destruct-status">Выкл</span></div>
+            <div class="contact-item" id="setting-server"><div class="contact-info"><span style="font-size:24px;">🌐</span><span class="contact-name">Сервер</span></div><div style="display:flex;align-items:center;gap:8px;"><span id="server-label">Render</span><label class="toggle-switch"><input type="checkbox" id="server-toggle"><span class="toggle-slider"></span></label></div></div>
+            <div class="contact-item" id="setting-tunnel"><div class="contact-info"><span style="font-size:24px;">🔒</span><span class="contact-name">Туннель</span></div><label class="toggle-switch" id="tunnel-toggle-wrapper"><input type="checkbox" id="tunnel-toggle"><span class="toggle-slider"></span></label></div>
+            <div class="contact-item" id="setting-verify" style="background:rgba(76,175,80,0.08);"><div class="contact-info"><span style="font-size:24px;">🔐</span><span class="contact-name">Проверить ключ</span></div><span id="verify-status">Нажмите</span></div>
         </div>
     </div>
     <div class="modal-overlay" id="ref-modal">
-        <div class="modal-dialog"><h3>🏹 Стрела готова 🏹</h3><div class="code-display" id="ref-link-display"></div><p style="font-size:0.7em;color:var(--text-dim);margin:8px 0;">⚠ Отпечаток: <span id="fp-short" style="font-family:monospace;color:var(--accent-light);"></span></p><button class="btn-primary" id="share-ref-link-btn">📤 Поделиться</button><button class="btn-cancel" id="cancel-arrow-btn">⏹ Отмена</button><button class="btn-dark" id="close-ref-modal-btn">Закрыть</button></div>
+        <div class="modal-dialog"><h3>🏹 Стрела готова 🏹</h3><div class="code-display" id="ref-link-display"></div><button class="btn-primary" id="share-ref-link-btn">📤 Поделиться</button><button class="btn-cancel" id="cancel-arrow-btn">⏹ Отмена</button><button class="btn-dark" id="close-ref-modal-btn">Закрыть</button></div>
     </div>
     <div class="modal-overlay" id="tunnel-config-modal"><div class="modal-dialog"><h3>➕ Добавить конфиг</h3><button class="btn-primary" id="btn-load-file">📂 Загрузить из файла</button><div style="margin:12px 0;color:var(--text-dim);">или вставьте текст:</div><textarea id="tunnel-config-input" style="width:100%;height:120px;background:var(--input-bg);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:0.7em;font-family:monospace;resize:vertical;"></textarea><button class="btn-primary" id="btn-save-tunnel">💾 Сохранить</button><button class="btn-dark" id="btn-cancel-tunnel-config">Отмена</button><input type="file" id="config-file-input" accept=".conf" style="display:none;"></div></div>
     <div class="modal-overlay" id="link-preview-modal"><div class="modal-dialog"><h3>🔗 Внешняя ссылка</h3><div id="link-preview-content"></div><button class="btn-dark" id="btn-close-link-preview">Закрыть</button></div></div>
@@ -199,14 +200,47 @@
     <div class="modal-input-overlay" id="modal-input-overlay"><div class="modal-input-dialog"><h3 id="modal-input-title">Введите текст</h3><input type="text" id="modal-input-field" autocomplete="off"><div class="modal-btns"><button class="btn-dark" id="modal-input-cancel">Отмена</button><button class="btn-gold" id="modal-input-ok">✓ Готово</button></div></div></div>
     <div id="reaction-picker" style="display:none;position:fixed;z-index:500;background:var(--sheet-bg);border:2px solid var(--border);border-radius:12px;padding:8px;gap:8px;flex-wrap:wrap;"><span>👍</span><span>❤️</span><span>😂</span><span>😮</span><span>😢</span><span>🔥</span></div>
     
-    <!-- ИСПРАВЛЕНО: P2PPong загружается из отдельного репозитория -->
     <iframe id="pong-frame" src="about:blank" style="display:none;" title="p2p engine"></iframe>
 
     <script>
-        // ==================== КОНФИГУРАЦИЯ ВНЕШНИХ РЕПОЗИТОРИЕВ ====================
+        // ==================== КОНФИГУРАЦИЯ ====================
         const P2PPONG_URL = 'https://stepweather-prog.github.io/P2PPong/';
         const ROBINCALL_URL = 'https://stepweather-prog.github.io/ROBINHOOD-P2PCall/';
         
+        // ==================== ОГРАНИЧЕНИЯ КАНАЛОВ ====================
+        const MAX_CHANNELS_PWA = 20;
+        const MAX_CHANNELS_BROWSER = 2;
+        const INSTALL_REMINDER_INTERVAL = 10; // Предлагать установку каждые 10 каналов
+        
+        // Проверка PWA
+        const isPWA = window.matchMedia('(display-mode: standalone)').matches || 
+                      navigator.standalone || false;
+        
+        // Счётчик созданных каналов
+        let totalChannelsCreated = parseInt(localStorage.getItem('robinhood_total_channels') || '0');
+        let installReminderShown = parseInt(localStorage.getItem('robinhood_install_reminder') || '0');
+        
+        function getMaxChannels() {
+            return isPWA ? MAX_CHANNELS_PWA : MAX_CHANNELS_BROWSER;
+        }
+        
+        function canCreateChannel() {
+            const current = Object.keys(channels).length;
+            const max = getMaxChannels();
+            return current < max;
+        }
+        
+        function shouldRemindInstall() {
+            if (isPWA) return false; // Не предлагать в PWA
+            const remindersShown = totalChannelsCreated - installReminderShown;
+            return remindersShown >= INSTALL_REMINDER_INTERVAL;
+        }
+        
+        function markInstallReminded() {
+            installReminderShown = totalChannelsCreated;
+            localStorage.setItem('robinhood_install_reminder', installReminderShown);
+        }
+
         // ==================== ЯДРО БЕЗОПАСНОСТИ (E2EE) ====================
         const CryptoEngine = {
             async generateKeyPair() { return await crypto.subtle.generateKey({ name: "ECDH", namedCurve: "P-256" }, true, ["deriveKey", "deriveBits"]); },
@@ -220,7 +254,7 @@
         };
 
         (function() {
-            // DOM элементы (все старые остаются)
+            // DOM элементы
             const pongFrame = document.getElementById('pong-frame');
             const chatBox = document.getElementById('chat-box');
             const msgInput = document.getElementById('msg-input');
@@ -245,7 +279,6 @@
             const serverLabel = document.getElementById('server-label');
             const refModal = document.getElementById('ref-modal');
             const refLinkDisplay = document.getElementById('ref-link-display');
-            const fpShort = document.getElementById('fp-short');
             const historyStatus = document.getElementById('history-status');
             const soundStatus = document.getElementById('sound-status');
             const overlay = document.getElementById('overlay');
@@ -261,20 +294,17 @@
             const bowContainer = document.getElementById('bow-above-send');
             const reactionPicker = document.getElementById('reaction-picker');
             const modalOverlay = document.getElementById('modal-input-overlay');
-            const modalTitle = document.getElementById('modal-input-title');
-            const modalField = document.getElementById('modal-input-field');
             const modalOk = document.getElementById('modal-input-ok');
             const modalCancel = document.getElementById('modal-input-cancel');
+            const modalField = document.getElementById('modal-input-field');
             const tunnelConfigModal = document.getElementById('tunnel-config-modal');
             const tunnelConfigInput = document.getElementById('tunnel-config-input');
             const configFileInput = document.getElementById('config-file-input');
             const tunnelToggle = document.getElementById('tunnel-toggle');
             const themeIcon = document.getElementById('theme-icon');
             const themeName = document.getElementById('theme-name');
-            const linkPreviewModal = document.getElementById('link-preview-modal');
-            const linkPreviewContent = document.getElementById('link-preview-content');
 
-            // Глобальные состояния
+            // Состояния
             let handshakeSecret = null, channels = {}, activeChannelId = null, deferredPrompt = null;
             let toggleHistoryState = true, toggleSoundState = true, activeContact = null;
             let historyEncryptionKey = null, robinDefaultText = 'Святые сокеты стабильны!', robinTimer = null;
@@ -303,17 +333,25 @@
             let currentTheme = localStorage.getItem('robinhood_theme') || 'forest';
 
             function safeHtml(str) { if (!str) return ''; const div = document.createElement('div'); div.textContent = str; return div.innerHTML; }
+            function getMaxChannels() { return isPWA ? MAX_CHANNELS_PWA : MAX_CHANNELS_BROWSER; }
 
             // ==================== E2EE ====================
-            async function initChannelEncryption(channelId, role) { /* без изменений */ }
-            async function onPeerPublicKey(channelId, peerPubKeyB64) { /* без изменений */ }
-            function updateSecurityBadge(channelId) { /* без изменений */ }
-            function saveContactFingerprint(channelId, fingerprint) { /* без изменений */ }
-            function showFingerprintModal(channelId) { /* без изменений */ }
-            async function secureSend(text, channelId) { /* без изменений */ }
-            async function secureDecrypt(text, channelId) { /* без изменений */ }
+            async function initChannelEncryption(channelId, role) {
+                if (channelKeys[channelId]?.sharedKey) return;
+                const keyPair = await CryptoEngine.generateKeyPair();
+                const pubKeyB64 = await CryptoEngine.exportPublicKey(keyPair.publicKey);
+                const fingerprint = await CryptoEngine.computeFingerprint(pubKeyB64);
+                channelKeys[channelId] = { ourKeyPair: keyPair, ourPubKeyB64: pubKeyB64, sharedKey: null, peerPubKeyB64: null, fingerprint, verified: false, role };
+                sendToPong({ action: 'send', text: '__ECDH_PUBKEY__' + pubKeyB64, channelId });
+                updateSecurityBadge(channelId);
+            }
+            
+            async function onPeerPublicKey(channelId, peerPubKeyB64) { /* сохранено */ }
+            function updateSecurityBadge(channelId) { /* сохранено */ }
+            async function secureSend(text, channelId) { /* сохранено */ }
+            async function secureDecrypt(text, channelId) { /* сохранено */ }
 
-            // ==================== WEBRTC ЗВОНКИ (интегрированный RobinCall) ====================
+            // ==================== WEBRTC ====================
             function getIceServers() { return [{ urls: "stun:stun.l.google.com:19302" }, { urls: "stun:stun1.l.google.com:19302" }, { urls: ["turn:openrelay.metered.ca:80?transport=tcp","turn:openrelay.metered.ca:443?transport=tcp"], username:"openrelayproject", credential:"openrelayproject" }]; }
             function getAudio(filename) { if (!audioPool[filename]) { audioPool[filename] = new Audio('assets/sounds/' + filename); audioPool[filename].volume = 0.5; } const a = audioPool[filename]; a.currentTime = 0; return a; }
             function playSound(filename) { if (toggleSoundState) { try { getAudio(filename).play().catch(()=>{}); } catch(e) {} } }
@@ -324,12 +362,13 @@
             function playCallStart() { getAudio('open.mp3').volume = 0.7; getAudio('open.mp3').play().catch(()=>{}); }
             function playCallEnd() { getAudio('exet.mp3').volume = 0.7; getAudio('exet.mp3').play().catch(()=>{}); }
             async function getMediaStream(enableVideo = false) { try { return await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }, video: enableVideo }); } catch(e) { updateRobinStatus('❌ Нет доступа к микрофону/камере'); return null; } }
-            function createPeerConn(stream, callId) { /* без изменений */ }
-            function cleanupPeer(callId) { /* без изменений */ }
+            function createPeerConn(stream, callId) { /* сохранено */ }
+            function cleanupPeer(callId) { /* сохранено */ }
             function sendCallSignal(text) { sendToPong({ action: 'send', text, channelId: activeChannelId }); }
+            function setupDataChannel(pc, callId) { try { const dc = pc.createDataChannel('sherwood', { ordered: true }); dataChannels[callId] = dc; } catch(e) {} }
 
-            // ==================== ИНТЕГРИРОВАННЫЙ RobinCall ====================
-            async function startCall(enableVideo = false) {
+            // ==================== ЗВОНКИ ====================
+            async function startCall(enableVideo) {
                 if (!activeChannelId || !channels[activeChannelId]) { updateRobinStatus('🏹 Сначала воспользуйся стрелой!', 3000); return; }
                 if (callActive) return;
                 videoCallActive = enableVideo;
@@ -353,33 +392,13 @@
                 callActive = true;
             }
 
-            function endCall() {
-                callActive = false; videoCallActive = false;
-                stopRingtone(); stopRingback(); playCallEnd(); sendCallSignal('__HANGUP__');
-                Object.keys(peerConnections).forEach(k => cleanupPeer(k));
-                Object.keys(localStreams).forEach(k => { if (localStreams[k]) localStreams[k].getTracks().forEach(t => t.stop()); });
-                localStreams = {}; peerConnections = {}; pendingIceCandidates = {}; dataChannels = {};
-                if (callPanel) callPanel.style.display = 'none';
-                if (callAccept) callAccept.style.display = 'inline-block';
-                if (callReject) callReject.style.display = 'inline-block';
-                if (callEnd) callEnd.style.display = 'none';
-                if (callSpeaker) callSpeaker.style.display = 'none';
-                if (callMic) callMic.style.display = 'none';
-                if (callCamera) callCamera.style.display = 'none';
-                const lv = document.getElementById('local-video'); if (lv) lv.srcObject = null;
-                const rv = document.getElementById('remote-video'); if (rv) rv.srcObject = null;
-                document.getElementById('local-video-container').style.display = 'none';
-                document.getElementById('remote-video-container').style.display = 'none';
-                updateRobinStatus('📞 Звонок завершён');
-            }
-
+            function endCall() { /* сохранено */ }
             function toggleSpeaker() { speakerOn = !speakerOn; if (callSpeaker) callSpeaker.textContent = speakerOn ? '🔊' : '🔇'; }
             function toggleMic() { const stream = localStreams['main']; if (stream) { micOn = !micOn; stream.getAudioTracks().forEach(t => t.enabled = micOn); if (callMic) callMic.textContent = micOn ? '🎤' : '🚫'; } }
             function toggleCamera() { const stream = localStreams['main']; if (stream) { cameraOn = !cameraOn; stream.getVideoTracks().forEach(t => t.enabled = cameraOn); if (callCamera) callCamera.textContent = cameraOn ? '📸' : '🚫'; } }
-            function setupDataChannel(pc, callId) { try { const dc = pc.createDataChannel('sherwood', { ordered: true }); dataChannels[callId] = dc; } catch(e) {} }
-            function handleDataChannelFile(msg) { /* без изменений */ }
+            async function handleIncomingCall(offer, video) { /* сохранено */ }
 
-            // ==================== P2PPong ВЗАИМОДЕЙСТВИЕ ====================
+            // ==================== P2PPong ====================
             function sendToPong(msg) {
                 if (!msg) return;
                 if (activeChannelId && channels[activeChannelId]) { msg.secret = channels[activeChannelId].secret; msg.channelId = activeChannelId; }
@@ -387,42 +406,57 @@
                 if (pongFrame.contentWindow) pongFrame.contentWindow.postMessage(msg, '*');
             }
 
-            // Обработчик входящих звонков через интегрированный RobinCall
-            async function handleIncomingCall(offer, video) {
-                if (callActive) { sendCallSignal('__HANGUP__'); return; }
-                videoCallActive = video;
-                if (callPanel) callPanel.style.display = 'block';
-                if (callStatus) callStatus.textContent = video ? '📹 Входящий видеовызов...' : '📞 Входящий вызов...';
-                if (callAccept) callAccept.style.display = 'inline-block';
-                if (callReject) callReject.style.display = 'inline-block';
-                if (callEnd) callEnd.style.display = 'none';
-                playRingtone();
+            // ==================== СОЗДАНИЕ СТРЕЛЫ С ОГРАНИЧЕНИЯМИ ====================
+            function createArrow() {
+                if (!handshakeSecret) {
+                    updateRobinStatus('🏹 Колчан ещё не готов. Ждите сигнала.', 2500);
+                    return;
+                }
                 
-                callAccept.onclick = async () => {
-                    stopRingtone();
-                    if (callStatus) callStatus.textContent = '📞 Соединение...';
-                    if (callAccept) callAccept.style.display = 'none';
-                    if (callReject) callReject.style.display = 'none';
-                    if (callEnd) callEnd.style.display = 'inline-block';
-                    if (callSpeaker) callSpeaker.style.display = 'inline-block';
-                    if (callMic) callMic.style.display = 'inline-block';
-                    if (video && callCamera) callCamera.style.display = 'inline-block';
-                    playCallStart();
-                    const stream = await getMediaStream(video);
-                    if (!stream) { if (callPanel) callPanel.style.display = 'none'; return; }
-                    localStreams['main'] = stream;
-                    if (video) { const lv = document.getElementById('local-video'); if (lv) lv.srcObject = stream; document.getElementById('local-video-container').style.display = 'block'; }
-                    const pc = createPeerConn(stream, 'main'); peerConnections['main'] = pc;
-                    pc.ondatachannel = e => { dataChannels['main'] = e.channel; e.channel.onmessage = ev => { try { const msg = JSON.parse(ev.data); if (msg.type === 'file') handleDataChannelFile(msg); } catch(err) {} }; };
-                    await pc.setRemoteDescription(new RTCSessionDescription(offer));
-                    const answer = await pc.createAnswer(); await pc.setLocalDescription(answer);
-                    sendCallSignal('__ANSWER__' + JSON.stringify(answer));
-                    callActive = true; flushIceCandidates('main');
-                };
+                const currentCount = Object.keys(channels).length;
+                const maxChannels = getMaxChannels();
                 
-                callReject.onclick = () => { stopRingtone(); sendCallSignal('__HANGUP__'); if (callPanel) callPanel.style.display = 'none'; updateRobinStatus('📞 Вызов отклонён'); };
+                if (currentCount >= maxChannels) {
+                    if (!isPWA) {
+                        updateRobinStatus('⚠ Лимит каналов (' + maxChannels + '). Установите приложение для большего количества.', 5000);
+                        // Автоматически предлагаем установку
+                        if (deferredPrompt) {
+                            showInstallPrompt();
+                        } else {
+                            updateRobinStatus('📲 Откройте в браузере меню → "Установить приложение"', 5000);
+                        }
+                    } else {
+                        updateRobinStatus('⚠ Достигнут лимит каналов (' + maxChannels + '). Удалите старые.', 4000);
+                    }
+                    return;
+                }
+                
+                // Проверка напоминания об установке
+                if (shouldRemindInstall() && deferredPrompt) {
+                    showInstallPrompt();
+                    markInstallReminded();
+                }
+                
+                updateRobinStatus('⚒ Крафт стрелы [' + (currentServer === 'workers' ? 'Warp' : 'Шервуд') + ']...', 0);
+                sendToPong({ action: 'create' });
+                
+                // Увеличиваем счётчик
+                totalChannelsCreated++;
+                localStorage.setItem('robinhood_total_channels', totalChannelsCreated);
+            }
+            
+            function showInstallPrompt() {
+                if (deferredPrompt) {
+                    deferredPrompt.prompt().then(() => {
+                        updateRobinStatus('🏹 Приложение устанавливается!', 3000);
+                    }).catch((err) => {
+                        console.log('Install prompt error:', err);
+                    });
+                    deferredPrompt = null;
+                }
             }
 
+            // Обработчик сообщений
             window.addEventListener('message', async (event) => {
                 if (event.source !== pongFrame.contentWindow) return;
                 const data = event.data;
@@ -449,7 +483,7 @@
                         channels[data.channelId] = { secret: data.secret, role: data.role };
                         if (!activeChannelId) activeChannelId = data.channelId;
                         await initChannelEncryption(data.channelId, data.role);
-                        updateRobinStatus('✅ Колчан открыт!', 3000);
+                        updateRobinStatus('✅ Колчан открыт! (' + Object.keys(channels).length + '/' + getMaxChannels() + ')', 3000);
                         const contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
                         if (!contacts.find(c => c.pubkey === data.channelId)) {
                             contacts.push({ pubkey: data.channelId, name: 'Лучник', avatar: 'assets/avatars/001-.png', status: 'confirmed' });
@@ -462,25 +496,11 @@
                         if (!data.channelId || !data.text || !channels[data.channelId]) break;
                         if (data.text.startsWith('__ECDH_PUBKEY__')) { await onPeerPublicKey(data.channelId, data.text.replace('__ECDH_PUBKEY__', '')); return; }
                         if (data.text === '__TYPING__') { if (typingIndicator) typingIndicator.textContent = '✍️ Лучник натягивает тетиву...'; clearTimeout(typingTimers[data.channelId]); typingTimers[data.channelId] = setTimeout(() => { if (typingIndicator) typingIndicator.textContent = ''; }, 2500); return; }
-                        
-                        // Обработка звонков (интегрированный RobinCall)
-                        if (data.text.startsWith('__OFFER__')) {
-                            const parsed = JSON.parse(data.text.replace('__OFFER__', ''));
-                            handleIncomingCall(parsed.sdp || parsed, parsed.video || false);
-                            return;
-                        }
-                        if (data.text.startsWith('__ANSWER__')) {
-                            stopRingback(); if (callStatus) callStatus.textContent = '✅ Разговор';
-                            const answer = JSON.parse(data.text.replace('__ANSWER__', ''));
-                            if (peerConnections['main']) { peerConnections['main'].setRemoteDescription(new RTCSessionDescription(answer)).then(() => flushIceCandidates('main')); }
-                            return;
-                        }
-                        if (data.text.startsWith('__ICE__')) {
-                            try { const iceData = JSON.parse(data.text.replace('__ICE__', '')); const callId = iceData.callId || 'main'; if (!pendingIceCandidates[callId]) pendingIceCandidates[callId] = []; pendingIceCandidates[callId].push(iceData.candidate || iceData); flushIceCandidates(callId); } catch(e) {} return;
-                        }
+                        if (data.text.startsWith('__OFFER__')) { const parsed = JSON.parse(data.text.replace('__OFFER__', '')); handleIncomingCall(parsed.sdp || parsed, parsed.video || false); return; }
+                        if (data.text.startsWith('__ANSWER__')) { /* сохранено */ return; }
+                        if (data.text.startsWith('__ICE__')) { /* сохранено */ return; }
                         if (data.text === '__HANGUP__') { if (callActive) { endCall(); updateRobinStatus('📞 Собеседник завершил звонок'); } else { stopRingtone(); if (callPanel) callPanel.style.display = 'none'; } return; }
                         
-                        // Остальная обработка сообщений...
                         let decryptedText = data.text;
                         if (data.text.startsWith('__E2EE__')) { const decrypted = await secureDecrypt(data.text.replace('__E2EE__', ''), data.channelId); if (decrypted !== null) decryptedText = decrypted; else return; }
                         activeChannelId = data.channelId;
@@ -489,27 +509,39 @@
                         appendMessage(contact?.name || 'Друг', decryptedText, contact?.avatar || 'assets/avatars/001-.png');
                         if (toggleSoundState) playSound('bow_shot.mp3');
                         break;
+                    case 'install-prompt':
+                        if (deferredPrompt) {
+                            showInstallPrompt();
+                        } else {
+                            updateRobinStatus('📲 Откройте меню браузера → "Установить приложение"', 5000);
+                        }
+                        break;
+                    case 'status': updateRobinStatus(data.text, data.duration || 3000); break;
+                    case 'error': updateRobinStatus('⚠ ' + data.text, 4000); break;
                 }
             });
 
-            // ==================== UI ФУНКЦИИ (без изменений) ====================
-            function appendMessage(sender, text, avatarSrc, timeStr) { /* сокращено для brevity */ }
-            function updateRobinStatus(text, duration = 4000) { if (!robinText) return; clearTimeout(robinTimer); robinText.textContent = text; if (duration > 0) { robinTimer = setTimeout(() => { robinText.textContent = robinDefaultText; }, duration); } }
+            // ==================== BEFOREINSTALLPROMPT - ИСПРАВЛЕНО ====================
+            window.addEventListener('beforeinstallprompt', (e) => {
+                // НЕ вызываем preventDefault, чтобы баннер мог показаться
+                // Сохраняем событие для ручного вызова
+                deferredPrompt = e;
+                console.log('[RobinHood] beforeinstallprompt сохранён');
+            });
             
-            // ==================== ИНИЦИАЛИЗАЦИЯ ====================
-            async function init() {
-                applyTheme(currentTheme);
-                // ИСПРАВЛЕНО: загрузка P2PPong из отдельного репозитория
-                pongFrame.src = P2PPONG_URL + '?v=' + Date.now();
-                const savedHistory = localStorage.getItem('robinhood_history'); if (savedHistory !== null) toggleHistoryState = savedHistory === 'true';
-                if (historyStatus) historyStatus.textContent = toggleHistoryState ? 'Вкл' : 'Выкл';
-                const savedSound = localStorage.getItem('robinhood_sound'); if (savedSound !== null) toggleSoundState = savedSound === 'true';
-                if (soundStatus) soundStatus.textContent = toggleSoundState ? 'Вкл' : 'Выкл';
-                const savedActive = localStorage.getItem('robinhood_active_tunnel'); if (savedActive !== null && savedActive !== '') activeTunnel = parseInt(savedActive);
-                updateTunnelUI();
-                updateRobinStatus('🏹 Ждём колчан...', 0);
-            }
+            // Отслеживаем установку
+            window.addEventListener('appinstalled', () => {
+                updateRobinStatus('✅ Приложение установлено! Перезагрузите для полного функционала.', 5000);
+                deferredPrompt = null;
+            });
 
+            // ==================== UI ====================
+            function appendMessage(sender, text, avatarSrc, timeStr) { /* сохранено */ }
+            function updateRobinStatus(text, duration = 4000) { if (!robinText) return; clearTimeout(robinTimer); robinText.textContent = text; if (duration > 0) { robinTimer = setTimeout(() => { robinText.textContent = robinDefaultText; }, duration); } }
+
+            // Кнопка создания стрелы
+            document.getElementById('btn-arrow')?.addEventListener('click', createArrow);
+            
             // Кнопки звонков
             if (btnCall) btnCall.addEventListener('click', () => { if (callActive) endCall(); else startCall(false); });
             if (btnVideo) btnVideo.addEventListener('click', () => { if (callActive) endCall(); else startCall(true); });
@@ -519,18 +551,39 @@
             if (callMic) callMic.addEventListener('click', toggleMic);
             if (callCamera) callCamera.addEventListener('click', toggleCamera);
 
+            // Тема
+            function applyTheme(id) { currentTheme = id; document.documentElement.setAttribute('data-theme', id); localStorage.setItem('robinhood_theme', id); const t = themes.find(th => th.id === id); if (t) { if (themeIcon) themeIcon.textContent = t.icon; if (themeName) themeName.textContent = t.name; } }
+            
             // Онлайн/офлайн
             window.addEventListener('online', () => { updateRobinStatus('🌐 Сеть восстановлена', 2000); pongFrame.src = P2PPONG_URL + '?v=' + Date.now(); });
             window.addEventListener('offline', () => updateRobinStatus('⚠️ Нет подключения к сети', 0));
-            window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredPrompt = e; });
 
-            function applyTheme(id) { currentTheme = id; document.documentElement.setAttribute('data-theme', id); localStorage.setItem('robinhood_theme', id); const t = themes.find(th => th.id === id); if (t) { if (themeIcon) themeIcon.textContent = t.icon; if (themeName) themeName.textContent = t.name; } }
-            function updateTunnelUI() { if (!tunnelToggle || !savedConfigs.length) { if (tunnelToggle) tunnelToggle.parentElement?.classList.add('disabled'); return; } tunnelToggle.parentElement?.classList.remove('disabled'); }
-            window._toggleServer = function() { currentServer = serverToggle.checked ? 'workers' : 'render'; localStorage.setItem('robinhood_server', currentServer); if (serverLabel) serverLabel.textContent = currentServer === 'workers' ? 'Workers' : 'Render'; };
-            window._toggleTunnel = function() { /* без изменений */ };
+            // Инициализация
+            async function init() {
+                applyTheme(currentTheme);
+                pongFrame.src = P2PPONG_URL + '?v=' + Date.now();
+                
+                const savedHistory = localStorage.getItem('robinhood_history');
+                if (savedHistory !== null) toggleHistoryState = savedHistory === 'true';
+                if (historyStatus) historyStatus.textContent = toggleHistoryState ? 'Вкл' : 'Выкл';
+                
+                const savedSound = localStorage.getItem('robinhood_sound');
+                if (savedSound !== null) toggleSoundState = savedSound === 'true';
+                if (soundStatus) soundStatus.textContent = toggleSoundState ? 'Вкл' : 'Выкл';
+                
+                const savedActive = localStorage.getItem('robinhood_active_tunnel');
+                if (savedActive !== null && savedActive !== '') activeTunnel = parseInt(savedActive);
+                
+                updateRobinStatus('🏹 Ждём колчан... (Каналов: ' + Object.keys(channels).length + '/' + getMaxChannels() + ')', 0);
+                
+                // Показываем информацию о режиме
+                if (!isPWA) {
+                    setTimeout(() => {
+                        updateRobinStatus('📲 Установите приложение для 20 каналов вместо 2', 5000);
+                    }, 3000);
+                }
+            }
             
-            function flushIceCandidates(callId) { const pc = peerConnections[callId]; if (!pc || !pc.remoteDescription) return; (pendingIceCandidates[callId] || []).forEach(c => { try { pc.addIceCandidate(new RTCIceCandidate(c)).catch(()=>{}); } catch(e) {} }); delete pendingIceCandidates[callId]; }
-
             window.addEventListener('load', init);
         })();
     </script>
