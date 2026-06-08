@@ -315,40 +315,50 @@
             return;
         }
         navigator.mediaDevices.getUserMedia({ audio: true })
-            .then(stream => {
-                voiceRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm; codecs=opus' });
-                voiceChunks = [];
-                voiceRecorder.ondataavailable = e => voiceChunks.push(e.data);
-                voiceRecorder.onstop = () => {
-                    const blob = new Blob(voiceChunks, { type: 'audio/webm' });
-                    const reader = new FileReader();
-                    reader.onload = () => {
-                        const base64 = reader.result.split(',')[1];
-                        sendFileMessage({
-                            name: 'voice_message.webm',
-                            size: blob.size,
-                            type: 'audio/webm',
-                            data: base64
-                        });
-                    };
-                    reader.readAsDataURL(blob);
-                    stream.getTracks().forEach(t => t.stop());
-                    voiceRecorder = null;
-                    if (voiceTimer) clearInterval(voiceTimer);
-                    btnVoice.style.background = '';
-                };
-                voiceRecorder.start();
-                voiceStartTime = Date.now();
-                btnVoice.style.background = 'rgba(244,67,54,0.3)';
-                voiceTimer = setInterval(() => {
-                    const elapsed = Math.floor((Date.now() - voiceStartTime) / 1000);
-                    if (elapsed >= MAX_VOICE_DURATION) {
-                        voiceRecorder.stop();
-                        updateRobinStatus('⏰ Максимальная длительность голосового сообщения — 60 сек.', 3000);
-                    }
-                }, 1000);
-            })
-            .catch(() => updateRobinStatus('❌ Нет доступа к микрофону'));
+    .then(stream => {
+        if (currentServer === 'render') {
+            updateRobinStatus('⚠️ Для голосовых сообщений переключите сервер на Warp', 3000);
+            stream.getTracks().forEach(t => t.stop());
+            return;
+        }
+        voiceRecorder = new MediaRecorder(stream, {
+            mimeType: 'audio/webm; codecs=opus',
+            audioBitsPerSecond: 16000
+        });
+        voiceChunks = [];
+        voiceRecorder.ondataavailable = e => voiceChunks.push(e.data);
+        voiceRecorder.onstop = () => {
+            const blob = new Blob(voiceChunks, { type: 'audio/webm' });
+            const reader = new FileReader();
+            reader.onload = () => {
+                const base64 = reader.result.split(',')[1];
+                sendFileMessage({
+                    name: 'voice_message.webm',
+                    size: blob.size,
+                    type: 'audio/webm',
+                    data: base64
+                });
+            };
+            reader.readAsDataURL(blob);
+            stream.getTracks().forEach(t => t.stop());
+            voiceRecorder = null;
+            if (voiceTimer) clearInterval(voiceTimer);
+            btnVoice.style.background = '';
+            btnVoice.style.borderColor = '';
+        };
+        voiceRecorder.start();
+        voiceStartTime = Date.now();
+        btnVoice.style.background = '#f44336';
+        btnVoice.style.borderColor = '#b71c1c';
+        voiceTimer = setInterval(() => {
+            const elapsed = Math.floor((Date.now() - voiceStartTime) / 1000);
+            if (elapsed >= MAX_VOICE_DURATION) {
+                voiceRecorder.stop();
+                updateRobinStatus('⏰ Максимальная длительность голосового сообщения — ' + MAX_VOICE_DURATION + ' сек.', 3000);
+            }
+        }, 1000);
+    })
+    .catch(() => updateRobinStatus('❌ Нет доступа к микрофону'));
     });
 }
             
