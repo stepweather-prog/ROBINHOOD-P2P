@@ -123,6 +123,7 @@
         .online-dot { width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:4px; }
         .online-dot.online { background:#4caf50; box-shadow:0 0 6px #4caf50; }
         .online-dot.offline { background:#666; }
+        #reaction-picker { display: none; }
     </style>
 </head>
 <body>
@@ -902,12 +903,16 @@ function toggleCamera() {
                 chatBox.insertBefore(row, typingIndicator); chatBox.scrollTop = chatBox.scrollHeight;
 
                 let pressTimer;
-                row.addEventListener('mousedown', () => { pressTimer = setTimeout(() => showReactionPicker(row, event), 500); });
-                row.addEventListener('mouseup', () => clearTimeout(pressTimer));
-                row.addEventListener('mouseleave', () => clearTimeout(pressTimer));
-                row.addEventListener('touchstart', () => { pressTimer = setTimeout(() => showReactionPicker(row, event), 500); }, { passive: true });
-                row.addEventListener('touchend', () => clearTimeout(pressTimer));
-                row.addEventListener('touchmove', () => clearTimeout(pressTimer));
+            row.addEventListener('mousedown', (e) => {
+           pressTimer = setTimeout(() => showReactionPicker(row, e), 500);
+   });
+           row.addEventListener('mouseup', () => clearTimeout(pressTimer));
+             row.addEventListener('mouseleave', () => clearTimeout(pressTimer));
+             row.addEventListener('touchstart', (e) => {
+              pressTimer = setTimeout(() => showReactionPicker(row, e), 500);
+          }, { passive: true });
+            row.addEventListener('touchend', () => clearTimeout(pressTimer));
+              row.addEventListener('touchmove', () => clearTimeout(pressTimer));
                 row.querySelectorAll('.msg-link').forEach(link => { link.addEventListener('click', e => { e.preventDefault(); showLinkPreview(link.href); }); });
 
                 if (messageReactions[msgId]) { Object.keys(messageReactions[msgId]).forEach(emoji => { for (let i = 0; i < messageReactions[msgId][emoji]; i++) addReactionToMessage(msgId, emoji, false); }); }
@@ -999,7 +1004,15 @@ function toggleCamera() {
             function hideContactMenu() { document.getElementById('contact-menu').style.display = 'none'; currentMenuContact = null; }
 
             // === Реакции ===
-            function showReactionPicker(msgElement, event) { if (!msgElement || !reactionPicker) return; const rect = msgElement.getBoundingClientRect(); reactionPicker.style.display = 'flex'; reactionPicker.style.top = (rect.top - 40) + 'px'; reactionPicker.style.left = Math.min(rect.left, window.innerWidth - 200) + 'px'; activeReactionMsgId = msgElement.dataset.msgid || msgElement.id; }
+            function showReactionPicker(msgElement, event) {
+            if (!msgElement || !reactionPicker) return;
+            activeReactionMsgId = msgElement.dataset.msgid || msgElement.id;
+            const rect = msgElement.getBoundingClientRect();
+           reactionPicker.style.display = 'flex';
+           reactionPicker.style.top = (rect.top - 40) + 'px';
+          reactionPicker.style.left = Math.min(rect.left, window.innerWidth - 200) + 'px';
+          if (event) event.stopPropagation();
+     }
             if (reactionPicker) { reactionPicker.querySelectorAll('span').forEach(span => { span.addEventListener('click', () => { if (!activeReactionMsgId || !activeChannelId) return; const emoji = span.textContent; sendToPong({ action: 'send', text: '__REACTION__' + JSON.stringify({ msgId: activeReactionMsgId, emoji }), channelId: activeChannelId }); addReactionToMessage(activeReactionMsgId, emoji, true); reactionPicker.style.display = 'none'; activeReactionMsgId = null; }); }); }
             function addReactionToMessage(msgId, emoji, fromNetwork) {
                 const row = document.getElementById(msgId); if (!row) return; let reactionsDiv = row.querySelector('.msg-reactions');
