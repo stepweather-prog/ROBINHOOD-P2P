@@ -742,34 +742,23 @@ function toggleCamera() {
                                 if (c) { c.name = p.nick || c.name; c.avatar = p.avatar || c.avatar; localStorage.setItem('robinhood_contacts', JSON.stringify(cs)); }
                             } catch(e) {} return;
                         }
-                        // Обычное сообщение
-                        activeChannelId = data.channelId;
-                        const contactsArr = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
-                        const contact = contactsArr.find(c => c.pubkey === data.channelId);
-                        const senderName = contact ? contact.name : (data.sender || 'Друг');
-                        const senderAvatar = contact ? contact.avatar : 'assets/avatars/001-.png';
-                        appendMessage(senderName, data.text, senderAvatar);
-                        contactOnlineStatus[data.channelId] = true;
-                        if (toggleHistoryState) {
-                            loadEncryptedHistory().then(hist => {
-                                hist.push({ text: data.text, sender: 'friend', recipient: 'me', senderName, avatar: senderAvatar, time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) });
-                                saveEncryptedHistory(hist);
-                            });
-                        }
-                        if (toggleSoundState) playSound('bow_shot.mp3');
-                        break;
-                    case 'install-prompt':
-                        if (deferredPrompt) { try { deferredPrompt.prompt(); } catch(e) {} deferredPrompt.userChoice?.then(r => { if (r.outcome === 'accepted') updateRobinStatus('🏹 Приложение устанавливается', 2000); deferredPrompt = null; }); }
-                        else updateRobinStatus('Откройте в браузере для установки', 3000);
-                        break;
-                    case 'status': updateRobinStatus(data.text, data.duration || 3000); break;
-                    case 'error': updateRobinStatus('⚠ ' + data.text, 4000); break;
-                }
-            });
-
-            window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredPrompt = e; });
-
-            // === Криптография и история ===
+                  // Обычное сообщение
+activeChannelId = data.channelId;
+let msgText = data.text;
+let msgId = null;
+if (typeof msgText === 'string' && msgText.startsWith('__MSG__')) {
+    try {
+        const parsed = JSON.parse(msgText.replace('__MSG__', ''));
+        msgId = parsed.id;
+        msgText = parsed.text;
+    } catch(e) {}
+}
+const contactsArr = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
+const contact = contactsArr.find(c => c.pubkey === data.channelId);
+const senderName = contact ? contact.name : (data.sender || 'Друг');
+const senderAvatar = contact ? contact.avatar : 'assets/avatars/001-.png';
+appendMessage(senderName, msgText, senderAvatar, null, msgId);
+// ... история ...
             async function generateAESKey() { return await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]); }
             async function exportAESKey(key) { const raw = await crypto.subtle.exportKey("raw", key); return btoa(Array.from(new Uint8Array(raw), b => String.fromCharCode(b)).join('')); }
             async function importAESKey(base64key) { const raw = Uint8Array.from(atob(base64key), c => c.charCodeAt(0)); return await crypto.subtle.importKey("raw", raw, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]); }
@@ -888,8 +877,9 @@ function toggleCamera() {
                     const sec = parseInt(durationStr) || 30; sendSelfDestructMessage(text, sec);
                     selfDestructMode = false; if (document.getElementById('self-destruct-status')) document.getElementById('self-destruct-status').textContent = 'Выкл';
                 } else {
-                    sendToPong({ action: 'send', text, channelId: activeChannelId });
-                    appendMessage('Вы', text, profileAvatarSmall?.src || 'assets/avatars/001-.png');
+                    const msgId = 'msg_' + Date.now();
+sendToPong({ action: 'send', text: '__MSG__' + JSON.stringify({ id: msgId, text: text }), channelId: activeChannelId });
+                    appendMessage('Вы', text, profileAvatarSmall?.src || 'assets/avatars/250-icon-17159758.png', null, msgId);
                 }
                 msgInput.value = ''; if (typingIndicator) typingIndicator.textContent = ''; clearTimeout(typingTimeout);
                 playArcherAnimation(); playBowAnimation(); if (toggleSoundState) playSound('shot.mp3');
@@ -897,8 +887,8 @@ function toggleCamera() {
             sendBtn?.addEventListener('click', sendMessageHandler);
             msgInput?.addEventListener('keypress', e => { if (e.key === 'Enter') sendMessageHandler(); });
 
-            function appendMessage(sender, text, avatarSrc, timeStr = null) {
-                const msgId = 'msg_' + Date.now(); const row = document.createElement('div'); row.className = 'message-row'; row.id = msgId; row.dataset.msgid = msgId;
+            function appendMessage(sender, text, avatarSrc, timeStr = null, msgId = null) {
+    const finalId = msgId || 'msg_' + Date.now(); const row = document.createElement('div'); row.className = 'message-row'; row.id = finalId; row.dataset.msgid = finalId;
                 const finalTime = timeStr || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                 const links = detectLinks(text); let displayText = safeHtml(text);
                 if (links.length > 0) { links.forEach(url => { displayText = displayText.replace(safeHtml(url), `<a href="${url}" target="_blank" class="msg-link">${safeHtml(url)}</a>`); }); }
@@ -1073,7 +1063,7 @@ row.addEventListener('touchmove', () => clearTimeout(pressTimer));
             });
             function sendSelfDestructMessage(text, duration) { if (!activeChannelId || !channels[activeChannelId]) return; const payload = { type: 'selfdestruct', text, duration: duration || 30, time: Date.now() }; sendToPong({ action: 'send', text: '__SELFDESTRUCT__' + JSON.stringify(payload), channelId: activeChannelId }); appendSelfDestructMessage('Вы', text, profileAvatarSmall?.src || 'assets/avatars/001-.png', duration || 30); }
             function appendSelfDestructMessage(sender, text, avatarSrc, duration) {
-                const msgId = 'msg_' + Date.now(); const row = document.createElement('div'); row.className = 'message-row'; row.id = msgId;
+                const msgId = 'msg_' + Date.now(); const row = document.createElement('div'); row.className = 'message-row'; row.id = finalId;
                 row.innerHTML = `<img src="${avatarSrc}" class="avatar" alt="avatar"><div class="msg-body"><div class="msg-sender">${safeHtml(sender)}</div><div>${safeHtml(text)}<span class="msg-self-destruct">💣${duration}с</span></div><div class="msg-status">${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div></div>`;
                 chatBox.insertBefore(row, typingIndicator); chatBox.scrollTop = chatBox.scrollHeight;
                 let remaining = duration; const timer = setInterval(() => { remaining--; const sdSpan = row.querySelector('.msg-self-destruct'); if (sdSpan) sdSpan.textContent = '💣' + remaining + 'с'; if (remaining <= 0) { clearInterval(timer); row.classList.add('self-destruct'); setTimeout(() => { if (row.parentNode) row.remove(); }, 500); } }, 1000);
