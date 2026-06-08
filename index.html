@@ -404,6 +404,8 @@
             let meshPeers = {};
             let cachedHistory = [];
             let selfDestructMode = false;
+            let reactionMode = false;   // true — клик по эмодзи отправит реакцию, false — вставит в поле ввода
+            let reactionTargetMsgId = null; // ID сообщения, на которое ставим реакцию
             let voiceRecorder = null;
             let voiceChunks = [];
             let voiceStartTime = 0;
@@ -985,7 +987,33 @@ function toggleCamera() {
                         div.innerHTML = `<div class="contact-info"><span class="online-dot ${isOnline ? 'online' : 'offline'}"></span><img src="${c.avatar || 'assets/avatars/001-.png'}" class="contact-avatar" alt="avatar"><span class="contact-name">${safeHtml(c.name)}</span></div><button class="delete-contact" data-pubkey="${c.pubkey}">✖</button>`;
                         div.querySelector('.contact-info')?.addEventListener('click', () => { activeChannelId = c.pubkey; openChatWithContact(c); contactsSheet?.classList.remove('open'); overlay?.classList.remove('show'); });
                         div.querySelector('.delete-contact')?.addEventListener('click', e => { e.stopPropagation(); if (confirm('Убить лучника ' + c.name + '?')) deleteContact(c.pubkey); });
-                        let pressTimer; div.addEventListener('mousedown', () => { pressTimer = setTimeout(() => showContactMenu(c), 600); }); div.addEventListener('mouseup', () => clearTimeout(pressTimer)); div.addEventListener('mouseleave', () => clearTimeout(pressTimer)); div.addEventListener('touchstart', () => { pressTimer = setTimeout(() => showContactMenu(c), 600); }, { passive: true }); div.addEventListener('touchend', () => clearTimeout(pressTimer)); div.addEventListener('touchmove', () => clearTimeout(pressTimer));
+                        let pressTimer;
+                row.addEventListener('mousedown', (e) => {
+            pressTimer = setTimeout(() => {
+        if (!row || !emojiPanel) return;
+        reactionTargetMsgId = row.dataset.msgid || row.id;
+        reactionMode = true;
+        const rect = row.getBoundingClientRect();
+        emojiPanel.style.display = 'block';
+        emojiPanel.style.top = (rect.top - emojiPanel.offsetHeight - 10) + 'px';
+        emojiPanel.style.left = Math.min(rect.left, window.innerWidth - emojiPanel.offsetWidth) + 'px';
+    }, 500);
+});
+row.addEventListener('mouseup', () => clearTimeout(pressTimer));
+row.addEventListener('mouseleave', () => clearTimeout(pressTimer));
+row.addEventListener('touchstart', (e) => {
+    pressTimer = setTimeout(() => {
+        if (!row || !emojiPanel) return;
+        reactionTargetMsgId = row.dataset.msgid || row.id;
+        reactionMode = true;
+        const rect = row.getBoundingClientRect();
+        emojiPanel.style.display = 'block';
+        emojiPanel.style.top = (rect.top - emojiPanel.offsetHeight - 10) + 'px';
+        emojiPanel.style.left = Math.min(rect.left, window.innerWidth - emojiPanel.offsetWidth) + 'px';
+    }, 500);
+}, { passive: true });
+row.addEventListener('touchend', () => clearTimeout(pressTimer));
+row.addEventListener('touchmove', () => clearTimeout(pressTimer));
                         contactsListInner.appendChild(div);
                     });
                 } else { updateRobinStatus('🏹 Лучников нет! Создайте стрелу, чтобы пригласить.', 3000); }
@@ -1100,9 +1128,43 @@ function toggleCamera() {
 
             // === Эмодзи и предпросмотр ссылок ===
             const emojis = ['😀','😂','🤣','😍','😘','😜','😎','🤩','🥳','😢','😡','👍','👎','❤️','🔥','🎉','💀','🏹','🌲','🏰','🦊','🐺','✨','⚔️','🛡️','🍺','🍗','🏕️','🌙','☀️','🌟','💪','🤝','🙏','👑','💰','🎯','📞','💬','🔔','❌','✅','🎵','📜','⚜️'];
-            if (emojiGrid) { emojiGrid.innerHTML = ''; emojis.forEach(e => { const span = document.createElement('span'); span.textContent = e; span.addEventListener('click', () => { msgInput.value += e; msgInput.focus(); }); emojiGrid.appendChild(span); }); }
+            if (emojiGrid) { emojiGrid.innerHTML = ''; emojis.forEach(e => { const span = document.createElement('span'); span.textContent = e; span.addEventListener('click', () => {
+    if (reactionMode && reactionTargetMsgId && activeChannelId) {
+        // Отправляем реакцию на сообщение
+        sendToPong({
+            action: 'send',
+            text: '__REACTION__' + JSON.stringify({ msgId: reactionTargetMsgId, emoji: e }),
+            channelId: activeChannelId
+        });
+        addReactionToMessage(reactionTargetMsgId, e, true);
+        // Закрываем панель и сбрасываем режим реакций
+        if (emojiPanel) emojiPanel.style.display = 'none';
+        reactionMode = false;
+        reactionTargetMsgId = null;
+    } else {
+        // Обычный режим – вставка смайла в поле ввода
+        msgInput.value += e;
+        msgInput.focus();
+    }
+}); emojiGrid.appendChild(span); }); }
             if (btnEmoji) btnEmoji.addEventListener('click', () => { if (emojiPanel) emojiPanel.style.display = emojiPanel.style.display === 'block' ? 'none' : 'block'; });
-            document.addEventListener('click', e => { if (emojiPanel && !emojiPanel.contains(e.target) && e.target !== btnEmoji) emojiPanel.style.display = 'none'; if (reactionPicker && !reactionPicker.contains(e.target)) { reactionPicker.style.display = 'none'; activeReactionMsgId = null; } });
+            document.addEventListener('click', e => {
+    // Закрываем панель эмодзи, если кликнули вне её
+    if (emojiPanel && !emojiPanel.contains(e.target) && e.target !== btnEmoji) {
+        emojiPanel.style.display = 'none';
+        // Сбрасываем режим реакций, если он был включен
+        if (reactionMode) {
+            reactionMode = false;
+            reactionTargetMsgId = null;
+        }
+    }
+    // Закрываем панель быстрых реакций (если ещё используется)
+    if (reactionPicker && !reactionPicker.contains(e.target)) {
+        reactionPicker.style.display = 'none';
+        activeReactionMsgId = null;
+    }
+});
+}{ reactionPicker.style.display = 'none'; activeReactionMsgId = null; } });
             function detectLinks(text) { const urlRegex = /(https?:\/\/[^\s]+)/g; return text.match(urlRegex) || []; }
             function showLinkPreview(url) { if (!linkPreviewContent) return; linkPreviewContent.innerHTML = ''; const div = document.createElement('div'); div.className = 'link-preview'; div.innerHTML = `<div class="link-preview-info"><div class="link-preview-title">🔗 Внешняя ссылка</div><div class="link-preview-url">${safeHtml(url)}</div><div class="link-preview-desc">Нажмите чтобы открыть</div></div>`; div.addEventListener('click', () => window.open(url, '_blank')); linkPreviewContent.appendChild(div); if (linkPreviewModal) linkPreviewModal.classList.add('active'); }
             document.getElementById('btn-close-link-preview')?.addEventListener('click', () => { document.getElementById('link-preview-modal')?.classList.remove('active'); });
