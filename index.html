@@ -350,8 +350,11 @@
             }
         });
 
-        window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredPrompt = e; });
-
+        window.addEventListener('beforeinstallprompt', (e) => {
+    // НЕ вызываем preventDefault — баннер показывается автоматически
+    // Сохраняем событие для ручного вызова при необходимости
+    deferredPrompt = e;
+});
         // Отправка сообщений
         let typingTimeout;
         if (msgInput) { msgInput.addEventListener('input', () => { if (!activeChannelId || !channels[activeChannelId]) return; sendToPong({ action: 'send', text: '__TYPING__', channelId: activeChannelId }); clearTimeout(typingTimeout); typingTimeout = setTimeout(() => { if (typingIndicator) typingIndicator.textContent = ''; }, 2000); }); }
