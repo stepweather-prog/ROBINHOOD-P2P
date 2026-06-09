@@ -29,7 +29,7 @@
         html { font-size: clamp(14px, 2.5vw, 16px); }
         html,body { margin:0; padding:0; height:100%; overflow:hidden; -webkit-text-size-adjust:100%; }
         body { background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%); color: var(--text); font-family: 'Segoe UI', 'Inter', 'Georgia', serif; display:flex; flex-direction:column; height:100vh; height:100dvh; position:relative; }
-        body::before { content:""; position:fixed; top:0; left:0; width:100%; height:100%; background-image:url('assets/background.webp'); background-size:cover; background-position:center 20%; background-repeat:no-repeat; z-index:0; opacity:0.35; }
+        body::before { content:""; position:fixed; top:0; left:0; width:100%; height:100%; background-image:url('assets/background.webp'); background-size:cover; background-position:center 60%; background-repeat:no-repeat; z-index:0; opacity:0.35; }
         body::after { content:""; position:fixed; top:0; left:0; width:100%; height:100%; background:radial-gradient(circle at 50% 40%, rgba(30,40,25,0.5), rgba(10,20,8,0.85)); z-index:0; }
         .header { background:linear-gradient(135deg, rgba(25,35,20,0.96), rgba(15,25,12,0.98)); border-bottom:2px solid var(--border); backdrop-filter:blur(8px); z-index:10; padding:6px 10px; display:flex; flex-direction:column; gap:4px; position:relative; box-shadow:0 4px 20px rgba(0,0,0,0.3); flex-shrink:0; }
         .header-row-1 { display:flex; align-items:center; gap:6px; }
@@ -57,7 +57,7 @@
         .msg-sender { font-weight:900; color:var(--text-bright); font-size:0.9em; text-shadow:0 1px 2px rgba(0,0,0,0.5); letter-spacing:0.3px; }
         .msg-body div { font-size:0.9em; line-height:1.4; color:var(--text); }
         .msg-status { font-size:0.6em; color:var(--text-dim); text-align:right; margin-top:4px; }
-        #robin-row { background:var(--robin-bg); border-left:3px solid var(--robin-accent); box-shadow:0 2px 12px rgba(0,0,0,0.2); position:sticky; top:0; z-index:5; margin-bottom:4px; }
+        #robin-row { background:var(--robin-bg); border-left:3px solid var(--robin-accent); box-shadow:0 2px 12px rgba(0,0,0,0.2); position:sticky; top:0; z-index:6; margin-bottom:4px; }
         #robin-text { font-weight:700; font-size:0.85em; color:var(--text-bright); text-shadow:0 1px 3px rgba(0,0,0,0.6); }
 
         .bottom-sheet, .avatar-selector { position:fixed; top:0; left:0; width:min(85%, 380px); height:100%; background:var(--sheet-bg); border-right:2px solid var(--border); z-index:200; transform:translateX(-100%); transition:transform 0.35s cubic-bezier(0.2,0.9,0.4,1.1); overflow-y:auto; backdrop-filter:blur(16px); box-shadow:8px 0 30px rgba(0,0,0,0.5); -webkit-overflow-scrolling:touch; }
@@ -436,7 +436,23 @@
 
         // Контакты
         const avatars = ['assets/avatars/001-.png','assets/avatars/002--1.png','assets/avatars/003-icon-8033085.png','assets/avatars/009--7.png','assets/avatars/010--8.png','assets/avatars/018--16.png','assets/avatars/022--20.png','assets/avatars/037--35.png','assets/avatars/043--41.png','assets/avatars/048--46.png','assets/avatars/050--48.png','assets/avatars/052--50.png','assets/avatars/053--51.png','assets/avatars/056--54.png','assets/avatars/066--64.png','assets/avatars/077-icon-8033092.png','assets/avatars/083-icon-11885568.png','assets/avatars/094-icon-18926716.png','assets/avatars/108--83.png','assets/avatars/147-icon-6081840.png','assets/avatars/148-icon-5532632.png','assets/avatars/149-icon-4132697.png','assets/avatars/150-icon-10756654.png','assets/avatars/153-icon-4964924.png','assets/avatars/154-icon-4261075.png','assets/avatars/156-icon-4132828.png','assets/avatars/158--116.png','assets/avatars/160-icon-2332597.png','assets/avatars/162-icon-6237595.png','assets/avatars/167-icon-1920840.png','assets/avatars/168-icon-228268.png','assets/avatars/169-icon-5613167.png','assets/avatars/173-icon-1615623.png','assets/avatars/183-icon-5840846.png','assets/avatars/186-icon-6237499.png','assets/avatars/188-icon-6267517.png','assets/avatars/203-icon-3516506.png','assets/avatars/216-icon-5504960.png','assets/avatars/221-icon-9530256.png','assets/avatars/226-icon-9669507.png','assets/avatars/227-icon-9623471.png','assets/avatars/229-icon-10032172.png','assets/avatars/230-icon-10049316.png','assets/avatars/232-icon-11434002.png','assets/avatars/234-icon-10756328.png','assets/avatars/245-icon-16150697.png','assets/avatars/246-icon-16150730.png','assets/avatars/249-icon-17159913.png','assets/avatars/250-icon-17159758.png','assets/avatars/251-icon-17159744.png','assets/avatars/253-icon-18426073.png','assets/avatars/254-icon-18621065.png','assets/avatars/255-icon-18926692.png','assets/avatars/256--120.png'];
-        function loadAvatars() { if (!avatarList) return; avatarList.innerHTML = ''; avatars.forEach(src => { const img = document.createElement('img'); img.src = src; img.className = 'avatar-option'; img.addEventListener('click', () => { if (profileAvatarSmall) profileAvatarSmall.src = src; document.getElementById('robin-avatar').src = src; localStorage.setItem('robinhood_avatar', src); closeAllSheets(); }); avatarList.appendChild(img); }); }
+        function loadAvatars() { 
+    if (!avatarList) return; 
+    avatarList.innerHTML = ''; 
+    avatars.forEach(src => { 
+        const img = document.createElement('img'); 
+        img.src = src; 
+        img.className = 'avatar-option'; 
+        img.addEventListener('error', () => { img.src = 'assets/avatars/001-.png'; }); // Заглушка при ошибке
+        img.addEventListener('click', () => { 
+            if (profileAvatarSmall) profileAvatarSmall.src = src; 
+            document.getElementById('robin-avatar').src = src; 
+            localStorage.setItem('robinhood_avatar', src); 
+            closeAllSheets(); 
+        }); 
+        avatarList.appendChild(img); 
+    }); 
+}
         function loadContacts() { if (!contactsListInner) return; const contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]').filter(c => c.status === 'confirmed'); contactsListInner.innerHTML = ''; if (contacts.length) { contacts.forEach(c => { const div = document.createElement('div'); div.className = 'contact-item'; div.innerHTML = `<div class="contact-info"><span class="online-dot ${contactOnlineStatus[c.pubkey] ? 'online' : 'offline'}"></span><img src="${c.avatar || 'assets/avatars/001-.png'}" class="contact-avatar"><span class="contact-name">${safeHtml(c.name)}</span></div><button class="delete-contact" data-pubkey="${c.pubkey}">✖</button>`; div.querySelector('.contact-info')?.addEventListener('click', () => { activeChannelId = c.pubkey; contactsSheet?.classList.remove('open'); overlay?.classList.remove('show'); }); div.querySelector('.delete-contact')?.addEventListener('click', e => { e.stopPropagation(); if (confirm('Убить лучника ' + c.name + '?')) deleteContact(c.pubkey); }); contactsListInner.appendChild(div); }); } else { updateRobinStatus('🏹 Лучников нет!', 3000); } }
         function deleteContact(pubkey) { let contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]').filter(c => c.pubkey !== pubkey); localStorage.setItem('robinhood_contacts', JSON.stringify(contacts)); if (activeChannelId === pubkey) { delete channels[pubkey]; activeChannelId = Object.keys(channels)[0] || null; saveChannelsState(); } loadContacts(); }
         function closeAllSheets() { avatarSelector?.classList.remove('show'); contactsSheet?.classList.remove('open'); settingsSheet?.classList.remove('open'); overlay?.classList.remove('show'); }
