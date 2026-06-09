@@ -154,7 +154,7 @@
             <div class="header-btn" id="btn-settings"><span style="font-size:clamp(18px,4vw,22px);">⚙️</span></div>
         </div>
         <div class="header-row-3">
-            <span class="header-label" id="nick-label">Твой ник</span><span class="header-label">Стрела</span><span class="header-label" id="call-label">Звонок</span><span class="header-label">Видео</span><span class="header-label">Курить</span><span class="header-label" id="settings-label">Опции</span>
+            <span class="header-label" id="nick-label">Имя</span><span class="header-label">Крафт стрел</span><span class="header-label" id="call-label">Аудио перестрелка</span><span class="header-label">Стрельба глазами</span><span class="header-label">Скурить письма</span><span class="header-label" id="settings-label">Опции Шервуда</span>
         </div>
     </div>
     <div id="robin-row" style="padding:8px 12px;">
@@ -176,7 +176,7 @@
     <div id="call-panel" style="display:none;position:fixed;bottom:0;left:0;width:100%;z-index:50;padding:12px;text-align:center;">
         <div id="local-video-container" style="display:none;position:fixed;bottom:70px;right:8px;width:100px;height:140px;z-index:60;border:2px solid var(--border);border-radius:10px;overflow:hidden;background:#000;"><video id="local-video" autoplay muted playsinline style="width:100%;height:100%;object-fit:cover;"></video></div>
         <div id="remote-video-container" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;z-index:55;background:#000;"><video id="remote-video" autoplay playsinline style="width:100%;height:100%;object-fit:contain;"></video></div>
-        <div id="call-status" style="font-size:0.9em;margin-bottom:8px;">📞 Входящий вызов...</div>
+        <div id="call-status" style="font-size:0.9em;margin-bottom:8px;">📞 Входящий обстрел...</div>
         <div style="display:flex;justify-content:center;gap:16px;align-items:center;">
             <button id="call-accept" style="width:60px;height:60px;border-radius:50%;background:rgba(76,175,80,0.3);border:2px solid #4caf50;cursor:pointer;padding:10px;"><img src="assets/phone-go.png" style="width:100%;height:100%;object-fit:contain;"></button>
             <button id="call-reject" style="width:60px;height:60px;border-radius:50%;background:rgba(244,67,54,0.3);border:2px solid #f44336;cursor:pointer;padding:10px;"><img src="assets/phone-stop.png" style="width:100%;height:100%;object-fit:contain;"></button>
@@ -194,8 +194,8 @@
         <div class="contact-item" id="setting-sound"><div class="contact-info"><span style="font-size:22px;">🔔</span><span class="contact-name">Звук</span></div><label class="toggle-switch"><input type="checkbox" id="toggle-sound" checked><span class="toggle-slider"></span></label></div>
         <div class="contact-item" id="setting-theme"><div class="contact-info"><span style="font-size:22px;" id="theme-icon">🌲</span><span class="contact-name">Тема</span></div><span id="theme-name" style="color:var(--text-dim);">Лес</span></div>
         <div class="contact-item" id="setting-self-destruct"><div class="contact-info"><span style="font-size:22px;">💣</span><span class="contact-name">Самоуничтожение</span></div><label class="toggle-switch"><input type="checkbox" id="toggle-selfdestruct"><span class="toggle-slider"></span></label></div>
-        <div class="contact-item" id="setting-server"><div class="contact-info"><span style="font-size:22px;">🌐</span><span class="contact-name">Сервер</span></div><div style="display:flex;align-items:center;gap:8px;"><span id="server-label" style="color:var(--text-dim);font-size:0.7em;">Render</span><label class="toggle-switch"><input type="checkbox" id="toggle-server"><span class="toggle-slider"></span></label></div></div>
-        <div class="contact-item" id="setting-tunnel"><div class="contact-info"><span style="font-size:22px;">🔒</span><span class="contact-name">Туннель</span></div><label class="toggle-switch" id="tunnel-toggle-wrapper"><input type="checkbox" id="toggle-tunnel"><span class="toggle-slider"></span></label></div>
+        <div class="contact-item" id="setting-server"><div class="contact-info"><span style="font-size:22px;">🌐</span><span class="contact-name">Сменить Сервер</span></div><div style="display:flex;align-items:center;gap:8px;"><span id="server-label" style="color:var(--text-dim);font-size:0.7em;">Render</span><label class="toggle-switch"><input type="checkbox" id="toggle-server"><span class="toggle-slider"></span></label></div></div>
+        <div class="contact-item" id="setting-tunnel"><div class="contact-info"><span style="font-size:22px;">🔒</span><span class="contact-name">добавить туннель</span></div><label class="toggle-switch" id="tunnel-toggle-wrapper"><input type="checkbox" id="toggle-tunnel"><span class="toggle-slider"></span></label></div>
         <div class="contact-item setting-install-btn hidden" id="setting-install"><div class="contact-info"><img src="assets/avatars/001-.png" style="width:28px;height:28px;border-radius:6px;"><div><div class="contact-name" style="font-size:0.8em;">RobinHood P2P</div><div style="font-size:0.6em;color:var(--text-dim);">Установить приложение</div></div></div><span style="font-size:1.2em;">📲</span></div>
     </div></div>
     <div class="modal-overlay" id="ref-modal"><div class="modal-dialog"><h3>🏹 Стрела готова 🏹</h3><div class="code-display" id="ref-link-display"></div><button class="btn-primary" id="share-ref-link-btn">📤 Поделиться</button><button class="btn-cancel" id="cancel-arrow-btn">⏹ Отмена</button><button class="btn-dark" id="close-ref-modal-btn">Закрыть</button></div></div>
@@ -397,7 +397,7 @@
                             const c = cs.find(c => c.pubkey === data.channelId);
                             if (c) { c.name = p.nick || c.name; c.avatar = p.avatar || c.avatar; localStorage.setItem('robinhood_contacts', JSON.stringify(cs)); if (activeContact && activeContact.pubkey === data.channelId) activeContact = c; }
                         } catch(e) {}
-                        return; // НЕ показываем сообщение профиля
+                        return;
                     }
                     // Обычное сообщение
                     activeChannelId = data.channelId;
@@ -443,7 +443,7 @@
         const img = document.createElement('img'); 
         img.src = src; 
         img.className = 'avatar-option'; 
-        img.addEventListener('error', () => { img.src = 'assets/avatars/001-.png'; }); // Заглушка при ошибке
+        img.addEventListener('error', () => { img.src = 'assets/avatars/001-.png'; });
         img.addEventListener('click', () => { 
             if (profileAvatarSmall) profileAvatarSmall.src = src; 
             document.getElementById('robin-avatar').src = src; 
@@ -554,16 +554,14 @@
             pongFrame.style.display = 'none';
             if (toggleSound) toggleSound.checked = toggleSoundState;
             if (toggleSelfDestruct) toggleSelfDestruct.checked = selfDestructMode;
-            // Восстанавливаем последний сервер
             const savedServer = localStorage.getItem('robinhood_server');
             if (savedServer) { currentServer = savedServer; }
             if (toggleServer) { toggleServer.checked = currentServer === 'workers'; if (serverLabel) serverLabel.textContent = currentServer === 'workers' ? 'Workers' : 'Render'; }
             const savedActive = localStorage.getItem('robinhood_active_tunnel');
             if (savedActive !== null && savedActive !== '') activeTunnel = parseInt(savedActive);
             updateTunnelUI();
-            // Показываем кнопку установки только в браузере
             if (!isPWA && settingInstall) { settingInstall.classList.remove('hidden'); }
-            updateRobinStatus('🏹 Ждём колчан... (' + Object.keys(channels).length + '/' + getMaxChannels() + ') [' + (currentServer === 'workers' ? 'Workers' : 'Render') + ']', 0);
+            updateRobinStatus('🏹 Ждём активный колчан... (' + Object.keys(channels).length + '/' + getMaxChannels() + ') [' + (currentServer === 'workers' ? 'Workers' : 'Render') + ']', 0);
         }
         window.addEventListener('load', init);
     })();
