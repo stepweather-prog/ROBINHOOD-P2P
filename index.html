@@ -231,20 +231,38 @@
         const pongFrame = document.getElementById('pong-frame');
         // ... весь остальной код идентичен предыдущей рабочей версии ...
         
-        // === Инициализация ===
-        async function init() {
-            applyTheme(currentTheme);
-            pongFrame.src = P2PPONG_URL + '?v=' + Date.now();
-            // Убеждаемся что iframe скрыт
-            pongFrame.style.display = 'none';
-            const savedHistory = localStorage.getItem('robinhood_history'); if (savedHistory !== null) toggleHistoryState = savedHistory === 'true';
-            if (historyStatus) historyStatus.textContent = toggleHistoryState ? 'Вкл' : 'Выкл';
-            const savedSound = localStorage.getItem('robinhood_sound'); if (savedSound !== null) toggleSoundState = savedSound === 'true';
-            if (soundStatus) soundStatus.textContent = toggleSoundState ? 'Вкл' : 'Выкл';
-            updateTunnelUI();
-            updateRobinStatus('🏹 Ждём колчан...', 0);
-        }
-        window.addEventListener('load', init);
+        // ==================== ТЕМЫ ====================
+function applyTheme(id) {
+    currentTheme = id;
+    document.documentElement.setAttribute('data-theme', id);
+    localStorage.setItem('robinhood_theme', id);
+    const t = themes.find(th => th.id === id);
+    if (t) {
+        if (themeIcon) themeIcon.textContent = t.icon;
+        if (themeName) themeName.textContent = t.name;
+    }
+}
+
+// ==================== ИНИЦИАЛИЗАЦИЯ (после всех определений) ====================
+async function init() {
+    applyTheme(currentTheme);
+    pongFrame.src = P2PPONG_URL + '?v=' + Date.now();
+    pongFrame.style.display = 'none';
+    const savedHistory = localStorage.getItem('robinhood_history'); 
+    if (savedHistory !== null) toggleHistoryState = savedHistory === 'true';
+    if (historyStatus) historyStatus.textContent = toggleHistoryState ? 'Вкл' : 'Выкл';
+    const savedSound = localStorage.getItem('robinhood_sound'); 
+    if (savedSound !== null) toggleSoundState = savedSound === 'true';
+    if (soundStatus) soundStatus.textContent = toggleSoundState ? 'Вкл' : 'Выкл';
+    const savedActive = localStorage.getItem('robinhood_active_tunnel');
+    if (savedActive !== null && savedActive !== '') activeTunnel = parseInt(savedActive);
+    updateTunnelUI();
+    updateRobinStatus('🏹 Ждём колчан... (' + Object.keys(channels).length + '/' + getMaxChannels() + ')', 0);
+    if (!isPWA) { 
+        setTimeout(() => { updateRobinStatus('📲 Установите приложение для 20 каналов', 5000); }, 4000); 
+    }
+}
+window.addEventListener('load', init);
     })();
     </script>
 </body>
