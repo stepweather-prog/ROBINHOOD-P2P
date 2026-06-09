@@ -29,31 +29,8 @@
         html { font-size: clamp(14px, 2.5vw, 16px); }
         html,body { margin:0; padding:0; height:100%; overflow:hidden; -webkit-text-size-adjust:100%; }
         body { background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%); color: var(--text); font-family: 'Segoe UI', 'Inter', 'Georgia', serif; display:flex; flex-direction:column; height:100vh; height:100dvh; position:relative; }
-        /* Фон ТОЛЬКО между #robin-row и .input-area */
-        body::before {
-            content:"";
-            position:fixed;
-            top:clamp(52px, 12vw, 68px);
-            left:0;
-            width:100%;
-            height:calc(100% - clamp(52px, 12vw, 68px) - clamp(52px, 10vw, 64px));
-            background-image:url('assets/background.webp');
-            background-size:cover;
-            background-position:center;
-            background-repeat:no-repeat;
-            z-index:0;
-            opacity:0.35;
-        }
-        body::after {
-            content:"";
-            position:fixed;
-            top:clamp(52px, 12vw, 68px);
-            left:0;
-            width:100%;
-            height:calc(100% - clamp(52px, 12vw, 68px) - clamp(52px, 10vw, 64px));
-            background:radial-gradient(circle at 50% 40%, rgba(30,40,25,0.5), rgba(10,20,8,0.85));
-            z-index:0;
-        }
+        body::before { content:""; position:fixed; top:clamp(52px, 12vw, 68px); left:0; width:100%; height:calc(100% - clamp(52px, 12vw, 68px) - clamp(52px, 10vw, 64px)); background-image:url('assets/background.webp'); background-size:cover; background-position:center; background-repeat:no-repeat; z-index:0; opacity:0.35; }
+        body::after { content:""; position:fixed; top:clamp(52px, 12vw, 68px); left:0; width:100%; height:calc(100% - clamp(52px, 12vw, 68px) - clamp(52px, 10vw, 64px)); background:radial-gradient(circle at 50% 40%, rgba(30,40,25,0.5), rgba(10,20,8,0.85)); z-index:0; }
         .header { background:linear-gradient(135deg, rgba(25,35,20,0.96), rgba(15,25,12,0.98)); border-bottom:2px solid var(--border); backdrop-filter:blur(8px); z-index:10; padding:6px 10px; display:flex; flex-direction:column; gap:4px; position:relative; box-shadow:0 4px 20px rgba(0,0,0,0.3); flex-shrink:0; }
         .header-row-1 { display:flex; align-items:center; gap:6px; }
         .header-title-text { font-size:clamp(1em, 3vw, 1.3em); font-weight:bold; background:linear-gradient(135deg, var(--accent-light), var(--accent)); -webkit-background-clip:text; background-clip:text; color:transparent; letter-spacing:1px; }
@@ -166,10 +143,7 @@
 </head>
 <body>
     <div class="header">
-        <div class="header-row-1">
-            <span class="header-title-text">ROBINHOOD P2P</span><span class="header-shield">🏹</span><span style="flex:1;"></span>
-            <button class="terms-btn" id="btn-terms">⚜ условия</button><span class="header-version">v2.2</span>
-        </div>
+        <div class="header-row-1"><span class="header-title-text">ROBINHOOD P2P</span><span class="header-shield">🏹</span><span style="flex:1;"></span><button class="terms-btn" id="btn-terms">⚜ условия</button><span class="header-version">v2.2</span></div>
         <div class="header-row-2">
             <div class="header-btn" id="btn-avatar"><img src="assets/avatars/001-.png" class="header-avatar" id="profile-avatar-small" alt="avatar"></div>
             <div class="header-btn" id="btn-arrow"><img src="assets/3.png" alt="arrow"></div>
@@ -178,16 +152,9 @@
             <div class="header-btn" id="btn-clear"><img src="assets/6.png" alt="clear"></div>
             <div class="header-btn" id="btn-settings"><span style="font-size:clamp(18px,4vw,22px);">⚙️</span></div>
         </div>
-        <div class="header-row-3">
-            <span class="header-label" id="nick-label">Твой ник</span><span class="header-label">Стрела</span><span class="header-label" id="call-label">Звонок</span><span class="header-label">Видео</span><span class="header-label">Курить</span><span class="header-label" id="settings-label">Опции</span>
-        </div>
+        <div class="header-row-3"><span class="header-label" id="nick-label">Твой ник</span><span class="header-label">Стрела</span><span class="header-label" id="call-label">Звонок</span><span class="header-label">Видео</span><span class="header-label">Курить</span><span class="header-label" id="settings-label">Опции</span></div>
     </div>
-    <div id="robin-row" style="padding:8px 12px;">
-        <div class="message-row" style="margin:0;padding:8px 10px;">
-            <img src="assets/avatars/231-icon-11433690.png" class="avatar" id="robin-avatar" style="width:40px;height:40px;">
-            <div class="msg-body"><div class="msg-sender">Robin Hood</div><div id="robin-text">Святые сокеты стабильны!</div></div>
-        </div>
-    </div>
+    <div id="robin-row" style="padding:8px 12px;"><div class="message-row" style="margin:0;padding:8px 10px;"><img src="assets/avatars/231-icon-11433690.png" class="avatar" id="robin-avatar" style="width:40px;height:40px;"><div class="msg-body"><div class="msg-sender">Robin Hood</div><div id="robin-text">Святые сокеты стабильны!</div></div></div></div>
     <div class="chat-area" id="chat-box"><div class="typing-indicator" id="typing-indicator"></div></div>
     <div class="input-area">
         <button class="header-btn" id="btn-emoji" style="flex-shrink:0;width:34px;height:34px;font-size:16px;">😊</button>
@@ -196,9 +163,7 @@
         <input type="text" id="msg-input" placeholder="Пустить стрелу" autocomplete="off" style="flex:1;min-width:0;padding:10px;">
         <img src="assets/bow.png" class="bow-button" id="send-btn" alt="Отправить" style="width:40px;height:40px;">
     </div>
-    <div id="emoji-panel" style="display:none;position:fixed;bottom:55px;left:0;width:100%;background:linear-gradient(135deg,rgba(25,35,20,0.98),rgba(15,25,12,0.98));border-top:2px solid var(--border);z-index:50;padding:8px;max-height:180px;overflow-y:auto;">
-        <div id="emoji-grid" style="display:grid;grid-template-columns:repeat(8,1fr);gap:6px;text-align:center;"></div>
-    </div>
+    <div id="emoji-panel" style="display:none;position:fixed;bottom:55px;left:0;width:100%;background:linear-gradient(135deg,rgba(25,35,20,0.98),rgba(15,25,12,0.98));border-top:2px solid var(--border);z-index:50;padding:8px;max-height:180px;overflow-y:auto;"><div id="emoji-grid" style="display:grid;grid-template-columns:repeat(8,1fr);gap:6px;text-align:center;"></div></div>
     <div id="call-panel" style="display:none;position:fixed;bottom:0;left:0;width:100%;z-index:50;padding:12px;text-align:center;">
         <div id="local-video-container" style="display:none;position:fixed;bottom:70px;right:8px;width:100px;height:140px;z-index:60;border:2px solid var(--border);border-radius:10px;overflow:hidden;background:#000;"><video id="local-video" autoplay muted playsinline style="width:100%;height:100%;object-fit:cover;"></video></div>
         <div id="remote-video-container" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;z-index:55;background:#000;"><video id="remote-video" autoplay playsinline style="width:100%;height:100%;object-fit:contain;"></video></div>
@@ -308,6 +273,7 @@
         let voiceRecorder = null, voiceChunks = [], voiceStartTime = 0, voiceTimer = null;
         let videoCircleRecorder = null, videoCircleChunks = [];
         let modalResolve = null;
+        let autoConnectDone = false;
         const MAX_VOICE_DURATION = 60;
         const MAX_VIDEO_CIRCLE_DURATION = 30;
 
@@ -326,20 +292,10 @@
 
         function safeHtml(str) { if (!str) return ''; const div = document.createElement('div'); div.textContent = str; return div.innerHTML; }
         function getMaxChannels() { return isPWA ? 20 : 2; }
-        function applyTheme(id) {
-            currentTheme = id; document.documentElement.setAttribute('data-theme', id);
-            localStorage.setItem('robinhood_theme', id);
-            const t = themes.find(th => th.id === id);
-            if (t) { if (themeIcon) themeIcon.textContent = t.icon; if (themeName) themeName.textContent = t.name; }
-        }
+        function applyTheme(id) { currentTheme = id; document.documentElement.setAttribute('data-theme', id); localStorage.setItem('robinhood_theme', id); const t = themes.find(th => th.id === id); if (t) { if (themeIcon) themeIcon.textContent = t.icon; if (themeName) themeName.textContent = t.name; } }
 
-        function saveChannelsState() {
-            const state = { channels: Object.entries(channels).map(([id, ch]) => ({ id, secret: ch.secret, role: ch.role })), activeChannelId, contactOnlineStatus, profileSent };
-            localStorage.setItem('robinhood_channels_state', JSON.stringify(state));
-        }
-        function restoreChannelsState() {
-            try { const saved = localStorage.getItem('robinhood_channels_state'); if (saved) { const state = JSON.parse(saved); state.channels.forEach(ch => { channels[ch.id] = { secret: ch.secret, role: ch.role }; }); activeChannelId = state.activeChannelId; contactOnlineStatus = state.contactOnlineStatus || {}; profileSent = state.profileSent || {}; } } catch(e) {}
-        }
+        function saveChannelsState() { const state = { channels: Object.entries(channels).map(([id, ch]) => ({ id, secret: ch.secret, role: ch.role })), activeChannelId, contactOnlineStatus, profileSent }; localStorage.setItem('robinhood_channels_state', JSON.stringify(state)); }
+        function restoreChannelsState() { try { const saved = localStorage.getItem('robinhood_channels_state'); if (saved) { const state = JSON.parse(saved); state.channels.forEach(ch => { channels[ch.id] = { secret: ch.secret, role: ch.role }; }); activeChannelId = state.activeChannelId; contactOnlineStatus = state.contactOnlineStatus || {}; profileSent = state.profileSent || {}; } } catch(e) {} }
         window.addEventListener('beforeunload', () => saveChannelsState());
         restoreChannelsState();
 
@@ -356,6 +312,8 @@
         async function getMediaStream(enableVideo = false) { try { return await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }, video: enableVideo }); } catch(e) { updateRobinStatus('❌ Нет доступа к микрофону/камере'); return null; } }
         function createPeerConn(stream, callId) { const pc = new RTCPeerConnection({ iceServers: getIceServers(), iceTransportPolicy: 'all' }); if (stream) stream.getTracks().forEach(t => pc.addTrack(t, stream)); pc.ontrack = e => { if (e.streams && e.streams[0]) { if (videoCallActive && callId === 'main') { const rv = document.getElementById('remote-video'); if (rv) rv.srcObject = e.streams[0]; document.getElementById('remote-video-container').style.display = 'block'; } else { const a = new Audio(); a.srcObject = e.streams[0]; a.play().catch(()=>{}); } } }; pc.onicecandidate = e => { if (e.candidate) sendCallSignal('__ICE__' + JSON.stringify({ candidate: e.candidate, callId })); }; pc.oniceconnectionstatechange = () => { if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') { if (callStatus) callStatus.textContent = '✅ Разговор'; } if (pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'failed') { cleanupPeer(callId); if (callId === 'main') endCall(); } }; return pc; }
         function setupDataChannel(pc, callId) { try { const dc = pc.createDataChannel('sherwood', { ordered: true }); dataChannels[callId] = dc; dc.onmessage = e => { try { const msg = JSON.parse(e.data); if (msg.type === 'file') handleDataChannelFile(msg); if (msg.type === 'video-circle') handleVideoCircleMessage(msg); } catch(err) {} }; } catch(e) {} }
+        function handleDataChannelFile(msg) { updateRobinStatus('📎 Получен файл: ' + safeHtml(msg.name), 3000); const byteString = atob(msg.data); const ab = new ArrayBuffer(byteString.length); const ia = new Uint8Array(ab); for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i); const blob = new Blob([ab], { type: msg.mime }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = msg.name; a.click(); setTimeout(() => URL.revokeObjectURL(url), 10000); }
+        function handleVideoCircleMessage(msg) { appendMessage('Видео-кружок', '', profileAvatarSmall?.src || 'assets/avatars/001-.png', null, msg.data, msg.mime); }
         function cleanupPeer(callId) { if (peerConnections[callId]) { peerConnections[callId].close(); delete peerConnections[callId]; } if (localStreams[callId]) { localStreams[callId].getTracks().forEach(t => t.stop()); delete localStreams[callId]; } if (dataChannels[callId]) { try { dataChannels[callId].close(); } catch(e) {} delete dataChannels[callId]; } delete pendingIceCandidates[callId]; }
         function flushIceCandidates(callId = 'main') { const pc = peerConnections[callId]; if (!pc || !pc.remoteDescription || !pc.remoteDescription.type) return; const candidates = pendingIceCandidates[callId] || []; for (const c of candidates) { try { pc.addIceCandidate(new RTCIceCandidate(c)).catch(()=>{}); } catch(e) {} } delete pendingIceCandidates[callId]; }
         async function startCall(enableVideo = false) { if (callActive) return; if (!activeChannelId || !channels[activeChannelId]) { updateRobinStatus('🏹 Сначала воспользуйся стрелой!', 3000); return; } videoCallActive = enableVideo; const stream = await getMediaStream(enableVideo); if (!stream) return; localStreams['main'] = stream; if (enableVideo) { const lv = document.getElementById('local-video'); if (lv) lv.srcObject = stream; document.getElementById('local-video-container').style.display = 'block'; } if (callPanel) callPanel.style.display = 'block'; if (callStatus) callStatus.textContent = enableVideo ? '📹 Видеовызов...' : '📞 Вызов...'; if (callAccept) callAccept.style.display = 'none'; if (callReject) callReject.style.display = 'none'; if (callEnd) callEnd.style.display = 'inline-block'; if (callSpeaker) callSpeaker.style.display = 'inline-block'; playRingback(); const pc = createPeerConn(stream, 'main'); peerConnections['main'] = pc; setupDataChannel(pc, 'main'); const offer = await pc.createOffer(); await pc.setLocalDescription(offer); sendCallSignal('__OFFER__' + JSON.stringify({ sdp: offer, video: enableVideo })); callActive = true; }
@@ -363,23 +321,6 @@
         function toggleSpeaker() { speakerOn = !speakerOn; if (callSpeaker) callSpeaker.textContent = speakerOn ? '🔊' : '🔇'; }
         function toggleMic() { const stream = localStreams['main']; if (stream) { micOn = !micOn; stream.getAudioTracks().forEach(t => t.enabled = micOn); if (callMic) callMic.textContent = micOn ? '🎤' : '🚫'; } }
         function toggleCamera() { const stream = localStreams['main']; if (stream) { cameraOn = !cameraOn; stream.getVideoTracks().forEach(t => t.enabled = cameraOn); if (callCamera) callCamera.textContent = cameraOn ? '📸' : '🚫'; } }
-
-        // Видео-кружки
-        function handleVideoCircleMessage(msg) {
-            appendMessage('Видео-кружок', '', profileAvatarSmall?.src || 'assets/avatars/001-.png', null, msg.data, msg.mime);
-        }
-        function appendMessage(sender, text, avatarSrc, timeStr, videoData, videoMime) {
-            const msgId = 'msg_' + Date.now(); const row = document.createElement('div'); row.className = 'message-row'; row.id = msgId; row.dataset.msgid = msgId;
-            const finalTime = timeStr || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            if (videoData) {
-                row.innerHTML = `<img src="${avatarSrc}" class="avatar"><div class="msg-body"><div class="msg-sender">${safeHtml(sender)}</div><div class="video-circle-msg"><video controls src="data:${videoMime};base64,${videoData}" style="width:100%;max-width:200px;border-radius:12px;"></video></div><div class="msg-status">${finalTime}</div></div>`;
-            } else {
-                const links = detectLinks(text); let displayText = safeHtml(text);
-                if (links.length > 0) { links.forEach(url => { displayText = displayText.replace(safeHtml(url), `<a href="${url}" target="_blank" class="msg-link">${safeHtml(url)}</a>`); }); }
-                row.innerHTML = `<img src="${avatarSrc}" class="avatar"><div class="msg-body"><div class="msg-sender">${safeHtml(sender)}</div><div class="msg-text">${displayText}</div><div class="msg-status">${finalTime}</div></div>`;
-            }
-            chatBox.insertBefore(row, typingIndicator); chatBox.scrollTop = chatBox.scrollHeight;
-        }
 
         // P2PPong
         function sendToPong(msg) { if (!msg) return; if (activeChannelId && channels[activeChannelId]) { msg.secret = channels[activeChannelId].secret; msg.channelId = activeChannelId; } if (handshakeSecret && msg.action === 'handshake') msg.handshake = handshakeSecret; pongFrame.contentWindow.postMessage(msg, '*'); }
@@ -395,34 +336,31 @@
                 case 'pong-ready': handshakeSecret = data.handshake; sendToPong({ action: 'handshake' }); break;
                 case 'handshake-ok':
                     updateRobinStatus('🏹 Тетива натянута!', 2000);
-                    const urlParams = new URLSearchParams(window.location.search);
-                    const sid = urlParams.get('id'); const key = urlParams.get('key');
-                    if (sid && key) {
-                        const refServer = urlParams.get('server') || currentServer;
-                        currentServer = refServer;
-                        if (toggleServer) toggleServer.checked = currentServer === 'workers';
-                        if (serverLabel) serverLabel.textContent = currentServer === 'workers' ? 'Workers' : 'Render';
-                        localStorage.setItem('robinhood_server', currentServer);
-                        updateRobinStatus('📨 Принимаю стрелу [' + (currentServer === 'workers' ? 'Workers' : 'Render') + ']...', 0);
-                        sendToPong({ action: 'accept', id: sid, key: key });
+                    if (!autoConnectDone) {
+                        const urlParams = new URLSearchParams(window.location.search);
+                        const sid = urlParams.get('id'); const key = urlParams.get('key');
+                        if (sid && key) {
+                            const refServer = urlParams.get('server') || currentServer;
+                            if (refServer !== currentServer) {
+                                currentServer = refServer;
+                                localStorage.setItem('robinhood_server', currentServer);
+                                if (toggleServer) toggleServer.checked = currentServer === 'workers';
+                                if (serverLabel) serverLabel.textContent = currentServer === 'workers' ? 'Workers' : 'Render';
+                            }
+                            autoConnectDone = true;
+                            updateRobinStatus('📨 Принимаю стрелу [' + (currentServer === 'workers' ? 'Workers' : 'Render') + ']...', 0);
+                            sendToPong({ action: 'accept', id: sid, key: key });
+                        }
                     }
                     break;
-                case 'session-created':
-                    document.getElementById('ref-link-display').textContent = data.fullLink;
-                    document.getElementById('ref-modal').classList.add('active');
-                    navigator.clipboard.writeText(data.fullLink).catch(()=>{});
-                    break;
+                case 'session-created': document.getElementById('ref-link-display').textContent = data.fullLink; document.getElementById('ref-modal').classList.add('active'); navigator.clipboard.writeText(data.fullLink).catch(()=>{}); break;
                 case 'channel-open':
                     channels[data.channelId] = { secret: data.secret, role: data.role };
                     if (!activeChannelId) activeChannelId = data.channelId;
                     updateRobinStatus('✅ Колчан открыт! (' + Object.keys(channels).length + '/' + getMaxChannels() + ')', 3000);
                     const contacts = JSON.parse(localStorage.getItem('robinhood_contacts') || '[]');
-                    if (!contacts.find(c => c.pubkey === data.channelId)) {
-                        contacts.push({ pubkey: data.channelId, name: 'Лучник', avatar: 'assets/avatars/001-.png', status: 'confirmed' });
-                        localStorage.setItem('robinhood_contacts', JSON.stringify(contacts));
-                    }
-                    document.getElementById('ref-modal')?.classList.remove('active');
-                    saveChannelsState();
+                    if (!contacts.find(c => c.pubkey === data.channelId)) { contacts.push({ pubkey: data.channelId, name: 'Лучник', avatar: 'assets/avatars/001-.png', status: 'confirmed' }); localStorage.setItem('robinhood_contacts', JSON.stringify(contacts)); }
+                    document.getElementById('ref-modal')?.classList.remove('active'); saveChannelsState();
                     setTimeout(() => { playQuiverAnimation(); }, 300);
                     break;
                 case 'message':
@@ -457,6 +395,7 @@
         sendBtn?.addEventListener('click', sendMessageHandler);
         msgInput?.addEventListener('keypress', e => { if (e.key === 'Enter') sendMessageHandler(); });
 
+        function appendMessage(sender, text, avatarSrc, timeStr, videoData, videoMime) { const msgId = 'msg_' + Date.now(); const row = document.createElement('div'); row.className = 'message-row'; row.id = msgId; row.dataset.msgid = msgId; const finalTime = timeStr || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); if (videoData) { row.innerHTML = `<img src="${avatarSrc}" class="avatar"><div class="msg-body"><div class="msg-sender">${safeHtml(sender)}</div><div class="video-circle-msg"><video controls src="data:${videoMime};base64,${videoData}" style="width:100%;max-width:200px;border-radius:12px;"></video></div><div class="msg-status">${finalTime}</div></div>`; } else { const links = detectLinks(text); let displayText = safeHtml(text); if (links.length > 0) { links.forEach(url => { displayText = displayText.replace(safeHtml(url), `<a href="${url}" target="_blank" class="msg-link">${safeHtml(url)}</a>`); }); } row.innerHTML = `<img src="${avatarSrc}" class="avatar"><div class="msg-body"><div class="msg-sender">${safeHtml(sender)}</div><div class="msg-text">${displayText}</div><div class="msg-status">${finalTime}</div></div>`; } chatBox.insertBefore(row, typingIndicator); chatBox.scrollTop = chatBox.scrollHeight; }
         function updateRobinStatus(text, duration = 4000) { if (!robinText) return; clearTimeout(robinTimer); robinText.textContent = text; if (duration > 0) { robinTimer = setTimeout(() => { robinText.textContent = robinDefaultText; }, duration); } }
         function detectLinks(text) { return text.match(/(https?:\/\/[^\s]+)/g) || []; }
         function sendSelfDestructMessage(text, duration) { if (!activeChannelId || !channels[activeChannelId]) return; sendToPong({ action: 'send', text: '__SELFDESTRUCT__' + JSON.stringify({ text, duration }), channelId: activeChannelId }); }
@@ -513,7 +452,6 @@
         // Тогглы
         if (toggleSound) { toggleSound.checked = toggleSoundState; toggleSound.addEventListener('change', () => { toggleSoundState = toggleSound.checked; localStorage.setItem('robinhood_sound', toggleSoundState); }); }
         if (toggleSelfDestruct) { toggleSelfDestruct.checked = selfDestructMode; toggleSelfDestruct.addEventListener('change', () => { selfDestructMode = toggleSelfDestruct.checked; }); }
-        // Сервер переключается без разрыва канала
         if (toggleServer) { toggleServer.checked = currentServer === 'workers'; if (serverLabel) serverLabel.textContent = currentServer === 'workers' ? 'Workers' : 'Render'; toggleServer.addEventListener('change', () => { currentServer = toggleServer.checked ? 'workers' : 'render'; localStorage.setItem('robinhood_server', currentServer); if (serverLabel) serverLabel.textContent = currentServer === 'workers' ? 'Workers' : 'Render'; updateRobinStatus('🌐 Сервер: ' + (currentServer === 'workers' ? 'Workers' : 'Render') + ' (канал сохранён)'); }); }
         if (toggleTunnel) { toggleTunnel.addEventListener('change', () => { if (savedConfigs.length === 0) { tunnelConfigModal?.classList.add('active'); toggleTunnel.checked = false; return; } activeTunnel = toggleTunnel.checked ? savedConfigs.length - 1 : null; localStorage.setItem('robinhood_active_tunnel', activeTunnel !== null ? activeTunnel : ''); }); }
         document.getElementById('setting-theme')?.addEventListener('click', () => { const idx = themes.findIndex(t => t.id === currentTheme); applyTheme(themes[(idx + 1) % themes.length].id); });
