@@ -10,8 +10,6 @@
     <link rel="manifest" href="manifest.json">
     <link rel="icon" type="image/png" sizes="192x192" href="assets/avatars/001-.png">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.12.2/lottie.min.js"></script>
-    <script src="shared/crypto.js"></script>
-    <script src="shared/themes.js"></script>
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com 'unsafe-inline'; style-src 'self' 'unsafe-inline'; media-src 'self' blob:; connect-src 'self' https://p2ppong.onrender.com https://robincall.stephanclaps-491.workers.dev blob:; img-src 'self' data: blob: https://stepweather-prog.github.io https://warp-generator.github.io; frame-src 'self' https://stepweather-prog.github.io; manifest-src 'self'; form-action 'none'; base-uri 'self';">
     <style>
         :root, [data-theme="forest"] { --bg-primary: #1a2a1f; --bg-secondary: #0d1a0c; --accent: #c4a24b; --accent-light: #e8d5a3; --accent-glow: rgba(196,162,75,0.5); --text: #e8e2c7; --text-bright: #f5e6b8; --text-dim: #b8a87a; --border: #c4a24b; --btn-bg: rgba(196,162,75,0.1); --btn-border: rgba(196,162,75,0.3); --btn-hover: rgba(196,162,75,0.25); --sheet-bg: linear-gradient(145deg, #1e2a1a 0%, #0f180d 100%); --input-bg: rgba(20,30,18,0.9); --input-focus: rgba(25,38,22,0.95); --msg-bg: rgba(30,40,25,0.85); --msg-accent: #c4a24b; --robin-bg: rgba(50,70,40,0.9); --robin-accent: #e8c97a; --overlay-bg: rgba(0,0,0,0.6); --call-bg: linear-gradient(135deg, rgba(25,35,20,0.98), rgba(15,25,12,0.98)); }
@@ -64,7 +62,6 @@
         #robin-text { font-weight:700; font-size:0.85em; color:var(--text-bright); text-shadow:0 1px 3px rgba(0,0,0,0.6); }
         .voice-timer-overlay { display:none; position:absolute; top:-28px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.85); color:#f44336; font-family:monospace; font-size:0.8em; padding:3px 8px; border-radius:6px; z-index:20; pointer-events:none; white-space:nowrap; }
         #bow-above-send { position:fixed !important; bottom:clamp(62px, 12vw, 78px) !important; right:clamp(50px, 18vw, 90px) !important; width:80px !important; height:80px !important; z-index:100 !important; pointer-events:none !important; display:none !important; }
-
         .bottom-sheet, .avatar-selector { position:fixed; top:0; left:0; width:min(85%, 380px); height:100%; background:var(--sheet-bg); border-right:2px solid var(--border); z-index:200; transform:translateX(-100%); transition:transform 0.35s cubic-bezier(0.2,0.9,0.4,1.1); overflow-y:auto; backdrop-filter:blur(16px); box-shadow:8px 0 30px rgba(0,0,0,0.5); -webkit-overflow-scrolling:touch; }
         .bottom-sheet.open, .avatar-selector.show { transform:translateX(0); }
         .bottom-sheet-header { padding:16px 16px 10px; font-weight:bold; color:var(--accent-light); border-bottom:1px solid var(--border); margin-bottom:6px; font-size:1em; display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.2); }
@@ -244,6 +241,86 @@
 <iframe id="pong-frame" src="about:blank" style="display:none;position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none;visibility:hidden;border:none;z-index:-1;" title="p2p engine"></iframe>
 </div>
 <script>
+// ========== ROBIHOOD SHARED CRYPTO v1.0 ==========
+const CRYPTO = (() => {
+    'use strict';
+    const MSG_ENCRYPT_KEY = 'robinhood_msg_key_v1';
+    const SECURE_STORAGE_KEY = 'robinhood_secure_v2';
+    const KEK_SALT_KEY = 'robinhood_kek_salt_v1';
+    const KEK_WRAPPED_KEY = 'robinhood_kek_wrapped_v1';
+    const KEK_VERIFY_KEY = 'robinhood_kek_verify_v1';
+    const RATCHET_STORE_KEY = 'robinhood_ratchet_v1';
+    const PBKDF2_ITERATIONS = 100000;
+    const MAX_SKIP = 100;
+    let msgEncryptKey = null;
+    let kekKey = null;
+    let ratchetStates = {};
+
+    async function sha256(text) { const data = new TextEncoder().encode(text); const hash = await crypto.subtle.digest('SHA-256', data); return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join(''); }
+    async function sha256Raw(data) { const hash = await crypto.subtle.digest('SHA-256', data); return new Uint8Array(hash); }
+    
+    async function getStorageKey() {
+        let kb = sessionStorage.getItem(SECURE_STORAGE_KEY) || localStorage.getItem(SECURE_STORAGE_KEY + '_backup');
+        if (!kb) { const k = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']); const r = await crypto.subtle.exportKey('raw', k); kb = btoa(String.fromCharCode(...new Uint8Array(r))); sessionStorage.setItem(SECURE_STORAGE_KEY, kb); localStorage.setItem(SECURE_STORAGE_KEY + '_backup', kb); setTimeout(() => localStorage.removeItem(SECURE_STORAGE_KEY + '_backup'), 300000); return k; }
+        sessionStorage.setItem(SECURE_STORAGE_KEY, kb); const r = Uint8Array.from(atob(kb), c => c.charCodeAt(0)); return await crypto.subtle.importKey('raw', r, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
+    }
+
+    async function secureSetItem(key, value) { try { const sk = await getStorageKey(); const iv = crypto.getRandomValues(new Uint8Array(12)); const enc = new TextEncoder().encode(JSON.stringify(value)); const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, sk, enc); const combined = new Uint8Array(iv.length + new Uint8Array(ct).length); combined.set(iv); combined.set(new Uint8Array(ct), iv.length); localStorage.setItem(key, btoa(String.fromCharCode(...combined))); } catch (e) {} }
+    async function secureGetItem(key) { try { const stored = localStorage.getItem(key); if (!stored) return null; const sk = await getStorageKey(); const combined = Uint8Array.from(atob(stored), c => c.charCodeAt(0)); const iv = combined.slice(0, 12); const ct = combined.slice(12); const dec = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, sk, ct); return JSON.parse(new TextDecoder().decode(dec)); } catch (e) { return null; } }
+    function secureRemoveItem(key) { localStorage.removeItem(key); }
+
+    async function openDB() { return new Promise((resolve, reject) => { const request = indexedDB.open('RobinHoodSecure', 1); request.onupgradeneeded = () => { request.result.createObjectStore('keys', { keyPath: 'id' }); }; request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); }); }
+    
+    async function getMsgEncryptKey() {
+        if (msgEncryptKey) return msgEncryptKey;
+        try { const db = await openDB(); const tx = db.transaction('keys', 'readonly'); const store = tx.objectStore('keys'); const getReq = store.get(MSG_ENCRYPT_KEY); const result = await new Promise((resolve) => { getReq.onsuccess = () => resolve(getReq.result); getReq.onerror = () => resolve(null); }); if (result) { const bytes = Uint8Array.from(atob(result.value), c => c.charCodeAt(0)); msgEncryptKey = await crypto.subtle.importKey('raw', bytes, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']); return msgEncryptKey; } } catch (e) {}
+        let raw = localStorage.getItem(MSG_ENCRYPT_KEY); if (raw) { const bytes = Uint8Array.from(atob(raw), c => c.charCodeAt(0)); msgEncryptKey = await crypto.subtle.importKey('raw', bytes, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']); return msgEncryptKey; }
+        const key = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']); const exported = await crypto.subtle.exportKey('raw', key); raw = btoa(String.fromCharCode(...new Uint8Array(exported))); localStorage.setItem(MSG_ENCRYPT_KEY, raw); msgEncryptKey = key; return msgEncryptKey;
+    }
+
+    async function encryptMessage(plainText) { try { const key = await getMsgEncryptKey(); const iv = crypto.getRandomValues(new Uint8Array(12)); const enc = new TextEncoder().encode(plainText); const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc); const combined = new Uint8Array(iv.length + new Uint8Array(ct).length); combined.set(iv); combined.set(new Uint8Array(ct), iv.length); return '🔐' + btoa(String.fromCharCode(...combined)); } catch (e) { return plainText; } }
+    async function decryptMessage(encryptedText) { if (!encryptedText || !encryptedText.startsWith('🔐')) return encryptedText; try { const key = await getMsgEncryptKey(); const combined = Uint8Array.from(atob(encryptedText.slice(2)), c => c.charCodeAt(0)); const iv = combined.slice(0, 12); const ct = combined.slice(12); const dec = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct); return new TextDecoder().decode(dec); } catch (e) { return encryptedText; } }
+
+    async function performECDHHandshake(channelId, sendFn) { try { const ourKeyPair = await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveKey', 'deriveBits']); const ourPubKey = await crypto.subtle.exportKey('raw', ourKeyPair.publicKey); const ourPubKeyB64 = btoa(String.fromCharCode(...new Uint8Array(ourPubKey))); sendFn({ action: 'send', text: '__ECDH__' + ourPubKeyB64, channelId }); return new Promise((resolve) => { const handler = async (event) => { if (event.data && event.data.text && event.data.text.startsWith('__ECDH__')) { const theirPubKeyB64 = event.data.text.replace('__ECDH__', ''); const theirPubKeyBytes = Uint8Array.from(atob(theirPubKeyB64), c => c.charCodeAt(0)); const theirPubKey = await crypto.subtle.importKey('raw', theirPubKeyBytes, { name: 'ECDH', namedCurve: 'P-256' }, false, []); const sharedSecret = await crypto.subtle.deriveBits({ name: 'ECDH', public: theirPubKey }, ourKeyPair.privateKey, 256); const newKey = await crypto.subtle.importKey('raw', sharedSecret, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']); msgEncryptKey = newKey; const db = await openDB(); const exported = await crypto.subtle.exportKey('raw', newKey); const raw = btoa(String.fromCharCode(...new Uint8Array(exported))); const tx = db.transaction('keys', 'readwrite'); tx.objectStore('keys').put({ id: MSG_ENCRYPT_KEY, value: raw }); window.removeEventListener('message', handler); resolve(newKey); } }; window.addEventListener('message', handler); }); } catch (e) { return null; } }
+
+    async function getOrCreateKEK(password) { if (kekKey) return kekKey; let salt = localStorage.getItem(KEK_SALT_KEY); if (!salt) { const saltBytes = crypto.getRandomValues(new Uint8Array(32)); salt = btoa(String.fromCharCode(...saltBytes)); localStorage.setItem(KEK_SALT_KEY, salt); } const saltBytes = Uint8Array.from(atob(salt), c => c.charCodeAt(0)); const enc = new TextEncoder(); const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']); kekKey = await crypto.subtle.deriveKey({ name: 'PBKDF2', salt: saltBytes, iterations: PBKDF2_ITERATIONS, hash: 'SHA-256' }, keyMaterial, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']); return kekKey; }
+    async function wrapMsgKey(key, password) { try { const kek = await getOrCreateKEK(password); const exported = await crypto.subtle.exportKey('raw', key); const iv = crypto.getRandomValues(new Uint8Array(12)); const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, kek, exported); const combined = new Uint8Array(iv.length + new Uint8Array(encrypted).length); combined.set(iv); combined.set(new Uint8Array(encrypted), iv.length); localStorage.setItem(KEK_WRAPPED_KEY, btoa(String.fromCharCode(...combined))); const enc = new TextEncoder(); const verifyData = enc.encode('robinhood_verify'); const verifyIv = crypto.getRandomValues(new Uint8Array(12)); const verifyEncrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: verifyIv }, kek, verifyData); const verifyCombined = new Uint8Array(verifyIv.length + new Uint8Array(verifyEncrypted).length); verifyCombined.set(verifyIv); verifyCombined.set(new Uint8Array(verifyEncrypted), verifyIv.length); localStorage.setItem(KEK_VERIFY_KEY, btoa(String.fromCharCode(...verifyCombined))); return true; } catch (e) { return false; } }
+    async function unwrapMsgKey(password) { try { const stored = localStorage.getItem(KEK_WRAPPED_KEY); if (!stored) return null; const kek = await getOrCreateKEK(password); const combined = Uint8Array.from(atob(stored), c => c.charCodeAt(0)); const iv = combined.slice(0, 12); const encryptedKey = combined.slice(12); const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, kek, encryptedKey); return await crypto.subtle.importKey('raw', decrypted, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']); } catch (e) { return null; } }
+    async function verifyPassword(password) { try { const verifyData = localStorage.getItem(KEK_VERIFY_KEY); if (!verifyData) return false; const kek = await getOrCreateKEK(password); const combined = Uint8Array.from(atob(verifyData), c => c.charCodeAt(0)); const iv = combined.slice(0, 12); const encrypted = combined.slice(12); const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, kek, encrypted); return new TextDecoder().decode(decrypted) === 'robinhood_verify'; } catch (e) { return false; } }
+    function isKEKSetup() { return localStorage.getItem(KEK_WRAPPED_KEY) !== null; }
+
+    class RatchetState { constructor() { this.DHs = null; this.DHr = null; this.rootKey = null; this.sendingChainKey = null; this.receivingChainKey = null; this.sendCount = 0; this.receiveCount = 0; this.prevSendCount = 0; this.skippedKeys = {}; } }
+    async function hkdf(inputKey, info, length = 32) { const key = await crypto.subtle.importKey('raw', inputKey, { name: 'HKDF' }, false, ['deriveBits']); const salt = new Uint8Array(32); const infoBytes = new TextEncoder().encode(info); const derived = await crypto.subtle.deriveBits({ name: 'HKDF', hash: 'SHA-256', salt, info: infoBytes }, key, length * 8); return new Uint8Array(derived); }
+    async function kdfCK(chainKey) { const key = await crypto.subtle.importKey('raw', chainKey, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']); const messageKey = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode('message_key')); const newChainKey = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode('chain_key')); return { messageKey: new Uint8Array(messageKey).slice(0, 32), chainKey: new Uint8Array(newChainKey).slice(0, 32) }; }
+    async function initializeRatchet(channelId, ourKeyPair, theirPublicKey) { const state = new RatchetState(); state.DHs = ourKeyPair; state.DHr = theirPublicKey; const sharedSecret = await crypto.subtle.deriveBits({ name: 'ECDH', public: theirPublicKey }, ourKeyPair.privateKey, 256); state.rootKey = await hkdf(new Uint8Array(sharedSecret), 'robinhood_ratchet_root', 32); state.sendingChainKey = await hkdf(state.rootKey, 'robinhood_sending_chain', 32); state.receivingChainKey = await hkdf(state.rootKey, 'robinhood_receiving_chain', 32); ratchetStates[channelId] = state; await saveRatchetStates(); return state; }
+    async function ratchetEncrypt(channelId, plaintext) { const state = ratchetStates[channelId]; if (!state) throw new Error('Ratchet not initialized'); const newKeyPair = await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveKey', 'deriveBits']); const sharedSecret = await crypto.subtle.deriveBits({ name: 'ECDH', public: state.DHr }, newKeyPair.privateKey, 256); state.rootKey = await hkdf(new Uint8Array([...new Uint8Array(sharedSecret), ...state.rootKey]), 'robinhood_root_update', 32); state.sendingChainKey = await hkdf(state.rootKey, 'robinhood_sending_update', 32); const newPublicKey = await crypto.subtle.exportKey('raw', newKeyPair.publicKey); state.DHs = newKeyPair; const { messageKey, chainKey } = await kdfCK(state.sendingChainKey); state.sendingChainKey = chainKey; const iv = crypto.getRandomValues(new Uint8Array(12)); const encoded = new TextEncoder().encode(plaintext); const aesKey = await crypto.subtle.importKey('raw', messageKey, { name: 'AES-GCM' }, false, ['encrypt']); const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, aesKey, encoded); const packet = { type: 'ratchet_message', dh_pub: btoa(String.fromCharCode(...newPublicKey)), count: state.sendCount, prev_count: state.prevSendCount, iv: btoa(String.fromCharCode(...iv)), ciphertext: btoa(String.fromCharCode(...new Uint8Array(ciphertext))) }; state.sendCount++; state.prevSendCount = state.sendCount - 1; await saveRatchetStates(); return JSON.stringify(packet); }
+    async function ratchetDecrypt(channelId, packetStr) { const state = ratchetStates[channelId]; if (!state) return null; let packet; try { packet = JSON.parse(packetStr); } catch (e) { return null; } if (packet.type !== 'ratchet_message') return null; const theirPubKeyBytes = Uint8Array.from(atob(packet.dh_pub), c => c.charCodeAt(0)); const theirPubKey = await crypto.subtle.importKey('raw', theirPubKeyBytes, { name: 'ECDH', namedCurve: 'P-256' }, false, []); if (packet.count > state.receiveCount) { const { messageKey } = await kdfCK(state.receivingChainKey); state.skippedKeys[packet.count] = messageKey; const keys = Object.keys(state.skippedKeys).sort((a, b) => a - b); for (let i = 0; i < keys.length - MAX_SKIP; i++) delete state.skippedKeys[keys[i]]; } const sharedSecret = await crypto.subtle.deriveBits({ name: 'ECDH', public: theirPubKey }, state.DHs.privateKey, 256); state.rootKey = await hkdf(new Uint8Array([...new Uint8Array(sharedSecret), ...state.rootKey]), 'robinhood_root_update', 32); state.receivingChainKey = await hkdf(state.rootKey, 'robinhood_receiving_update', 32); state.DHr = theirPubKey; const { messageKey, chainKey } = await kdfCK(state.receivingChainKey); state.receivingChainKey = chainKey; const iv = Uint8Array.from(atob(packet.iv), c => c.charCodeAt(0)); const ciphertext = Uint8Array.from(atob(packet.ciphertext), c => c.charCodeAt(0)); const aesKey = await crypto.subtle.importKey('raw', messageKey, { name: 'AES-GCM' }, false, ['decrypt']); try { const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, aesKey, ciphertext); state.receiveCount = packet.count + 1; await saveRatchetStates(); return new TextDecoder().decode(decrypted); } catch (e) { if (state.skippedKeys[packet.count]) { const skippedKey = state.skippedKeys[packet.count]; delete state.skippedKeys[packet.count]; const aesKeySkipped = await crypto.subtle.importKey('raw', skippedKey, { name: 'AES-GCM' }, false, ['decrypt']); const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, aesKeySkipped, ciphertext); return new TextDecoder().decode(decrypted); } return null; } }
+    async function saveRatchetStates() { try { const serializable = {}; for (const [channelId, state] of Object.entries(ratchetStates)) { const dhPub = state.DHs ? await crypto.subtle.exportKey('raw', state.DHs.publicKey) : null; const dhPriv = state.DHs ? await crypto.subtle.exportKey('pkcs8', state.DHs.privateKey) : null; const dhr = state.DHr ? await crypto.subtle.exportKey('raw', state.DHr) : null; serializable[channelId] = { dh_pub: dhPub ? btoa(String.fromCharCode(...new Uint8Array(dhPub))) : null, dh_priv: dhPriv ? btoa(String.fromCharCode(...new Uint8Array(dhPriv))) : null, dhr: dhr ? btoa(String.fromCharCode(...new Uint8Array(dhr))) : null, rootKey: state.rootKey ? btoa(String.fromCharCode(...state.rootKey)) : null, sendingChainKey: state.sendingChainKey ? btoa(String.fromCharCode(...state.sendingChainKey)) : null, receivingChainKey: state.receivingChainKey ? btoa(String.fromCharCode(...state.receivingChainKey)) : null, sendCount: state.sendCount, receiveCount: state.receiveCount, prevSendCount: state.prevSendCount }; } await secureSetItem(RATCHET_STORE_KEY, serializable); } catch (e) {} }
+    async function loadRatchetStates() { try { const saved = await secureGetItem(RATCHET_STORE_KEY); if (!saved) return; for (const [channelId, data] of Object.entries(saved)) { if (!data.dh_pub || !data.dh_priv || !data.dhr) continue; const state = new RatchetState(); const pubBytes = Uint8Array.from(atob(data.dh_pub), c => c.charCodeAt(0)); const privBytes = Uint8Array.from(atob(data.dh_priv), c => c.charCodeAt(0)); state.DHs = { publicKey: await crypto.subtle.importKey('raw', pubBytes, { name: 'ECDH', namedCurve: 'P-256' }, false, []), privateKey: await crypto.subtle.importKey('pkcs8', privBytes, { name: 'ECDH', namedCurve: 'P-256' }, false, ['deriveKey', 'deriveBits']) }; const dhrBytes = Uint8Array.from(atob(data.dhr), c => c.charCodeAt(0)); state.DHr = await crypto.subtle.importKey('raw', dhrBytes, { name: 'ECDH', namedCurve: 'P-256' }, false, []); state.rootKey = Uint8Array.from(atob(data.rootKey), c => c.charCodeAt(0)); state.sendingChainKey = Uint8Array.from(atob(data.sendingChainKey), c => c.charCodeAt(0)); state.receivingChainKey = Uint8Array.from(atob(data.receivingChainKey), c => c.charCodeAt(0)); state.sendCount = data.sendCount || 0; state.receiveCount = data.receiveCount || 0; state.prevSendCount = data.prevSendCount || 0; ratchetStates[channelId] = state; } } catch (e) {} }
+
+    return { sha256, sha256Raw, secureSetItem, secureGetItem, secureRemoveItem, getMsgEncryptKey, encryptMessage, decryptMessage, performECDHHandshake, getOrCreateKEK, wrapMsgKey, unwrapMsgKey, verifyPassword, isKEKSetup, RatchetState, initializeRatchet, ratchetEncrypt, ratchetDecrypt, saveRatchetStates, loadRatchetStates, getRatchetStates: () => ratchetStates, setRatchetStates: (s) => { ratchetStates = s; }, setMsgEncryptKey: (k) => { msgEncryptKey = k; }, getStorageKey, openDB, STORAGE_KEY: SECURE_STORAGE_KEY, MSG_KEY: MSG_ENCRYPT_KEY, RATCHET_KEY: RATCHET_STORE_KEY, KEK_SALT_KEY, KEK_WRAPPED_KEY, KEK_VERIFY_KEY };
+})();
+
+// ========== ROBIHOOD SHARED THEMES v1.0 ==========
+const THEMES = (() => {
+    'use strict';
+    const themes = [
+        { id: 'forest', icon: '🌲', name: 'Лес' }, { id: 'sunset', icon: '🌅', name: 'Закат' },
+        { id: 'ocean', icon: '🌊', name: 'Океан' }, { id: 'rose', icon: '🌹', name: 'Роза' },
+        { id: 'amber', icon: '🍯', name: 'Янтарь' }, { id: 'mint', icon: '🌿', name: 'Мята' },
+        { id: 'lavender', icon: '💜', name: 'Лаванда' }, { id: 'cherry', icon: '🍒', name: 'Вишня' },
+        { id: 'emerald', icon: '💚', name: 'Изумруд' }, { id: 'slate', icon: '🪨', name: 'Сланец' },
+        { id: 'coral', icon: '🪸', name: 'Коралл' }, { id: 'plum', icon: '🫐', name: 'Слива' }
+    ];
+    function getThemes() { return themes; }
+    function getTheme(id) { return themes.find(t => t.id === id) || themes[0]; }
+    function applyTheme(id, iconEl, nameEl) { document.documentElement.setAttribute('data-theme', id); localStorage.setItem('robinhood_theme', id); const theme = getTheme(id); if (iconEl) iconEl.textContent = theme.icon; if (nameEl) nameEl.textContent = theme.name; return theme; }
+    function generateRandomTheme() { const hue = Math.floor(Math.random() * 360); const sat = 40 + Math.floor(Math.random() * 50); const bgLight = 5 + Math.floor(Math.random() * 15); const bgDark = 2 + Math.floor(Math.random() * 8); const id = 'random_' + Date.now(); const name = 'Случайная ' + Math.floor(Math.random() * 100); const icons = ['🎨', '🌈', '🎲', '✨', '💫', '⭐', '🔥', '💎', '🍀', '🌸']; const icon = icons[Math.floor(Math.random() * icons.length)]; return { id, icon, name, styles: `[data-theme="${id}"]{--bg-primary:hsl(${hue},${sat}%,${bgLight}%);--bg-secondary:hsl(${hue},${sat-10}%,${bgDark}%);--accent:hsl(${(hue+30)%360},${sat+10}%,50%);--accent-light:hsl(${(hue+30)%360},${sat+20}%,70%);--accent-glow:hsla(${(hue+30)%360},${sat+10}%,50%,0.5);--text:hsl(${hue},20%,85%);--text-bright:hsl(${hue},25%,92%);--text-dim:hsl(${hue},15%,60%);--border:hsl(${(hue+30)%360},${sat+10}%,50%);--btn-bg:hsla(${(hue+30)%360},${sat+10}%,50%,0.1);--btn-border:hsla(${(hue+30)%360},${sat+10}%,50%,0.3);--btn-hover:hsla(${(hue+30)%360},${sat+10}%,50%,0.25);--sheet-bg:linear-gradient(145deg,hsl(${hue},${sat}%,${bgLight}%)0%,hsl(${hue},${sat-10}%,${bgDark}%)100%);--input-bg:hsla(${hue},${sat-10}%,${bgLight+2}%,0.9);--input-focus:hsla(${hue},${sat}%,${bgLight+5}%,0.95);--msg-bg:hsla(${hue},${sat-5}%,${bgLight+3}%,0.85);--msg-accent:hsl(${(hue+30)%360},${sat+10}%,50%);--robin-bg:hsla(${hue},${sat}%,${bgLight+8}%,0.9);--robin-accent:hsl(${(hue+30)%360},${sat+20}%,65%);--overlay-bg:rgba(0,0,0,0.6);--call-bg:linear-gradient(135deg,hsla(${hue},${sat}%,${bgLight}%,0.98),hsla(${hue},${sat-10}%,${bgDark}%,0.98))}` }; }
+    function applyGeneratedTheme(theme, iconEl, nameEl) { let styleEl = document.getElementById('generated-theme-style'); if (!styleEl) { styleEl = document.createElement('style'); styleEl.id = 'generated-theme-style'; document.head.appendChild(styleEl); } styleEl.textContent = theme.styles; document.documentElement.setAttribute('data-theme', theme.id); if (iconEl) iconEl.textContent = theme.icon; if (nameEl) nameEl.textContent = theme.name; localStorage.setItem('robinhood_theme', theme.id); const generatedThemes = JSON.parse(localStorage.getItem('robinhood_generated_themes') || '[]'); if (!generatedThemes.find(t => t.id === theme.id)) { generatedThemes.push(theme); localStorage.setItem('robinhood_generated_themes', JSON.stringify(generatedThemes)); } }
+    return { getThemes, getTheme, applyTheme, generateRandomTheme, applyGeneratedTheme };
+})();
+
+// ========== ОСНОВНОЙ КОД ROBINHOOD P2P ==========
 (function() {
 const SECURE_STORAGE_KEY = CRYPTO.STORAGE_KEY;
 const MSG_ENCRYPT_KEY = CRYPTO.MSG_KEY;
@@ -295,7 +372,6 @@ let callTimerInterval = null, callSeconds = 0;
 let modalResolve = null, autoConnectDone = false;
 let obfuscationEnabled = false;
 let typingTimeout;
-let isUnlocked = false;
 
 try { savedConfigs = JSON.parse(localStorage.getItem('robinhood_tunnels') || '[]'); } catch (e) {}
 try { currentServer = localStorage.getItem('robinhood_server') || 'render'; } catch (e) {}
@@ -434,8 +510,8 @@ document.getElementById('setting-lock')?.addEventListener('click', () => { isSet
 // ========== МАСТЕР-ПАРОЛЬ UI ==========
 async function showMasterPasswordPrompt(isSetup = false) {
     return new Promise((resolve) => {
-        const overlay = document.createElement('div');
-        overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);backdrop-filter:blur(8px);z-index:10000;display:flex;align-items:center;justify-content:center;';
+        const overlayEl = document.createElement('div');
+        overlayEl.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);backdrop-filter:blur(8px);z-index:10000;display:flex;align-items:center;justify-content:center;';
         const dialog = document.createElement('div');
         dialog.style.cssText = 'background:var(--sheet-bg);border:2px solid var(--border);border-radius:20px;padding:24px;width:85%;max-width:360px;text-align:center;color:var(--text);';
         dialog.innerHTML = `
@@ -447,7 +523,7 @@ async function showMasterPasswordPrompt(isSetup = false) {
             <button id="kek-submit" style="width:100%;padding:12px;background:linear-gradient(135deg,var(--accent),#b8903a);color:#1a1f0f;border:none;border-radius:12px;font-size:16px;font-weight:bold;cursor:pointer;">${isSetup ? '✓ Установить' : '🔓 Разблокировать'}</button>
             ${!isSetup ? '<button id="kek-skip" style="width:100%;padding:8px;margin-top:8px;background:transparent;border:1px solid var(--border);border-radius:10px;color:var(--text-dim);font-size:13px;cursor:pointer;">⏭ Пропустить (без расшифровки)</button>' : ''}
         `;
-        overlay.appendChild(dialog); document.body.appendChild(overlay);
+        overlayEl.appendChild(dialog); document.body.appendChild(overlayEl);
         const passwordInput = dialog.querySelector('#kek-password-input');
         const errorEl = dialog.querySelector('#kek-error');
         dialog.querySelector('#kek-submit').addEventListener('click', async () => {
@@ -456,13 +532,13 @@ async function showMasterPasswordPrompt(isSetup = false) {
                 const confirmInput = dialog.querySelector('#kek-password-confirm');
                 if (password !== confirmInput.value) { errorEl.textContent = 'Пароли не совпадают'; return; }
                 if (password.length < 4) { errorEl.textContent = 'Минимум 4 символа'; return; }
-                try { const key = await CRYPTO.getMsgEncryptKey(); const success = await CRYPTO.wrapMsgKey(key, password); if (success) { overlay.remove(); resolve(password); } else { errorEl.textContent = 'Ошибка шифрования'; } } catch (e) { errorEl.textContent = 'Ошибка: ' + e.message; }
+                try { const key = await CRYPTO.getMsgEncryptKey(); const success = await CRYPTO.wrapMsgKey(key, password); if (success) { overlayEl.remove(); resolve(password); } else { errorEl.textContent = 'Ошибка шифрования'; } } catch (e) { errorEl.textContent = 'Ошибка: ' + e.message; }
             } else {
                 const isValid = await CRYPTO.verifyPassword(password);
-                if (isValid) { const key = await CRYPTO.unwrapMsgKey(password); if (key) { CRYPTO.setMsgEncryptKey(key); overlay.remove(); resolve(password); } else { errorEl.textContent = 'Неверный пароль'; } } else { errorEl.textContent = 'Неверный пароль'; }
+                if (isValid) { const key = await CRYPTO.unwrapMsgKey(password); if (key) { CRYPTO.setMsgEncryptKey(key); overlayEl.remove(); resolve(password); } else { errorEl.textContent = 'Неверный пароль'; } } else { errorEl.textContent = 'Неверный пароль'; }
             }
         });
-        if (!isSetup) { dialog.querySelector('#kek-skip')?.addEventListener('click', () => { overlay.remove(); resolve(null); }); }
+        if (!isSetup) { dialog.querySelector('#kek-skip')?.addEventListener('click', () => { overlayEl.remove(); resolve(null); }); }
         passwordInput.focus();
     });
 }
@@ -646,7 +722,6 @@ async function initApp() {
     cleanExpiredChannels();
     await CRYPTO.loadRatchetStates();
 
-    // Инициализация мастер-пароля
     if (CRYPTO.isKEKSetup()) {
         const password = await showMasterPasswordPrompt(false);
         if (password) { updateRobinStatus('🔒 Ключи расшифрованы', 2000); }
