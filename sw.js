@@ -1,40 +1,30 @@
-const PRIMARY = 'https://robinhood-final.pages.dev';
-const FALLBACK = 'https://robinhood-proxy.stephanclaps.workers.dev';
-let useFallback = false;
+const CACHE_NAME = 'robinhood-v3.1';
+const CHECK_INTERVAL = 60 * 60 * 1000; // 1 час
 
-// Проверяем доступность основного сервера
-async function checkPrimary() {
-  try {
-    const response = await fetch(PRIMARY, { method: 'HEAD', mode: 'no-cors' });
-    return response.ok || response.type === 'opaque';
-  } catch {
-    return false;
-  }
+self.addEventListener('install', (e) => { self.skipWaiting(); });
+self.addEventListener('activate', (e) => { e.waitUntil(clients.claim()); startUpdateCheck(); });
+
+function startUpdateCheck() {
+    setInterval(async () => {
+        try {
+            const response = await fetch('https://stepweather-prog.github.io/ROBINHOOD-P2P/index.html', { method: 'HEAD', cache: 'no-store' });
+            const etag = response.headers.get('ETag') || response.headers.get('Last-Modified');
+            const cache = await caches.open(CACHE_NAME);
+            const cached = await cache.match('/index.html');
+            const storedEtag = cached ? cached.headers.get('ETag') : null;
+            if (etag && etag !== storedEtag) {
+                const clients = await self.clients.matchAll();
+                clients.forEach(client => client.postMessage({ type: 'update-available' }));
+            }
+        } catch (e) {}
+    }, CHECK_INTERVAL);
 }
 
-// При установке сразу определяем, доступен ли основной сервер
-self.addEventListener('install', event => {
-  event.waitUntil(
-    checkPrimary().then(available => {
-      useFallback = !available;
-    })
-  );
-});
-
-self.addEventListener('fetch', event => {
-  const url = new URL(event.request.url);
-  // Если уже используем fallback, сразу идём через прокси
-  if (useFallback) {
-    const fallbackUrl = FALLBACK + url.pathname + url.search;
-    event.respondWith(fetch(fallbackUrl));
-  } else {
-    // Иначе пробуем основной сервер, при ошибке переключаемся на fallback
-    event.respondWith(
-      fetch(event.request).catch(() => {
-        useFallback = true; // запоминаем, что сервер недоступен
-        const fallbackUrl = FALLBACK + url.pathname + url.search;
-        return fetch(fallbackUrl);
-      })
-    );
-  }
+self.addEventListener('message', async (event) => {
+    if (event.data && event.data.type === 'apply-update') {
+        const cache = await caches.open(CACHE_NAME);
+        await cache.delete('/index.html');
+        const clients = await self.clients.matchAll();
+        clients.forEach(client => client.navigate(client.url));
+    }
 });
