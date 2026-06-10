@@ -295,6 +295,7 @@ let callTimerInterval = null, callSeconds = 0;
 let modalResolve = null, autoConnectDone = false;
 let obfuscationEnabled = false;
 let typingTimeout;
+let isUnlocked = false;
 
 try { savedConfigs = JSON.parse(localStorage.getItem('robinhood_tunnels') || '[]'); } catch (e) {}
 try { currentServer = localStorage.getItem('robinhood_server') || 'render'; } catch (e) {}
@@ -320,23 +321,10 @@ const patternPoints = [
     { x: 70, y: 210 }, { x: 140, y: 210 }, { x: 210, y: 210 }
 ];
 
-function safeHtml(str) {
-    if (!str) return '';
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
-}
-
+function safeHtml(str) { if (!str) return ''; const div = document.createElement('div'); div.textContent = str; return div.innerHTML; }
 function getMaxChannels() { return isPWA ? 20 : 2; }
-
-function updateClock() {
-    if (headerClock) {
-        const now = new Date();
-        headerClock.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    }
-}
-setInterval(updateClock, 1000);
-updateClock();
+function updateClock() { if (headerClock) { const now = new Date(); headerClock.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); } }
+setInterval(updateClock, 1000); updateClock();
 
 // ========== БЛОКИРОВКА ==========
 async function loadLockSettings() {
@@ -371,15 +359,9 @@ function setupLockUI() {
 
 function drawNumpad() {
     lockNumpad.innerHTML = '';
-    for (let i = 1; i <= 9; i++) {
-        const btn = document.createElement('button'); btn.className = 'lock-num'; btn.textContent = i;
-        btn.addEventListener('click', () => onPinDigit(i)); lockNumpad.appendChild(btn);
-    }
-    const btn0 = document.createElement('button'); btn0.className = 'lock-num zero'; btn0.textContent = '0';
-    btn0.addEventListener('click', () => onPinDigit(0)); lockNumpad.appendChild(btn0);
-    const btnDel = document.createElement('button'); btnDel.className = 'lock-num del'; btnDel.textContent = '⌫';
-    btnDel.addEventListener('click', () => { pinInput = pinInput.slice(0, -1); updatePinDots(); });
-    lockNumpad.appendChild(btnDel);
+    for (let i = 1; i <= 9; i++) { const btn = document.createElement('button'); btn.className = 'lock-num'; btn.textContent = i; btn.addEventListener('click', () => onPinDigit(i)); lockNumpad.appendChild(btn); }
+    const btn0 = document.createElement('button'); btn0.className = 'lock-num zero'; btn0.textContent = '0'; btn0.addEventListener('click', () => onPinDigit(0)); lockNumpad.appendChild(btn0);
+    const btnDel = document.createElement('button'); btnDel.className = 'lock-num del'; btnDel.textContent = '⌫'; btnDel.addEventListener('click', () => { pinInput = pinInput.slice(0, -1); updatePinDots(); }); lockNumpad.appendChild(btnDel);
 }
 
 function onPinDigit(d) { if (pinInput.length >= 4) return; pinInput += d; updatePinDots(); if (pinInput.length === 4) verifyPin(); }
@@ -428,7 +410,7 @@ async function autoDestruct() {
     document.body.appendChild(smoke);
     if (typeof lottie !== 'undefined') { lottie.loadAnimation({ container: smoke, renderer: 'canvas', loop: false, autoplay: true, path: 'assets/smoke.json' }); }
     lockNumpad.querySelectorAll('button').forEach(b => b.disabled = true);
-    setTimeout(() => { lockType = null; lockPinHash = ''; lockPatternHash = ''; failedAttempts = 0; lockScreen.style.display = 'none'; appContainer.style.display = 'flex'; if (smoke.parentNode) smoke.remove(); initApp(); updateRobinStatus('🚬 Всё сожжено!', 5000); }, 4000);
+    setTimeout(() => { lockType = null; lockPinHash = ''; lockPatternHash = ''; failedAttempts = 0; lockScreen.style.display = 'none'; appContainer.style.display = 'flex'; if (smoke.parentNode) smoke.remove(); initApp(); updateRobinStatus('🚬 Всё сжёг!', 5000); }, 4000);
 }
 
 async function forgotPassword() { const c = confirm('⚠ Все данные будут удалены!\n\nПродолжить?'); if (c) await autoDestruct(); }
@@ -448,6 +430,42 @@ document.getElementById('lock-reset')?.addEventListener('click', () => { tempPin
 document.getElementById('lock-skip')?.addEventListener('click', () => { isSettingUp = false; tempPinHash = ''; tempPatternHash = ''; unlock(); });
 document.getElementById('lock-forgot')?.addEventListener('click', forgotPassword);
 document.getElementById('setting-lock')?.addEventListener('click', () => { isSettingUp = true; tempPinHash = ''; tempPatternHash = ''; lockScreen.style.display = 'flex'; appContainer.style.display = 'none'; setupLockUI(); });
+
+// ========== МАСТЕР-ПАРОЛЬ UI ==========
+async function showMasterPasswordPrompt(isSetup = false) {
+    return new Promise((resolve) => {
+        const overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);backdrop-filter:blur(8px);z-index:10000;display:flex;align-items:center;justify-content:center;';
+        const dialog = document.createElement('div');
+        dialog.style.cssText = 'background:var(--sheet-bg);border:2px solid var(--border);border-radius:20px;padding:24px;width:85%;max-width:360px;text-align:center;color:var(--text);';
+        dialog.innerHTML = `
+            <h3 style="color:var(--accent-light);margin-bottom:12px;">${isSetup ? '🔐 Задайте мастер-пароль' : '🔐 Введите мастер-пароль'}</h3>
+            <p style="font-size:0.75em;color:var(--text-dim);margin-bottom:16px;">${isSetup ? 'Пароль защищает ключи шифрования.<br>Без него сообщения не расшифровать.' : 'Введите пароль для расшифровки сообщений.'}</p>
+            <input type="password" id="kek-password-input" placeholder="Мастер-пароль" style="width:100%;padding:12px;margin-bottom:8px;background:var(--input-bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:16px;outline:none;text-align:center;">
+            ${isSetup ? '<input type="password" id="kek-password-confirm" placeholder="Повторите пароль" style="width:100%;padding:12px;margin-bottom:16px;background:var(--input-bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:16px;outline:none;text-align:center;">' : ''}
+            <div id="kek-error" style="color:#f44336;font-size:0.75em;min-height:20px;margin-bottom:8px;"></div>
+            <button id="kek-submit" style="width:100%;padding:12px;background:linear-gradient(135deg,var(--accent),#b8903a);color:#1a1f0f;border:none;border-radius:12px;font-size:16px;font-weight:bold;cursor:pointer;">${isSetup ? '✓ Установить' : '🔓 Разблокировать'}</button>
+            ${!isSetup ? '<button id="kek-skip" style="width:100%;padding:8px;margin-top:8px;background:transparent;border:1px solid var(--border);border-radius:10px;color:var(--text-dim);font-size:13px;cursor:pointer;">⏭ Пропустить (без расшифровки)</button>' : ''}
+        `;
+        overlay.appendChild(dialog); document.body.appendChild(overlay);
+        const passwordInput = dialog.querySelector('#kek-password-input');
+        const errorEl = dialog.querySelector('#kek-error');
+        dialog.querySelector('#kek-submit').addEventListener('click', async () => {
+            const password = passwordInput.value;
+            if (isSetup) {
+                const confirmInput = dialog.querySelector('#kek-password-confirm');
+                if (password !== confirmInput.value) { errorEl.textContent = 'Пароли не совпадают'; return; }
+                if (password.length < 4) { errorEl.textContent = 'Минимум 4 символа'; return; }
+                try { const key = await CRYPTO.getMsgEncryptKey(); const success = await CRYPTO.wrapMsgKey(key, password); if (success) { overlay.remove(); resolve(password); } else { errorEl.textContent = 'Ошибка шифрования'; } } catch (e) { errorEl.textContent = 'Ошибка: ' + e.message; }
+            } else {
+                const isValid = await CRYPTO.verifyPassword(password);
+                if (isValid) { const key = await CRYPTO.unwrapMsgKey(password); if (key) { CRYPTO.setMsgEncryptKey(key); overlay.remove(); resolve(password); } else { errorEl.textContent = 'Неверный пароль'; } } else { errorEl.textContent = 'Неверный пароль'; }
+            }
+        });
+        if (!isSetup) { dialog.querySelector('#kek-skip')?.addEventListener('click', () => { overlay.remove(); resolve(null); }); }
+        passwordInput.focus();
+    });
+}
 
 // ========== ФУНКЦИИ ==========
 function getIceServers() {
@@ -575,7 +593,6 @@ async function performECDHHandshake(channelId) {
     const result = await CRYPTO.performECDHHandshake(channelId, sendToPong);
     if (result) {
         await showChatSafetyNumber(channelId);
-        // Инициализация Ratchet
         try {
             const key = await CRYPTO.getMsgEncryptKey();
             const exported = await crypto.subtle.exportKey('raw', key);
@@ -628,6 +645,13 @@ async function initApp() {
     await restoreChannelsState();
     cleanExpiredChannels();
     await CRYPTO.loadRatchetStates();
+
+    // Инициализация мастер-пароля
+    if (CRYPTO.isKEKSetup()) {
+        const password = await showMasterPasswordPrompt(false);
+        if (password) { updateRobinStatus('🔒 Ключи расшифрованы', 2000); }
+        else { updateRobinStatus('⚠ Работа без расшифровки сообщений', 3000); }
+    }
 
     const queue = JSON.parse(localStorage.getItem(OFFLINE_QUEUE_KEY) || '[]');
     if (queue.length) { const now = Date.now(); const ttl = OFFLINE_QUEUE_TTL_HOURS * 60 * 60 * 1000; const fresh = queue.filter(msg => (now - msg.time) < ttl); if (fresh.length !== queue.length) { if (fresh.length) localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(fresh)); else localStorage.removeItem(OFFLINE_QUEUE_KEY); updateRobinStatus('🧹 Очередь очищена от старых сообщений', 3000); } }
@@ -702,7 +726,6 @@ function setupEventHandlers() {
                 if (data.text === '__HANGUP__') { if (callActive) { endCall(); } else { stopRingtone(); if (callPanel) callPanel.style.display = 'none'; } return; }
                 if (data.text.startsWith('__PROFILE__')) { try { const p = JSON.parse(data.text.replace('__PROFILE__', '')); (async () => { const cs = await CRYPTO.secureGetItem('robinhood_contacts') || []; const c = cs.find(c => c.pubkey === data.channelId); if (c) { c.name = p.nick || c.name; c.avatar = p.avatar || c.avatar; await CRYPTO.secureSetItem('robinhood_contacts', cs); } })(); } catch (e) { } return; }
                 if (data.text.startsWith('__FILE__')) { try { const fd = JSON.parse(data.text.replace('__FILE__', '')); if (fd.type === 'video-circle' || fd.mime === 'video/webm') { appendMessage('📹 Кружок', '', profileAvatarSmall?.src || 'assets/avatars/001-.png', null, fd.data, 'video/webm'); } else if (fd.mime && fd.mime.startsWith('audio/')) { appendMessage('🎤 Голосовое', '', profileAvatarSmall?.src || 'assets/avatars/001-.png', null, fd.data, fd.mime); } else { handleDataChannelFile(fd); } } catch (e) { } return; }
-                // Попытка расшифровки через Double Ratchet
                 let decrypted = null;
                 if (CRYPTO.getRatchetStates()[data.channelId]) { try { decrypted = await CRYPTO.ratchetDecrypt(data.channelId, data.text); } catch (e) { } }
                 if (decrypted === null) { decrypted = await CRYPTO.decryptMessage(data.text); }
@@ -717,7 +740,6 @@ function setupEventHandlers() {
     });
 
     window.addEventListener('beforeinstallprompt', (e) => { deferredPrompt = e; e.preventDefault(); });
-
     if (msgInput) { msgInput.addEventListener('input', () => { if (!activeChannelId || !channels[activeChannelId]) return; sendToPong({ action: 'send', text: '__TYPING__', channelId: activeChannelId }); clearTimeout(typingTimeout); typingTimeout = setTimeout(() => { if (typingIndicator) typingIndicator.textContent = ''; }, 2000); }); }
 
     async function sendMessageHandler() {
@@ -769,6 +791,16 @@ function setupEventHandlers() {
     document.getElementById('btn-warp-gen')?.addEventListener('click', () => { window.open(WARP_GEN_URL, '_blank'); });
     const secWarning = document.getElementById('setting-security-info'); if (secWarning) { secWarning.addEventListener('click', function (e) { e.stopPropagation(); this.style.display = 'none'; localStorage.setItem('robinhood_security_hidden', 'true'); }); }
 
+    // Пункт "Мастер-пароль" в настройках
+    const kekItem = document.createElement('div'); kekItem.className = 'contact-item'; kekItem.id = 'setting-kek';
+    kekItem.innerHTML = `<div class="contact-info"><span style="font-size:22px;">🔐</span><div><div class="contact-name">Мастер-пароль</div><div style="font-size:0.6em;color:var(--text-dim);" id="kek-status">${CRYPTO.isKEKSetup() ? 'Установлен' : 'Не задан'}</div></div></div><span style="color:var(--text-dim);">→</span>`;
+    kekItem.addEventListener('click', async () => {
+        settingsSheet?.classList.remove('open'); overlay?.classList.remove('show');
+        if (CRYPTO.isKEKSetup()) { const password = await showMasterPasswordPrompt(true); if (password) { document.getElementById('kek-status').textContent = 'Установлен'; updateRobinStatus('🔒 Мастер-пароль обновлён', 2000); } }
+        else { const password = await showMasterPasswordPrompt(true); if (password) { document.getElementById('kek-status').textContent = 'Установлен'; updateRobinStatus('🔒 Мастер-пароль установлен', 2000); } }
+    });
+    const lockSetting = document.getElementById('setting-lock'); if (lockSetting) lockSetting.after(kekItem);
+
     function refreshTunnelList() { if (!tunnelList) return; tunnelList.innerHTML = ''; savedConfigs.forEach((cfg, i) => { const div = document.createElement('div'); div.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:8px;margin:4px 0;background:rgba(255,255,255,0.05);border-radius:8px;font-size:0.75em;'; div.innerHTML = `<span>🔒 ${cfg.name}</span><button class="tunnel-delete-btn" data-index="${i}">🗑 Удалить</button>`; div.querySelector('.tunnel-delete-btn').addEventListener('click', (e) => { e.stopPropagation(); if (confirm('Удалить «' + cfg.name + '»?')) { savedConfigs.splice(i, 1); localStorage.setItem('robinhood_tunnels', JSON.stringify(savedConfigs)); if (activeTunnel >= savedConfigs.length) activeTunnel = savedConfigs.length - 1; refreshTunnelList(); updateTunnelUI(); } }); tunnelList.appendChild(div); }); }
     document.getElementById('setting-tunnel')?.addEventListener('click', () => { refreshTunnelList(); tunnelConfigModal?.classList.add('active'); });
     document.getElementById('btn-load-file')?.addEventListener('click', () => configFileInput?.click());
@@ -787,21 +819,7 @@ function setupEventHandlers() {
     if (modalOverlay) modalOverlay.addEventListener('click', e => { if (e.target === modalOverlay) hideModalInput(null); });
     window.addEventListener('online', () => { updateRobinStatus('🌐 Сеть', 2000); pongFrame.src = P2PPONG_URL + '?v=' + Date.now(); pongFrame.style.display = 'none'; setTimeout(() => flushOfflineQueue(), 2000); });
     window.addEventListener('offline', () => updateRobinStatus('⚠️ Офлайн', 0));
-
-    // Автоочистка
-    document.addEventListener('visibilitychange', () => {
-        if (document.hidden) {
-            localStorage.removeItem(CRYPTO.STORAGE_KEY + '_backup');
-            const safetyEl = document.getElementById('chat-safety-number'); if (safetyEl) safetyEl.style.display = 'none';
-            if (voiceTimerInterval) { clearInterval(voiceTimerInterval); voiceTimerInterval = null; }
-            if (callTimerInterval) { clearInterval(callTimerInterval); callTimerInterval = null; }
-        } else {
-            if (voiceRecording && !voiceTimerInterval) startVoiceTimer();
-            if (callActive && !callTimerInterval) startCallTimer();
-            CRYPTO.getStorageKey().catch(() => { });
-            if (activeChannelId) { const saved = localStorage.getItem('robinhood_safety_' + activeChannelId); if (saved) { const safetyEl = document.getElementById('chat-safety-number'); const safetyCode = document.getElementById('chat-safety-code'); if (safetyEl && safetyCode) { safetyCode.textContent = saved; safetyEl.style.display = 'block'; } } }
-        }
-    });
+    document.addEventListener('visibilitychange', () => { if (document.hidden) { localStorage.removeItem(CRYPTO.STORAGE_KEY + '_backup'); const safetyEl = document.getElementById('chat-safety-number'); if (safetyEl) safetyEl.style.display = 'none'; if (voiceTimerInterval) { clearInterval(voiceTimerInterval); voiceTimerInterval = null; } if (callTimerInterval) { clearInterval(callTimerInterval); callTimerInterval = null; } } else { if (voiceRecording && !voiceTimerInterval) startVoiceTimer(); if (callActive && !callTimerInterval) startCallTimer(); CRYPTO.getStorageKey().catch(() => { }); if (activeChannelId) { const saved = localStorage.getItem('robinhood_safety_' + activeChannelId); if (saved) { const safetyEl = document.getElementById('chat-safety-number'); const safetyCode = document.getElementById('chat-safety-code'); if (safetyEl && safetyCode) { safetyCode.textContent = saved; safetyEl.style.display = 'block'; } } } } });
     window.addEventListener('pagehide', () => { localStorage.removeItem(CRYPTO.STORAGE_KEY + '_backup'); });
 }
 
@@ -814,12 +832,9 @@ async function loadContacts() { if (!contactsListInner) return; const contacts =
 async function deleteContact(pubkey) { let contacts = await CRYPTO.secureGetItem('robinhood_contacts') || []; contacts = contacts.filter(c => c.pubkey !== pubkey); await CRYPTO.secureSetItem('robinhood_contacts', contacts); if (activeChannelId === pubkey) { delete channels[pubkey]; activeChannelId = Object.keys(channels)[0] || null; saveChannelsState(); } loadContacts(); }
 
 function closeAllSheets() { if (avatarSelector) avatarSelector.classList.remove('show'); if (contactsSheet) contactsSheet.classList.remove('open'); if (settingsSheet) settingsSheet.classList.remove('open'); if (overlay) overlay.classList.remove('show'); }
-
 function showModalInput(title, placeholder, defaultValue, hint) { return new Promise(resolve => { modalResolve = resolve; if (modalTitle) modalTitle.textContent = title; if (modalField) { modalField.placeholder = placeholder || ''; modalField.value = defaultValue || ''; } if (modalHint) modalHint.textContent = hint || ''; if (modalOverlay) modalOverlay.classList.add('active'); if (modalField) modalField.focus(); }); }
-
 function hideModalInput(value) { if (modalOverlay) modalOverlay.classList.remove('active'); if (modalResolve) { modalResolve(value); modalResolve = null; } }
 
-// ========== АВТООБНОВЛЕНИЕ ==========
 if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/sw.js').catch(() => { }); navigator.serviceWorker.addEventListener('message', (event) => { if (event.data && event.data.type === 'update-available') { showUpdateButton(); } }); }
 
 function showUpdateButton() {
