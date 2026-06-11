@@ -925,7 +925,9 @@ async function initApp() {
     if (activeChannelId && channels[activeChannelId]) { sendToPong({ action: 'handshake' }); updateRobinStatus('🔄 Канал восстановлен', 2000); }
 
     const urlParams = new URLSearchParams(window.location.search);
-    const refServer = urlParams.get('server'), refId = urlParams.get('id'), refKey = urlParams.get('key');
+const hashParams = new URLSearchParams(window.location.hash.replace('#', ''));
+const refServer = urlParams.get('server'), refId = urlParams.get('id');
+const refKey = hashParams.get('key') || urlParams.get('key');
     if (refServer && (refServer === 'render' || refServer === 'workers')) { currentServer = refServer; localStorage.setItem('robinhood_server', currentServer); }
     else { const savedServer = localStorage.getItem('robinhood_server'); if (savedServer) currentServer = savedServer; }
     window._pendingRef = refId && refKey ? { id: refId, key: refKey } : null;
