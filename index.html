@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>RobinHood P2P</title>
     <link rel="manifest" href="manifest.json">
-   <link rel="icon" href="assets/icons/013--11.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="assets/icons/013--11.png">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.12.2/lottie.min.js"></script>
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com 'unsafe-inline'; style-src 'self' 'unsafe-inline'; media-src 'self' blob:; connect-src 'self' https://p2ppong.onrender.com https://robincall.stephanclaps-491.workers.dev blob:; img-src 'self' data: blob: https://stepweather-prog.github.io https://warp-generator.github.io; frame-src 'self' https://stepweather-prog.github.io; manifest-src 'self'; form-action 'none'; base-uri 'self';">
     <style>
@@ -37,7 +37,9 @@
         body { background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%); color: var(--text); font-family: 'Segoe UI', 'Inter', 'Georgia', serif; display:flex; flex-direction:column; height:100vh; height:100dvh; position:relative; }
         body::before { content:""; position:fixed; top:0; left:0; width:100%; height:100%; background-image:url('assets/background.webp'); background-size:cover; background-position:center; background-repeat:no-repeat; z-index:-1; opacity:0.50; }
         body::after { content:""; position:fixed; top:0; left:0; width:100%; height:100%; background:radial-gradient(circle at 50% 40%, rgba(30,40,25,0.5), rgba(10,20,8,0.85)); z-index:-1; }
-        #app-container { background: var(--bg-primary); }
+        body.custom-bg::before { background-image: var(--custom-bg) !important; background-position: var(--custom-bg-pos, 50% 50%) !important; background-size: cover !important; opacity: 0.40; }
+        body.custom-bg::after { opacity: 0.70; }
+        #app-container { background: transparent; }
         .header { background:linear-gradient(135deg, rgba(25,35,20,0.96), rgba(15,25,12,0.98)); border-bottom:3px solid var(--border); backdrop-filter:blur(8px); z-index:10; padding:6px 10px; padding-top:calc(6px + env(safe-area-inset-top, 0px)); display:flex; flex-direction:column; gap:4px; position:relative; box-shadow:0 4px 20px rgba(0,0,0,0.3), inset 0 -1px 0 rgba(196,162,75,0.2); flex-shrink:0; }
         .header::after { content:''; position:absolute; bottom:-3px; left:0; width:100%; height:3px; background:linear-gradient(90deg, transparent 0%, var(--accent) 15%, var(--accent-light) 50%, var(--accent) 85%, transparent 100%); opacity:0.5; }
         .header-row-1 { display:flex; align-items:center; gap:6px; }
@@ -256,11 +258,13 @@
     <div class="contact-item" id="setting-tunnel"><div class="contact-info"><span style="font-size:22px;">🔒</span><span class="contact-name">Туннель</span></div><label class="toggle-switch"><input type="checkbox" id="toggle-tunnel"><span class="toggle-slider"></span></label></div>
     <div class="contact-item" id="setting-obfuscation"><div class="contact-info"><span style="font-size:22px;">🌫️</span><span class="contact-name">Маскировка</span></div><label class="toggle-switch"><input type="checkbox" id="toggle-obfuscation"><span class="toggle-slider"></span></label></div>
     <div class="contact-item" id="setting-lock"><div class="contact-info"><span style="font-size:22px;">🔐</span><span class="contact-name">Блокировка</span></div><span id="lock-status">Не задан</span></div>
+    <div class="contact-item" id="setting-background"><div class="contact-info"><span style="font-size:22px;">🖼</span><div><div class="contact-name">Свой фон</div><div style="font-size:0.55em;color:var(--text-dim);" id="bg-status">Стандартный</div></div></div><span style="color:var(--text-dim);">📂</span></div>
     <div class="contact-item setting-install-btn hidden" id="setting-install"><div class="contact-info"><img src="assets/avatars/001-.png" style="width:28px;height:28px;border-radius:6px;"><div><div class="contact-name" style="font-size:0.8em;">RobinHood P2P</div><div style="font-size:0.6em;color:var(--text-dim);">Установить приложение</div></div></div><span style="font-size:1.2em;">📲</span></div>
     <div class="contact-item security-warning" id="setting-security-info"><div class="contact-info"><span style="font-size:22px;">⚠️</span><div><div class="contact-name">Безопасность</div><div style="font-size:0.6em;color:var(--text-dim);">Мы не рассылаем APK!<br>Установка только через браузер.<br>Нажмите чтобы скрыть</div></div></div><span style="font-size:1.2em;">🛡️</span></div>
 </div></div>
 <div class="modal-overlay" id="ref-modal"><div class="modal-dialog"><h3>🏹 Колчан готов!</h3><div class="code-display" id="ref-link-display"></div><button class="btn-primary" id="share-ref-link-btn">📤 Отправить ворона</button><button class="btn-cancel" id="cancel-arrow-btn">⏹ Отмена</button><button class="btn-dark" id="close-ref-modal-btn">Закрыть</button></div></div>
 <div class="modal-overlay" id="tunnel-config-modal"><div class="modal-dialog"><h3>➕ Управление конфигами</h3><div id="tunnel-list" style="max-height:150px;overflow-y:auto;margin-bottom:10px;text-align:left;"></div><button class="btn-primary" id="btn-load-file">📂 Загрузить новый</button><button class="btn-dark" id="btn-warp-gen" style="margin-top:6px;">🌐 Создать новые конфиги</button><div style="margin:10px 0;color:var(--text-dim);">или вставьте текст:</div><textarea id="tunnel-config-input" style="width:100%;height:100px;background:var(--input-bg);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:0.7em;font-family:monospace;resize:vertical;"></textarea><button class="btn-primary" id="btn-save-tunnel">💾 Сохранить</button><button class="btn-dark" id="btn-cancel-tunnel-config">Закрыть</button><input type="file" id="config-file-input" accept=".conf" style="display:none;"></div></div>
+<div class="modal-overlay" id="bg-crop-modal"><div class="modal-dialog" style="max-width:90%;"><h3>🖼 Выберите область фона</h3><div style="position:relative;width:100%;height:250px;overflow:hidden;border:2px solid var(--border);border-radius:12px;margin:10px 0;background:#000;"><img id="bg-preview-img" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;transition:object-position 0.2s;" draggable="false"><div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.7);padding:4px 12px;border-radius:10px;font-size:0.7em;color:white;">🖐 Тяните изображение</div></div><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin:8px 0;"><button class="btn-dark" id="bg-pos-top" style="flex:1;min-width:60px;padding:8px;">⬆ Верх</button><button class="btn-dark" id="bg-pos-center" style="flex:1;min-width:60px;padding:8px;">⬜ Центр</button><button class="btn-dark" id="bg-pos-bottom" style="flex:1;min-width:60px;padding:8px;">⬇ Низ</button></div><div style="display:flex;gap:6px;"><button class="btn-dark" id="bg-cancel">Отмена</button><button class="btn-primary" id="bg-save">✓ Сохранить</button><button class="btn-dark" id="bg-reset" style="font-size:0.7em;">🔄 Сбросить</button></div></div></div>
 <div class="modal-overlay" id="link-preview-modal"><div class="modal-dialog"><h3>🔗 Внешняя ссылка</h3><div id="link-preview-content"></div><button class="btn-dark" id="btn-close-link-preview">Закрыть</button></div></div>
 <div id="contact-menu" class="contact-menu" style="display:none;"><div class="contact-menu-item" id="menu-rename">✎ Переименовать</div><div class="contact-menu-item" id="menu-avatar">🖼 Сменить аватар</div><div class="contact-menu-item" id="menu-delete">🔥 Уволить лучника</div><button id="menu-cancel">Отмена</button></div>
 <div id="contact-context-menu" class="contact-menu" style="display:none;"><div class="contact-menu-item" id="ctx-lock-chat">🔐 Запереть в сундуке</div><div class="contact-menu-item" id="ctx-clear-history">🚬 Очистить перестрелку</div><div class="contact-menu-item" id="ctx-fire-archer">🔥 Уволить лучника</div><button id="ctx-cancel">Отмена</button></div>
@@ -268,7 +272,8 @@
 <div class="modal-input-overlay" id="modal-input-overlay"><div class="modal-input-dialog"><h3 id="modal-input-title">Введите текст</h3><input type="text" id="modal-input-field" autocomplete="off"><div style="font-size:0.55em;color:var(--text-dim);margin-bottom:8px;" id="modal-input-hint"></div><div class="modal-btns"><button class="btn-dark" id="modal-input-cancel">Отмена</button><button class="btn-gold" id="modal-input-ok">✓ Готово</button></div></div></div>
 <div id="reaction-picker" style="display:none;position:fixed;z-index:500;background:var(--sheet-bg);border:2px solid var(--border);border-radius:10px;padding:6px;gap:6px;flex-wrap:wrap;"><span>👍</span><span>❤️</span><span>😂</span><span>😮</span><span>😢</span><span>🔥</span></div>
 <iframe id="pong-frame" src="about:blank" style="display:none;position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none;visibility:hidden;border:none;z-index:-1;" title="p2p engine"></iframe>
-</div><script>
+</div>
+<script>
 // ========== ROBIHOOD SHARED CRYPTO v1.0 ==========
 const CRYPTO = (() => {
     'use strict';
@@ -466,6 +471,9 @@ let obfuscationEnabled = false;
 let typingTimeout;
 let currentTheme = localStorage.getItem('robinhood_theme') || 'forest';
 let currentContextContact = null;
+let customBgImage = null;
+let customBgPosX = 50;
+let customBgPosY = 50;
 
 try { savedConfigs = JSON.parse(localStorage.getItem('robinhood_tunnels') || '[]'); } catch (e) {}
 try { currentServer = localStorage.getItem('robinhood_server') || 'render'; } catch (e) {}
@@ -567,6 +575,96 @@ function showContactContextMenu(x, y, contact) {
     menu.style.display = 'block';
     menu.style.left = Math.min(x, window.innerWidth - 240) + 'px';
     menu.style.top = Math.min(y, window.innerHeight - 200) + 'px';
+}
+
+// ========== ПОЛЬЗОВАТЕЛЬСКИЙ ФОН ==========
+function loadCustomBackground() {
+    const saved = localStorage.getItem('robinhood_custom_bg');
+    if (saved) {
+        try {
+            const data = JSON.parse(saved);
+            document.body.style.setProperty('--custom-bg', `url(${data.src})`);
+            document.body.style.setProperty('--custom-bg-pos', `${data.posX}% ${data.posY}%`);
+            document.body.classList.add('custom-bg');
+            const status = document.getElementById('bg-status');
+            if (status) status.textContent = 'Установлен';
+            return true;
+        } catch(e) {}
+    }
+    const status = document.getElementById('bg-status');
+    if (status) status.textContent = 'Стандартный';
+    return false;
+}
+
+function openBackgroundPicker() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            customBgImage = ev.target.result;
+            customBgPosX = 50;
+            customBgPosY = 50;
+            showBackgroundCropModal();
+        };
+        reader.readAsDataURL(file);
+    });
+    input.click();
+}
+
+function showBackgroundCropModal() {
+    const modal = document.getElementById('bg-crop-modal');
+    const img = document.getElementById('bg-preview-img');
+    img.src = customBgImage;
+    img.style.objectPosition = `${customBgPosX}% ${customBgPosY}%`;
+    modal.classList.add('active');
+    
+    let dragging = false;
+    img.addEventListener('pointerdown', (e) => {
+        dragging = true;
+        img.setPointerCapture(e.pointerId);
+    });
+    img.addEventListener('pointermove', (e) => {
+        if (!dragging) return;
+        customBgPosX = Math.max(0, Math.min(100, customBgPosX - e.movementX * 0.2));
+        customBgPosY = Math.max(0, Math.min(100, customBgPosY - e.movementY * 0.2));
+        img.style.objectPosition = `${customBgPosX}% ${customBgPosY}%`;
+    });
+    img.addEventListener('pointerup', () => { dragging = false; });
+    
+    document.getElementById('bg-pos-top').onclick = () => { customBgPosX = 50; customBgPosY = 10; img.style.objectPosition = `${customBgPosX}% ${customBgPosY}%`; };
+    document.getElementById('bg-pos-center').onclick = () => { customBgPosX = 50; customBgPosY = 50; img.style.objectPosition = `${customBgPosX}% ${customBgPosY}%`; };
+    document.getElementById('bg-pos-bottom').onclick = () => { customBgPosX = 50; customBgPosY = 90; img.style.objectPosition = `${customBgPosX}% ${customBgPosY}%`; };
+    
+    document.getElementById('bg-save').onclick = () => {
+        const bgData = { src: customBgImage, posX: Math.round(customBgPosX), posY: Math.round(customBgPosY) };
+        localStorage.setItem('robinhood_custom_bg', JSON.stringify(bgData));
+        document.body.style.setProperty('--custom-bg', `url(${customBgImage})`);
+        document.body.style.setProperty('--custom-bg-pos', `${bgData.posX}% ${bgData.posY}%`);
+        document.body.classList.add('custom-bg');
+        const status = document.getElementById('bg-status');
+        if (status) status.textContent = 'Установлен';
+        modal.classList.remove('active');
+        robinSay('avatar_updated', 2000);
+    };
+    
+    document.getElementById('bg-cancel').onclick = () => { customBgImage = null; modal.classList.remove('active'); };
+    
+    document.getElementById('bg-reset').onclick = () => {
+        localStorage.removeItem('robinhood_custom_bg');
+        document.body.classList.remove('custom-bg');
+        document.body.style.removeProperty('--custom-bg');
+        document.body.style.removeProperty('--custom-bg-pos');
+        const status = document.getElementById('bg-status');
+        if (status) status.textContent = 'Стандартный';
+        modal.classList.remove('active');
+        robinSay('cache_cleared', 2000);
+    };
+    
+    modal.addEventListener('click', (e) => { if (e.target === modal) { customBgImage = null; modal.classList.remove('active'); } });
 }
 
 // ========== БЛОКИРОВКА ==========
