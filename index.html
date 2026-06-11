@@ -1002,9 +1002,10 @@ async function initApp() {
 
     const urlParams = new URLSearchParams(window.location.search);
     const hashParams = new URLSearchParams(window.location.hash.replace('#', ''));
-    const refServer = urlParams.get('server');
-    const refId = urlParams.get('id');
-    const refKey = hashParams.get('key') || urlParams.get('key');
+    const hashParams = new URLSearchParams(window.location.hash.replace('#', ''));
+const refServer = urlParams.get('server');
+const refId = urlParams.get('id');
+const refKey = hashParams.get('key') || urlParams.get('key');
     if (refServer && (refServer === 'render' || refServer === 'workers')) { currentServer = refServer; localStorage.setItem('robinhood_server', currentServer); }
     else { const savedServer = localStorage.getItem('robinhood_server'); if (savedServer) currentServer = savedServer; }
     if (toggleServer) { toggleServer.checked = currentServer === 'workers'; } if (serverLabel) serverLabel.textContent = currentServer === 'workers' ? 'Workers' : 'Render';
