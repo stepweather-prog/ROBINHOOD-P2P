@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0">
     <title>RobinHood P2P</title>
     <link rel="manifest" href="manifest.json">
-    <link rel="icon" type="image/png" sizes="192x192" href="assets/avatars/001-.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/013--11.png">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.12.2/lottie.min.js"></script>
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com 'unsafe-inline'; style-src 'self' 'unsafe-inline'; media-src 'self' blob:; connect-src 'self' https://p2ppong.onrender.com https://robincall.stephanclaps-491.workers.dev blob:; img-src 'self' data: blob: https://stepweather-prog.github.io https://warp-generator.github.io; frame-src 'self' https://stepweather-prog.github.io; manifest-src 'self'; form-action 'none'; base-uri 'self';">
     <style>
@@ -1130,7 +1130,7 @@ function closeAllSheets() { if (avatarSelector) avatarSelector.classList.remove(
 function showModalInput(title, placeholder, defaultValue, hint) { return new Promise(resolve => { modalResolve = resolve; if (modalTitle) modalTitle.textContent = title; if (modalField) { modalField.placeholder = placeholder || ''; modalField.value = defaultValue || ''; } if (modalHint) modalHint.textContent = hint || ''; if (modalOverlay) modalOverlay.classList.add('active'); if (modalField) modalField.focus(); }); }
 function hideModalInput(value) { if (modalOverlay) modalOverlay.classList.remove('active'); if (modalResolve) { modalResolve(value); modalResolve = null; } }
 
-if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/sw.js').catch(() => { }); navigator.serviceWorker.addEventListener('message', (event) => { if (event.data && event.data.type === 'update-available') { showUpdateButton(); } }); }
+if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/ROBINHOOD-P2P/sw.js').catch(() => { }); } navigator.serviceWorker.addEventListener('message', (event) => { if (event.data && event.data.type === 'update-available') { showUpdateButton(); } }); }
 
 function showUpdateButton() {
     const existingBtn = document.getElementById('update-btn'); if (existingBtn) return;
