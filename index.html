@@ -751,7 +751,21 @@ function startPeerNetwork() {
 // ========== LOTTIE АНИМАЦИИ ==========
 let archerAnimation, quiverAnim, bowAnim, currentArrowContainer;
 function playArcherAnimation() { if (!robinText || typeof lottie === 'undefined') return; if (currentArrowContainer?.parentNode) currentArrowContainer.remove(); if (archerAnimation) { archerAnimation.destroy(); archerAnimation = null; } const wrapper = document.createElement('span'); wrapper.className = 'robin-arrow-container'; wrapper.style.cssText = 'width:80px;height:40px;display:inline-block;vertical-align:middle;'; currentArrowContainer = wrapper; robinText.textContent = ''; robinText.appendChild(wrapper); archerAnimation = lottie.loadAnimation({ container: wrapper, renderer: 'canvas', loop: false, autoplay: true, path: 'assets/Archer.json' }); archerAnimation.addEventListener('complete', () => { wrapper.remove(); currentArrowContainer = null; archerAnimation = null; robinText.textContent = robinDefaultText; }); }
-function playBowAnimation() { if (!bowContainer || typeof lottie === 'undefined') return; if (bowAnim) { bowAnim.destroy(); bowAnim = null; } bowContainer.style.display = 'block'; bowAnim = lottie.loadAnimation({ container: bowContainer, renderer: 'canvas', loop: false, autoplay: true, path: 'assets/bow.json' }); bowAnim.addEventListener('complete', () => { bowContainer.style.display = 'none'; bowAnim = null; }); }
+function playBowAnimation() { 
+    if (typeof lottie === 'undefined') return;
+    // Создаём контейнер если его нет
+    let container = document.getElementById('bow-animation-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'bow-animation-container';
+        container.style.cssText = 'position:fixed;bottom:70px;right:20px;width:80px;height:80px;z-index:100;pointer-events:none;';
+        document.body.appendChild(container);
+    }
+    container.style.display = 'block';
+    if (bowAnim) { bowAnim.destroy(); bowAnim = null; }
+    bowAnim = lottie.loadAnimation({ container, renderer: 'canvas', loop: false, autoplay: true, path: 'assets/bow.json' }); 
+    bowAnim.addEventListener('complete', () => { container.style.display = 'none'; bowAnim = null; }); 
+}
 function playQuiverAnimation() { if (!robinText || typeof lottie === 'undefined') return; if (currentArrowContainer?.parentNode) currentArrowContainer.remove(); if (quiverAnim) { quiverAnim.destroy(); quiverAnim = null; } const wrapper = document.createElement('span'); wrapper.className = 'robin-arrow-container'; wrapper.style.cssText = 'width:80px;height:40px;display:inline-block;vertical-align:middle;'; currentArrowContainer = wrapper; robinText.textContent = '✅ '; robinText.appendChild(wrapper); quiverAnim = lottie.loadAnimation({ container: wrapper, renderer: 'canvas', loop: false, autoplay: true, path: 'assets/docking/animation.json' }); quiverAnim.addEventListener('complete', () => { if (wrapper.parentNode) wrapper.remove(); currentArrowContainer = null; quiverAnim = null; robinText.textContent = robinDefaultText; }); }
 
 // ========== ИНИЦИАЛИЗАЦИЯ ==========
@@ -926,7 +940,7 @@ async function initApp() {
 
     const urlParams = new URLSearchParams(window.location.search);
 const hashParams = new URLSearchParams(window.location.hash.replace('#', ''));
-const refServer = urlParams.get('server'), refId = urlParams.get('id');
+const refKey = hashParams.get('key') || urlParams.get('key');
 const refKey = hashParams.get('key') || urlParams.get('key');
     if (refServer && (refServer === 'render' || refServer === 'workers')) { currentServer = refServer; localStorage.setItem('robinhood_server', currentServer); }
     else { const savedServer = localStorage.getItem('robinhood_server'); if (savedServer) currentServer = savedServer; }
