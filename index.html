@@ -940,9 +940,18 @@ async function initApp() {
 
     const urlParams = new URLSearchParams(window.location.search);
 const hashParams = new URLSearchParams(window.location.hash.replace('#', ''));
+const refServer = urlParams.get('server');
+const refId = urlParams.get('id');
 const refKey = hashParams.get('key') || urlParams.get('key');
-    if (refServer && (refServer === 'render' || refServer === 'workers')) { currentServer = refServer; localStorage.setItem('robinhood_server', currentServer); }
-    else { const savedServer = localStorage.getItem('robinhood_server'); if (savedServer) currentServer = savedServer; }
+
+if (refServer && (refServer === 'render' || refServer === 'workers')) { 
+    currentServer = refServer; 
+    localStorage.setItem('robinhood_server', currentServer); 
+} else { 
+    const savedServer = localStorage.getItem('robinhood_server'); 
+    if (savedServer) currentServer = savedServer; 
+}
+window._pendingRef = refId && refKey ? { id: refId, key: refKey } : null;
     window._pendingRef = refId && refKey ? { id: refId, key: refKey } : null;
 
     THEMES.applyTheme(localStorage.getItem('robinhood_theme') || 'forest', themeIcon, themeName);
