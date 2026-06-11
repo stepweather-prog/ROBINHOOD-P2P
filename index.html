@@ -35,8 +35,8 @@
         html { font-size: clamp(14px, 2.5vw, 16px); }
         html,body { margin:0; padding:0; height:100%; overflow:hidden; -webkit-text-size-adjust:100%; }
         body { background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%); color: var(--text); font-family: 'Segoe UI', 'Inter', 'Georgia', serif; display:flex; flex-direction:column; height:100vh; height:100dvh; position:relative; }
-        body::before { content:""; position:fixed; top:clamp(58px, 13vw, 76px); left:0; width:100%; height:calc(100dvh - clamp(58px, 13vw, 76px) - clamp(54px, 11vw, 70px)); background-image:url('assets/background.webp'); background-size:cover; background-position:center; background-repeat:no-repeat; z-index:0; opacity:0.35; }
-        body::after { content:""; position:fixed; top:clamp(58px, 13vw, 76px); left:0; width:100%; height:calc(100dvh - clamp(58px, 13vw, 76px) - clamp(54px, 11vw, 70px)); background:radial-gradient(circle at 50% 40%, rgba(30,40,25,0.5), rgba(10,20,8,0.85)); z-index:0; }
+        body::before { content:""; position:fixed; top:0; left:0; width:100%; height:100%; background-image:url('assets/background.webp'); background-size:cover; background-position:center; background-repeat:no-repeat; z-index:-1; opacity:0.35; }
+body::after { content:""; position:fixed; top:0; left:0; width:100%; height:100%; background:radial-gradient(circle at 50% 40%, rgba(30,40,25,0.5), rgba(10,20,8,0.85)); z-index:-1; }
         .header { background:linear-gradient(135deg, rgba(25,35,20,0.96), rgba(15,25,12,0.98)); border-bottom:3px solid var(--border); backdrop-filter:blur(8px); z-index:10; padding:6px 10px; display:flex; flex-direction:column; gap:4px; position:relative; box-shadow:0 4px 20px rgba(0,0,0,0.3), inset 0 -1px 0 rgba(196,162,75,0.2); flex-shrink:0; }
         .header::after { content:''; position:absolute; bottom:-3px; left:0; width:100%; height:3px; background:linear-gradient(90deg, transparent 0%, var(--accent) 15%, var(--accent-light) 50%, var(--accent) 85%, transparent 100%); opacity:0.5; }
         .header-row-1 { display:flex; align-items:center; gap:6px; }
@@ -845,7 +845,7 @@ function startVoiceTimer() { voiceSeconds = 0; if (voiceTimerOverlay) { voiceTim
 function stopVoiceTimer() { if (voiceTimerInterval) { clearInterval(voiceTimerInterval); voiceTimerInterval = null; } if (voiceTimerOverlay) voiceTimerOverlay.style.display = 'none'; }
 
 function toggleVoiceRecording() { if (voiceRecording) { stopVoiceRecording(); return; } startVoiceRecording(); }
-function startVoiceRecording() { if (voiceRecorder?.state === 'recording') return; navigator.mediaDevices.getUserMedia({ audio: true }).then(st => { voiceStream = st; voiceRecorder = new MediaRecorder(st, { mimeType: 'audio/webm; codecs=opus', audioBitsPerSecond: 16000 }); voiceChunks = []; voiceRecorder.ondataavailable = e => voiceChunks.push(e.data); voiceRecorder.onstop = () => { const blob = new Blob(voiceChunks, { type: 'audio/webm' }); if (blob.size > 100 && blob.size < MAX_FILE_SIZE) { const reader = new FileReader(); reader.onload = () => { const b64 = reader.result.split(',')[1]; sendFileMessage({ name: 'voice_message.webm', size: blob.size, type: 'audio/webm', data: b64, mime: 'audio/webm' }); appendMessage('Вы', '🎤 Голосовое', profileAvatarSmall?.src || 'assets/avatars/001-.png', null, b64, 'audio/webm'); playCallStart(); }; reader.readAsDataURL(blob); } if (voiceStream) { voiceStream.getTracks().forEach(t => t.stop()); voiceStream = null; } voiceRecorder = null; voiceRecording = false; stopVoiceTimer(); btnVoiceInput.style.background = ''; }; voiceRecorder.start(); voiceRecording = true; startVoiceTimer(); btnVoiceInput.style.background = '#f44336'; }).catch(() => robinSay('error_no_access', 3000)); }
+function startVoiceRecording() { if (voiceRecorder?.state === 'recording') return; let mimeType = 'audio/webm; codecs=opus'; if (!MediaRecorder.isTypeSupported(mimeType)) { mimeType = 'audio/webm'; } if (!MediaRecorder.isTypeSupported(mimeType)) { mimeType = 'audio/mp4'; } navigator.mediaDevices.getUserMedia({ audio: true }).then(st => { voiceStream = st; voiceRecorder = new MediaRecorder(st, { mimeType: mimeType, audioBitsPerSecond: 16000 }); voiceChunks = []; voiceRecorder.ondataavailable = e => { if (e.data.size > 0) voiceChunks.push(e.data); }; voiceRecorder.onstop = () => { const blob = new Blob(voiceChunks, { type: 'audio/webm' }); if (blob.size > 100 && blob.size < MAX_FILE_SIZE) { const reader = new FileReader(); reader.onload = () => { const b64 = reader.result.split(',')[1]; sendFileMessage({ name: 'voice_message.webm', size: blob.size, type: 'audio/webm', data: b64, mime: 'audio/webm' }); appendMessage('Вы', '🎤 Голосовое', profileAvatarSmall?.src || 'assets/avatars/001-.png', null, b64, 'audio/webm'); playCallStart(); }; reader.readAsDataURL(blob); } if (voiceStream) { voiceStream.getTracks().forEach(t => t.stop()); voiceStream = null; } voiceRecorder = null; voiceRecording = false; stopVoiceTimer(); btnVoiceInput.style.background = ''; }; voiceRecorder.start(); voiceRecording = true; startVoiceTimer(); btnVoiceInput.style.background = '#f44336'; }).catch(() => robinSay('error_no_access', 3000)); }
 function stopVoiceRecording() { if (voiceRecorder?.state === 'recording') { voiceRecorder.stop(); } }
 
 function toggleVideoCircle() { if (videoRecording) { stopVideoCircle(); return; } startVideoCircle(); }
@@ -996,8 +996,12 @@ function setupEventHandlers() {
     msgInput?.addEventListener('keypress', e => { if (e.key === 'Enter') { haptic('medium'); sendMessageHandler(); } });
 
     let swipeStartX = 0;
-    chatBox.addEventListener('touchstart', (e) => { swipeStartX = e.touches[0].clientX; });
-    chatBox.addEventListener('touchend', (e) => { const diff = e.changedTouches[0].clientX - swipeStartX; if (diff > 80) { loadContacts(); contactsSheet?.classList.add('open'); overlay?.classList.add('show'); } else if (diff < -80) { settingsSheet?.classList.add('open'); overlay?.classList.add('show'); } });
+chatBox.addEventListener('touchstart', (e) => { swipeStartX = e.touches[0].clientX; });
+chatBox.addEventListener('touchend', (e) => {
+    const diff = e.changedTouches[0].clientX - swipeStartX;
+    if (diff > 80) { loadContacts(); contactsSheet?.classList.add('open'); overlay?.classList.add('show'); }
+    else if (diff < -80) { settingsSheet?.classList.add('open'); overlay?.classList.add('show'); }
+});
 
     overlay?.addEventListener('click', closeAllSheets);
     nickLabel?.addEventListener('click', async () => { const newNick = await showModalInput('🏷 Твой ник', 'Макс. ' + MAX_NICK_LENGTH + ' символов', nickLabel.textContent); if (newNick) { const nick = newNick.substring(0, MAX_NICK_LENGTH); nickLabel.textContent = nick; localStorage.setItem('robinhood_nick', nick); robinSay('nick_updated', 2000); } });
