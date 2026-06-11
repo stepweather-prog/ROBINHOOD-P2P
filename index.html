@@ -412,7 +412,7 @@ const SHERWOOD = (() => {
     function say(key, replacements = {}) { let text = DICTIONARY[key] || DICTIONARY.default; for (const [k, v] of Object.entries(replacements)) { text = text.replace(`{${k}}`, v); } return text; }
     return { DICTIONARY, say };
 })();
-    <script>
+  
 // ========== ОСНОВНОЙ КОД ROBINHOOD P2P ==========
 (function() {
 const SECURE_STORAGE_KEY = CRYPTO.STORAGE_KEY;
