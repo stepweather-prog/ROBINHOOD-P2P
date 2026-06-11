@@ -35,8 +35,9 @@
         html { font-size: clamp(14px, 2.5vw, 16px); }
         html,body { margin:0; padding:0; height:100%; overflow:hidden; -webkit-text-size-adjust:100%; }
         body { background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%); color: var(--text); font-family: 'Segoe UI', 'Inter', 'Georgia', serif; display:flex; flex-direction:column; height:100vh; height:100dvh; position:relative; }
-        body::before { content:""; position:fixed; top:env(safe-area-inset-top, 0px); left:0; width:100%; height:calc(100dvh - env(safe-area-inset-top, 0px)); background-image:url('assets/background.webp'); background-size:cover; background-position:center; background-repeat:no-repeat; z-index:-1; opacity:0.35; }
-        body::after { content:""; position:fixed; top:env(safe-area-inset-top, 0px); left:0; width:100%; height:calc(100dvh - env(safe-area-inset-top, 0px)); background:radial-gradient(circle at 50% 40%, rgba(30,40,25,0.5), rgba(10,20,8,0.85)); z-index:-1; }
+        body::before { content:""; position:fixed; top:0; left:0; width:100%; height:100%; background-image:url('assets/background.webp'); background-size:cover; background-position:center; background-repeat:no-repeat; z-index:-1; opacity:0.20; }
+        body::after { content:""; position:fixed; top:0; left:0; width:100%; height:100%; background:radial-gradient(circle at 50% 40%, rgba(30,40,25,0.5), rgba(10,20,8,0.85)); z-index:-1; }
+        #app-container { background: var(--bg-primary); }
         .header { background:linear-gradient(135deg, rgba(25,35,20,0.96), rgba(15,25,12,0.98)); border-bottom:3px solid var(--border); backdrop-filter:blur(8px); z-index:10; padding:6px 10px; padding-top:calc(6px + env(safe-area-inset-top, 0px)); display:flex; flex-direction:column; gap:4px; position:relative; box-shadow:0 4px 20px rgba(0,0,0,0.3), inset 0 -1px 0 rgba(196,162,75,0.2); flex-shrink:0; }
         .header::after { content:''; position:absolute; bottom:-3px; left:0; width:100%; height:3px; background:linear-gradient(90deg, transparent 0%, var(--accent) 15%, var(--accent-light) 50%, var(--accent) 85%, transparent 100%); opacity:0.5; }
         .header-row-1 { display:flex; align-items:center; gap:6px; }
@@ -411,7 +412,7 @@ const SHERWOOD = (() => {
     function say(key, replacements = {}) { let text = DICTIONARY[key] || DICTIONARY.default; for (const [k, v] of Object.entries(replacements)) { text = text.replace(`{${k}}`, v); } return text; }
     return { DICTIONARY, say };
 })();
-
+    <script>
 // ========== ОСНОВНОЙ КОД ROBINHOOD P2P ==========
 (function() {
 const SECURE_STORAGE_KEY = CRYPTO.STORAGE_KEY;
@@ -497,7 +498,6 @@ function getMaxChannels() { return isPWA ? 20 : 2; }
 function updateClock() { if (headerClock) { const now = new Date(); headerClock.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); } }
 setInterval(updateClock, 1000); updateClock();
 
-// ========== ШЕРВУДСКИЕ ФУНКЦИИ ==========
 function robinSay(key, duration = 4000, replacements = {}) {
     const text = SHERWOOD.say(key, replacements);
     updateRobinStatus(text, duration);
@@ -675,7 +675,6 @@ document.getElementById('lock-skip')?.addEventListener('click', () => { isSettin
 document.getElementById('lock-forgot')?.addEventListener('click', forgotPassword);
 document.getElementById('setting-lock')?.addEventListener('click', () => { isSettingUp = true; tempPinHash = ''; tempPatternHash = ''; lockScreen.style.display = 'flex'; appContainer.style.display = 'none'; setupLockUI(); });
 
-// ========== МАСТЕР-ПАРОЛЬ UI (только для запирания чата) ==========
 async function showMasterPasswordPrompt(isSetup = false) {
     return new Promise((resolve) => {
         const overlayEl = document.createElement('div');
@@ -684,12 +683,12 @@ async function showMasterPasswordPrompt(isSetup = false) {
         dialog.style.cssText = 'background:var(--sheet-bg);border:2px solid var(--border);border-radius:20px;padding:24px;width:85%;max-width:360px;text-align:center;color:var(--text);';
         dialog.innerHTML = `
             <h3 style="color:var(--accent-light);margin-bottom:12px;">${isSetup ? '🔐 Задайте ключ от сундука' : '🔐 Введите ключ от сундука'}</h3>
-            <p style="font-size:0.75em;color:var(--text-dim);margin-bottom:16px;">${isSetup ? 'Ключ защищает все ваши послания.<br>Без него старые свитки не прочесть.' : 'Введите ключ для расшифровки посланий.'}</p>
+            <p style="font-size:0.75em;color:var(--text-dim);margin-bottom:16px;">${isSetup ? 'Ключ защищает все ваши послания.' : 'Введите ключ для расшифровки.'}</p>
             <input type="password" id="kek-password-input" placeholder="Ключ от сундука" style="width:100%;padding:12px;margin-bottom:8px;background:var(--input-bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:16px;outline:none;text-align:center;">
             ${isSetup ? '<input type="password" id="kek-password-confirm" placeholder="Повторите ключ" style="width:100%;padding:12px;margin-bottom:16px;background:var(--input-bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:16px;outline:none;text-align:center;">' : ''}
             <div id="kek-error" style="color:#f44336;font-size:0.75em;min-height:20px;margin-bottom:8px;"></div>
             <button id="kek-submit" style="width:100%;padding:12px;background:linear-gradient(135deg,var(--accent),#b8903a);color:#1a1f0f;border:none;border-radius:12px;font-size:16px;font-weight:bold;cursor:pointer;">${isSetup ? '✓ Запереть сундук' : '🔓 Отпереть сундук'}</button>
-            ${!isSetup ? '<button id="kek-skip" style="width:100%;padding:8px;margin-top:8px;background:transparent;border:1px solid var(--border);border-radius:10px;color:var(--text-dim);font-size:13px;cursor:pointer;">⏭ Пропустить (без расшифровки)</button>' : ''}
+            ${!isSetup ? '<button id="kek-skip" style="width:100%;padding:8px;margin-top:8px;background:transparent;border:1px solid var(--border);border-radius:10px;color:var(--text-dim);font-size:13px;cursor:pointer;">⏭ Пропустить</button>' : ''}
         `;
         overlayEl.appendChild(dialog); document.body.appendChild(overlayEl);
         const passwordInput = dialog.querySelector('#kek-password-input');
@@ -710,7 +709,8 @@ async function showMasterPasswordPrompt(isSetup = false) {
         passwordInput.focus();
     });
 }
-    // ========== УТИЛИТЫ ==========
+
+// ========== УТИЛИТЫ ==========
 function getIceServers() {
     const customTurn = localStorage.getItem('robinhood_custom_turn');
     const servers = [{ urls: "stun:stun.l.google.com:19302" }, { urls: "stun:stun1.l.google.com:19302" }];
@@ -1016,7 +1016,6 @@ function setupEventHandlers() {
     document.getElementById('setting-contacts')?.addEventListener('click', () => { settingsSheet?.classList.remove('open'); closeAllSheets(); loadContacts(); contactsSheet?.classList.add('open'); overlay?.classList.add('show'); });
     document.getElementById('contacts-close')?.addEventListener('click', () => { contactsSheet?.classList.remove('open'); overlay?.classList.remove('show'); });
 
-    // Кнопка "Костёр" — очищает только открытый чат
     document.getElementById('btn-clear')?.addEventListener('click', async () => {
         if (!activeChannelId) { robinSay('channel_not_active', 3000); return; }
         chatBox.querySelectorAll('.message-row:not(#robin-row)').forEach(m => m.remove());
@@ -1050,7 +1049,6 @@ function setupEventHandlers() {
     document.getElementById('btn-warp-gen')?.addEventListener('click', () => { window.open(WARP_GEN_URL, '_blank'); });
     const secWarning = document.getElementById('setting-security-info'); if (secWarning) { secWarning.addEventListener('click', function (e) { e.stopPropagation(); this.style.display = 'none'; localStorage.setItem('robinhood_security_hidden', 'true'); }); }
 
-    // Контекстное меню контакта
     document.getElementById('ctx-lock-chat')?.addEventListener('click', async () => {
         document.getElementById('contact-context-menu').style.display = 'none';
         if (!currentContextContact) return;
@@ -1076,15 +1074,8 @@ function setupEventHandlers() {
             deleteContact(currentContextContact.pubkey);
         }
     });
-    document.getElementById('ctx-cancel')?.addEventListener('click', () => {
-        document.getElementById('contact-context-menu').style.display = 'none';
-    });
-    document.addEventListener('click', (e) => {
-        const menu = document.getElementById('contact-context-menu');
-        if (menu && !menu.contains(e.target) && e.target !== document.querySelector('.delete-contact')) {
-            menu.style.display = 'none';
-        }
-    });
+    document.getElementById('ctx-cancel')?.addEventListener('click', () => { document.getElementById('contact-context-menu').style.display = 'none'; });
+    document.addEventListener('click', (e) => { const menu = document.getElementById('contact-context-menu'); if (menu && !menu.contains(e.target) && e.target !== document.querySelector('.delete-contact')) { menu.style.display = 'none'; } });
 
     function refreshTunnelList() { if (!tunnelList) return; tunnelList.innerHTML = ''; savedConfigs.forEach((cfg, i) => { const div = document.createElement('div'); div.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:8px;margin:4px 0;background:rgba(255,255,255,0.05);border-radius:8px;font-size:0.75em;'; div.innerHTML = `<span>🔒 ${cfg.name}</span><button class="tunnel-delete-btn" data-index="${i}">🗑 Удалить</button>`; div.querySelector('.tunnel-delete-btn').addEventListener('click', (e) => { e.stopPropagation(); if (confirm('Удалить «' + cfg.name + '»?')) { savedConfigs.splice(i, 1); localStorage.setItem('robinhood_tunnels', JSON.stringify(savedConfigs)); if (activeTunnel >= savedConfigs.length) activeTunnel = savedConfigs.length - 1; refreshTunnelList(); updateTunnelUI(); } }); tunnelList.appendChild(div); }); }
     document.getElementById('setting-tunnel')?.addEventListener('click', () => { refreshTunnelList(); tunnelConfigModal?.classList.add('active'); });
@@ -1105,7 +1096,6 @@ function setupEventHandlers() {
     window.addEventListener('online', () => { robinSay('online', 2000); pongFrame.src = P2PPONG_URL + '?v=' + Date.now(); pongFrame.style.display = 'none'; setTimeout(() => flushOfflineQueue(), 2000); });
     window.addEventListener('offline', () => robinSay('offline', 0));
 
-    // Оптимизация батареи
     document.addEventListener('visibilitychange', () => {
         if (document.hidden) {
             document.querySelectorAll('.forest-particle').forEach(l => l.remove());
@@ -1124,13 +1114,8 @@ function setupEventHandlers() {
         }
     });
 
-    window.addEventListener('pagehide', () => {
-        localStorage.removeItem(CRYPTO.STORAGE_KEY + '_backup');
-        if (selfDestructMode) { CRYPTO.secureRemoveItem('robinhood_channels_state'); CRYPTO.secureRemoveItem('robinhood_contacts'); }
-    });
-    window.addEventListener('beforeunload', () => {
-        if (selfDestructMode) { CRYPTO.secureRemoveItem('robinhood_channels_state'); CRYPTO.secureRemoveItem('robinhood_contacts'); }
-    });
+    window.addEventListener('pagehide', () => { localStorage.removeItem(CRYPTO.STORAGE_KEY + '_backup'); if (selfDestructMode) { CRYPTO.secureRemoveItem('robinhood_channels_state'); CRYPTO.secureRemoveItem('robinhood_contacts'); } });
+    window.addEventListener('beforeunload', () => { if (selfDestructMode) { CRYPTO.secureRemoveItem('robinhood_channels_state'); CRYPTO.secureRemoveItem('robinhood_contacts'); } });
 }
 
 const avatars = ['assets/avatars/001-.png', 'assets/avatars/002--1.png', 'assets/avatars/003-icon-8033085.png', 'assets/avatars/009--7.png', 'assets/avatars/010--8.png', 'assets/avatars/018--16.png', 'assets/avatars/022--20.png', 'assets/avatars/037--35.png', 'assets/avatars/043--41.png', 'assets/avatars/048--46.png', 'assets/avatars/050--48.png', 'assets/avatars/052--50.png', 'assets/avatars/053--51.png', 'assets/avatars/056--54.png', 'assets/avatars/066--64.png', 'assets/avatars/077-icon-8033092.png', 'assets/avatars/083-icon-11885568.png', 'assets/avatars/094-icon-18926716.png', 'assets/avatars/108--83.png', 'assets/avatars/147-icon-6081840.png', 'assets/avatars/148-icon-5532632.png', 'assets/avatars/149-icon-4132697.png', 'assets/avatars/150-icon-10756654.png', 'assets/avatars/153-icon-4964924.png', 'assets/avatars/154-icon-4261075.png', 'assets/avatars/156-icon-4132828.png', 'assets/avatars/158--116.png', 'assets/avatars/160-icon-2332597.png', 'assets/avatars/162-icon-6237595.png', 'assets/avatars/167-icon-1920840.png', 'assets/avatars/168-icon-228268.png', 'assets/avatars/169-icon-5613167.png', 'assets/avatars/173-icon-1615623.png', 'assets/avatars/183-icon-5840846.png', 'assets/avatars/186-icon-6237499.png', 'assets/avatars/188-icon-6267517.png', 'assets/avatars/203-icon-3516506.png', 'assets/avatars/216-icon-5504960.png', 'assets/avatars/221-icon-9530256.png', 'assets/avatars/226-icon-9669507.png', 'assets/avatars/227-icon-9623471.png', 'assets/avatars/229-icon-10032172.png', 'assets/avatars/230-icon-10049316.png', 'assets/avatars/232-icon-11434002.png', 'assets/avatars/234-icon-10756328.png', 'assets/avatars/245-icon-16150697.png', 'assets/avatars/246-icon-16150730.png', 'assets/avatars/249-icon-17159913.png', 'assets/avatars/250-icon-17159758.png', 'assets/avatars/251-icon-17159744.png', 'assets/avatars/253-icon-18426073.png', 'assets/avatars/254-icon-18621065.png', 'assets/avatars/255-icon-18926692.png', 'assets/avatars/256--120.png'];
