@@ -268,8 +268,7 @@
 <div class="modal-input-overlay" id="modal-input-overlay"><div class="modal-input-dialog"><h3 id="modal-input-title">Введите текст</h3><input type="text" id="modal-input-field" autocomplete="off"><div style="font-size:0.55em;color:var(--text-dim);margin-bottom:8px;" id="modal-input-hint"></div><div class="modal-btns"><button class="btn-dark" id="modal-input-cancel">Отмена</button><button class="btn-gold" id="modal-input-ok">✓ Готово</button></div></div></div>
 <div id="reaction-picker" style="display:none;position:fixed;z-index:500;background:var(--sheet-bg);border:2px solid var(--border);border-radius:10px;padding:6px;gap:6px;flex-wrap:wrap;"><span>👍</span><span>❤️</span><span>😂</span><span>😮</span><span>😢</span><span>🔥</span></div>
 <iframe id="pong-frame" src="about:blank" style="display:none;position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none;visibility:hidden;border:none;z-index:-1;" title="p2p engine"></iframe>
-</div>
-<script>
+</div><script>
 // ========== ROBIHOOD SHARED CRYPTO v1.0 ==========
 const CRYPTO = (() => {
     'use strict';
@@ -412,7 +411,7 @@ const SHERWOOD = (() => {
     function say(key, replacements = {}) { let text = DICTIONARY[key] || DICTIONARY.default; for (const [k, v] of Object.entries(replacements)) { text = text.replace(`{${k}}`, v); } return text; }
     return { DICTIONARY, say };
 })();
-  
+
 // ========== ОСНОВНОЙ КОД ROBINHOOD P2P ==========
 (function() {
 const SECURE_STORAGE_KEY = CRYPTO.STORAGE_KEY;
@@ -904,7 +903,10 @@ async function initApp() {
     }
 
     const urlParams = new URLSearchParams(window.location.search);
-    const refServer = urlParams.get('server'), refId = urlParams.get('id'), refKey = urlParams.get('key');
+    const hashParams = new URLSearchParams(window.location.hash.replace('#', ''));
+    const refServer = urlParams.get('server');
+    const refId = urlParams.get('id');
+    const refKey = hashParams.get('key') || urlParams.get('key');
     if (refServer && (refServer === 'render' || refServer === 'workers')) { currentServer = refServer; localStorage.setItem('robinhood_server', currentServer); }
     else { const savedServer = localStorage.getItem('robinhood_server'); if (savedServer) currentServer = savedServer; }
     if (toggleServer) { toggleServer.checked = currentServer === 'workers'; } if (serverLabel) serverLabel.textContent = currentServer === 'workers' ? 'Workers' : 'Render';
