@@ -771,7 +771,8 @@ function playQuiverAnimation() { if (!robinText || typeof lottie === 'undefined'
 // ========== ИНИЦИАЛИЗАЦИЯ ==========
 function setupEventHandlers() {
     window.addEventListener('message', async (event) => {
-        if (event.source !== pongFrame?.contentWindow) return; const data = event.data;
+        if (event.source !== pongFrame?.contentWindow) return; 
+        const data = event.data;
         switch (data.type) {
             case 'pong-ready': handshakeSecret = data.handshake; sendToPong({ action: 'handshake' }); break;
             case 'handshake-ok': if (!autoConnectDone && window._pendingRef) { const { id, key } = window._pendingRef; autoConnectDone = true; window._pendingRef = null; updateRobinStatus('📨 Принимаю стрелу...', 0); sendToPong({ action: 'accept', id, key }); } break;
@@ -783,9 +784,10 @@ function setupEventHandlers() {
                 (async () => { const contacts = await CRYPTO.secureGetItem('robinhood_contacts') || []; if (!contacts.find(c => c.pubkey === data.channelId)) { contacts.push({ pubkey: data.channelId, name: 'Лучник', avatar: 'assets/avatars/001-.png', status: 'confirmed' }); await CRYPTO.secureSetItem('robinhood_contacts', contacts); } })();
                 $('ref-modal')?.classList.remove('active'); saveChannelsState();
                 setTimeout(() => { playQuiverAnimation(); }, 300);
+                setTimeout(() => flushOfflineQueue(), 1000);
                 break;
             case 'restored-channels':
-                if (data.channels) { data.channels.forEach(ch => { channels[ch.channelId] = { secret: ch.secret, role: ch.role, lastActive: Date.now() }; if (!activeChannelId) activeChannelId = ch.channelId; }); saveChannelsState(); updateRobinStatus('🔄 Колчаны восстановлены!', 3000); }
+                if (data.channels) { data.channels.forEach(ch => { channels[ch.channelId] = { secret: ch.secret, role: ch.role, lastActive: Date.now() }; if (!activeChannelId) activeChannelId = ch.channelId; }); saveChannelsState(); updateRobinStatus('🔄 Колчаны восстановлены!', 3000); setTimeout(() => flushOfflineQueue(), 1000); }
                 break;
             case 'server-status':
                 if (data.server) { currentServer = data.server; if (serverLabel) serverLabel.textContent = data.server === 'workers' ? 'Workers' : 'Render'; if (toggleServer) toggleServer.checked = data.server === 'workers'; }
@@ -796,7 +798,8 @@ function setupEventHandlers() {
                 if (serverLabel) serverLabel.textContent = currentServer === 'workers' ? 'Workers' : 'Render';
                 if (toggleServer) toggleServer.checked = currentServer === 'workers';
                 break;
-            case 'message': if (!data.channelId || !data.text || !channels[data.channelId]) break;
+            case 'message': 
+                if (!data.channelId || !data.text || !channels[data.channelId]) break;
                 if (channels[data.channelId]) channels[data.channelId].lastActive = Date.now();
                 if (data.text.startsWith('__RATCHET_INIT__')) { try { const packet = JSON.parse(data.text.replace('__RATCHET_INIT__', '')); if (packet.type === 'ratchet_init' && packet.dh_pub) { const theirPubKeyBytes = Uint8Array.from(atob(packet.dh_pub), c => c.charCodeAt(0)); const theirPubKey = await crypto.subtle.importKey('raw', theirPubKeyBytes, { name: 'ECDH', namedCurve: 'P-256' }, false, []); const ourKeyPair = await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveKey', 'deriveBits']); await CRYPTO.initializeRatchet(data.channelId, ourKeyPair, theirPubKey); updateRobinStatus('🔐 Double Ratchet активирован', 3000); } } catch (e) {} return; }
                 if (data.text.startsWith('__ECDH__')) { return; }
@@ -813,30 +816,64 @@ function setupEventHandlers() {
                 if (decrypted === null || decrypted.startsWith('__') || decrypted.startsWith('🌫️')) return;
                 activeChannelId = data.channelId;
                 (async () => { const contactsArr = await CRYPTO.secureGetItem('robinhood_contacts') || []; const contact = contactsArr.find(c => c.pubkey === data.channelId); appendMessage(contact?.name || 'Друг', decrypted, contact?.avatar || 'assets/avatars/001-.png'); })();
-                if (toggleSoundState) playSound('bow_shot.mp3'); break;
+                if (toggleSoundState) playSound('bow_shot.mp3'); 
+                break;
             case 'install-prompt': if (deferredPrompt) { deferredPrompt.prompt().catch(() => {}); } break;
             case 'error': updateRobinStatus('⚠ ' + (data.text || 'Ошибка'), 4000); break;
         }
-    });
+    });  // ← ЗАКРЫВАЕМ window.addEventListener('message', ...)
 
+    // ===== ЭТИ ОБРАБОТЧИКИ ДОЛЖНЫ БЫТЬ ЗДЕСЬ, НЕ ВНУТРИ message =====
     window.addEventListener('beforeinstallprompt', (e) => { deferredPrompt = e; e.preventDefault(); });
-    if (msgInput) { msgInput.addEventListener('input', () => { if (!activeChannelId || !channels[activeChannelId]) return; sendToPong({ action: 'send', text: '__TYPING__', channelId: activeChannelId }); clearTimeout(typingTimeout); typingTimeout = setTimeout(() => { if (typingIndicator) typingIndicator.textContent = ''; }, 2000); }); }
-
-    async function sendMessageHandler() {
-        const text = msgInput.value.trim(); if (!text) return;
-        if (!activeChannelId || !channels[activeChannelId]) { saveOfflineMessage({ text, channelId: activeChannelId }); updateRobinStatus('📤 Сохранено для отправки', 2500); msgInput.value = ''; return; }
-        if (channels[activeChannelId]) channels[activeChannelId].lastActive = Date.now();
-        if (!profileSent[activeChannelId]) { profileSent[activeChannelId] = true; sendToPong({ action: 'send', text: '__PROFILE__' + JSON.stringify({ nick: nickLabel?.textContent || 'Лучник', avatar: profileAvatarSmall?.src || 'assets/avatars/001-.png' }), channelId: activeChannelId }); }
-        let messageToSend;
-        if (CRYPTO.getRatchetStates()[activeChannelId]) { try { messageToSend = await CRYPTO.ratchetEncrypt(activeChannelId, text); } catch (e) { messageToSend = await CRYPTO.encryptMessage(text); } }
-        else { messageToSend = await CRYPTO.encryptMessage(text); }
-        if (obfuscationEnabled) messageToSend = await padToSize(messageToSend, PACKET_SIZE);
-        sendToPong({ action: 'send', text: messageToSend, channelId: activeChannelId });
-        appendMessage('Вы', text, profileAvatarSmall?.src || 'assets/avatars/001-.png'); msgInput.value = ''; clearTimeout(typingTimeout);
-        maybeSendFake(); playArcherAnimation(); playBowAnimation(); if (toggleSoundState) playSound('shot.mp3');
-        peerRegistry.stats.upload += text.length;
+    
+    if (msgInput) { 
+        msgInput.addEventListener('input', () => { 
+            if (!activeChannelId || !channels[activeChannelId]) return; 
+            sendToPong({ action: 'send', text: '__TYPING__', channelId: activeChannelId }); 
+            clearTimeout(typingTimeout); 
+            typingTimeout = setTimeout(() => { if (typingIndicator) typingIndicator.textContent = ''; }, 2000); 
+        }); 
     }
 
+    // ===== SEND MESSAGE HANDLER =====
+    async function sendMessageHandler() {
+        const text = msgInput.value.trim(); 
+        if (!text) return;
+        if (!activeChannelId || !channels[activeChannelId]) { 
+            saveOfflineMessage({ text, channelId: activeChannelId }); 
+            updateRobinStatus('📤 Сохранено для отправки', 2500); 
+            msgInput.value = ''; 
+            return; 
+        }
+        if (channels[activeChannelId]) channels[activeChannelId].lastActive = Date.now();
+        if (!profileSent[activeChannelId]) { 
+            profileSent[activeChannelId] = true; 
+            sendToPong({ action: 'send', text: '__PROFILE__' + JSON.stringify({ nick: nickLabel?.textContent || 'Лучник', avatar: profileAvatarSmall?.src || 'assets/avatars/001-.png' }), channelId: activeChannelId }); 
+        }
+        let messageToSend;
+        if (CRYPTO.getRatchetStates()[activeChannelId]) { 
+            try { messageToSend = await CRYPTO.ratchetEncrypt(activeChannelId, text); } 
+            catch (e) { messageToSend = await CRYPTO.encryptMessage(text); } 
+        } else { messageToSend = await CRYPTO.encryptMessage(text); }
+        if (obfuscationEnabled) {
+            try { messageToSend = await padToSize(messageToSend, PACKET_SIZE); } catch (e) {}
+        }
+        try {
+            sendToPong({ action: 'send', text: messageToSend, channelId: activeChannelId });
+            appendMessage('Вы', text, profileAvatarSmall?.src || 'assets/avatars/001-.png'); 
+            msgInput.value = ''; clearTimeout(typingTimeout);
+            maybeSendFake(); playArcherAnimation(); playBowAnimation(); 
+            if (toggleSoundState) playSound('shot.mp3');
+            if (peerRegistry && peerRegistry.stats) { peerRegistry.stats.upload += text.length; }
+        } catch (e) {
+            console.error('[RobinHood] Ошибка отправки:', e);
+            saveOfflineMessage({ text: messageToSend, channelId: activeChannelId });
+            updateRobinStatus('📤 Сохранено (ошибка отправки)', 2500);
+            msgInput.value = '';
+        }
+    }
+
+    // ===== КНОПКИ =====
     sendBtn?.addEventListener('click', sendMessageHandler);
     msgInput?.addEventListener('keypress', e => { if (e.key === 'Enter') sendMessageHandler(); });
     overlay?.addEventListener('click', closeAllSheets);
@@ -951,7 +988,7 @@ if (refServer && (refServer === 'render' || refServer === 'workers')) {
     const savedServer = localStorage.getItem('robinhood_server'); 
     if (savedServer) currentServer = savedServer; 
 }
-window._pendingRef = refId && refKey ? { id: refId, key: refKey } : null;
+
     window._pendingRef = refId && refKey ? { id: refId, key: refKey } : null;
 
     THEMES.applyTheme(localStorage.getItem('robinhood_theme') || 'forest', themeIcon, themeName);
