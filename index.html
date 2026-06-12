@@ -247,7 +247,7 @@
     <div class="contact-item setting-install-btn hidden" id="setting-install"><div class="contact-info"><img src="assets/avatars/001-.png" style="width:28px;height:28px;border-radius:6px;"><div><div class="contact-name" style="font-size:0.8em;">RobinHood P2P</div><div style="font-size:0.6em;color:var(--text-dim);">Установить приложение</div></div></div><span style="font-size:1.2em;">📲</span></div>
     <div class="contact-item security-warning" id="setting-security-info"><div class="contact-info"><span style="font-size:22px;">⚠️</span><div><div class="contact-name">Безопасность</div><div style="font-size:0.6em;color:var(--text-dim);">Мы не рассылаем APK!<br>Установка только через браузер.<br>Нажмите чтобы скрыть</div></div></div><span style="font-size:1.2em;">🛡️</span></div>
 </div></div>
-<div class="modal-overlay" id="ref-modal"><div class="modal-dialog"><h3>🏹 Стрела готова 🏹</h3><div class="code-display" id="ref-link-display"></div><button class="btn-primary" id="share-ref-link-btn">📤 Поделиться</button><button class="btn-cancel" id="cancel-arrow-btn">⏹ Отмена</button><button class="btn-dark" id="close-ref-modal-btn">Закрыть</button></div></div>
+<div class="modal-overlay" id="ref-modal"><div class="modal-dialog"><h3>🏹 Стрела готова 🏹</h3><div class="code-display" id="ref-link-display"></div><button class="btn-primary" id="share-ref-link-btn">📤 Поделиться</button><button class="btn-cancel" id="cancel-arrow-btn">⏹ Отмена</button><button class="btn-dark" id="close-ref-modal-btn">Закрыть</button><hr style="border-color:var(--border);margin:12px 0;"><p style="font-size:0.75em;color:var(--text-dim);margin-bottom:8px;">Или вставьте чужую стрелу:</p><input type="text" id="accept-link-input" placeholder="https://... #key=..." style="width:100%;padding:10px;background:var(--input-bg);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:13px;margin-bottom:8px;text-align:center;"><button class="btn-gold" id="btn-accept-link">🎯 Принять стрелу</button></div></div>
 <div class="modal-overlay" id="bg-crop-modal"><div class="modal-dialog" style="max-width:90%;"><h3>🖼 Выберите область</h3><div class="bg-crop-container" id="bg-crop-container"><img class="bg-crop-img" id="bg-preview-img" draggable="false"></div><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin:8px 0;"><button class="btn-dark" id="bg-pos-top" style="flex:1;min-width:60px;padding:8px;">⬆ Верх</button><button class="btn-dark" id="bg-pos-center" style="flex:1;min-width:60px;padding:8px;">⬜ Центр</button><button class="btn-dark" id="bg-pos-bottom" style="flex:1;min-width:60px;padding:8px;">⬇ Низ</button></div><div style="display:flex;gap:6px;"><button class="btn-dark" id="bg-cancel">Отмена</button><button class="btn-primary" id="bg-save">✓ Сохранить</button><button class="btn-dark" id="bg-reset" style="font-size:0.7em;">🔄 Сбросить</button></div></div></div>
 <div class="modal-overlay" id="tunnel-config-modal"><div class="modal-dialog"><h3>➕ Управление конфигами</h3><div id="tunnel-list" style="max-height:150px;overflow-y:auto;margin-bottom:10px;text-align:left;"></div><button class="btn-primary" id="btn-load-file">📂 Загрузить новый</button><button class="btn-dark" id="btn-warp-gen" style="margin-top:6px;">🌐 Создать новые конфиги AmneziaWG</button><div style="margin:10px 0;color:var(--text-dim);">или вставьте текст:</div><textarea id="tunnel-config-input" style="width:100%;height:100px;background:var(--input-bg);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:0.7em;font-family:monospace;resize:vertical;"></textarea><button class="btn-primary" id="btn-save-tunnel">💾 Сохранить</button><button class="btn-dark" id="btn-cancel-tunnel-config">Закрыть</button><input type="file" id="config-file-input" accept=".conf" style="display:none;"></div></div>
 <div class="modal-overlay" id="link-preview-modal"><div class="modal-dialog"><h3>🔗 Внешняя ссылка</h3><div id="link-preview-content"></div><button class="btn-dark" id="btn-close-link-preview">Закрыть</button></div></div>
@@ -887,6 +887,58 @@ function setupEventHandlers() {
     $('btn-clear')?.addEventListener('click', async () => { chatBox.querySelectorAll('.message-row:not(#robin-row)').forEach(m => m.remove()); playSound('clear cache.mp3'); setTimeout(() => { const anim = document.createElement('div'); anim.className = 'smoke-anim'; document.body.appendChild(anim); if (typeof lottie !== 'undefined') lottie.loadAnimation({ container: anim, renderer: 'canvas', loop: true, autoplay: true, path: 'assets/smoke.json' }); setTimeout(() => anim.remove(), 6500); }, 2000); updateRobinStatus(SHERWOOD.say('cache_cleared'), 3000); });
     termsBtn?.addEventListener('click', () => window.open('https://github.com/stepweather-prog/ROBINHOOD-P2P/blob/main/README.md', '_blank'));
     $('btn-arrow')?.addEventListener('click', async () => { if (Object.keys(channels).length >= getMaxChannels()) { updateRobinStatus('⚠ Лимит каналов', 5000); return; } const tempKey = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2) + Date.now().toString(36); sendToPong({ action: 'create', tempKey }); });
+    // Кнопка "Принять стрелу" в модалке
+$('btn-accept-link')?.addEventListener('click', () => {
+    const input = $('accept-link-input');
+    const raw = input?.value.trim();
+    if (!raw) return;
+    
+    let url;
+    try { url = new URL(raw); } catch(e) {
+        // Может быть просто ключ
+        if (raw.length > 10) {
+            updateRobinStatus('🔍 Ищу по ключу...', 2000);
+            sendToPong({ action: 'accept', id: raw, key: raw });
+            $('ref-modal')?.classList.remove('active');
+            input.value = '';
+        }
+        return;
+    }
+    
+    const id = url.searchParams.get('id');
+    const key = url.hash.replace('#key=', '') || url.searchParams.get('key');
+    const server = url.searchParams.get('server');
+    
+    if (id && key) {
+        updateRobinStatus('🔍 Принимаю стрелу...', 2000);
+        if (server === 'workers' || server === 'render' || server === 'mesh') {
+            sendToPong({ action: 'server-switch', server });
+        }
+        sendToPong({ action: 'accept', id, key });
+        $('ref-modal')?.classList.remove('active');
+        input.value = '';
+    } else {
+        updateRobinStatus('⚠ Неверный формат стрелы', 3000);
+    }
+});
+
+// Открывать модалку с полем "Вставить стрелу" при клике на кнопку контактов
+$('setting-contacts')?.addEventListener('click', () => {
+    settingsSheet?.classList.remove('open');
+    // Показываем модалку с полем ввода
+    $('ref-modal')?.classList.add('active');
+    $('ref-link-display').textContent = '';
+    // Меняем заголовок
+    const h3 = $('ref-modal')?.querySelector('h3');
+    if (h3) h3.textContent = '🎯 Принять стрелу';
+});
+
+// При открытии модалки через создание стрелы — возвращаем заголовок
+const origArrowHandler = $('btn-arrow')?.onclick;
+$('btn-arrow')?.addEventListener('click', () => {
+    const h3 = $('ref-modal')?.querySelector('h3');
+    if (h3) h3.textContent = '🏹 Стрела готова 🏹';
+});
     $('cancel-arrow-btn')?.addEventListener('click', () => { sendToPong({ action: 'cancel-create' }); $('ref-modal')?.classList.remove('active'); });
     if (btnCall) btnCall.addEventListener('click', () => { if (callActive) { endCall(); return; } if (!activeChannelId || !channels[activeChannelId]) { updateRobinStatus('🏹 Сначала стрела!', 3000); return; } startCall(false); });
     if (btnVideo) btnVideo.addEventListener('click', () => { if (callActive) { endCall(); return; } if (!activeChannelId || !channels[activeChannelId]) { updateRobinStatus('🏹 Сначала стрела!', 3000); return; } startCall(true); });
@@ -1008,6 +1060,9 @@ if (refServer && (refServer === 'render' || refServer === 'workers')) {
     if (secItem && securityHidden === 'true') secItem.style.display = 'none';
 
     setupEventHandlers();
+    $('accept-link-input')?.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') $('btn-accept-link')?.click();
+});
     updateTunnelUI();
     updateRobinStatus('🏹 v4.2 [' + (currentServer === 'workers' ? 'Workers' : 'Render') + ']', 0);
     sendToPong({ action: 'get-status' });
