@@ -587,14 +587,23 @@ function setupEventHandlers() {
     callButtonsIncoming = $('call-buttons-incoming');
     callButtonsActive = $('call-buttons-active');
 
-    // P2PPong колбэки
     P2PPong.on('onReady', () => updateRobinStatus('🌐 Телеграф работает!', 2000));
-    P2PPong.on('onSessionCreated', (data) => { $('ref-link-display').textContent = data.fullLink; $('ref-modal').classList.add('active'); navigator.clipboard.writeText(data.fullLink).catch(() => {}); });
+    P2PPong.on('onSessionCreated', (data) => { 
+        $('ref-link-display').textContent = data.fullLink; 
+        $('ref-modal').classList.add('active'); 
+        navigator.clipboard.writeText(data.fullLink).catch(() => {}); 
+    });
     P2PPong.on('onChannelOpen', (data) => {
         channels[data.channelId] = { secret: data.secret, role: data.role };
         if (!activeChannelId) activeChannelId = data.channelId;
         updateRobinStatus(SHERWOOD.say('channel_opened'), 3000);
-        (async () => { const contacts = await CRYPTO.secureGetItem('robinhood_contacts') || []; if (!contacts.find(c => c.pubkey === data.channelId)) { contacts.push({ pubkey: data.channelId, name: 'Лучник', avatar: 'assets/avatars/001-.png', status: 'confirmed' }); await CRYPTO.secureSetItem('robinhood_contacts', contacts); } })();
+        (async () => { 
+            const contacts = await CRYPTO.secureGetItem('robinhood_contacts') || []; 
+            if (!contacts.find(c => c.pubkey === data.channelId)) { 
+                contacts.push({ pubkey: data.channelId, name: 'Лучник', avatar: 'assets/avatars/001-.png', status: 'confirmed' }); 
+                await CRYPTO.secureSetItem('robinhood_contacts', contacts); 
+            } 
+        })();
         $('ref-modal')?.classList.remove('active');
         setTimeout(() => { playQuiverAnimation(); }, 300);
         setTimeout(() => flushOfflineQueue(), 1000);
@@ -603,36 +612,30 @@ function setupEventHandlers() {
         if (!data.channelId || !data.text) return;
         activeChannelId = data.channelId;
         if (data.text.startsWith('__OFFER__')) { 
-            const offer = JSON.parse(data.text.replace('__OFFER__','')); 
-            callPanel.classList.add('show'); 
-            callButtonsIncoming.style.display='flex'; 
-            callButtonsActive.style.display='none'; 
-            callStatus.textContent='📞 Входящий...'; 
-            playRingtone(); 
-            callAccept.onclick = async () => { 
-                stopRingtone(); 
-                callButtonsIncoming.style.display='none'; 
-                callButtonsActive.style.display='flex'; 
-                playCallStart(); 
-                startCallTimer(); 
-                const stream = await getMediaStream(false); 
-                if (!stream) { callPanel.classList.remove('show'); return; } 
-                localStreams['main']=stream; 
-                const pc=createPeerConn(stream); 
-                peerConnections['main']=pc; 
-                await pc.setRemoteDescription(new RTCSessionDescription(offer)); 
-                const answer=await pc.createAnswer(); 
-                await pc.setLocalDescription(answer); 
-                sendThroughPong('__ANSWER__'+JSON.stringify(answer)); 
-                callActive=true; 
-            }; 
-            callReject.onclick = () => { stopRingtone(); sendThroughPong('__HANGUP__'); callPanel.classList.remove('show'); }; 
+            try {
+                const offer = JSON.parse(data.text.replace('__OFFER__','')); 
+                callPanel.classList.add('show'); 
+                callButtonsIncoming.style.display='flex'; 
+                callButtonsActive.style.display='none'; 
+                callStatus.textContent='📞 Входящий...'; 
+                playRingtone(); 
+                callAccept.onclick = async () => { 
+                    stopRingtone(); callButtonsIncoming.style.display='none'; callButtonsActive.style.display='flex'; 
+                    playCallStart(); startCallTimer(); 
+                    const stream = await getMediaStream(false); 
+                    if (!stream) { callPanel.classList.remove('show'); return; } 
+                    localStreams['main']=stream; const pc=createPeerConn(stream); peerConnections['main']=pc; 
+                    await pc.setRemoteDescription(new RTCSessionDescription(offer)); 
+                    const answer=await pc.createAnswer(); await pc.setLocalDescription(answer); 
+                    sendThroughPong('__ANSWER__'+JSON.stringify(answer)); callActive=true; 
+                }; 
+                callReject.onclick = () => { stopRingtone(); sendThroughPong('__HANGUP__'); callPanel.classList.remove('show'); }; 
+            } catch(e) {} 
             return; 
         }
         if (data.text.startsWith('__ANSWER__') && peerConnections['main']) { 
-            stopRingback(); 
-            startCallTimer(); 
-            peerConnections['main'].setRemoteDescription(new RTCSessionDescription(JSON.parse(data.text.replace('__ANSWER__','')))); 
+            stopRingback(); startCallTimer(); 
+            try { peerConnections['main'].setRemoteDescription(new RTCSessionDescription(JSON.parse(data.text.replace('__ANSWER__','')))); } catch(e) {} 
             return; 
         }
         if (data.text.startsWith('__ICE__') && peerConnections['main']) { 
@@ -640,8 +643,7 @@ function setupEventHandlers() {
             return; 
         }
         if (data.text === '__HANGUP__') { 
-            if (callActive) endCall(); 
-            else { stopRingtone(); callPanel.classList.remove('show'); } 
+            if (callActive) endCall(); else { stopRingtone(); callPanel.classList.remove('show'); } 
             return; 
         }
         if (data.text === '__TYPING__') { 
@@ -653,13 +655,15 @@ function setupEventHandlers() {
         if (data.text.startsWith('__FILE__')) { 
             try { 
                 const fd = JSON.parse(data.text.replace('__FILE__','')); 
-                if (fd.mime === 'video/webm') { appendMessage('📹 Кружок', '', 'assets/avatars/001-.png'); } 
-                else if (fd.mime?.startsWith('audio/')) { appendMessage('🎤 Голосовое', '', 'assets/avatars/001-.png'); } 
+                if (fd.mime === 'video/webm') appendMessage('📹 Кружок', '', 'assets/avatars/001-.png'); 
+                else if (fd.mime?.startsWith('audio/')) appendMessage('🎤 Голосовое', '', 'assets/avatars/001-.png'); 
             } catch(e) {} 
             return; 
         }
         let decrypted = data.text;
-        if (CRYPTO.getRatchetStates()[data.channelId]) { try { const d = await CRYPTO.ratchetDecrypt(data.channelId, data.text); if (d) decrypted = d; } catch(e) {} }
+        if (CRYPTO.getRatchetStates()[data.channelId]) { 
+            try { const d = await CRYPTO.ratchetDecrypt(data.channelId, data.text); if (d) decrypted = d; } catch(e) {} 
+        }
         if (decrypted.startsWith('🔐')) decrypted = await CRYPTO.decryptMessage(decrypted);
         if (decrypted.startsWith('🌫️')) return;
         const contactsArr = await CRYPTO.secureGetItem('robinhood_contacts') || [];
@@ -667,12 +671,7 @@ function setupEventHandlers() {
         appendMessage(contact?.name || 'Друг', decrypted, contact?.avatar || 'assets/avatars/001-.png');
         if (toggleSoundState) playSound('bow_shot.mp3');
     });
-    P2PPong.on('onStatus', (data) => {
-        const pd = document.getElementById('peer-count-display');
-        if (pd) pd.textContent = '🏹×' + (data.channels || 0);
-    });
 
-    // Кнопки
     sendBtn?.addEventListener('click', async () => {
         const text = msgInput.value.trim(); if (!text) return;
         if (!activeChannelId) { saveOfflineMessage({ text, channelId: activeChannelId }); updateRobinStatus('📤 Сохранено', 2500); msgInput.value = ''; return; }
@@ -689,12 +688,13 @@ function setupEventHandlers() {
     $('btn-arrow')?.addEventListener('click', () => P2PPong.createSession());
     $('cancel-arrow-btn')?.addEventListener('click', () => $('ref-modal').classList.remove('active'));
     $('close-ref-modal-btn')?.addEventListener('click', () => $('ref-modal').classList.remove('active'));
-    $('share-ref-link-btn')?.addEventListener('click', () => { const link = $('ref-link-display')?.textContent; if (link && navigator.share) navigator.share({ title:'RobinHood P2P', url:link }).catch(()=>{}); });
+    $('share-ref-link-btn')?.addEventListener('click', () => { 
+        const link = $('ref-link-display')?.textContent; 
+        if (link && navigator.share) navigator.share({ title:'RobinHood P2P', url:link }).catch(()=>{}); 
+    });
     $('btn-accept-link')?.addEventListener('click', () => { 
-        const raw = $('accept-link-input')?.value.trim(); 
-        if (!raw) return; 
-        let url; 
-        try { url = new URL(raw); } catch(e) { 
+        const raw = $('accept-link-input')?.value.trim(); if (!raw) return; 
+        let url; try { url = new URL(raw); } catch(e) { 
             if (raw.length > 10) { P2PPong.acceptSession(raw, raw); $('ref-modal').classList.remove('active'); } 
             return; 
         } 
@@ -707,40 +707,76 @@ function setupEventHandlers() {
     btnCall?.addEventListener('click', () => callActive ? endCall() : startCall(false));
     $('btn-video')?.addEventListener('click', () => callActive ? endCall() : startCall(true));
     callEnd?.addEventListener('click', endCall);
-    callSpeaker?.addEventListener('click', () => { const s = localStreams['main']; if (s) { const t = s.getAudioTracks()[0]; if (t) t.enabled = !t.enabled; callSpeaker.textContent = t?.enabled ? '🔊' : '🔇'; } });
-    callMic?.addEventListener('click', () => { const s = localStreams['main']; if (s) { const t = s.getAudioTracks()[0]; if (t) t.enabled = !t.enabled; callMic.textContent = t?.enabled ? '🎤' : '🚫'; } });
+    callSpeaker?.addEventListener('click', () => { 
+        const s = localStreams['main']; if (s) { const t = s.getAudioTracks()[0]; if (t) t.enabled = !t.enabled; callSpeaker.textContent = t?.enabled ? '🔊' : '🔇'; } 
+    });
+    callMic?.addEventListener('click', () => { 
+        const s = localStreams['main']; if (s) { const t = s.getAudioTracks()[0]; if (t) t.enabled = !t.enabled; callMic.textContent = t?.enabled ? '🎤' : '🚫'; } 
+    });
     btnVoiceInput?.addEventListener('click', toggleVoiceRecording);
     btnVideoInput?.addEventListener('click', toggleVideoCircle);
 
     $('btn-avatar')?.addEventListener('click', () => { avatarSelector.classList.toggle('show'); overlay.classList.toggle('show'); if (avatarSelector.classList.contains('show')) loadAvatars(); });
     overlay?.addEventListener('click', closeAllSheets);
-    $('nick-label')?.addEventListener('click', () => { $('nick-input').value = $('nick-label').textContent; $('nick-modal').classList.add('active'); });
-    $('btn-nick-save')?.addEventListener('click', () => { const n = $('nick-input').value.trim().substring(0, MAX_NICK_LENGTH); if (n) { $('nick-label').textContent = n; localStorage.setItem('robinhood_nick', n); } $('nick-modal').classList.remove('active'); });
+    nickLabel?.addEventListener('click', () => { $('nick-input').value = nickLabel.textContent; $('nick-modal').classList.add('active'); });
+    $('btn-nick-save')?.addEventListener('click', () => { const n = $('nick-input').value.trim().substring(0, MAX_NICK_LENGTH); if (n) { nickLabel.textContent = n; localStorage.setItem('robinhood_nick', n); } $('nick-modal').classList.remove('active'); });
     $('btn-nick-cancel')?.addEventListener('click', () => $('nick-modal').classList.remove('active'));
     $('btn-settings')?.addEventListener('click', () => { settingsSheet.classList.toggle('open'); overlay.classList.toggle('show'); });
     $('settings-close')?.addEventListener('click', () => { settingsSheet.classList.remove('open'); overlay.classList.remove('show'); });
     $('setting-contacts')?.addEventListener('click', () => { settingsSheet.classList.remove('open'); loadContacts(); contactsSheet.classList.add('open'); overlay.classList.add('show'); });
     $('contacts-close')?.addEventListener('click', () => { contactsSheet.classList.remove('open'); overlay.classList.remove('show'); });
-    $('btn-clear')?.addEventListener('click', () => { chatBox.querySelectorAll('.message-row:not(#robin-row)').forEach(m => m.remove()); playSound('clear cache.mp3'); updateRobinStatus(SHERWOOD.say('cache_cleared'), 3000); });
-    $('setting-theme')?.addEventListener('click', () => { const ts = THEMES.getThemes(); const ct = localStorage.getItem('robinhood_theme')||'forest'; const i = ts.findIndex(t=>t.id===ct); THEMES.applyTheme(ts[(i+1)%ts.length].id, themeIcon, themeName); });
-    $('setting-theme-random')?.addEventListener('click', () => { const t = THEMES.generateRandomTheme(); THEMES.applyGeneratedTheme(t, themeIcon, themeName); });
+    $('btn-clear')?.addEventListener('click', () => { 
+        chatBox.querySelectorAll('.message-row:not(#robin-row)').forEach(m => m.remove()); 
+        playSound('clear cache.mp3'); 
+        updateRobinStatus(SHERWOOD.say('cache_cleared'), 3000); 
+    });
+    $('setting-theme')?.addEventListener('click', () => { 
+        const ts = THEMES.getThemes(); 
+        const ct = localStorage.getItem('robinhood_theme')||'forest'; 
+        const i = ts.findIndex(t=>t.id===ct); 
+        THEMES.applyTheme(ts[(i+1)%ts.length].id, themeIcon, themeName); 
+    });
+    $('setting-theme-random')?.addEventListener('click', () => { 
+        const t = THEMES.generateRandomTheme(); THEMES.applyGeneratedTheme(t, themeIcon, themeName); 
+    });
     $('setting-background')?.addEventListener('click', () => { settingsSheet.classList.remove('open'); overlay.classList.remove('show'); openBackgroundPicker(); });
     $('setting-lock')?.addEventListener('click', () => { isSettingUp = true; lockScreen.style.display = 'flex'; appContainer.style.display = 'none'; setupLockUI(); });
-    $('setting-clear-data')?.addEventListener('click', () => { if (confirm('⚠ Все данные будут удалены!')) { chatBox.querySelectorAll('.message-row:not(#robin-row)').forEach(m=>m.remove()); localStorage.removeItem(OFFLINE_QUEUE_KEY); updateRobinStatus('🚬 Сожжено!', 3000); } });
+    $('setting-clear-data')?.addEventListener('click', () => { 
+        if (confirm('⚠ Все данные будут удалены!')) { 
+            chatBox.querySelectorAll('.message-row:not(#robin-row)').forEach(m=>m.remove()); 
+            localStorage.removeItem(OFFLINE_QUEUE_KEY); 
+            updateRobinStatus('🚬 Сожжено!', 3000); 
+        } 
+    });
 
     toggleSound?.addEventListener('change', function() { toggleSoundState = this.checked; localStorage.setItem('robinhood_sound', toggleSoundState); });
     toggleSelfDestruct?.addEventListener('change', function() { selfDestructMode = this.checked; localStorage.setItem('robinhood_selfdestruct', selfDestructMode); });
     toggleObfuscation?.addEventListener('change', function() { obfuscationEnabled = this.checked; localStorage.setItem('robinhood_obfuscation', obfuscationEnabled); });
     togglePeerHelp?.addEventListener('change', function() { peerHelpEnabled = this.checked; localStorage.setItem('sherwood_peer_help', peerHelpEnabled); $('seeding-indicator').style.display = peerHelpEnabled ? 'flex' : 'none'; });
 
-    $('menu-rename')?.addEventListener('click', async () => { $('contact-menu').style.display = 'none'; if (!currentMenuContact) return; const name = prompt('Новое имя:', currentMenuContact.name); if (name) { const contacts = await CRYPTO.secureGetItem('robinhood_contacts') || []; const c = contacts.find(c=>c.pubkey===currentMenuContact.pubkey); if (c) { c.name = name; await CRYPTO.secureSetItem('robinhood_contacts', contacts); loadContacts(); } } });
+    $('menu-rename')?.addEventListener('click', async () => { 
+        $('contact-menu').style.display = 'none'; if (!currentMenuContact) return; 
+        const name = prompt('Новое имя:', currentMenuContact.name); 
+        if (name) { 
+            const contacts = await CRYPTO.secureGetItem('robinhood_contacts') || []; 
+            const c = contacts.find(c=>c.pubkey===currentMenuContact.pubkey); 
+            if (c) { c.name = name; await CRYPTO.secureSetItem('robinhood_contacts', contacts); loadContacts(); } 
+        } 
+    });
     $('menu-avatar')?.addEventListener('click', () => { $('contact-menu').style.display = 'none'; closeAllSheets(); loadAvatars(); avatarSelector.classList.add('show'); overlay.classList.add('show'); });
-    $('menu-lock-chat')?.addEventListener('click', async () => { $('contact-menu').style.display = 'none'; if (!currentMenuContact) return; const password = await showMasterPasswordPrompt(true); if (password) { localStorage.setItem('robinhood_kek_chat_'+currentMenuContact.pubkey, 'locked'); updateRobinStatus('🔒 Чат заперт!', 2000); } });
-    $('menu-delete')?.addEventListener('click', () => { $('contact-menu').style.display = 'none'; if (currentMenuContact && confirm('Уволить «'+currentMenuContact.name+'»?')) deleteContact(currentMenuContact.pubkey); });
+    $('menu-lock-chat')?.addEventListener('click', async () => { 
+        $('contact-menu').style.display = 'none'; if (!currentMenuContact) return; 
+        const password = await showMasterPasswordPrompt(true); 
+        if (password) { localStorage.setItem('robinhood_kek_chat_'+currentMenuContact.pubkey, 'locked'); updateRobinStatus('🔒 Чат заперт!', 2000); } 
+    });
+    $('menu-delete')?.addEventListener('click', () => { 
+        $('contact-menu').style.display = 'none'; 
+        if (currentMenuContact && confirm('Уволить «'+currentMenuContact.name+'»?')) deleteContact(currentMenuContact.pubkey); 
+    });
     $('menu-cancel')?.addEventListener('click', () => $('contact-menu').style.display = 'none');
     document.addEventListener('click', e => { if (!$('contact-menu').contains(e.target)) $('contact-menu').style.display = 'none'; });
 
-    const emojis = ['😀','😂','🤣','😍','😘','😜','😎','🤩','🥳','😢','😡','👍','👎','❤️','🔥','🎉','💀','🏹','🌲','🏰','🦊','🐺','✨','⚔️','🛡️','🍺','🍗','🏕️','🌙','☀️','🌟','💪','🤝','🙏','👑','💰','🎯','📞','💬','🔔','❌','✅','🎵','📜'];
+    const emojis = ['😀','😂','🤣','😍','😘','😎','🤩','😢','👍','❤️','🔥','🎉','🏹','🌲','🦊','🐺','✨','⚔️','🛡️','🍺','🌙','💪','🤝','👑','🎯','📞','💬','✅'];
     if (emojiGrid) { emojis.forEach(e => { const span = document.createElement('span'); span.textContent = e; span.addEventListener('click', () => { msgInput.value += e; msgInput.focus(); }); emojiGrid.appendChild(span); }); }
     btnEmoji?.addEventListener('click', () => emojiPanel.style.display = emojiPanel.style.display === 'block' ? 'none' : 'block');
     document.addEventListener('click', e => { if (emojiPanel && !emojiPanel.contains(e.target) && e.target !== btnEmoji) emojiPanel.style.display = 'none'; });
@@ -795,25 +831,16 @@ async function initApp() {
     await P2PPong.init();
 
     if (refId && refKey) {
-        setTimeout(() => P2PPong.acceptSession(refId, refKey), 1000);
+        setTimeout(() => P2PPong.acceptSession(refId, refKey), 1500);
     }
 
     setupEventHandlers();
     updateRobinStatus(SHERWOOD.say('idle'), 0);
 
-    lockPatternCanvas?.addEventListener('pointerdown', e => { patternInput = []; const rect = lockPatternCanvas.getBoundingClientRect(); const pt = getPatternPoint(e.clientX-rect.left, e.clientY-rect.top); if (pt>=0) patternInput.push(pt); drawPatternGrid(patternInput); });
-    lockPatternCanvas?.addEventListener('pointermove', e => { if (!patternInput.length) return; const rect = lockPatternCanvas.getBoundingClientRect(); const pt = getPatternPoint(e.clientX-rect.left, e.clientY-rect.top); if (pt>=0 && !patternInput.includes(pt)) patternInput.push(pt); drawPatternGrid(patternInput); });
-    lockPatternCanvas?.addEventListener('pointerup', () => { if (patternInput.length>=3) verifyPattern(); else { lockError.textContent='Минимум 3 точки'; patternInput=[]; drawPatternGrid(); } });
-    $('lock-tabs')?.addEventListener('click', e => { if (e.target.classList.contains('lock-tab')) { lockType = e.target.dataset.tab; setupLockUI(); } });
-    $('lock-reset')?.addEventListener('click', () => { tempPinHash=''; tempPatternHash=''; pinInput=''; patternInput=[]; updatePinDots(); drawPatternGrid(); });
-    $('lock-skip')?.addEventListener('click', unlock);
-    $('lock-forgot')?.addEventListener('click', () => { localStorage.removeItem(LOCK_KEY); unlock(); });
-
     if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').catch(() => {}); }
 }
 
 loadLockSettings();
-})();
 </script>
 </body>
 </html>
