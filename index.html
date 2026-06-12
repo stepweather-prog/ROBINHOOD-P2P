@@ -320,7 +320,7 @@ function startPolling(sid, serverId) {
         const serversParam = new URLSearchParams(window.location.search).get('servers') || 'render,workers';
         const serversList = serversParam.split(',');
         for (const srvId of serversList) {
-            const body = srvId === 'workers' ? { tempKeyHash: keyHash } : { tempKey: findKey };
+            const body = { tempKeyHash: keyHash };
             const res = await apiCallToServer(srvId, 'POST', '/find', body);
             if (res?.status === 'matched') {
                 const actualSid = res.sessionId || sidOrPeer;
