@@ -830,7 +830,7 @@ async function initApp() {
 
     await P2PPong.init();
 
-    if (refId && refKey) {
+     if (refId && refKey) {
         setTimeout(() => P2PPong.acceptSession(refId, refKey), 1500);
     }
 
