@@ -12,7 +12,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.12.2/lottie.min.js"></script>
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com 'unsafe-inline'; style-src 'self' 'unsafe-inline'; media-src 'self' blob:; connect-src 'self' https://p2ppong-v2.onrender.com https://robincall.stephanclaps-491.workers.dev https://* wss://* blob:; img-src 'self' data: blob: https://stepweather-prog.github.io; frame-src 'self'; manifest-src 'self'; form-action 'none'; base-uri 'self';">
     <style>
-        /* ===== ВСЕ СТИЛИ ИЗ v4.3 (БЕЗ ИЗМЕНЕНИЙ) ===== */
         :root, [data-theme="forest"] { --bg-primary: #1a2a1f; --bg-secondary: #0d1a0c; --accent: #c4a24b; --accent-light: #e8d5a3; --accent-glow: rgba(196,162,75,0.5); --text: #e8e2c7; --text-bright: #f5e6b8; --text-dim: #b8a87a; --border: #c4a24b; --btn-bg: rgba(196,162,75,0.1); --btn-border: rgba(196,162,75,0.3); --btn-hover: rgba(196,162,75,0.25); --sheet-bg: linear-gradient(145deg, #1e2a1a 0%, #0f180d 100%); --input-bg: rgba(20,30,18,0.9); --input-focus: rgba(25,38,22,0.95); --msg-bg: rgba(30,40,25,0.85); --msg-accent: #c4a24b; --robin-bg: rgba(50,70,40,0.9); --robin-accent: #e8c97a; --overlay-bg: rgba(0,0,0,0.6); --call-bg: linear-gradient(135deg, rgba(25,35,20,0.98), rgba(15,25,12,0.98)); --seeding-color: #4caf50; --danger: #f44336; }
         [data-theme="sunset"] { --bg-primary: #2a1a1f; --bg-secondary: #1a0a0f; --accent: #e85d3a; --accent-light: #f0a080; --text: #f0d8c0; --text-dim: #c08060; --border: #e85d3a; --msg-accent: #e85d3a; --seeding-color: #e85d3a; }
         [data-theme="ocean"] { --bg-primary: #0a1a2f; --bg-secondary: #050d18; --accent: #4bc4d0; --accent-light: #90e8f0; --text: #c8f0f8; --text-dim: #60a0b0; --border: #4bc4d0; --msg-accent: #4bc4d0; --seeding-color: #4bc4d0; }
@@ -25,7 +24,6 @@
         [data-theme="slate"] { --bg-primary: #1a1a2a; --bg-secondary: #0d0d1a; --accent: #6b7db3; --accent-light: #a0b0e0; --text: #c8d0f0; --text-dim: #8090b0; --border: #6b7db3; --msg-accent: #6b7db3; --seeding-color: #6b7db3; }
         [data-theme="coral"] { --bg-primary: #2a1a18; --bg-secondary: #1a0d0a; --accent: #e87050; --accent-light: #f0a080; --text: #f0d8c8; --text-dim: #c09070; --border: #e87050; --msg-accent: #e87050; --seeding-color: #e87050; }
         [data-theme="plum"] { --bg-primary: #201a2a; --bg-secondary: #100d1a; --accent: #9b59b6; --accent-light: #c090e0; --text: #d8c8f0; --text-dim: #9080b0; --border: #9b59b6; --msg-accent: #9b59b6; --seeding-color: #9b59b6; }
-
         * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
         html { font-size: clamp(14px, 2.5vw, 16px); }
         html,body { margin:0; padding:0; height:100%; overflow:hidden; }
@@ -33,7 +31,6 @@
         body::before { content:""; position:fixed; top:0; left:0; width:100%; height:100%; background-image:url('assets/background.webp'); background-size:cover; background-position:center; z-index:0; opacity:0.35; }
         body::after { content:""; position:fixed; top:0; left:0; width:100%; height:100%; background:radial-gradient(circle at 50% 40%, rgba(30,40,25,0.5), rgba(10,20,8,0.85)); z-index:0; }
         body.custom-bg::before { background-image: var(--custom-bg) !important; background-position: var(--custom-bg-pos, 50% 50%) !important; opacity: 0.40; }
-
         .header { background:linear-gradient(135deg, rgba(25,35,20,0.96), rgba(15,25,12,0.98)); border-bottom:2px solid var(--border); backdrop-filter:blur(8px); z-index:10; padding:6px 10px; display:flex; flex-direction:column; gap:4px; flex-shrink:0; }
         .header-row-1 { display:flex; align-items:center; gap:6px; }
         .header-title-text { font-size:clamp(1em, 3vw, 1.3em); font-weight:bold; background:linear-gradient(135deg, var(--accent-light), var(--accent)); -webkit-background-clip:text; background-clip:text; color:transparent; }
@@ -63,7 +60,6 @@
         #robin-row { background:var(--robin-bg); border-left:3px solid var(--robin-accent); position:sticky; top:0; z-index:6; margin-bottom:4px; }
         #robin-text { font-weight:700; font-size:0.85em; color:var(--text-bright); }
         .typing-indicator { font-size:0.65em; color:var(--text-dim); padding:2px 10px; font-style:italic; min-height:20px; }
-
         .voice-timer-overlay { display:none; position:absolute; top:-28px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.85); color:var(--danger); font-family:monospace; font-size:0.8em; padding:3px 8px; border-radius:6px; z-index:20; }
         .bottom-sheet, .avatar-selector { position:fixed; top:0; left:0; width:min(85%, 380px); height:100%; background:var(--sheet-bg); border-right:2px solid var(--border); z-index:200; transform:translateX(-100%); transition:transform 0.35s; overflow-y:auto; backdrop-filter:blur(16px); }
         .bottom-sheet.open, .avatar-selector.show { transform:translateX(0); }
@@ -207,6 +203,9 @@
     <div class="contact-item" id="setting-theme"><div class="contact-info"><span style="font-size:22px;" id="theme-icon">🌲</span><span class="contact-name">Тема</span></div><span id="theme-name" style="color:var(--text-dim);">Лес</span></div>
     <div class="contact-item" id="setting-theme-random"><div class="contact-info"><span style="font-size:22px;">🎲</span><span class="contact-name">Авто-тема</span></div><span style="color:var(--text-dim);">🎨</span></div>
     <div class="contact-item" id="setting-self-destruct"><div class="contact-info"><span style="font-size:22px;">💣</span><span class="contact-name">Самоуничтожение</span></div><label class="toggle-switch"><input type="checkbox" id="toggle-selfdestruct"><span class="toggle-slider"></span></label></div>
+    <div class="contact-item" id="setting-obfuscation"><div class="contact-info"><span style="font-size:22px;">🌫️</span><span class="contact-name">Маскировка</span></div><label class="toggle-switch"><input type="checkbox" id="toggle-obfuscation"><span class="toggle-slider"></span></label></div>
+    <div class="contact-item" id="setting-peer-help"><div class="contact-info"><span style="font-size:22px;">🤝</span><span class="contact-name">Помощь сети</span></div><label class="toggle-switch"><input type="checkbox" id="toggle-peer-help"><span class="toggle-slider"></span></label></div>
+    <div class="contact-item" id="setting-background"><div class="contact-info"><span style="font-size:22px;">🖼</span><span class="contact-name">Свой фон</span></div><span>📂</span></div>
     <div class="contact-item" id="setting-server"><div class="contact-info"><span style="font-size:22px;">🌐</span><span class="contact-name">Сервер</span></div><div style="display:flex;align-items:center;gap:8px;"><span id="server-label">Render</span><label class="toggle-switch"><input type="checkbox" id="toggle-server"><span class="toggle-slider"></span></label></div></div>
     <div class="contact-item" id="setting-tunnel"><div class="contact-info"><span style="font-size:22px;">🔒</span><span class="contact-name">Туннель</span></div><label class="toggle-switch"><input type="checkbox" id="toggle-tunnel"><span class="toggle-slider"></span></label></div>
     <div class="contact-item" id="setting-lock"><div class="contact-info"><span style="font-size:22px;">🔐</span><span class="contact-name">Блокировка</span></div><span id="lock-status">Не задан</span></div>
@@ -217,6 +216,8 @@
 <div class="modal-overlay" id="ref-modal"><div class="modal-dialog"><h3>🏹 Стрела готова 🏹</h3><div class="code-display" id="ref-link-display"></div><button class="btn-primary" id="share-ref-link-btn">📤 Поделиться</button><button class="btn-cancel" id="cancel-arrow-btn">⏹ Отмена</button><button class="btn-dark" id="close-ref-modal-btn">Закрыть</button></div></div>
 <div class="modal-overlay" id="tunnel-config-modal"><div class="modal-dialog"><h3>➕ Управление конфигами</h3><div id="tunnel-list" style="max-height:150px;overflow-y:auto;margin-bottom:10px;text-align:left;"></div><button class="btn-primary" id="btn-load-file">📂 Загрузить новый</button><button class="btn-dark" id="btn-warp-gen" style="margin-top:6px;">🌐 Создать новые конфиги AmneziaWG</button><div style="margin:10px 0;color:var(--text-dim);">или вставьте текст:</div><textarea id="tunnel-config-input" style="width:100%;height:100px;background:var(--input-bg);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:0.7em;font-family:monospace;resize:vertical;"></textarea><button class="btn-primary" id="btn-save-tunnel">💾 Сохранить</button><button class="btn-dark" id="btn-cancel-tunnel-config">Закрыть</button><input type="file" id="config-file-input" accept=".conf" style="display:none;"></div></div>
 <div class="modal-overlay" id="link-preview-modal"><div class="modal-dialog"><h3>🔗 Внешняя ссылка</h3><div id="link-preview-content"></div><button class="btn-dark" id="btn-close-link-preview">Закрыть</button></div></div>
+<div class="modal-overlay" id="bg-crop-modal"><div class="modal-dialog" style="max-width:90%;"><h3>🖼 Выберите область</h3><div class="bg-crop-container"><img class="bg-crop-img" id="bg-preview-img" draggable="false"></div><div style="display:flex;gap:8px;margin:8px 0;"><button class="btn-dark" id="bg-pos-top">⬆ Верх</button><button class="btn-dark" id="bg-pos-center">⬜ Центр</button><button class="btn-dark" id="bg-pos-bottom">⬇ Низ</button></div><div style="display:flex;gap:6px;"><button class="btn-dark" id="bg-cancel">Отмена</button><button class="btn-primary" id="bg-save">✓ Сохранить</button><button class="btn-dark" id="bg-reset">🔄 Сбросить</button></div></div></div>
+<div class="modal-overlay" id="nick-modal"><div class="modal-dialog"><h3>🏷 Сменить ник</h3><input type="text" id="nick-input" placeholder="Твой ник (макс. 12)" maxlength="12" autocomplete="off" style="width:100%;margin-bottom:10px;"><div style="display:flex;gap:8px;"><button class="btn-dark" id="btn-nick-cancel">Отмена</button><button class="btn-primary" id="btn-nick-save">✓ Сохранить</button></div></div></div>
 <div id="contact-menu" class="contact-menu" style="display:none;"><div class="contact-menu-item" id="menu-rename">✎ Переименовать</div><div class="contact-menu-item" id="menu-avatar">🖼 Сменить аватар</div><div class="contact-menu-item" id="menu-delete">🔥 Уволить лучника</div><button id="menu-cancel">Отмена</button></div>
 <div id="bow-above-send" style="position:fixed;bottom:60px;right:12px;width:100px;height:100px;z-index:100;pointer-events:none;display:none;"></div>
 <div class="modal-input-overlay" id="modal-input-overlay"><div class="modal-input-dialog"><h3 id="modal-input-title">Введите текст</h3><input type="text" id="modal-input-field" autocomplete="off"><div style="font-size:0.55em;color:var(--text-dim);margin-bottom:8px;" id="modal-input-hint"></div><div class="modal-btns"><button class="btn-dark" id="modal-input-cancel">Отмена</button><button class="btn-gold" id="modal-input-ok">✓ Готово</button></div></div></div>
@@ -380,7 +381,6 @@ const P2PPong = (() => {
         } catch(e) {}
     }
 
-    // ===== УНИВЕРСАЛЬНЫЕ МАЯКИ (ПАРАЛЛЕЛЬНЫЕ ЗАПРОСЫ) =====
     async function createSession(clientTempKey) {
         if (isCreatingSession) return;
         isCreatingSession = true;
@@ -638,7 +638,6 @@ let autoConnectDone = false;
 let pendingIceCandidates = {};
 let typingTimers = {};
 
-// Локер
 let lockType = null, lockPinHash = '', lockPatternHash = '';
 let pinInput = '', patternInput = [], isSettingUp = false;
 let tempPinHash = '', tempPatternHash = '', failedAttempts = 0;
@@ -735,7 +734,7 @@ function showContactMenu(x, y, contact) { currentMenuContact = contact; const me
 // Фон
 function loadCustomBackground() { const saved = localStorage.getItem('robinhood_custom_bg'); if (saved) { try { const data = JSON.parse(saved); document.body.style.setProperty('--custom-bg', `url(${data.src})`); document.body.style.setProperty('--custom-bg-pos', `${data.posX}% ${data.posY}%`); document.body.classList.add('custom-bg'); } catch(e) {} } }
 function openBackgroundPicker() { const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/*'; input.onchange = e => { const f = e.target.files[0]; if (f) { const r = new FileReader(); r.onload = ev => { customBgImage = ev.target.result; customBgPosX = 50; customBgPosY = 50; showBackgroundCropModal(); }; r.readAsDataURL(f); } }; input.click(); }
-function showBackgroundCropModal() { const modal = $('bg-crop-modal'); const img = $('bg-preview-img'); img.src = customBgImage; modal.classList.add('active'); let dragging = false; img.addEventListener('pointerdown', e => { dragging = true; img.setPointerCapture(e.pointerId); }); img.addEventListener('pointermove', e => { if (!dragging) return; customBgPosX = Math.max(0, Math.min(100, customBgPosX - e.movementX*0.2)); customBgPosY = Math.max(0, Math.min(100, customBgPosY - e.movementY*0.2)); img.style.objectPosition = `${customBgPosX}% ${customBgPosY}%`; }); img.addEventListener('pointerup', () => dragging = false); $('bg-pos-top').onclick = () => { customBgPosX=50; customBgPosY=10; img.style.objectPosition = `${customBgPosX}% ${customBgPosY}%`; }; $('bg-pos-center').onclick = () => { customBgPosX=50; customBgPosY=50; img.style.objectPosition = `${customBgPosX}% ${customBgPosY}%`; }; $('bg-pos-bottom').onclick = () => { customBgPosX=50; customBgPosY=90; img.style.objectPosition = `${customBgPosX}% ${customBgPosY}%`; }; $('bg-save').onclick = () => { const bgData = { src: customBgImage, posX: Math.round(customBgPosX), posY: Math.round(customBgPosY) }; localStorage.setItem('robinhood_custom_bg', JSON.stringify(bgData)); document.body.style.setProperty('--custom-bg', `url(${customBgImage})`); document.body.classList.add('custom-bg'); modal.classList.remove('active'); }; $('bg-cancel').onclick = () => modal.classList.remove('active'); $('bg-reset').onclick = () => { localStorage.removeItem('robinhood_custom_bg'); document.body.classList.remove('custom-bg'); modal.classList.remove('active'); }; }
+function showBackgroundCropModal() { const modal = $('bg-crop-modal'); if (!modal) return; const img = $('bg-preview-img'); img.src = customBgImage; modal.classList.add('active'); let dragging = false; img.addEventListener('pointerdown', e => { dragging = true; img.setPointerCapture(e.pointerId); }); img.addEventListener('pointermove', e => { if (!dragging) return; customBgPosX = Math.max(0, Math.min(100, customBgPosX - e.movementX*0.2)); customBgPosY = Math.max(0, Math.min(100, customBgPosY - e.movementY*0.2)); img.style.objectPosition = `${customBgPosX}% ${customBgPosY}%`; }); img.addEventListener('pointerup', () => dragging = false); $('bg-pos-top').onclick = () => { customBgPosX=50; customBgPosY=10; img.style.objectPosition = `${customBgPosX}% ${customBgPosY}%`; }; $('bg-pos-center').onclick = () => { customBgPosX=50; customBgPosY=50; img.style.objectPosition = `${customBgPosX}% ${customBgPosY}%`; }; $('bg-pos-bottom').onclick = () => { customBgPosX=50; customBgPosY=90; img.style.objectPosition = `${customBgPosX}% ${customBgPosY}%`; }; $('bg-save').onclick = () => { const bgData = { src: customBgImage, posX: Math.round(customBgPosX), posY: Math.round(customBgPosY) }; localStorage.setItem('robinhood_custom_bg', JSON.stringify(bgData)); document.body.style.setProperty('--custom-bg', `url(${customBgImage})`); document.body.classList.add('custom-bg'); modal.classList.remove('active'); }; $('bg-cancel').onclick = () => modal.classList.remove('active'); $('bg-reset').onclick = () => { localStorage.removeItem('robinhood_custom_bg'); document.body.classList.remove('custom-bg'); modal.classList.remove('active'); }; }
 
 // Мастер-пароль
 async function showMasterPasswordPrompt(isSetup = false) {
@@ -784,8 +783,10 @@ function setupEventHandlers() {
 
     P2PPong.on('onReady', () => updateRobinStatus('🌐 Телеграф работает!', 2000));
     P2PPong.on('onSessionCreated', (data) => {
-        document.getElementById('ref-link-display').textContent = data.fullLink;
-        document.getElementById('ref-modal').classList.add('active');
+        const refLink = document.getElementById('ref-link-display');
+        const refModal = document.getElementById('ref-modal');
+        if (refLink) refLink.textContent = data.fullLink;
+        if (refModal) refModal.classList.add('active');
         navigator.clipboard.writeText(data.fullLink).catch(() => {});
     });
     P2PPong.on('onChannelOpen', function(data) {
@@ -799,7 +800,8 @@ function setupEventHandlers() {
                 await CRYPTO.secureSetItem('robinhood_contacts', contacts);
             }
         })();
-        document.getElementById('ref-modal').classList.remove('active');
+        const refModal = document.getElementById('ref-modal');
+        if (refModal) refModal.classList.remove('active');
         setTimeout(() => playQuiverAnimation(), 300);
         setTimeout(() => flushOfflineQueue(), 1000);
     });
@@ -890,90 +892,151 @@ function setupEventHandlers() {
         if (toggleSoundState) playSound('bow_shot.mp3');
     });
 
-    sendBtn.addEventListener('click', async function() {
-        const text = msgInput.value.trim(); if (!text) return;
-        if (!activeChannelId) { saveOfflineMessage({ text, channelId: activeChannelId }); updateRobinStatus('📤 Сохранено', 2500); msgInput.value = ''; return; }
-        let encrypted = await CRYPTO.encryptMessage(text);
-        if (obfuscationEnabled) encrypted = await padToSize(encrypted, PACKET_SIZE);
-        sendThroughPong(encrypted);
-        appendMessage('Вы', text, profileAvatarSmall ? profileAvatarSmall.src : 'assets/avatars/001-.png');
-        msgInput.value = ''; maybeSendFake(); playArcherAnimation(); playBowAnimation();
-        if (toggleSoundState) playSound('shot.mp3');
-    });
-    msgInput.addEventListener('keypress', function(e) { if (e.key === 'Enter') sendBtn.click(); });
-    msgInput.addEventListener('input', function() { if (activeChannelId) sendThroughPong('__TYPING__'); });
+    // Кнопка отправки
+    if (sendBtn) {
+        sendBtn.addEventListener('click', async function() {
+            const text = msgInput.value.trim(); if (!text) return;
+            if (!activeChannelId) { saveOfflineMessage({ text, channelId: activeChannelId }); updateRobinStatus('📤 Сохранено', 2500); msgInput.value = ''; return; }
+            let encrypted = await CRYPTO.encryptMessage(text);
+            if (obfuscationEnabled) encrypted = await padToSize(encrypted, PACKET_SIZE);
+            sendThroughPong(encrypted);
+            appendMessage('Вы', text, profileAvatarSmall ? profileAvatarSmall.src : 'assets/avatars/001-.png');
+            msgInput.value = ''; maybeSendFake(); playArcherAnimation(); playBowAnimation();
+            if (toggleSoundState) playSound('shot.mp3');
+        });
+    }
+    if (msgInput) {
+        msgInput.addEventListener('keypress', function(e) { if (e.key === 'Enter') sendBtn.click(); });
+        msgInput.addEventListener('input', function() { if (activeChannelId) sendThroughPong('__TYPING__'); });
+    }
 
-    document.getElementById('btn-arrow').addEventListener('click', () => P2PPong.createSession());
-    document.getElementById('cancel-arrow-btn').addEventListener('click', () => document.getElementById('ref-modal').classList.remove('active'));
-    document.getElementById('close-ref-modal-btn').addEventListener('click', () => document.getElementById('ref-modal').classList.remove('active'));
-    document.getElementById('share-ref-link-btn').addEventListener('click', () => {
-        const link = document.getElementById('ref-link-display').textContent;
+    // Кнопки шапки
+    const btnArrow = document.getElementById('btn-arrow');
+    if (btnArrow) btnArrow.addEventListener('click', () => P2PPong.createSession());
+    const cancelArrowBtn = document.getElementById('cancel-arrow-btn');
+    if (cancelArrowBtn) cancelArrowBtn.addEventListener('click', () => { const m = document.getElementById('ref-modal'); if (m) m.classList.remove('active'); });
+    const closeRefModalBtn = document.getElementById('close-ref-modal-btn');
+    if (closeRefModalBtn) closeRefModalBtn.addEventListener('click', () => { const m = document.getElementById('ref-modal'); if (m) m.classList.remove('active'); });
+    const shareRefLinkBtn = document.getElementById('share-ref-link-btn');
+    if (shareRefLinkBtn) shareRefLinkBtn.addEventListener('click', () => {
+        const link = document.getElementById('ref-link-display')?.textContent;
         if (link && navigator.share) navigator.share({ title: 'RobinHood P2P', url: link }).catch(() => {});
     });
-    document.getElementById('btn-accept-link').addEventListener('click', function() {
+    const btnAcceptLink = document.getElementById('btn-accept-link');
+    if (btnAcceptLink) btnAcceptLink.addEventListener('click', function() {
         const raw = document.getElementById('accept-link-input')?.value.trim(); if (!raw) return;
         let url; try { url = new URL(raw); } catch(e) {
-            if (raw.length > 10) { P2PPong.acceptSession(raw, raw); document.getElementById('ref-modal').classList.remove('active'); }
+            if (raw.length > 10) { P2PPong.acceptSession(raw, raw); const m = document.getElementById('ref-modal'); if (m) m.classList.remove('active'); }
             return;
         }
         const id = url.searchParams.get('id'); const key = url.hash.replace('#key=', '') || url.searchParams.get('key');
-        if (id && key) { P2PPong.acceptSession(id, key); document.getElementById('ref-modal').classList.remove('active'); }
+        if (id && key) { P2PPong.acceptSession(id, key); const m = document.getElementById('ref-modal'); if (m) m.classList.remove('active'); }
     });
 
-    document.getElementById('btn-call').addEventListener('click', () => callActive ? endCall() : startCall(false));
-    document.getElementById('btn-video').addEventListener('click', () => callActive ? endCall() : startCall(true));
-    document.getElementById('call-end').addEventListener('click', endCall);
-    document.getElementById('call-speaker').addEventListener('click', () => { /* реализация спикера */ });
-    document.getElementById('call-mic').addEventListener('click', () => { /* реализация микрофона */ });
-    document.getElementById('call-camera').addEventListener('click', () => { /* реализация камеры */ });
+    const btnCallEl = document.getElementById('btn-call');
+    if (btnCallEl) btnCallEl.addEventListener('click', () => callActive ? endCall() : startCall(false));
+    const btnVideoEl = document.getElementById('btn-video');
+    if (btnVideoEl) btnVideoEl.addEventListener('click', () => callActive ? endCall() : startCall(true));
+    const callEndEl = document.getElementById('call-end');
+    if (callEndEl) callEndEl.addEventListener('click', endCall);
+    const callSpeakerEl = document.getElementById('call-speaker');
+    if (callSpeakerEl) callSpeakerEl.addEventListener('click', () => {});
+    const callMicEl = document.getElementById('call-mic');
+    if (callMicEl) callMicEl.addEventListener('click', () => {});
+    const callCameraEl = document.getElementById('call-camera');
+    if (callCameraEl) callCameraEl.addEventListener('click', () => {});
 
-    document.getElementById('btn-settings').addEventListener('click', () => { settingsSheet.classList.toggle('open'); overlay.classList.toggle('show'); });
-    document.getElementById('settings-close').addEventListener('click', () => { settingsSheet.classList.remove('open'); overlay.classList.remove('show'); });
-    document.getElementById('btn-avatar').addEventListener('click', () => { avatarSelector.classList.toggle('show'); overlay.classList.toggle('show'); if (avatarSelector.classList.contains('show')) loadAvatars(); });
-    overlay.addEventListener('click', closeAllSheets);
-    document.getElementById('setting-contacts').addEventListener('click', () => { settingsSheet.classList.remove('open'); loadContacts(); contactsSheet.classList.add('open'); overlay.classList.add('show'); });
-    document.getElementById('contacts-close').addEventListener('click', () => { contactsSheet.classList.remove('open'); overlay.classList.remove('show'); });
-    document.getElementById('btn-clear').addEventListener('click', () => { chatBox.querySelectorAll('.message-row:not(#robin-row)').forEach(m => m.remove()); playSound('clear cache.mp3'); updateRobinStatus(SHERWOOD.say('cache_cleared'), 3000); });
+    const btnSettings = document.getElementById('btn-settings');
+    if (btnSettings) btnSettings.addEventListener('click', () => { settingsSheet.classList.toggle('open'); overlay.classList.toggle('show'); });
+    const settingsClose = document.getElementById('settings-close');
+    if (settingsClose) settingsClose.addEventListener('click', () => { settingsSheet.classList.remove('open'); overlay.classList.remove('show'); });
+    const btnAvatar = document.getElementById('btn-avatar');
+    if (btnAvatar) btnAvatar.addEventListener('click', () => { avatarSelector.classList.toggle('show'); overlay.classList.toggle('show'); if (avatarSelector.classList.contains('show')) loadAvatars(); });
+    if (overlay) overlay.addEventListener('click', closeAllSheets);
+    const settingContacts = document.getElementById('setting-contacts');
+    if (settingContacts) settingContacts.addEventListener('click', () => { settingsSheet.classList.remove('open'); loadContacts(); contactsSheet.classList.add('open'); overlay.classList.add('show'); });
+    const contactsClose = document.getElementById('contacts-close');
+    if (contactsClose) contactsClose.addEventListener('click', () => { contactsSheet.classList.remove('open'); overlay.classList.remove('show'); });
+    const btnClear = document.getElementById('btn-clear');
+    if (btnClear) btnClear.addEventListener('click', () => { chatBox.querySelectorAll('.message-row:not(#robin-row)').forEach(m => m.remove()); playSound('clear cache.mp3'); updateRobinStatus(SHERWOOD.say('cache_cleared'), 3000); });
 
-    toggleSound.addEventListener('change', () => { toggleSoundState = toggleSound.checked; localStorage.setItem('robinhood_sound', toggleSoundState); });
-    document.getElementById('toggle-selfdestruct')?.addEventListener('change', () => { selfDestructMode = document.getElementById('toggle-selfdestruct').checked; });
-    document.getElementById('toggle-obfuscation')?.addEventListener('change', () => { obfuscationEnabled = document.getElementById('toggle-obfuscation').checked; });
-    document.getElementById('toggle-peer-help')?.addEventListener('change', () => { peerHelpEnabled = document.getElementById('toggle-peer-help').checked; document.getElementById('seeding-indicator').style.display = peerHelpEnabled ? 'flex' : 'none'; });
-    document.getElementById('toggle-tunnel')?.addEventListener('change', () => {
-        if (savedConfigs.length === 0) { tunnelConfigModal?.classList.add('active'); document.getElementById('toggle-tunnel').checked = false; return; }
-        activeTunnel = document.getElementById('toggle-tunnel').checked ? savedConfigs.length - 1 : null;
-        localStorage.setItem('robinhood_active_tunnel', activeTunnel !== null ? activeTunnel : '');
-    });
+    if (toggleSound) toggleSound.addEventListener('change', () => { toggleSoundState = toggleSound.checked; localStorage.setItem('robinhood_sound', toggleSoundState); });
+    const tglSelfDestruct = document.getElementById('toggle-selfdestruct');
+    if (tglSelfDestruct) {
+        tglSelfDestruct.checked = selfDestructMode;
+        tglSelfDestruct.addEventListener('change', () => { selfDestructMode = tglSelfDestruct.checked; });
+    }
+    const tglObfuscation = document.getElementById('toggle-obfuscation');
+    if (tglObfuscation) {
+        tglObfuscation.checked = obfuscationEnabled;
+        tglObfuscation.addEventListener('change', () => { obfuscationEnabled = tglObfuscation.checked; localStorage.setItem('robinhood_obfuscation', obfuscationEnabled); });
+    }
+    const tglPeerHelp = document.getElementById('toggle-peer-help');
+    if (tglPeerHelp) {
+        tglPeerHelp.checked = peerHelpEnabled;
+        tglPeerHelp.addEventListener('change', () => { peerHelpEnabled = tglPeerHelp.checked; localStorage.setItem('sherwood_peer_help', peerHelpEnabled); const si = document.getElementById('seeding-indicator'); if (si) si.style.display = peerHelpEnabled ? 'flex' : 'none'; });
+    }
+    const tglTunnel = document.getElementById('toggle-tunnel');
+    if (tglTunnel) {
+        tglTunnel.addEventListener('change', () => {
+            if (savedConfigs.length === 0) { const tm = document.getElementById('tunnel-config-modal'); if (tm) tm.classList.add('active'); tglTunnel.checked = false; return; }
+            activeTunnel = tglTunnel.checked ? savedConfigs.length - 1 : null;
+            localStorage.setItem('robinhood_active_tunnel', activeTunnel !== null ? activeTunnel : '');
+        });
+    }
 
-    document.getElementById('setting-theme').addEventListener('click', () => { const ts = THEMES.getThemes(); const ct = localStorage.getItem('robinhood_theme') || 'forest'; const idx = ts.findIndex(t => t.id === ct); THEMES.applyTheme(ts[(idx+1)%ts.length].id, themeIcon, themeName); });
-    document.getElementById('setting-theme-random').addEventListener('click', () => { const rt = THEMES.generateRandomTheme(); THEMES.applyGeneratedTheme(rt, themeIcon, themeName); });
-    document.getElementById('setting-background')?.addEventListener('click', openBackgroundPicker);
-    document.getElementById('setting-lock').addEventListener('click', () => { isSettingUp = true; lockScreen.style.display = 'flex'; appContainer.style.display = 'none'; setupLockUI(); });
-    document.getElementById('setting-clear-data').addEventListener('click', () => { if (confirm('⚠ Все данные будут удалены!')) { localStorage.clear(); location.reload(); } });
-    document.getElementById('setting-tunnel')?.addEventListener('click', () => { refreshTunnelList(); tunnelConfigModal?.classList.add('active'); });
-    document.getElementById('btn-load-file')?.addEventListener('click', () => configFileInput?.click());
-    if (configFileInput) configFileInput.addEventListener('change', e => { const f = e.target.files[0]; if (f) { const r = new FileReader(); r.onload = ev => { if (tunnelConfigInput) tunnelConfigInput.value = ev.target.result; }; r.readAsText(f); } });
-    document.getElementById('btn-save-tunnel')?.addEventListener('click', () => { const config = tunnelConfigInput?.value.trim(); if (!config) return; savedConfigs.push({ name: 'Конфиг ' + (savedConfigs.length+1), config }); localStorage.setItem('robinhood_tunnels', JSON.stringify(savedConfigs)); if (tunnelConfigInput) tunnelConfigInput.value = ''; refreshTunnelList(); updateTunnelUI(); });
-    document.getElementById('btn-cancel-tunnel-config')?.addEventListener('click', () => tunnelConfigModal?.classList.remove('active'));
-    document.getElementById('btn-warp-gen')?.addEventListener('click', () => window.open('https://warp-generator.github.io/', '_blank'));
-    settingInstall?.addEventListener('click', () => { if (deferredPrompt) { deferredPrompt.prompt().catch(() => {}); } else { updateRobinStatus('📲 Установите через меню браузера', 4000); } });
-    document.getElementById('btn-terms')?.addEventListener('click', () => window.open('https://github.com/stepweather-prog/ROBINHOOD-P2P/blob/main/README.md', '_blank'));
+    const settingTheme = document.getElementById('setting-theme');
+    if (settingTheme) settingTheme.addEventListener('click', () => { const ts = THEMES.getThemes(); const ct = localStorage.getItem('robinhood_theme') || 'forest'; const idx = ts.findIndex(t => t.id === ct); THEMES.applyTheme(ts[(idx+1)%ts.length].id, themeIcon, themeName); });
+    const settingThemeRandom = document.getElementById('setting-theme-random');
+    if (settingThemeRandom) settingThemeRandom.addEventListener('click', () => { const rt = THEMES.generateRandomTheme(); THEMES.applyGeneratedTheme(rt, themeIcon, themeName); });
+    const settingBackground = document.getElementById('setting-background');
+    if (settingBackground) settingBackground.addEventListener('click', openBackgroundPicker);
+    const settingLock = document.getElementById('setting-lock');
+    if (settingLock) settingLock.addEventListener('click', () => { isSettingUp = true; lockScreen.style.display = 'flex'; appContainer.style.display = 'none'; setupLockUI(); });
+    const settingClearData = document.getElementById('setting-clear-data');
+    if (settingClearData) settingClearData.addEventListener('click', () => { if (confirm('⚠ Все данные будут удалены!')) { localStorage.clear(); location.reload(); } });
+    const settingTunnel = document.getElementById('setting-tunnel');
+    if (settingTunnel) settingTunnel.addEventListener('click', () => { refreshTunnelList(); const tm = document.getElementById('tunnel-config-modal'); if (tm) tm.classList.add('active'); });
+    const btnLoadFile = document.getElementById('btn-load-file');
+    if (btnLoadFile) btnLoadFile.addEventListener('click', () => { const fi = document.getElementById('config-file-input'); if (fi) fi.click(); });
+    const configFileInp = document.getElementById('config-file-input');
+    if (configFileInp) configFileInp.addEventListener('change', e => { const f = e.target.files[0]; if (f) { const r = new FileReader(); r.onload = ev => { const ti = document.getElementById('tunnel-config-input'); if (ti) ti.value = ev.target.result; }; r.readAsText(f); } });
+    const btnSaveTunnel = document.getElementById('btn-save-tunnel');
+    if (btnSaveTunnel) btnSaveTunnel.addEventListener('click', () => { const config = document.getElementById('tunnel-config-input')?.value.trim(); if (!config) return; savedConfigs.push({ name: 'Конфиг ' + (savedConfigs.length+1), config }); localStorage.setItem('robinhood_tunnels', JSON.stringify(savedConfigs)); const ti = document.getElementById('tunnel-config-input'); if (ti) ti.value = ''; refreshTunnelList(); updateTunnelUI(); });
+    const btnCancelTunnel = document.getElementById('btn-cancel-tunnel-config');
+    if (btnCancelTunnel) btnCancelTunnel.addEventListener('click', () => { const tm = document.getElementById('tunnel-config-modal'); if (tm) tm.classList.remove('active'); });
+    const btnWarpGen = document.getElementById('btn-warp-gen');
+    if (btnWarpGen) btnWarpGen.addEventListener('click', () => window.open('https://warp-generator.github.io/', '_blank'));
+    const settingInstallEl = document.getElementById('setting-install');
+    if (settingInstallEl) settingInstallEl.addEventListener('click', () => { if (deferredPrompt) { deferredPrompt.prompt().catch(() => {}); } else { updateRobinStatus('📲 Установите через меню браузера', 4000); } });
+    const btnTerms = document.getElementById('btn-terms');
+    if (btnTerms) btnTerms.addEventListener('click', () => window.open('https://github.com/stepweather-prog/ROBINHOOD-P2P/blob/main/README.md', '_blank'));
 
-    window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; if (settingInstall) settingInstall.classList.remove('hidden'); });
+    window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; const si = document.getElementById('setting-install'); if (si) si.classList.remove('hidden'); });
 
-    // Кнопки голосового и кружков
-    document.getElementById('btn-voice-input').addEventListener('click', toggleVoiceRecording);
-    document.getElementById('btn-video-input').addEventListener('click', toggleVideoCircle);
-    document.getElementById('btn-emoji').addEventListener('click', () => emojiPanel.style.display = emojiPanel.style.display === 'block' ? 'none' : 'block');
+    const btnVoiceInp = document.getElementById('btn-voice-input');
+    if (btnVoiceInp) btnVoiceInp.addEventListener('click', toggleVoiceRecording);
+    const btnVideoInp = document.getElementById('btn-video-input');
+    if (btnVideoInp) btnVideoInp.addEventListener('click', toggleVideoCircle);
+    const btnEmojiEl = document.getElementById('btn-emoji');
+    if (btnEmojiEl) btnEmojiEl.addEventListener('click', () => { if (emojiPanel) emojiPanel.style.display = emojiPanel.style.display === 'block' ? 'none' : 'block'; });
     document.addEventListener('click', e => { if (emojiPanel && !emojiPanel.contains(e.target) && e.target !== btnEmoji) emojiPanel.style.display = 'none'; });
     const emojiGridEl = document.getElementById('emoji-grid');
     if (emojiGridEl) {
-        ['😀','😂','🤣','😍','😘','😜','😎','🤩','🥳','😢','😡','👍','👎','❤️','🔥','🎉','💀','🏹','🌲','🏰','🦊','🐺','✨','⚔️','🛡️','🍺','🍗','🏕️','🌙','☀️','🌟','💪','🤝','🙏','👑','💰','🎯','📞','💬','🔔','❌','✅','🎵','📜','⚜️'].forEach(e => { const s = document.createElement('span'); s.textContent = e; s.addEventListener('click', () => { msgInput.value += e; msgInput.focus(); }); emojiGridEl.appendChild(s); });
+        ['😀','😂','🤣','😍','😘','😜','😎','🤩','🥳','😢','😡','👍','👎','❤️','🔥','🎉','💀','🏹','🌲','🏰','🦊','🐺','✨','⚔️','🛡️','🍺','🍗','🏕️','🌙','☀️','🌟','💪','🤝','🙏','👑','💰','🎯','📞','💬','🔔','❌','✅','🎵','📜','⚜️'].forEach(e => { const s = document.createElement('span'); s.textContent = e; s.addEventListener('click', () => { if (msgInput) { msgInput.value += e; msgInput.focus(); } }); emojiGridEl.appendChild(s); });
     }
 
     window.addEventListener('online', () => { updateRobinStatus(SHERWOOD.say('server_online'), 2000); setTimeout(flushOfflineQueue, 2000); });
     window.addEventListener('offline', () => updateRobinStatus(SHERWOOD.say('server_offline'), 0));
-    document.addEventListener('visibilitychange', () => { if (document.hidden) { Object.keys(pollIntervals).forEach(s => P2PPong.stopPolling?.(s)); } else { Object.keys(channels).forEach(sid => { if (channels[sid]?.status === 'open') P2PPong.startPolling?.(sid, channels[sid].server); }); } });
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            Object.keys(pollIntervals).forEach(s => P2PPong.stopPolling?.(s));
+        } else {
+            Object.keys(channels).forEach(sid => {
+                if (channels[sid]?.status === 'open') P2PPong.startPolling?.(sid, channels[sid].server);
+            });
+        }
+    });
 }
 
 async function initApp() {
@@ -995,7 +1058,7 @@ async function initApp() {
     btnVoiceInput = $('btn-voice-input'); btnVideoInput = $('btn-video-input');
     tunnelConfigModal = $('tunnel-config-modal'); tunnelConfigInput = $('tunnel-config-input');
     tunnelList = $('tunnel-list'); configFileInput = $('config-file-input');
-    settingInstall = $('setting-install');
+    settingInstall = $('setting-install'); lockStatusEl = $('lock-status');
     callButtonsIncoming = $('call-buttons-incoming'); callButtonsActive = $('call-buttons-active');
 
     toggleSoundState = localStorage.getItem('robinhood_sound') !== 'false';
@@ -1006,13 +1069,13 @@ async function initApp() {
     if (toggleSelfDestruct) toggleSelfDestruct.checked = selfDestructMode;
     if (document.getElementById('toggle-obfuscation')) document.getElementById('toggle-obfuscation').checked = obfuscationEnabled;
     if (document.getElementById('toggle-peer-help')) document.getElementById('toggle-peer-help').checked = peerHelpEnabled;
-    if (peerHelpEnabled) $('seeding-indicator').style.display = 'flex';
-    if (serverLabel) serverLabel.textContent = 'Workers'; // начальное значение
+    if (peerHelpEnabled) { const si = $('seeding-indicator'); if (si) si.style.display = 'flex'; }
+    if (serverLabel) serverLabel.textContent = 'Workers';
     if (toggleServer) toggleServer.checked = true;
 
     THEMES.applyTheme(localStorage.getItem('robinhood_theme') || 'forest', themeIcon, themeName);
-    const savedAvatar = localStorage.getItem('robinhood_avatar'); if (savedAvatar) { profileAvatarSmall.src = savedAvatar; $('robin-avatar').src = savedAvatar; }
-    const savedNick = localStorage.getItem('robinhood_nick'); if (savedNick) nickLabel.textContent = savedNick.substring(0, MAX_NICK_LENGTH);
+    const savedAvatar = localStorage.getItem('robinhood_avatar'); if (savedAvatar) { if (profileAvatarSmall) profileAvatarSmall.src = savedAvatar; const ra = $('robin-avatar'); if (ra) ra.src = savedAvatar; }
+    const savedNick = localStorage.getItem('robinhood_nick'); if (savedNick && nickLabel) nickLabel.textContent = savedNick.substring(0, MAX_NICK_LENGTH);
     loadCustomBackground();
     updateTunnelUI();
 
