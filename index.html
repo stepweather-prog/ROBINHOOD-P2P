@@ -581,7 +581,12 @@ function playQuiverAnimation() { if (!robinText || typeof lottie === 'undefined'
 </script>
 <script>
 // ========== ИНИЦИАЛИЗАЦИЯ ==========
+let callButtonsIncoming, callButtonsActive;
+
 function setupEventHandlers() {
+    callButtonsIncoming = $('call-buttons-incoming');
+    callButtonsActive = $('call-buttons-active');
+
     // P2PPong колбэки
     P2PPong.on('onReady', () => updateRobinStatus('🌐 Телеграф работает!', 2000));
     P2PPong.on('onSessionCreated', (data) => { $('ref-link-display').textContent = data.fullLink; $('ref-modal').classList.add('active'); navigator.clipboard.writeText(data.fullLink).catch(() => {}); });
@@ -597,12 +602,62 @@ function setupEventHandlers() {
     P2PPong.on('onMessage', async (data) => {
         if (!data.channelId || !data.text) return;
         activeChannelId = data.channelId;
-        if (data.text.startsWith('__OFFER__')) { const offer = JSON.parse(data.text.replace('__OFFER__','')); callPanel.classList.add('show'); callButtonsIncoming.style.display='flex'; callButtonsActive.style.display='none'; callStatus.textContent='📞 Входящий...'; playRingtone(); callAccept.onclick = async () => { stopRingtone(); callButtonsIncoming.style.display='none'; callButtonsActive.style.display='flex'; playCallStart(); startCallTimer(); const stream = await getMediaStream(false); if (!stream) { callPanel.classList.remove('show'); return; } localStreams['main']=stream; const pc=createPeerConn(stream); peerConnections['main']=pc; await pc.setRemoteDescription(new RTCSessionDescription(offer)); const answer=await pc.createAnswer(); await pc.setLocalDescription(answer); sendThroughPong('__ANSWER__'+JSON.stringify(answer)); callActive=true; }; callReject.onclick = () => { stopRingtone(); sendThroughPong('__HANGUP__'); callPanel.classList.remove('show'); }; return; }
-        if (data.text.startsWith('__ANSWER__') && peerConnections['main']) { stopRingback(); startCallTimer(); peerConnections['main'].setRemoteDescription(new RTCSessionDescription(JSON.parse(data.text.replace('__ANSWER__','')))); return; }
-        if (data.text.startsWith('__ICE__') && peerConnections['main']) { try { peerConnections['main'].addIceCandidate(new RTCIceCandidate(JSON.parse(data.text.replace('__ICE__','')))); } catch(e) {} return; }
-        if (data.text === '__HANGUP__') { if (callActive) endCall(); else { stopRingtone(); callPanel.classList.remove('show'); } return; }
-        if (data.text === '__TYPING__') { typingIndicator.textContent = '✍️ Пишет...'; clearTimeout(typingTimeout); typingTimeout = setTimeout(() => typingIndicator.textContent = '', 2500); return; }
-        if (data.text.startsWith('__FILE__')) { try { const fd = JSON.parse(data.text.replace('__FILE__','')); if (fd.mime === 'video/webm') { appendMessage('📹 Кружок', '', 'assets/avatars/001-.png'); } else if (fd.mime?.startsWith('audio/')) { appendMessage('🎤 Голосовое', '', 'assets/avatars/001-.png'); } } catch(e) {} return; }
+        if (data.text.startsWith('__OFFER__')) { 
+            const offer = JSON.parse(data.text.replace('__OFFER__','')); 
+            callPanel.classList.add('show'); 
+            callButtonsIncoming.style.display='flex'; 
+            callButtonsActive.style.display='none'; 
+            callStatus.textContent='📞 Входящий...'; 
+            playRingtone(); 
+            callAccept.onclick = async () => { 
+                stopRingtone(); 
+                callButtonsIncoming.style.display='none'; 
+                callButtonsActive.style.display='flex'; 
+                playCallStart(); 
+                startCallTimer(); 
+                const stream = await getMediaStream(false); 
+                if (!stream) { callPanel.classList.remove('show'); return; } 
+                localStreams['main']=stream; 
+                const pc=createPeerConn(stream); 
+                peerConnections['main']=pc; 
+                await pc.setRemoteDescription(new RTCSessionDescription(offer)); 
+                const answer=await pc.createAnswer(); 
+                await pc.setLocalDescription(answer); 
+                sendThroughPong('__ANSWER__'+JSON.stringify(answer)); 
+                callActive=true; 
+            }; 
+            callReject.onclick = () => { stopRingtone(); sendThroughPong('__HANGUP__'); callPanel.classList.remove('show'); }; 
+            return; 
+        }
+        if (data.text.startsWith('__ANSWER__') && peerConnections['main']) { 
+            stopRingback(); 
+            startCallTimer(); 
+            peerConnections['main'].setRemoteDescription(new RTCSessionDescription(JSON.parse(data.text.replace('__ANSWER__','')))); 
+            return; 
+        }
+        if (data.text.startsWith('__ICE__') && peerConnections['main']) { 
+            try { peerConnections['main'].addIceCandidate(new RTCIceCandidate(JSON.parse(data.text.replace('__ICE__','')))); } catch(e) {} 
+            return; 
+        }
+        if (data.text === '__HANGUP__') { 
+            if (callActive) endCall(); 
+            else { stopRingtone(); callPanel.classList.remove('show'); } 
+            return; 
+        }
+        if (data.text === '__TYPING__') { 
+            typingIndicator.textContent = '✍️ Пишет...'; 
+            clearTimeout(typingTimeout); 
+            typingTimeout = setTimeout(() => typingIndicator.textContent = '', 2500); 
+            return; 
+        }
+        if (data.text.startsWith('__FILE__')) { 
+            try { 
+                const fd = JSON.parse(data.text.replace('__FILE__','')); 
+                if (fd.mime === 'video/webm') { appendMessage('📹 Кружок', '', 'assets/avatars/001-.png'); } 
+                else if (fd.mime?.startsWith('audio/')) { appendMessage('🎤 Голосовое', '', 'assets/avatars/001-.png'); } 
+            } catch(e) {} 
+            return; 
+        }
         let decrypted = data.text;
         if (CRYPTO.getRatchetStates()[data.channelId]) { try { const d = await CRYPTO.ratchetDecrypt(data.channelId, data.text); if (d) decrypted = d; } catch(e) {} }
         if (decrypted.startsWith('🔐')) decrypted = await CRYPTO.decryptMessage(decrypted);
@@ -611,6 +666,10 @@ function setupEventHandlers() {
         const contact = contactsArr.find(c => c.pubkey === data.channelId);
         appendMessage(contact?.name || 'Друг', decrypted, contact?.avatar || 'assets/avatars/001-.png');
         if (toggleSoundState) playSound('bow_shot.mp3');
+    });
+    P2PPong.on('onStatus', (data) => {
+        const pd = document.getElementById('peer-count-display');
+        if (pd) pd.textContent = '🏹×' + (data.channels || 0);
     });
 
     // Кнопки
@@ -631,7 +690,18 @@ function setupEventHandlers() {
     $('cancel-arrow-btn')?.addEventListener('click', () => $('ref-modal').classList.remove('active'));
     $('close-ref-modal-btn')?.addEventListener('click', () => $('ref-modal').classList.remove('active'));
     $('share-ref-link-btn')?.addEventListener('click', () => { const link = $('ref-link-display')?.textContent; if (link && navigator.share) navigator.share({ title:'RobinHood P2P', url:link }).catch(()=>{}); });
-    $('btn-accept-link')?.addEventListener('click', () => { const raw = $('accept-link-input')?.value.trim(); if (!raw) return; let url; try { url = new URL(raw); } catch(e) { if (raw.length > 10) { P2PPong.acceptSession(raw, raw); $('ref-modal').classList.remove('active'); } return; } const id = url.searchParams.get('id'); const key = url.hash.replace('#key=','') || url.searchParams.get('key'); if (id && key) { P2PPong.acceptSession(id, key); $('ref-modal').classList.remove('active'); } });
+    $('btn-accept-link')?.addEventListener('click', () => { 
+        const raw = $('accept-link-input')?.value.trim(); 
+        if (!raw) return; 
+        let url; 
+        try { url = new URL(raw); } catch(e) { 
+            if (raw.length > 10) { P2PPong.acceptSession(raw, raw); $('ref-modal').classList.remove('active'); } 
+            return; 
+        } 
+        const id = url.searchParams.get('id'); 
+        const key = url.hash.replace('#key=','') || url.searchParams.get('key'); 
+        if (id && key) { P2PPong.acceptSession(id, key); $('ref-modal').classList.remove('active'); } 
+    });
     $('accept-link-input')?.addEventListener('keypress', e => { if (e.key === 'Enter') $('btn-accept-link')?.click(); });
 
     btnCall?.addEventListener('click', () => callActive ? endCall() : startCall(false));
@@ -658,13 +728,11 @@ function setupEventHandlers() {
     $('setting-lock')?.addEventListener('click', () => { isSettingUp = true; lockScreen.style.display = 'flex'; appContainer.style.display = 'none'; setupLockUI(); });
     $('setting-clear-data')?.addEventListener('click', () => { if (confirm('⚠ Все данные будут удалены!')) { chatBox.querySelectorAll('.message-row:not(#robin-row)').forEach(m=>m.remove()); localStorage.removeItem(OFFLINE_QUEUE_KEY); updateRobinStatus('🚬 Сожжено!', 3000); } });
 
-    // Переключатели
     toggleSound?.addEventListener('change', function() { toggleSoundState = this.checked; localStorage.setItem('robinhood_sound', toggleSoundState); });
     toggleSelfDestruct?.addEventListener('change', function() { selfDestructMode = this.checked; localStorage.setItem('robinhood_selfdestruct', selfDestructMode); });
     toggleObfuscation?.addEventListener('change', function() { obfuscationEnabled = this.checked; localStorage.setItem('robinhood_obfuscation', obfuscationEnabled); });
     togglePeerHelp?.addEventListener('change', function() { peerHelpEnabled = this.checked; localStorage.setItem('sherwood_peer_help', peerHelpEnabled); $('seeding-indicator').style.display = peerHelpEnabled ? 'flex' : 'none'; });
 
-    // Контекстное меню
     $('menu-rename')?.addEventListener('click', async () => { $('contact-menu').style.display = 'none'; if (!currentMenuContact) return; const name = prompt('Новое имя:', currentMenuContact.name); if (name) { const contacts = await CRYPTO.secureGetItem('robinhood_contacts') || []; const c = contacts.find(c=>c.pubkey===currentMenuContact.pubkey); if (c) { c.name = name; await CRYPTO.secureSetItem('robinhood_contacts', contacts); loadContacts(); } } });
     $('menu-avatar')?.addEventListener('click', () => { $('contact-menu').style.display = 'none'; closeAllSheets(); loadAvatars(); avatarSelector.classList.add('show'); overlay.classList.add('show'); });
     $('menu-lock-chat')?.addEventListener('click', async () => { $('contact-menu').style.display = 'none'; if (!currentMenuContact) return; const password = await showMasterPasswordPrompt(true); if (password) { localStorage.setItem('robinhood_kek_chat_'+currentMenuContact.pubkey, 'locked'); updateRobinStatus('🔒 Чат заперт!', 2000); } });
@@ -672,7 +740,6 @@ function setupEventHandlers() {
     $('menu-cancel')?.addEventListener('click', () => $('contact-menu').style.display = 'none');
     document.addEventListener('click', e => { if (!$('contact-menu').contains(e.target)) $('contact-menu').style.display = 'none'; });
 
-    // Эмодзи
     const emojis = ['😀','😂','🤣','😍','😘','😜','😎','🤩','🥳','😢','😡','👍','👎','❤️','🔥','🎉','💀','🏹','🌲','🏰','🦊','🐺','✨','⚔️','🛡️','🍺','🍗','🏕️','🌙','☀️','🌟','💪','🤝','🙏','👑','💰','🎯','📞','💬','🔔','❌','✅','🎵','📜'];
     if (emojiGrid) { emojis.forEach(e => { const span = document.createElement('span'); span.textContent = e; span.addEventListener('click', () => { msgInput.value += e; msgInput.focus(); }); emojiGrid.appendChild(span); }); }
     btnEmoji?.addEventListener('click', () => emojiPanel.style.display = emojiPanel.style.display === 'block' ? 'none' : 'block');
@@ -700,6 +767,9 @@ async function initApp() {
     voiceTimerOverlay = $('voice-timer-overlay'); callTimerDisplay = $('call-timer-display');
     btnVoiceInput = $('btn-voice-input'); btnVideoInput = $('btn-video-input');
 
+    callButtonsIncoming = $('call-buttons-incoming');
+    callButtonsActive = $('call-buttons-active');
+
     toggleSoundState = localStorage.getItem('robinhood_sound') !== 'false';
     selfDestructMode = localStorage.getItem('robinhood_selfdestruct') === 'true';
     obfuscationEnabled = localStorage.getItem('robinhood_obfuscation') === 'true';
@@ -717,16 +787,13 @@ async function initApp() {
     if (savedNick) nickLabel.textContent = savedNick.substring(0, MAX_NICK_LENGTH);
     loadCustomBackground();
 
-    // Парсим URL
     const urlParams = new URLSearchParams(window.location.search);
     const hashParams = new URLSearchParams(window.location.hash.replace('#', ''));
     const refId = urlParams.get('id');
     const refKey = hashParams.get('key') || urlParams.get('key');
 
-    // Инициализируем P2PPong
     await P2PPong.init();
 
-    // Если есть ref — принимаем маяк
     if (refId && refKey) {
         setTimeout(() => P2PPong.acceptSession(refId, refKey), 1000);
     }
@@ -734,7 +801,6 @@ async function initApp() {
     setupEventHandlers();
     updateRobinStatus(SHERWOOD.say('idle'), 0);
 
-    // Локер
     lockPatternCanvas?.addEventListener('pointerdown', e => { patternInput = []; const rect = lockPatternCanvas.getBoundingClientRect(); const pt = getPatternPoint(e.clientX-rect.left, e.clientY-rect.top); if (pt>=0) patternInput.push(pt); drawPatternGrid(patternInput); });
     lockPatternCanvas?.addEventListener('pointermove', e => { if (!patternInput.length) return; const rect = lockPatternCanvas.getBoundingClientRect(); const pt = getPatternPoint(e.clientX-rect.left, e.clientY-rect.top); if (pt>=0 && !patternInput.includes(pt)) patternInput.push(pt); drawPatternGrid(patternInput); });
     lockPatternCanvas?.addEventListener('pointerup', () => { if (patternInput.length>=3) verifyPattern(); else { lockError.textContent='Минимум 3 точки'; patternInput=[]; drawPatternGrid(); } });
