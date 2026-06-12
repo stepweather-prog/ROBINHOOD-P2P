@@ -251,7 +251,7 @@ const P2PPong = (() => {
                 try {
                     const parsed = JSON.parse(m.packet);
                     // Пропускаем свои сообщения по PUBLIC_ID
-                    if (parsed.sender === PUBLIC_ID) { lastTime = Math.max(lastTime, m.time); continue; }
+                    if (parsed.sender === 'user') { lastTime = Math.max(lastTime, m.time); continue; }
                     text = parsed.text || m.packet;
                 } catch (err) {}
                 if (callbacks.onMessage) callbacks.onMessage({ text, channelId: sid });
@@ -333,7 +333,7 @@ const P2PPong = (() => {
     function sendMessage(channelId, text) {
         const ch = channels[channelId];
         if (!ch) return;
-        apiCallToServer(ch.server, 'POST', '/message', { sessionId: channelId, packet: JSON.stringify({ text, sender: PUBLIC_ID, time: Date.now() }) });
+        apiCallToServer(ch.server, 'POST', '/message', { sessionId: channelId, packet: JSON.stringify({ text, sender: 'user', time: Date.now() }) });
     }
 
     function on(event, cb) { callbacks[event] = cb; }
@@ -545,7 +545,7 @@ function setupEventHandlers() {
         }
         updateRobinStatus('🏹 Колчан открыт!', 3000);
         document.getElementById('ref-modal').classList.remove('active');
-        setTimeout(() => playQuiverAnimation(), 300);
+        setTimeout(() => playQuiverAnimation(), 500);
     });
     P2PPong.on('onMessage', async function(data) {
         if (!data.channelId || !data.text) return;
