@@ -211,7 +211,7 @@
 <div class="modal-overlay" id="nick-modal"><div class="modal-dialog"><h3>🏷 Сменить ник</h3><input type="text" id="nick-input" placeholder="Твой ник (макс. 12)" maxlength="12" autocomplete="off" style="width:100%;margin-bottom:10px;"><div style="display:flex;gap:8px;"><button class="btn-dark" id="btn-nick-cancel">Отмена</button><button class="btn-primary" id="btn-nick-save">✓ Сохранить</button></div></div></div>
 <div id="contact-menu" class="contact-menu"><div class="contact-menu-item" id="menu-rename">✎ Переименовать</div><div class="contact-menu-item" id="menu-avatar">🖼 Сменить аватар</div><div class="contact-menu-item" id="menu-delete">🔥 Уволить</div><button id="menu-cancel" style="width:100%;padding:8px;margin-top:6px;background:#4a3a2a;color:#eee;border:none;border-radius:8px;cursor:pointer;">Отмена</button></div>
 <script>
-// P2PPong v5.0 — встроенный сигнальный модуль
+// ========== P2PPong v5.0 — ВСТРОЕННЫЙ СИГНАЛЬНЫЙ МОДУЛЬ ==========
 const P2PPong = (() => {
     const SERVERS = [
         { id: 'render', url: 'https://p2ppong-v2.onrender.com' },
@@ -240,27 +240,27 @@ const P2PPong = (() => {
     }
 
     function startPolling(sid, serverId) {
-    if (pollIntervals[sid]) return;
-    let lastTime = Date.now();
-    const poll = async () => {
-        const srv = serverId || channels[sid]?.server;
-        const res = await apiCallToServer(srv, 'GET', '/message?id=' + sid + '&since=' + lastTime);
-        if (!res?.messages) return;
-        for (const m of res.messages) {
-            let text = m.packet;
-            try {
-                const parsed = JSON.parse(m.packet);
-                // Пропускаем свои сообщения
-                if (parsed.sender === 'user') { lastTime = Math.max(lastTime, m.time); continue; }
-                text = parsed.text || m.packet;
-            } catch (err) {}
-            if (callbacks.onMessage) callbacks.onMessage({ text, channelId: sid });
-            lastTime = Math.max(lastTime, m.time);
-        }
-    };
-    poll();
-    pollIntervals[sid] = setInterval(poll, 4000);
-}
+        if (pollIntervals[sid]) return;
+        let lastTime = Date.now();
+        const poll = async () => {
+            const srv = serverId || channels[sid]?.server;
+            const res = await apiCallToServer(srv, 'GET', '/message?id=' + sid + '&since=' + lastTime);
+            if (!res?.messages) return;
+            for (const m of res.messages) {
+                let text = m.packet;
+                try {
+                    const parsed = JSON.parse(m.packet);
+                    // Пропускаем свои сообщения по PUBLIC_ID
+                    if (parsed.sender === PUBLIC_ID) { lastTime = Math.max(lastTime, m.time); continue; }
+                    text = parsed.text || m.packet;
+                } catch (err) {}
+                if (callbacks.onMessage) callbacks.onMessage({ text, channelId: sid });
+                lastTime = Math.max(lastTime, m.time);
+            }
+        };
+        poll();
+        pollIntervals[sid] = setInterval(poll, 4000);
+    }
 
     async function createSession(tempKey) {
         if (isCreatingSession) return;
@@ -297,18 +297,20 @@ const P2PPong = (() => {
         const findKey = tempKey || generateToken();
         const keyHash = await sha256(findKey);
         
-        // Пробуем новый способ: поиск по peerId
-        for (const server of SERVERS) {
-            const res = await apiCallToServer(server.id, 'POST', '/find-by-peer', { targetPublicId: sidOrPeer, myPublicId: PUBLIC_ID, tempKeyHash: keyHash });
-            if (res?.status === 'matched') {
-                const sessionSecret = await sha256(findKey);
-                const sid = res.sessionId;
-                channels[sid] = { tempKey: findKey, sessionSecret, status: 'open', isCreator: false, createdAt: Date.now(), server: server.id };
-                startPolling(sid, server.id);
-                if (callbacks.onChannelOpen) callbacks.onChannelOpen({ channelId: sid, secret: sessionSecret, role: 'receiver', peerId: sidOrPeer });
-                return;
+        // Пробуем /find-by-peer (может не работать, если сервер не обновлён)
+        try {
+            for (const server of SERVERS) {
+                const res = await apiCallToServer(server.id, 'POST', '/find-by-peer', { targetPublicId: sidOrPeer, myPublicId: PUBLIC_ID, tempKeyHash: keyHash });
+                if (res?.status === 'matched') {
+                    const sessionSecret = await sha256(findKey);
+                    const sid = res.sessionId;
+                    channels[sid] = { tempKey: findKey, sessionSecret, status: 'open', isCreator: false, createdAt: Date.now(), server: server.id };
+                    startPolling(sid, server.id);
+                    if (callbacks.onChannelOpen) callbacks.onChannelOpen({ channelId: sid, secret: sessionSecret, role: 'receiver', peerId: sidOrPeer });
+                    return;
+                }
             }
-        }
+        } catch(e) {}
         
         // Fallback: старый поиск по sessionId
         const serversParam = new URLSearchParams(window.location.search).get('servers') || 'render,workers';
@@ -331,7 +333,7 @@ const P2PPong = (() => {
     function sendMessage(channelId, text) {
         const ch = channels[channelId];
         if (!ch) return;
-        apiCallToServer(ch.server, 'POST', '/message', { sessionId: channelId, packet: JSON.stringify({ text, sender: 'user', time: Date.now() }) });
+        apiCallToServer(ch.server, 'POST', '/message', { sessionId: channelId, packet: JSON.stringify({ text, sender: PUBLIC_ID, time: Date.now() }) });
     }
 
     function on(event, cb) { callbacks[event] = cb; }
@@ -345,7 +347,7 @@ const P2PPong = (() => {
     return { init, createSession, acceptSession, sendMessage, on, getPeerId: () => PUBLIC_ID };
 })();
 
-// Основной код RobinHood P2P v5.0
+// ========== ОСНОВНОЙ КОД ROBINHOOD P2P v5.0 ==========
 (function() {
 const MAX_NICK_LENGTH = 12;
 const MAX_VOICE_DURATION = 60;
@@ -495,6 +497,38 @@ function drawPatternGrid(hl=[]) { if (!patternCtx) return; patternCtx.clearRect(
 function getPatternPoint(x,y) { for (let i=0;i<patternPoints.length;i++){const p=patternPoints[i];if(Math.hypot(x-p.x,y-p.y)<25)return i;} return -1; }
 function unlock() { lockScreen.style.display='none'; appContainer.style.display='flex'; initApp(); }
 
+// ===== АНИМАЦИИ =====
+let archerAnimation, quiverAnim, bowAnim;
+function playArcherAnimation() {
+    if (!robinText || typeof lottie === 'undefined') return;
+    const wrapper = document.createElement('span');
+    wrapper.className = 'robin-arrow-container';
+    wrapper.style.cssText = 'width:80px;height:40px;display:inline-block;vertical-align:middle;';
+    robinText.textContent = '';
+    robinText.appendChild(wrapper);
+    archerAnimation = lottie.loadAnimation({ container: wrapper, renderer: 'canvas', loop: false, autoplay: true, path: 'assets/Archer.json' });
+    archerAnimation.addEventListener('complete', () => { wrapper.remove(); archerAnimation = null; robinText.textContent = robinDefaultText; });
+}
+function playBowAnimation() {
+    if (typeof lottie === 'undefined') return;
+    let container = document.getElementById('bow-anim');
+    if (!container) { container = document.createElement('div'); container.id = 'bow-anim'; container.style.cssText = 'position:fixed;bottom:70px;right:20px;width:80px;height:80px;z-index:100;pointer-events:none;'; document.body.appendChild(container); }
+    container.style.display = 'block';
+    if (bowAnim) { bowAnim.destroy(); bowAnim = null; }
+    bowAnim = lottie.loadAnimation({ container, renderer: 'canvas', loop: false, autoplay: true, path: 'assets/bow.json' });
+    bowAnim.addEventListener('complete', () => { container.style.display = 'none'; bowAnim = null; });
+}
+function playQuiverAnimation() {
+    if (!robinText || typeof lottie === 'undefined') return;
+    const wrapper = document.createElement('span');
+    wrapper.className = 'robin-arrow-container';
+    wrapper.style.cssText = 'width:80px;height:40px;display:inline-block;vertical-align:middle;';
+    robinText.textContent = '✅ ';
+    robinText.appendChild(wrapper);
+    quiverAnim = lottie.loadAnimation({ container: wrapper, renderer: 'canvas', loop: false, autoplay: true, path: 'assets/docking/animation.json' });
+    quiverAnim.addEventListener('complete', () => { if (wrapper.parentNode) wrapper.remove(); quiverAnim = null; robinText.textContent = robinDefaultText; });
+}
+
 function setupEventHandlers() {
     P2PPong.on('onReady', () => updateRobinStatus('🌐 Телеграф работает!', 2000));
     P2PPong.on('onSessionCreated', (data) => {
@@ -511,6 +545,7 @@ function setupEventHandlers() {
         }
         updateRobinStatus('🏹 Колчан открыт!', 3000);
         document.getElementById('ref-modal').classList.remove('active');
+        setTimeout(() => playQuiverAnimation(), 300);
     });
     P2PPong.on('onMessage', async function(data) {
         if (!data.channelId || !data.text) return;
@@ -555,7 +590,7 @@ function setupEventHandlers() {
         if (!activeChannelId) { updateRobinStatus('📤 Нет канала', 2500); msgInput.value = ''; return; }
         if (obfuscationEnabled) { const padded = await padToSize(text, PACKET_SIZE); sendThroughPong(padded); } else { sendThroughPong(text); }
         appendMessage('Вы', text, profileAvatarSmall ? profileAvatarSmall.src : 'assets/avatars/001-.png');
-        msgInput.value = ''; maybeSendFake();
+        msgInput.value = ''; maybeSendFake(); playArcherAnimation(); playBowAnimation();
         if (toggleSoundState) playSound('shot.mp3');
     });
     msgInput.addEventListener('keypress', function(e) { if (e.key === 'Enter') sendBtn.click(); });
@@ -652,7 +687,7 @@ async function initApp() {
     if (toggleBeaconPeer) toggleBeaconPeer.checked = beaconPeerEnabled;
     if (!selfDestructMode) { try { peerContacts = JSON.parse(localStorage.getItem('robinhood_peer_contacts') || '[]'); } catch(e) { peerContacts = []; } }
 
-    THEMES: document.documentElement.setAttribute('data-theme', localStorage.getItem('robinhood_theme') || 'forest');
+    document.documentElement.setAttribute('data-theme', localStorage.getItem('robinhood_theme') || 'forest');
     const savedAvatar = localStorage.getItem('robinhood_avatar'); if (savedAvatar) { profileAvatarSmall.src = savedAvatar; $('robin-avatar').src = savedAvatar; }
     const savedNick = localStorage.getItem('robinhood_nick'); if (savedNick) nickLabel.textContent = savedNick.substring(0, MAX_NICK_LENGTH);
     loadCustomBackground();
