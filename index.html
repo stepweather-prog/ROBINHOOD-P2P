@@ -221,7 +221,6 @@ const P2PPong = (() => {
     let channels = {};
     let pollIntervals = {};
     let callbacks = {};
-    let meshPeers = [];
     let isCreatingSession = false;
 
     async function sha256(text) { const data = new TextEncoder().encode(text); const hash = await crypto.subtle.digest('SHA-256', data); return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join(''); }
@@ -265,7 +264,8 @@ const P2PPong = (() => {
         const keyHash = await sha256(key);
         const results = [];
         for (const server of SERVERS) {
-            const res = await apiCallToServer(server.id, 'POST', '/beacon', { tempKeyHash: keyHash, publicId: PUBLIC_ID });
+            const body = server.id === 'workers' ? { tempKeyHash: keyHash, publicId: PUBLIC_ID } : { tempKey: key, tempKeyHash: keyHash, publicId: PUBLIC_ID };
+            const res = await apiCallToServer(server.id, 'POST', '/beacon', body);
             if (res?.sessionId) results.push({ sessionId: res.sessionId, server: server.id });
         }
         if (results.length === 0) { isCreatingSession = false; if (callbacks.onError) callbacks.onError({ text: 'Серверы не отвечают' }); return; }
@@ -273,7 +273,8 @@ const P2PPong = (() => {
         const sid = primary.sessionId;
         const sessionSecret = await sha256(key);
         channels[sid] = { tempKey: key, sessionSecret, status: 'waiting', isCreator: true, createdAt: Date.now(), server: primary.server, allServers: results.map(r => r.server) };
-        const link = 'https://stepweather-prog.github.io/ROBINHOOD-P2P/?peer=' + PUBLIC_ID + '&key=' + key;
+        const serversParam = results.map(r => r.server).join(',');
+        const link = 'https://stepweather-prog.github.io/ROBINHOOD-P2P/?id=' + sid + '&servers=' + serversParam + '&peer=' + PUBLIC_ID + '&key=' + key;
         if (callbacks.onSessionCreated) callbacks.onSessionCreated({ sessionId: sid, key, fullLink: link, peerId: PUBLIC_ID });
         isCreatingSession = false;
         let matched = false; const start = Date.now();
@@ -287,21 +288,39 @@ const P2PPong = (() => {
         if (callbacks.onChannelOpen) callbacks.onChannelOpen({ channelId: sid, secret: sessionSecret, role: 'creator', peerId: PUBLIC_ID });
     }
 
-    async function acceptSession(peerId, tempKey) {
+    async function acceptSession(sidOrPeer, tempKey) {
         const findKey = tempKey || generateToken();
         const keyHash = await sha256(findKey);
+        
+        // Пробуем новый способ: поиск по peerId
         for (const server of SERVERS) {
-            const res = await apiCallToServer(server.id, 'POST', '/find-by-peer', { targetPublicId: peerId, myPublicId: PUBLIC_ID, tempKeyHash: keyHash });
+            const res = await apiCallToServer(server.id, 'POST', '/find-by-peer', { targetPublicId: sidOrPeer, myPublicId: PUBLIC_ID, tempKeyHash: keyHash });
             if (res?.status === 'matched') {
                 const sessionSecret = await sha256(findKey);
                 const sid = res.sessionId;
-                channels[sid] = { tempKey: findKey, sessionSecret, status: 'open', isCreator: false, createdAt: Date.now(), server: server.id, peerId };
+                channels[sid] = { tempKey: findKey, sessionSecret, status: 'open', isCreator: false, createdAt: Date.now(), server: server.id };
                 startPolling(sid, server.id);
-                if (callbacks.onChannelOpen) callbacks.onChannelOpen({ channelId: sid, secret: sessionSecret, role: 'receiver', peerId });
+                if (callbacks.onChannelOpen) callbacks.onChannelOpen({ channelId: sid, secret: sessionSecret, role: 'receiver', peerId: sidOrPeer });
                 return;
             }
         }
-        if (callbacks.onError) callbacks.onError({ text: 'Пир не в сети' });
+        
+        // Fallback: старый поиск по sessionId
+        const serversParam = new URLSearchParams(window.location.search).get('servers') || 'render,workers';
+        const serversList = serversParam.split(',');
+        for (const srvId of serversList) {
+            const body = srvId === 'workers' ? { tempKeyHash: keyHash } : { tempKey: findKey };
+            const res = await apiCallToServer(srvId, 'POST', '/find', body);
+            if (res?.status === 'matched') {
+                const actualSid = res.sessionId || sidOrPeer;
+                const sessionSecret = await sha256(findKey);
+                channels[actualSid] = { tempKey: findKey, sessionSecret, status: 'open', isCreator: false, createdAt: Date.now(), server: srvId };
+                startPolling(actualSid, srvId);
+                if (callbacks.onChannelOpen) callbacks.onChannelOpen({ channelId: actualSid, secret: sessionSecret, role: 'receiver', peerId: sidOrPeer });
+                return;
+            }
+        }
+        if (callbacks.onError) callbacks.onError({ text: 'Маяк не найден' });
     }
 
     function sendMessage(channelId, text) {
@@ -312,20 +331,9 @@ const P2PPong = (() => {
 
     function on(event, cb) { callbacks[event] = cb; }
 
-    async function checkServers() {
-        for (const server of SERVERS) {
-            const ping = await apiCallToServer(server.id, 'GET', '/ping');
-            if (!ping && currentServer === server.id) {
-                const other = server.id === 'render' ? 'workers' : 'render';
-                currentServer = (await apiCallToServer(other, 'GET', '/ping')) ? other : 'render';
-            }
-        }
-    }
-
     async function init() {
         const saved = localStorage.getItem('robinhood_server');
         if (saved === 'render' || saved === 'workers') currentServer = saved;
-        await checkServers();
         if (callbacks.onReady) callbacks.onReady();
     }
 
