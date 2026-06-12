@@ -316,7 +316,7 @@
             <div class="contact-info"><span style="font-size:22px;">👻</span><span class="contact-name">Режим призрака</span></div>
             <label class="toggle-switch"><input type="checkbox" id="toggle-selfdestruct"><span class="toggle-slider"></span></label>
         </div>
-        <div class="contact-item" id="setting-server">
+        
             <div class="contact-info"><span style="font-size:22px;">🌐</span><span class="contact-name">Сервер</span></div>
             <div style="display:flex;align-items:center;gap:8px;">
                 <span id="server-label">Render</span>
@@ -584,13 +584,13 @@ function playRingback(){stopRingback();ringbackAudio=getAudio('Welk.mp3');ringba
 function stopRingback(){if(ringbackAudio){ringbackAudio.pause();ringbackAudio.loop=false;ringbackAudio=null}}
 function playCallStart(){getAudio('open.mp3').volume=0.7;getAudio('open.mp3').play().catch(()=>{})}
 function playCallEnd(){getAudio('exet.mp3').volume=0.7;getAudio('exet.mp3').play().catch(()=>{})}
-        async function getMediaStream(){try{return await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}})}catch(e){updateRobinStatus('❌ Нет доступа');return null}}
+async function getMediaStream(){try{return await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}})}catch(e){updateRobinStatus('❌ Нет доступа');return null}}
 function createPeerConn(stream,callId){const pc=new RTCPeerConnection({iceServers:getIceServers(),iceTransportPolicy:'all'});if(stream)stream.getTracks().forEach(t=>pc.addTrack(t,stream));pc.ontrack=e=>{if(e.streams&&e.streams[0]){const a=new Audio();a.srcObject=e.streams[0];a.play().catch(()=>{})}};pc.onicecandidate=e=>{if(e.candidate)P2PPong.sendMessage(activeChannelId,'__ICE__'+JSON.stringify({candidate:e.candidate,callId}))};pc.oniceconnectionstatechange=()=>{if(pc.iceConnectionState==='connected'||pc.iceConnectionState==='completed'){if(callStatus)callStatus.textContent='✅ Разговор'}if(pc.iceConnectionState==='disconnected'||pc.iceConnectionState==='failed'){cleanupPeer(callId);if(callId==='main')endCall()}};return pc}
 function cleanupPeer(callId){if(peerConnections[callId]){peerConnections[callId].close();delete peerConnections[callId]}if(localStreams[callId]){localStreams[callId].getTracks().forEach(t=>t.stop());delete localStreams[callId]}if(dataChannels[callId]){try{dataChannels[callId].close()}catch(e){}delete dataChannels[callId]}delete pendingIceCandidates[callId]}
 function flushIceCandidates(callId='main'){const pc=peerConnections[callId];if(!pc||!pc.remoteDescription||!pc.remoteDescription.type)return;const candidates=pendingIceCandidates[callId]||[];for(const c of candidates){try{pc.addIceCandidate(new RTCIceCandidate(c)).catch(()=>{})}catch(e){}}delete pendingIceCandidates[callId]}
 function startCallTimer(){callSeconds=0;if(callTimerDisplay){callTimerDisplay.style.display='';callTimerDisplay.textContent='00:00'}callTimerInterval=setInterval(()=>{callSeconds++;const m=Math.floor(callSeconds/60).toString().padStart(2,'0');const s=(callSeconds%60).toString().padStart(2,'0');if(callTimerDisplay)callTimerDisplay.textContent=m+':'+s},1000)}
 function stopCallTimer(){if(callTimerInterval){clearInterval(callTimerInterval);callTimerInterval=null}if(callTimerDisplay)callTimerDisplay.style.display='none'}
-async function startCall(){if(callActive)return;if(!activeChannelId||!channels[activeChannelId]){updateRobinStatus('🏹 Сначала стрела!',3000);return}const stream=await getMediaStream();if(!stream)return;localStreams['main']=stream;if(callPanel)callPanel.style.display='block';if(callStatus)callStatus.textContent='📞 Вызов...';if(callAccept)callAccept.style.display='none';if(callReject)callReject.style.display='none';if(callEnd)callEnd.style.display='inline-block';if(callSpeaker)callSpeaker.style.display='inline-block';if(callMic)callMic.style.display='inline-block';playRingback();const pc=createPeerConn(stream,'main');peerConnections['main']=pc;const offer=await pc.createOffer();await pc.setLocalDescription(offer);P2PPong.sendMessage(activeChannelId,'__OFFER__'+JSON.stringify({sdp:offer}));callActive=true}
+async function startCall(){if(callActive)return;if(!activeChannelId||!P2PPong.getChannels()[activeChannelId]){updateRobinStatus('🏹 Сначала стрела!',3000);return}const stream=await getMediaStream();if(!stream)return;localStreams['main']=stream;if(callPanel)callPanel.style.display='block';if(callStatus)callStatus.textContent='📞 Вызов...';if(callAccept)callAccept.style.display='none';if(callReject)callReject.style.display='none';if(callEnd)callEnd.style.display='inline-block';if(callSpeaker)callSpeaker.style.display='inline-block';if(callMic)callMic.style.display='inline-block';playRingback();const pc=createPeerConn(stream,'main');peerConnections['main']=pc;const offer=await pc.createOffer();await pc.setLocalDescription(offer);P2PPong.sendMessage(activeChannelId,'__OFFER__'+JSON.stringify({sdp:offer}));callActive=true}
 function endCall(){callActive=false;stopRingtone();stopRingback();stopCallTimer();playCallEnd();P2PPong.sendMessage(activeChannelId,'__HANGUP__');Object.keys(peerConnections).forEach(k=>cleanupPeer(k));Object.keys(localStreams).forEach(k=>{if(localStreams[k])localStreams[k].getTracks().forEach(t=>t.stop())});localStreams={};peerConnections={};pendingIceCandidates={};dataChannels={};if(callPanel)callPanel.style.display='none';if(callAccept)callAccept.style.display='inline-block';if(callReject)callReject.style.display='inline-block';if(callEnd)callEnd.style.display='none';if(callSpeaker)callSpeaker.style.display='none';if(callMic)callMic.style.display='none';updateRobinStatus('📞 Звонок завершён')}
 function toggleSpeaker(){speakerOn=!speakerOn;if(callSpeaker)callSpeaker.textContent=speakerOn?'🔊':'🔇'}
 function toggleMic(){const stream=localStreams['main'];if(stream){micOn=!micOn;stream.getAudioTracks().forEach(t=>t.enabled=micOn);if(callMic)callMic.textContent=micOn?'🎤':'🚫'}}
@@ -639,7 +639,7 @@ async function initApp(){
     await restoreChannelsState();
     const urlParams=new URLSearchParams(window.location.search);const refServer=urlParams.get('server'),refId=urlParams.get('id'),refKey=urlParams.get('key');
     if(refServer&&(refServer==='render'||refServer==='workers')){currentServer=refServer;localStorage.setItem('robinhood_server',currentServer)}
-    if(toggleServer){toggleServer.checked=currentServer==='workers'}if(serverLabel)serverLabel.textContent=currentServer==='workers'?'Workers':'Render';
+    
     window._pendingRef=refId&&refKey?{id:refId,key:refKey}:null;
     applyTheme(currentTheme);
     const savedAvatar=localStorage.getItem('robinhood_avatar');if(savedAvatar&&profileAvatarSmall){profileAvatarSmall.src=savedAvatar;document.getElementById('robin-avatar').src=savedAvatar}
@@ -682,7 +682,7 @@ async function initApp(){
             if(data.text.startsWith('__PROFILE__')){try{const p=JSON.parse(data.text.replace('__PROFILE__',''));const cs=await getContactsDB();const c=cs.find(c=>c.peerId===data.channelId);if(c){c.name=p.nick||c.name;c.avatar=p.avatar||c.avatar;await saveContactDB(c)}}catch(e){}return}
             if(data.text.startsWith('__FILE__')){try{const fd=JSON.parse(data.text.replace('__FILE__',''));if(fd.type==='audio'&&fd.data){appendMessage('Друг','🎤 Голосовое','assets/avatars/001-.png',null,fd.data,fd.mime||'audio/webm')}if(fd.type==='video-circle'&&fd.data){appendMessage('Друг','📹 Кружок','assets/avatars/001-.png',null,fd.data,fd.mime||'video/webm')}}catch(e){}return}
             return}
-        activeChannelId=data.channelId;const contactsArr=await getContactsDB();const contact=contactsArr.find(c=>c.peerId===data.channelId);appendMessage(contact?.name||'Друг',data.text,contact?.avatar||'assets/avatars/001-.png');if(toggleSoundState)playSound('bow_shot.mp3')});
+        activeChannelId=data.channelId;const contactsArr=await getContactsDB();const contact=contactsArr.find(c=>c.peerId===channels[data.channelId]?.peerId);appendMessage(contact?.name||'Друг',data.text,contact?.avatar||'assets/avatars/001-.png');if(toggleSoundState)playSound('bow_shot.mp3')});
     P2PPong.on('onError',function(data){updateRobinStatus('⚠ '+(data.text||'Ошибка'),4000);updateConnectionStatus('offline',Object.keys(P2PPong.getChannels()).length)});
 
     window.addEventListener('beforeinstallprompt',(e)=>{deferredPrompt=e});
@@ -709,7 +709,7 @@ async function initApp(){
     if(btnVideoInput)btnVideoInput.addEventListener('click',toggleVideoCircle);
     if(toggleSound){toggleSound.checked=toggleSoundState;toggleSound.addEventListener('change',()=>{toggleSoundState=toggleSound.checked;localStorage.setItem('robinhood_sound',toggleSoundState)})}
     if(toggleSelfDestruct){toggleSelfDestruct.addEventListener('change',handleSelfDestructChange)}
-    if(toggleServer){toggleServer.checked=currentServer==='workers';if(serverLabel)serverLabel.textContent=currentServer==='workers'?'Workers':'Render';toggleServer.addEventListener('change',()=>{currentServer=toggleServer.checked?'workers':'render';localStorage.setItem('robinhood_server',currentServer);if(serverLabel)serverLabel.textContent=currentServer==='workers'?'Workers':'Render'})}
+    
     if(toggleTunnel){toggleTunnel.addEventListener('change',()=>{if(savedConfigs.length===0){tunnelConfigModal?.classList.add('active');toggleTunnel.checked=false;return}activeTunnel=toggleTunnel.checked?savedConfigs.length-1:null;localStorage.setItem('robinhood_active_tunnel',activeTunnel!==null?activeTunnel:'')})}
     document.getElementById('setting-theme')?.addEventListener('click',()=>{const idx=themes.findIndex(t=>t.id===currentTheme);applyTheme(themes[(idx+1)%themes.length].id)});
     document.getElementById('setting-theme-random')?.addEventListener('click',()=>{const newTheme=generateRandomTheme();applyGeneratedTheme(newTheme)});
