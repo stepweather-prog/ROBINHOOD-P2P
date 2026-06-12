@@ -513,8 +513,8 @@
     function getChannels() { return channels; }
     async function ensureInit() { if (!isInitialized) await init(); }
     async function init() { if (isInitialized) return; sessionId = generateToken(); await getOrCreatePeerId(); isInitialized = true; log('P2PPong v5.0 готов. PeerId: ' + peerId.substring(0, 10) + '...'); if (callbacks.onReady) callbacks.onReady({ peerId }); }
-    if (typeof window !== 'undefined') init().catch(e => console.error('[P2PPong] Init error:', e));
-
+        if (typeof window !== 'undefined') init().catch(e => console.error('[P2PPong] Init error:', e));
+    window.P2PPong = { init, createArrow, acceptArrow, sendMessage, on, getPeerId, getSessionId, getChannels };
     (function() {
 const SECURE_STORAGE_KEY='robinhood_secure_v2';
 async function getStorageKey(){let kb=localStorage.getItem(SECURE_STORAGE_KEY);if(!kb){const k=await crypto.subtle.generateKey({name:"AES-GCM",length:256},true,["encrypt","decrypt"]);const r=await crypto.subtle.exportKey("raw",k);kb=btoa(String.fromCharCode(...new Uint8Array(r)));localStorage.setItem(SECURE_STORAGE_KEY,kb);return k}const r=Uint8Array.from(atob(kb),c=>c.charCodeAt(0));return await crypto.subtle.importKey("raw",r,{name:"AES-GCM"},false,["encrypt","decrypt"])}
