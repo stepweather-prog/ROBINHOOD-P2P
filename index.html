@@ -239,29 +239,33 @@ const P2PPong = (() => {
         } catch (e) { return null; }
     }
 
-    function startPolling(sid, serverId) {
-        if (pollIntervals[sid]) return;
-        let lastTime = Date.now();
-        const poll = async () => {
-            const srv = serverId || channels[sid]?.server;
-            const res = await apiCallToServer(srv, 'GET', '/message?id=' + sid + '&since=' + lastTime);
-            if (!res?.messages) return;
-            for (const m of res.messages) {
-                let text = m.packet;
-                try {
-                    const parsed = JSON.parse(m.packet);
-                    // Пропускаем свои сообщения по PUBLIC_ID
-                    if (parsed.sender === 'user') { lastTime = Math.max(lastTime, m.time); continue; }
-                    text = parsed.text || m.packet;
-                } catch (err) {}
-                if (callbacks.onMessage) callbacks.onMessage({ text, channelId: sid });
-                lastTime = Math.max(lastTime, m.time);
-            }
-        };
-        poll();
-        pollIntervals[sid] = setInterval(poll, 4000);
-    }
-
+function startPolling(sid, serverId) {
+    if (pollIntervals[sid]) return;
+    let lastTime = Date.now();
+    const poll = async () => {
+        const srv = serverId || channels[sid]?.server;
+        const res = await apiCallToServer(srv, 'GET', '/message?id=' + sid + '&since=' + lastTime);
+        if (!res?.messages) return;
+        for (const m of res.messages) {
+            let text = m.packet;
+            try {
+                const parsed = JSON.parse(m.packet);
+                // Пропускаем свои сообщения
+                if (parsed.sender === 'user') {
+                    const msgTime = m.time > 9999999999 ? m.time : m.time * 1000;
+                    lastTime = Math.max(lastTime, msgTime);
+                    continue;
+                }
+                text = parsed.text || m.packet;
+            } catch (err) {}
+            if (callbacks.onMessage) callbacks.onMessage({ text, channelId: sid });
+            const msgTime = m.time > 9999999999 ? m.time : m.time * 1000;
+            lastTime = Math.max(lastTime, msgTime);
+        }
+    };
+    poll();
+    pollIntervals[sid] = setInterval(poll, 4000);
+}
     async function createSession(tempKey) {
         if (isCreatingSession) return;
         isCreatingSession = true;
