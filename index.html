@@ -574,7 +574,7 @@ function applyGeneratedTheme(theme){let styleEl=document.getElementById('generat
 function updateClock(){if(headerClock){const now=new Date();headerClock.textContent=now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}}
 setInterval(updateClock,1000);updateClock();
 async function saveChannelsState(){await secureSetItem('robinhood_channels_state',{channels:Object.entries(P2PPong.getChannels()).map(([id,ch])=>({id,secret:ch.secret||ch.sessionSecret,role:ch.role,peerId:ch.peerId})),activeChannelId,contactOnlineStatus,profileSent})}
-async function restoreChannelsState(){const saved=await secureGetItem('robinhood_channels_state');if(saved){saved.channels.forEach(ch=>{P2PPong.getChannels()[ch.id]={secret:ch.secret,role:ch.role,peerId:ch.peerId,lastActivity:Date.now()};activeChannelId=saved.activeChannelId;contactOnlineStatus=saved.contactOnlineStatus||{};profileSent=saved.profileSent||{}}}
+async function restoreChannelsState(){const saved=await secureGetItem('robinhood_channels_state');if(saved){saved.channels.forEach(ch=>{P2PPong.getChannels()[ch.id]={secret:ch.secret,role:ch.role,peerId:ch.peerId,lastActivity:Date.now()};});activeChannelId=saved.activeChannelId;contactOnlineStatus=saved.contactOnlineStatus||{};profileSent=saved.profileSent||{}}}
 function getIceServers(){return[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}]}
 function getAudio(filename){if(!audioPool[filename]){audioPool[filename]=new Audio('assets/sounds/'+filename);audioPool[filename].volume=0.5}const a=audioPool[filename];a.currentTime=0;return a}
 function playSound(filename){if(toggleSoundState){try{getAudio(filename).play().catch(()=>{})}catch(e){}}}
