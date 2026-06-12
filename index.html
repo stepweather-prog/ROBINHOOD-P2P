@@ -210,148 +210,212 @@
 <div class="modal-overlay" id="bg-crop-modal"><div class="modal-dialog" style="max-width:90%;"><h3>🖼 Выберите область</h3><div class="bg-crop-container"><img class="bg-crop-img" id="bg-preview-img" draggable="false"></div><div style="display:flex;gap:8px;margin:8px 0;"><button class="btn-dark" id="bg-pos-top">⬆ Верх</button><button class="btn-dark" id="bg-pos-center">⬜ Центр</button><button class="btn-dark" id="bg-pos-bottom">⬇ Низ</button></div><div style="display:flex;gap:6px;"><button class="btn-dark" id="bg-cancel">Отмена</button><button class="btn-primary" id="bg-save">✓ Сохранить</button><button class="btn-dark" id="bg-reset">🔄 Сбросить</button></div></div></div>
 <div class="modal-overlay" id="nick-modal"><div class="modal-dialog"><h3>🏷 Сменить ник</h3><input type="text" id="nick-input" placeholder="Твой ник (макс. 12)" maxlength="12" autocomplete="off" style="width:100%;margin-bottom:10px;"><div style="display:flex;gap:8px;"><button class="btn-dark" id="btn-nick-cancel">Отмена</button><button class="btn-primary" id="btn-nick-save">✓ Сохранить</button></div></div></div>
 <div id="contact-menu" class="contact-menu"><div class="contact-menu-item" id="menu-rename">✎ Переименовать</div><div class="contact-menu-item" id="menu-avatar">🖼 Сменить аватар</div><div class="contact-menu-item" id="menu-delete">🔥 Уволить</div><button id="menu-cancel" style="width:100%;padding:8px;margin-top:6px;background:#4a3a2a;color:#eee;border:none;border-radius:8px;cursor:pointer;">Отмена</button></div>
-<script>
-// ========== P2PPong v5.0 — ВСТРОЕННЫЙ СИГНАЛЬНЫЙ МОДУЛЬ ==========
+   <script>
+/**
+ * P2PPong v5.0 — Бронебойная сигнальная машина (Пинбол)
+ * Чистый модуль. Ноль зависимостей от DOM.
+ */
 const P2PPong = (() => {
+    'use strict';
     const SERVERS = [
         { id: 'render', url: 'https://p2ppong-v2.onrender.com' },
         { id: 'workers', url: 'https://robincall.stephanclaps-491.workers.dev' }
     ];
-    let currentServer = 'workers';
     let channels = {};
     let pollIntervals = {};
     let callbacks = {};
-    let isCreatingSession = false;
+    let peerId = null;
+    let sessionId = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2)+Date.now().toString(36);
+    let isInitialized = false;
 
-    async function sha256(text) { const data = new TextEncoder().encode(text); const hash = await crypto.subtle.digest('SHA-256', data); return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join(''); }
     function generateToken() { return crypto.randomUUID?.() || Math.random().toString(36).substring(2)+Date.now().toString(36); }
-    const PUBLIC_ID = localStorage.getItem('pong_peer_id') || generateToken().substring(0,16);
-    localStorage.setItem('pong_peer_id', PUBLIC_ID);
+    async function sha256(text) { const data = new TextEncoder().encode(text); const hash = await crypto.subtle.digest('SHA-256', data); return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join(''); }
+    function log(msg) { console.log('[P2PPong]', msg); }
 
-    async function apiCallToServer(serverId, method, path, body = null) {
-        const server = SERVERS.find(s => s.id === serverId);
-        if (!server) return null;
+    async function openDB() {
+        return new Promise((resolve, reject) => {
+            const req = indexedDB.open('P2PPongSecure', 1);
+            req.onupgradeneeded = () => { if (!req.result.objectStoreNames.contains('identity')) req.result.createObjectStore('identity', { keyPath: 'id' }); };
+            req.onsuccess = () => resolve(req.result);
+            req.onerror = () => reject(req.error);
+        });
+    }
+
+    async function getOrCreatePeerId() {
+        if (peerId) return peerId;
         try {
-            const opts = { method, headers: { 'Content-Type': 'application/json' } };
-            if (body) opts.body = JSON.stringify(body);
-            const res = await fetch(server.url + path, opts);
-            return res.ok ? await res.json() : null;
+            const db = await openDB();
+            const tx = db.transaction('identity', 'readonly');
+            const store = tx.objectStore('identity');
+            const stored = await new Promise((resolve, reject) => { const req = store.get('peerId'); req.onsuccess = () => resolve(req.result); req.onerror = () => reject(req.error); });
+            if (stored?.value) { peerId = stored.value; return peerId; }
+        } catch (e) { log('IndexedDB недоступна'); }
+        peerId = generateToken().substring(0, 16);
+        try {
+            const db = await openDB();
+            const tx = db.transaction('identity', 'readwrite');
+            tx.objectStore('identity').put({ id: 'peerId', value: peerId });
+        } catch (e) {}
+        return peerId;
+    }
+
+    async function deriveKey(secret) {
+        const hash = await sha256(secret);
+        const keyBytes = new TextEncoder().encode(hash.substring(0, 32));
+        return await crypto.subtle.importKey('raw', keyBytes, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
+    }
+
+    async function encryptPacket(plaintext, secret) {
+        try {
+            const key = await deriveKey(secret);
+            const iv = crypto.getRandomValues(new Uint8Array(12));
+            const encoded = new TextEncoder().encode(plaintext);
+            const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, encoded);
+            const combined = new Uint8Array(iv.length + new Uint8Array(ciphertext).length);
+            combined.set(iv); combined.set(new Uint8Array(ciphertext), iv.length);
+            return '🔐' + btoa(String.fromCharCode(...combined));
+        } catch (e) { return plaintext; }
+    }
+
+    async function decryptPacket(encryptedText, secret) {
+        if (!encryptedText || !encryptedText.startsWith('🔐')) return null;
+        try {
+            const key = await deriveKey(secret);
+            const combined = Uint8Array.from(atob(encryptedText.substring(2)), c => c.charCodeAt(0));
+            const iv = combined.slice(0, 12); const ct = combined.slice(12);
+            const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
+            return new TextDecoder().decode(decrypted);
         } catch (e) { return null; }
     }
 
-function startPolling(sid, serverId) {
-    if (pollIntervals[sid]) return;
-    let lastTime = Date.now();
-    const poll = async () => {
-        const srv = serverId || channels[sid]?.server;
-        const res = await apiCallToServer(srv, 'GET', '/message?id=' + sid + '&since=' + lastTime);
-        if (!res?.messages) return;
-        for (const m of res.messages) {
-            let text = m.packet;
-            try {
-                const parsed = JSON.parse(m.packet);
-                // Пропускаем свои сообщения
-                if (parsed.sender === 'user') {
-                    const msgTime = m.time > 9999999999 ? m.time : m.time * 1000;
-                    lastTime = Math.max(lastTime, msgTime);
-                    continue;
-                }
-                text = parsed.text || m.packet;
-            } catch (err) {}
-            if (callbacks.onMessage) callbacks.onMessage({ text, channelId: sid });
-            const msgTime = m.time > 9999999999 ? m.time : m.time * 1000;
-            lastTime = Math.max(lastTime, msgTime);
-        }
-    };
-    poll();
-    pollIntervals[sid] = setInterval(poll, 4000);
-}
-    async function createSession(tempKey) {
-        if (isCreatingSession) return;
-        isCreatingSession = true;
-        const key = tempKey || generateToken();
-        const keyHash = await sha256(key);
+    async function apiCall(serverId, method, path, body = null) {
+        const server = SERVERS.find(s => s.id === serverId);
+        if (!server) return null;
+        const ctrl = new AbortController();
+        const timeout = setTimeout(() => ctrl.abort(), serverId === 'workers' ? 5000 : 10000);
+        try {
+            const opts = { method, headers: { 'Content-Type': 'application/json' }, signal: ctrl.signal };
+            if (body) opts.body = JSON.stringify(body);
+            const res = await fetch(server.url + path, opts);
+            clearTimeout(timeout);
+            if (!res.ok) return null;
+            return await res.json();
+        } catch (e) { clearTimeout(timeout); return null; }
+    }
+
+    function startPolling(sid, serverId) {
+        if (pollIntervals[sid]) return;
+        let lastTime = Date.now();
+        const poll = async () => {
+            const srv = serverId || channels[sid]?.server;
+            const res = await apiCall(srv, 'GET', '/message?id=' + sid + '&since=' + lastTime);
+            if (!res?.messages) return;
+            for (const m of res.messages) {
+                const ch = channels[sid]; if (!ch) continue;
+                let decrypted = await decryptPacket(m.packet, ch.sessionSecret);
+                if (!decrypted) { try { const parsed = JSON.parse(m.packet); decrypted = parsed.text || m.packet; } catch (e) { decrypted = m.packet; } }
+                let sender = null, text = decrypted;
+                try { const parsed = JSON.parse(decrypted); sender = parsed.sender; text = parsed.text || decrypted; } catch (e) {}
+                if (sender === sessionId) { const msgTime = m.time > 9999999999 ? m.time : m.time * 1000; lastTime = Math.max(lastTime, msgTime); continue; }
+                if (callbacks.onMessage) callbacks.onMessage({ text, channelId: sid, sender });
+                const msgTime = m.time > 9999999999 ? m.time : m.time * 1000; lastTime = Math.max(lastTime, msgTime);
+            }
+        };
+        poll(); pollIntervals[sid] = setInterval(poll, 4000);
+    }
+
+    function stopPolling(sid) { if (pollIntervals[sid]) { clearInterval(pollIntervals[sid]); delete pollIntervals[sid]; } }
+
+    async function createArrow() {
+        await ensureInit();
+        const tempKey = generateToken();
+        const tempKeyHash = await sha256(tempKey);
+        const sessionSecret = tempKey;
+        log('Создание маяка...');
         const results = [];
         for (const server of SERVERS) {
-            const body = server.id === 'workers' ? { tempKeyHash: keyHash, publicId: PUBLIC_ID } : { tempKey: key, tempKeyHash: keyHash, publicId: PUBLIC_ID };
-            const res = await apiCallToServer(server.id, 'POST', '/beacon', body);
+            const body = server.id === 'workers' ? { tempKeyHash, publicId: peerId } : { tempKey: tempKey, tempKeyHash, publicId: peerId };
+            const res = await apiCall(server.id, 'POST', '/beacon', body);
             if (res?.sessionId) results.push({ sessionId: res.sessionId, server: server.id });
         }
-        if (results.length === 0) { isCreatingSession = false; if (callbacks.onError) callbacks.onError({ text: 'Серверы не отвечают' }); return; }
-        const primary = results[0];
-        const sid = primary.sessionId;
-        const sessionSecret = await sha256(key);
-        channels[sid] = { tempKey: key, sessionSecret, status: 'waiting', isCreator: true, createdAt: Date.now(), server: primary.server, allServers: results.map(r => r.server) };
+        if (results.length === 0) { if (callbacks.onError) callbacks.onError({ text: 'Серверы не отвечают' }); return; }
+        const primary = results[0]; const sid = primary.sessionId;
+        channels[sid] = { status: 'waiting', sessionSecret, server: primary.server, peerId, allServers: results.map(r => r.server) };
         const serversParam = results.map(r => r.server).join(',');
-        const link = 'https://stepweather-prog.github.io/ROBINHOOD-P2P/?id=' + sid + '&servers=' + serversParam + '&peer=' + PUBLIC_ID + '&key=' + key;
-        if (callbacks.onSessionCreated) callbacks.onSessionCreated({ sessionId: sid, key, fullLink: link, peerId: PUBLIC_ID });
-        isCreatingSession = false;
+        const fullLink = `https://stepweather-prog.github.io/ROBINHOOD-P2P/?id=${sid}&servers=${serversParam}&peer=${peerId}&key=${tempKey}`;
+        if (callbacks.onSessionCreated) callbacks.onSessionCreated({ fullLink, peerId, key: tempKey });
         let matched = false; const start = Date.now();
         while (Date.now() - start < 90000) {
-            const checks = await Promise.all(results.map(r => apiCallToServer(r.server, 'GET', '/beacon?id=' + r.sessionId).then(res => res?.matched)));
-            if (checks.some(m => m)) { matched = true; break; }
+            const checks = await Promise.all(results.map(r => apiCall(r.server, 'GET', '/beacon?id=' + r.sessionId)));
+            if (checks.some(c => c?.matched)) { matched = true; break; }
             await new Promise(r => setTimeout(r, 5000));
         }
         if (!matched) { delete channels[sid]; if (callbacks.onError) callbacks.onError({ text: 'Таймаут ожидания' }); return; }
         channels[sid].status = 'open'; startPolling(sid, channels[sid].server);
-        if (callbacks.onChannelOpen) callbacks.onChannelOpen({ channelId: sid, secret: sessionSecret, role: 'creator', peerId: PUBLIC_ID });
+        if (callbacks.onChannelOpen) callbacks.onChannelOpen({ channelId: sid, role: 'creator', peerId });
+        log('Канал открыт!');
     }
 
-    async function acceptSession(sidOrPeer, tempKey) {
-        const findKey = tempKey || generateToken();
-        const keyHash = await sha256(findKey);
-        
-        // Пробуем /find-by-peer (может не работать, если сервер не обновлён)
-        try {
-            for (const server of SERVERS) {
-                const res = await apiCallToServer(server.id, 'POST', '/find-by-peer', { targetPublicId: sidOrPeer, myPublicId: PUBLIC_ID, tempKeyHash: keyHash });
-                if (res?.status === 'matched') {
-                    const sessionSecret = await sha256(findKey);
-                    const sid = res.sessionId;
-                    channels[sid] = { tempKey: findKey, sessionSecret, status: 'open', isCreator: false, createdAt: Date.now(), server: server.id };
-                    startPolling(sid, server.id);
-                    if (callbacks.onChannelOpen) callbacks.onChannelOpen({ channelId: sid, secret: sessionSecret, role: 'receiver', peerId: sidOrPeer });
-                    return;
-                }
-            }
-        } catch(e) {}
-        
-        // Fallback: старый поиск по sessionId
-        const serversParam = new URLSearchParams(window.location.search).get('servers') || 'render,workers';
+    async function acceptArrow(peerIdFromLink, tempKey) {
+        await ensureInit();
+        const keyHash = await sha256(tempKey);
+        const sessionSecret = tempKey;
+        log('Поиск маяка для пира ' + peerIdFromLink + '...');
+        for (const server of SERVERS) {
+            try {
+                const res = await apiCall(server.id, 'POST', '/find-by-peer', { targetPublicId: peerIdFromLink, myPublicId: peerId, tempKeyHash: keyHash });
+                if (res?.status === 'matched') { await openChannel(res.sessionId, server.id, sessionSecret, peerIdFromLink); return; }
+            } catch (e) {}
+        }
+        const urlParams = new URLSearchParams(window.location.search);
+        const serversParam = urlParams.get('servers') || 'render,workers';
         const serversList = serversParam.split(',');
+        const sid = urlParams.get('id');
         for (const srvId of serversList) {
-            const body = { tempKeyHash: keyHash };
-            const res = await apiCallToServer(srvId, 'POST', '/find', body);
-            if (res?.status === 'matched') {
-                const actualSid = res.sessionId || sidOrPeer;
-                const sessionSecret = await sha256(findKey);
-                channels[actualSid] = { tempKey: findKey, sessionSecret, status: 'open', isCreator: false, createdAt: Date.now(), server: srvId };
-                startPolling(actualSid, srvId);
-                if (callbacks.onChannelOpen) callbacks.onChannelOpen({ channelId: actualSid, secret: sessionSecret, role: 'receiver', peerId: sidOrPeer });
-                return;
-            }
+            const body = srvId === 'workers' ? { tempKeyHash: keyHash } : { tempKey };
+            const res = await apiCall(srvId, 'POST', '/find', body);
+            if (res?.status === 'matched') { await openChannel(res.sessionId || sid, srvId, sessionSecret, peerIdFromLink); return; }
         }
         if (callbacks.onError) callbacks.onError({ text: 'Маяк не найден' });
     }
 
-    function sendMessage(channelId, text) {
+    async function openChannel(sid, serverId, sessionSecret, peerIdFromLink) {
+        channels[sid] = { status: 'open', sessionSecret, server: serverId, peerId: peerIdFromLink };
+        startPolling(sid, serverId);
+        if (callbacks.onChannelOpen) callbacks.onChannelOpen({ channelId: sid, role: 'receiver', peerId: peerIdFromLink });
+        log('Подключено через ' + serverId + '!');
+    }
+
+    async function sendMessage(channelId, text) {
+        await ensureInit();
         const ch = channels[channelId];
-        if (!ch) return;
-        apiCallToServer(ch.server, 'POST', '/message', { sessionId: channelId, packet: JSON.stringify({ text, sender: 'user', time: Date.now() }) });
+        if (!ch) { if (callbacks.onError) callbacks.onError({ text: 'Канал не найден', channelId }); return; }
+        const payload = JSON.stringify({ text, sender: sessionId, time: Date.now() });
+        const encrypted = await encryptPacket(payload, ch.sessionSecret);
+        const res = await apiCall(ch.server, 'POST', '/message', { sessionId: channelId, packet: encrypted });
+        if (!res) { delete channels[channelId]; stopPolling(channelId); if (callbacks.onError) callbacks.onError({ text: 'session_not_found', channelId }); }
     }
 
     function on(event, cb) { callbacks[event] = cb; }
+    function getPeerId() { return peerId; }
 
+    async function ensureInit() { if (!isInitialized) await init(); }
     async function init() {
-        const saved = localStorage.getItem('robinhood_server');
-        if (saved === 'render' || saved === 'workers') currentServer = saved;
-        if (callbacks.onReady) callbacks.onReady();
+        if (isInitialized) return;
+        sessionId = generateToken();
+        await getOrCreatePeerId();
+        isInitialized = true;
+        log('P2PPong v5.0 готов. PeerId: ' + peerId.substring(0, 10) + '...');
+        if (callbacks.onReady) callbacks.onReady({ peerId });
     }
 
-    return { init, createSession, acceptSession, sendMessage, on, getPeerId: () => PUBLIC_ID };
+    if (typeof window !== 'undefined') init().catch(e => console.error('[P2PPong] Init error:', e));
+    return { init, createArrow, acceptArrow, sendMessage, on, getPeerId };
 })();
-
-// ========== ОСНОВНОЙ КОД ROBINHOOD P2P v5.0 ==========
+</script>
+    <script>
+    // ========== ОСНОВНОЙ КОД ROBINHOOD P2P v5.0 ==========
+// Работает с P2PPong как с сигнальной машиной
 (function() {
 const MAX_NICK_LENGTH = 12;
 const MAX_VOICE_DURATION = 60;
@@ -372,7 +436,8 @@ let themeIcon, themeName, voiceTimerOverlay, callTimerDisplay;
 let tunnelConfigModal, tunnelConfigInput, tunnelList, configFileInput;
 let settingInstall;
 
-let channels = {}, activeChannelId = null;
+// P2PPong теперь полностью управляет каналами
+let activeChannelId = null;
 let toggleSoundState = true;
 let robinDefaultText = 'Святые сокеты стабильны!', robinTimer = null;
 let peerConnections = {}, localStreams = {};
@@ -387,7 +452,6 @@ let callTimerInterval = null, callSeconds = 0;
 let typingTimeout;
 let customBgImage = null, customBgPosX = 50, customBgPosY = 50;
 let savedConfigs = [], activeTunnel = null;
-let contactOnlineStatus = {};
 let peerContacts = [];
 
 let lockType = null, lockPinHash = '', lockPatternHash = '';
@@ -420,8 +484,6 @@ function stopRingtone() { if (ringtoneAudio) { ringtoneAudio.pause(); ringtoneAu
 function playRingback() { stopRingback(); ringbackAudio = getAudio('Welk.mp3'); ringbackAudio.loop = true; ringbackAudio.play().catch(() => {}); }
 function stopRingback() { if (ringbackAudio) { ringbackAudio.pause(); ringbackAudio.loop = false; ringbackAudio = null; } }
 
-function sendThroughPong(text) { if (!activeChannelId) return; P2PPong.sendMessage(activeChannelId, text); }
-
 function appendMessage(sender, text, avatarSrc) {
     const row = document.createElement('div'); row.className = 'message-row';
     row.innerHTML = `<img src="${avatarSrc}" class="avatar" onerror="this.src='assets/avatars/001-.png'"><div class="msg-body"><div class="msg-sender">${safeHtml(sender)}</div><div>${safeHtml(text)}</div><div class="msg-time">${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div></div>`;
@@ -438,23 +500,23 @@ function createPeerConn(stream) {
     const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
     if (stream) stream.getTracks().forEach(t => pc.addTrack(t, stream));
     pc.ontrack = e => { if (e.streams[0]) { const a = new Audio(); a.srcObject = e.streams[0]; a.play().catch(() => {}); } };
-    pc.onicecandidate = e => { if (e.candidate) sendThroughPong('__ICE__' + JSON.stringify(e.candidate)); };
+    pc.onicecandidate = e => { if (e.candidate) P2PPong.sendMessage(activeChannelId, '__ICE__' + JSON.stringify(e.candidate)); };
     pc.onconnectionstatechange = () => { if (pc.connectionState === 'connected') { callActive = true; startCallTimer(); } if (pc.connectionState === 'disconnected') endCall(); };
     return pc;
 }
 function startCallTimer() { callSeconds = 0; callTimerDisplay.style.display = ''; callTimerInterval = setInterval(() => { callSeconds++; callTimerDisplay.textContent = Math.floor(callSeconds/60).toString().padStart(2,'0')+':'+(callSeconds%60).toString().padStart(2,'0'); }, 1000); }
 function stopCallTimer() { if (callTimerInterval) clearInterval(callTimerInterval); callTimerDisplay.style.display = 'none'; }
-async function startCall(video = false) { if (callActive || !activeChannelId) return; videoCallActive = video; const stream = await getMediaStream(video); if (!stream) return; localStreams['main'] = stream; callPanel.classList.add('show'); callStatus.textContent = video ? '📹 Звоню...' : '📞 Звоню...'; playRingback(); const pc = createPeerConn(stream); peerConnections['main'] = pc; const offer = await pc.createOffer(); await pc.setLocalDescription(offer); sendThroughPong('__OFFER__' + JSON.stringify(offer)); }
-function endCall() { callActive = false; stopRingtone(); stopRingback(); stopCallTimer(); sendThroughPong('__HANGUP__'); Object.keys(peerConnections).forEach(k => { try { peerConnections[k].close(); } catch(e) {} }); Object.keys(localStreams).forEach(k => { try { localStreams[k].getTracks().forEach(t => t.stop()); } catch(e) {} }); peerConnections = {}; localStreams = {}; callPanel.classList.remove('show'); updateRobinStatus('📞 Рог замолк.', 3000); }
+async function startCall(video = false) { if (callActive || !activeChannelId) return; videoCallActive = video; const stream = await getMediaStream(video); if (!stream) return; localStreams['main'] = stream; callPanel.classList.add('show'); callStatus.textContent = video ? '📹 Звоню...' : '📞 Звоню...'; playRingback(); const pc = createPeerConn(stream); peerConnections['main'] = pc; const offer = await pc.createOffer(); await pc.setLocalDescription(offer); P2PPong.sendMessage(activeChannelId, '__OFFER__' + JSON.stringify(offer)); }
+function endCall() { callActive = false; stopRingtone(); stopRingback(); stopCallTimer(); P2PPong.sendMessage(activeChannelId, '__HANGUP__'); Object.keys(peerConnections).forEach(k => { try { peerConnections[k].close(); } catch(e) {} }); Object.keys(localStreams).forEach(k => { try { localStreams[k].getTracks().forEach(t => t.stop()); } catch(e) {} }); peerConnections = {}; localStreams = {}; callPanel.classList.remove('show'); updateRobinStatus('📞 Рог замолк.', 3000); }
 
 function startVoiceTimer() { voiceSeconds = 0; voiceTimerOverlay.style.display = 'block'; voiceTimerInterval = setInterval(() => { voiceSeconds++; voiceTimerOverlay.textContent = '🎤 ' + Math.floor(voiceSeconds/60)+':'+(voiceSeconds%60).toString().padStart(2,'0'); if (voiceSeconds >= MAX_VOICE_DURATION) stopVoiceRecording(); }, 1000); }
 function stopVoiceTimer() { if (voiceTimerInterval) clearInterval(voiceTimerInterval); voiceTimerOverlay.style.display = 'none'; }
 function toggleVoiceRecording() { voiceRecording ? stopVoiceRecording() : startVoiceRecording(); }
-function startVoiceRecording() { if (voiceRecorder?.state === 'recording') return; navigator.mediaDevices.getUserMedia({ audio: true }).then(st => { voiceStream = st; voiceRecorder = new MediaRecorder(st); voiceRecorder.ondataavailable = e => { const reader = new FileReader(); reader.onload = () => sendThroughPong('__FILE__' + JSON.stringify({ type: 'audio', data: reader.result.split(',')[1], mime: 'audio/webm' })); reader.readAsDataURL(new Blob([e.data])); }; voiceRecorder.start(); voiceRecording = true; startVoiceTimer(); }).catch(() => updateRobinStatus('❌ Нет микрофона', 3000)); }
+function startVoiceRecording() { if (voiceRecorder?.state === 'recording') return; navigator.mediaDevices.getUserMedia({ audio: true }).then(st => { voiceStream = st; voiceRecorder = new MediaRecorder(st); voiceRecorder.ondataavailable = e => { const reader = new FileReader(); reader.onload = () => P2PPong.sendMessage(activeChannelId, '__FILE__' + JSON.stringify({ type: 'audio', data: reader.result.split(',')[1], mime: 'audio/webm' })); reader.readAsDataURL(new Blob([e.data])); }; voiceRecorder.start(); voiceRecording = true; startVoiceTimer(); }).catch(() => updateRobinStatus('❌ Нет микрофона', 3000)); }
 function stopVoiceRecording() { if (voiceRecorder?.state === 'recording') { voiceRecorder.stop(); stopVoiceTimer(); voiceRecording = false; if (voiceStream) { voiceStream.getTracks().forEach(t => t.stop()); voiceStream = null; } } }
 
 function toggleVideoCircle() { videoRecording ? stopVideoCircle() : startVideoCircle(); }
-function startVideoCircle() { if (videoCircleRecorder?.state === 'recording') return; navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(st => { videoCircleRecorder = new MediaRecorder(st); videoCircleRecorder.ondataavailable = e => { const reader = new FileReader(); reader.onload = () => sendThroughPong('__FILE__' + JSON.stringify({ type: 'video-circle', data: reader.result.split(',')[1], mime: 'video/webm' })); reader.readAsDataURL(new Blob([e.data])); }; videoCircleRecorder.start(); videoRecording = true; setTimeout(() => { if (videoRecording) stopVideoCircle(); }, MAX_VIDEO_CIRCLE_DURATION * 1000); }).catch(() => updateRobinStatus('❌ Нет камеры', 3000)); }
+function startVideoCircle() { if (videoCircleRecorder?.state === 'recording') return; navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then(st => { videoCircleRecorder = new MediaRecorder(st); videoCircleRecorder.ondataavailable = e => { const reader = new FileReader(); reader.onload = () => P2PPong.sendMessage(activeChannelId, '__FILE__' + JSON.stringify({ type: 'video-circle', data: reader.result.split(',')[1], mime: 'video/webm' })); reader.readAsDataURL(new Blob([e.data])); }; videoCircleRecorder.start(); videoRecording = true; setTimeout(() => { if (videoRecording) stopVideoCircle(); }, MAX_VIDEO_CIRCLE_DURATION * 1000); }).catch(() => updateRobinStatus('❌ Нет камеры', 3000)); }
 function stopVideoCircle() { if (videoCircleRecorder?.state === 'recording') { videoCircleRecorder.stop(); videoRecording = false; } }
 
 const avatars = ['assets/avatars/001-.png','assets/avatars/002--1.png','assets/avatars/003-icon-8033085.png','assets/avatars/009--7.png','assets/avatars/010--8.png','assets/avatars/018--16.png','assets/avatars/022--20.png','assets/avatars/037--35.png','assets/avatars/043--41.png','assets/avatars/048--46.png','assets/avatars/050--48.png','assets/avatars/052--50.png','assets/avatars/053--51.png','assets/avatars/056--54.png','assets/avatars/066--64.png','assets/avatars/077-icon-8033092.png','assets/avatars/083-icon-11885568.png','assets/avatars/094-icon-18926716.png','assets/avatars/108--83.png','assets/avatars/147-icon-6081840.png'];
@@ -467,7 +529,7 @@ async function loadContacts() {
     if (peerContacts.length) {
         for (const c of peerContacts) {
             const div = document.createElement('div'); div.className = 'contact-item';
-            div.innerHTML = `<div class="contact-info"><span class="online-dot ${contactOnlineStatus[c.peerId] ? 'online' : 'offline'}"></span><img src="${c.avatar || 'assets/avatars/001-.png'}" class="contact-avatar"><span class="contact-name">${safeHtml(c.name)}</span></div><button class="delete-contact" data-peerid="${c.peerId}">✖</button>`;
+            div.innerHTML = `<div class="contact-info"><span class="online-dot offline"></span><img src="${c.avatar || 'assets/avatars/001-.png'}" class="contact-avatar"><span class="contact-name">${safeHtml(c.name)}</span></div><button class="delete-contact" data-peerid="${c.peerId}">✖</button>`;
             div.querySelector('.contact-info').addEventListener('click', () => {
                 activeChannelId = c.peerId;
                 contactsSheet.classList.remove('open'); overlay.classList.remove('show');
@@ -484,7 +546,7 @@ async function loadContacts() {
 function deleteContact(peerId) {
     peerContacts = peerContacts.filter(c => c.peerId !== peerId);
     if (!selfDestructMode) localStorage.setItem('robinhood_peer_contacts', JSON.stringify(peerContacts));
-    if (activeChannelId === peerId) { delete channels[peerId]; activeChannelId = null; }
+    if (activeChannelId === peerId) activeChannelId = null;
     loadContacts();
 }
 
@@ -501,15 +563,13 @@ function drawPatternGrid(hl=[]) { if (!patternCtx) return; patternCtx.clearRect(
 function getPatternPoint(x,y) { for (let i=0;i<patternPoints.length;i++){const p=patternPoints[i];if(Math.hypot(x-p.x,y-p.y)<25)return i;} return -1; }
 function unlock() { lockScreen.style.display='none'; appContainer.style.display='flex'; initApp(); }
 
-// ===== АНИМАЦИИ =====
+// Анимации
 let archerAnimation, quiverAnim, bowAnim;
 function playArcherAnimation() {
     if (!robinText || typeof lottie === 'undefined') return;
-    const wrapper = document.createElement('span');
-    wrapper.className = 'robin-arrow-container';
+    const wrapper = document.createElement('span'); wrapper.className = 'robin-arrow-container';
     wrapper.style.cssText = 'width:80px;height:40px;display:inline-block;vertical-align:middle;';
-    robinText.textContent = '';
-    robinText.appendChild(wrapper);
+    robinText.textContent = ''; robinText.appendChild(wrapper);
     archerAnimation = lottie.loadAnimation({ container: wrapper, renderer: 'canvas', loop: false, autoplay: true, path: 'assets/Archer.json' });
     archerAnimation.addEventListener('complete', () => { wrapper.remove(); archerAnimation = null; robinText.textContent = robinDefaultText; });
 }
@@ -524,26 +584,30 @@ function playBowAnimation() {
 }
 function playQuiverAnimation() {
     if (!robinText || typeof lottie === 'undefined') return;
-    const wrapper = document.createElement('span');
-    wrapper.className = 'robin-arrow-container';
+    const wrapper = document.createElement('span'); wrapper.className = 'robin-arrow-container';
     wrapper.style.cssText = 'width:80px;height:40px;display:inline-block;vertical-align:middle;';
-    robinText.textContent = '✅ ';
-    robinText.appendChild(wrapper);
+    robinText.textContent = '✅ '; robinText.appendChild(wrapper);
     quiverAnim = lottie.loadAnimation({ container: wrapper, renderer: 'canvas', loop: false, autoplay: true, path: 'assets/docking/animation.json' });
     quiverAnim.addEventListener('complete', () => { if (wrapper.parentNode) wrapper.remove(); quiverAnim = null; robinText.textContent = robinDefaultText; });
 }
 
 function setupEventHandlers() {
-    P2PPong.on('onReady', () => updateRobinStatus('🌐 Телеграф работает!', 2000));
+    // P2PPong колбэки — единственная точка входа для сигнальных событий
+    P2PPong.on('onReady', (data) => {
+        updateRobinStatus('🌐 Телеграф работает!', 2000);
+        const peerIdDisplay = document.getElementById('peer-count-display');
+        if (peerIdDisplay) peerIdDisplay.textContent = '🏹 ' + (data?.peerId || '').substring(0, 8);
+    });
+
     P2PPong.on('onSessionCreated', (data) => {
         document.getElementById('ref-link-display').textContent = data.fullLink;
         document.getElementById('ref-modal').classList.add('active');
         navigator.clipboard.writeText(data.fullLink).catch(() => {});
     });
+
     P2PPong.on('onChannelOpen', function(data) {
-        channels[data.channelId] = { secret: data.secret, role: data.role, peerId: data.peerId };
-        if (!activeChannelId) activeChannelId = data.channelId;
-        if (!peerContacts.find(c => c.peerId === data.peerId)) {
+        activeChannelId = data.channelId;
+        if (data.peerId && !peerContacts.find(c => c.peerId === data.peerId)) {
             peerContacts.push({ peerId: data.peerId, name: 'Лучник', avatar: 'assets/avatars/001-.png' });
             if (!selfDestructMode) localStorage.setItem('robinhood_peer_contacts', JSON.stringify(peerContacts));
         }
@@ -551,9 +615,11 @@ function setupEventHandlers() {
         document.getElementById('ref-modal').classList.remove('active');
         setTimeout(() => playQuiverAnimation(), 500);
     });
-    P2PPong.on('onMessage', async function(data) {
-        if (!data.channelId || !data.text) return;
-        activeChannelId = data.channelId;
+
+    P2PPong.on('onMessage', function(data) {
+        if (!data.text) return;
+        
+        // Сигнальные сообщения WebRTC
         if (data.text.indexOf('__OFFER__') === 0) {
             try {
                 const offer = JSON.parse(data.text.replace('__OFFER__',''));
@@ -567,9 +633,10 @@ function setupEventHandlers() {
                     const pc = createPeerConn(stream); peerConnections['main'] = pc;
                     await pc.setRemoteDescription(new RTCSessionDescription(offer));
                     const answer = await pc.createAnswer(); await pc.setLocalDescription(answer);
-                    sendThroughPong('__ANSWER__' + JSON.stringify(answer)); callActive = true;
+                    P2PPong.sendMessage(activeChannelId, '__ANSWER__' + JSON.stringify(answer));
+                    callActive = true;
                 };
-                callReject.onclick = () => { stopRingtone(); sendThroughPong('__HANGUP__'); callPanel.classList.remove('show'); };
+                callReject.onclick = () => { stopRingtone(); P2PPong.sendMessage(activeChannelId, '__HANGUP__'); callPanel.classList.remove('show'); };
             } catch(e) {}
             return;
         }
@@ -582,25 +649,47 @@ function setupEventHandlers() {
             try { peerConnections['main'].addIceCandidate(new RTCIceCandidate(JSON.parse(data.text.replace('__ICE__','')))); } catch(e) {}
             return;
         }
-        if (data.text === '__HANGUP__') { if (callActive) endCall(); else { stopRingtone(); callPanel.classList.remove('show'); } return; }
-        if (data.text === '__TYPING__') { typingIndicator.textContent = '✍️ Пишет...'; clearTimeout(typingTimeout); typingTimeout = setTimeout(() => { typingIndicator.textContent = ''; }, 2500); return; }
+        if (data.text === '__HANGUP__') {
+            if (callActive) endCall();
+            else { stopRingtone(); callPanel.classList.remove('show'); }
+            return;
+        }
+        if (data.text === '__TYPING__') {
+            typingIndicator.textContent = '✍️ Пишет...';
+            clearTimeout(typingTimeout);
+            typingTimeout = setTimeout(() => { typingIndicator.textContent = ''; }, 2500);
+            return;
+        }
+        
+        // Обычное сообщение
         const contact = peerContacts.find(c => c.peerId === data.channelId);
         appendMessage(contact ? contact.name : 'Друг', data.text, contact ? contact.avatar : 'assets/avatars/001-.png');
         if (toggleSoundState) playSound('bow_shot.mp3');
     });
 
+    P2PPong.on('onError', function(data) {
+        if (data.text === 'session_not_found' && data.channelId) {
+            if (activeChannelId === data.channelId) activeChannelId = null;
+            updateRobinStatus('⚠ Канал утерян. Создайте новый.', 4000);
+        } else {
+            updateRobinStatus('⚠ ' + (data.text || 'Ошибка'), 4000);
+        }
+    });
+
+    // Кнопка отправки
     sendBtn.addEventListener('click', async function() {
         const text = msgInput.value.trim(); if (!text) return;
         if (!activeChannelId) { updateRobinStatus('📤 Нет канала', 2500); msgInput.value = ''; return; }
-        if (obfuscationEnabled) { const padded = await padToSize(text, PACKET_SIZE); sendThroughPong(padded); } else { sendThroughPong(text); }
+        P2PPong.sendMessage(activeChannelId, text);
         appendMessage('Вы', text, profileAvatarSmall ? profileAvatarSmall.src : 'assets/avatars/001-.png');
         msgInput.value = ''; maybeSendFake(); playArcherAnimation(); playBowAnimation();
         if (toggleSoundState) playSound('shot.mp3');
     });
     msgInput.addEventListener('keypress', function(e) { if (e.key === 'Enter') sendBtn.click(); });
-    msgInput.addEventListener('input', function() { if (activeChannelId) sendThroughPong('__TYPING__'); });
+    msgInput.addEventListener('input', function() { if (activeChannelId) P2PPong.sendMessage(activeChannelId, '__TYPING__'); });
 
-    document.getElementById('btn-arrow').addEventListener('click', () => P2PPong.createSession());
+    // Кнопки шапки
+    document.getElementById('btn-arrow').addEventListener('click', () => P2PPong.createArrow());
     document.getElementById('cancel-arrow-btn').addEventListener('click', () => document.getElementById('ref-modal').classList.remove('active'));
     document.getElementById('close-ref-modal-btn').addEventListener('click', () => document.getElementById('ref-modal').classList.remove('active'));
     document.getElementById('share-ref-link-btn').addEventListener('click', () => {
@@ -612,7 +701,7 @@ function setupEventHandlers() {
         if (!raw) return;
         let peerId, key;
         try { const url = new URL(raw); peerId = url.searchParams.get('peer'); key = url.searchParams.get('key') || url.hash.replace('#key=',''); } catch(e) { peerId = raw; }
-        if (peerId) { P2PPong.acceptSession(peerId, key); document.getElementById('ref-modal').classList.remove('active'); }
+        if (peerId) { P2PPong.acceptArrow(peerId, key); document.getElementById('ref-modal').classList.remove('active'); }
     });
 
     btnCall.addEventListener('click', () => callActive ? endCall() : startCall(false));
@@ -698,10 +787,17 @@ async function initApp() {
     try { savedConfigs = JSON.parse(localStorage.getItem('robinhood_tunnels') || '[]'); } catch(e) {}
     updateTunnelUI();
 
+    // P2PPong сам разберётся с URL и ключами
     const urlParams = new URLSearchParams(window.location.search);
-    const refPeer = urlParams.get('peer'), refKey = urlParams.get('key');
-    await P2PPong.init();
-    if (refPeer) setTimeout(() => P2PPong.acceptSession(refPeer, refKey), 1500);
+    const refPeer = urlParams.get('peer');
+    const refKey = urlParams.get('key');
+    
+    // P2PPong.init() уже вызван в модуле, ждём onReady
+    if (refPeer && refKey) {
+        P2PPong.on('onReady', () => {
+            setTimeout(() => P2PPong.acceptArrow(refPeer, refKey), 1500);
+        });
+    }
 
     setupEventHandlers();
     updateRobinStatus('🏹 Святые сокеты стабильны!', 0);
