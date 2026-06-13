@@ -273,11 +273,13 @@ function startVideoCircle(){
 function stopVideoCircle(){if(videoCircleRecorder?.state==='recording')videoCircleRecorder.stop()}
 function startRingProgress(){
     if(!E.videoCircleProgressRing)return;const canvas=E.videoCircleProgressRing;canvas.width=200;canvas.height=200;
-    const ctx=canvas.getContext('2d');let progress=0;
-    function draw(){ctx.clearRect(0,0,200,200);ctx.beginPath();ctx.arc(100,100,94,0,Math.PI*2);ctx.strokeStyle='rgba(255,255,255,0.2)';ctx.lineWidth=4;ctx.stroke();
-        ctx.beginPath();ctx.arc(100,100,94,-Math.PI/2,-Math.PI/2+Math.PI*2*progress);ctx.strokeStyle='var(--danger)';ctx.lineWidth=4;ctx.stroke();
-        progress+=1/30;if(progress>1)progress=1;if(progress<1)videoCircleAnimId=requestAnimationFrame(draw)}
-    draw()
+    const ctx=canvas.getContext('2d');let progress=0;let lastTime=performance.now();
+    function draw(now){
+        const dt=(now-lastTime)/1000;lastTime=now;progress+=dt/30;if(progress>1)progress=1;
+        ctx.clearRect(0,0,200,200);ctx.beginPath();ctx.arc(100,100,94,0,Math.PI*2);ctx.strokeStyle='rgba(255,255,255,0.2)';ctx.lineWidth=4;ctx.stroke();
+        ctx.beginPath();ctx.arc(100,100,94,-Math.PI/2,-Math.PI/2+Math.PI*2*progress);ctx.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue('--danger').trim()||'#f44336';ctx.lineWidth=4;ctx.stroke();
+        if(progress<1)videoCircleAnimId=requestAnimationFrame(draw)}
+    videoCircleAnimId=requestAnimationFrame(draw)
 }
 function stopRingProgress(){if(videoCircleAnimId)cancelAnimationFrame(videoCircleAnimId);if(E.videoCircleProgressRing){const ctx=E.videoCircleProgressRing.getContext('2d');ctx.clearRect(0,0,200,200)}}
 
