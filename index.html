@@ -348,7 +348,6 @@ async function initApp(){
         if(!selfDestructMode){const contacts=await getContactsDB();if(!contacts.find(c=>c.peerId===d.peerId))await saveContactDB({peerId:d.peerId,name:'Лучник',avatar:'assets/avatar/001ava.png'})}
         setTimeout(()=>playQuiverAnimation(),300);
         P2P.sendMsg(d.channelId,'__PROFILE__'+JSON.stringify({nick:E.nickLabel?.textContent||'Лучник',avatar:E.profileAvatarSmall?.src||'assets/avatar/001ava.png',peerId:P2P.getPeerId()}));
-        // Офлайн-очередь
         try{const queue=JSON.parse(localStorage.getItem('rhoq')||'[]');if(queue.length>0){for(const msg of queue){if(msg.ch===d.channelId||!msg.ch){const dec=await P2P._dec(msg.enc,d.secret);if(dec){P2P.sendMsg(d.channelId,dec);appendMessage('Вы',dec,E.profileAvatarSmall?.src||'assets/avatar/001ava.png');await new Promise(r=>setTimeout(r,300))}}}localStorage.removeItem('rhoq');rMsg('📤 Отложенные отправлены',3000)}}catch(e){}
     });
     P2P.on('msg',async d=>{
@@ -400,7 +399,18 @@ async function initApp(){
     if(E.btnVideoInput)E.btnVideoInput.addEventListener('click',toggleVideoCircle);
     if(E.settingBg)E.settingBg.addEventListener('click',()=>{const inp=document.createElement('input');inp.type='file';inp.accept='image/*';inp.onchange=async ev=>{const f=ev.target.files[0];if(!f)return;const r=new FileReader();r.onload=async ev2=>{await saveBgToDB(ev2.target.result);await applyCustomBg(ev2.target.result);rMsg('🖼 Фон обновлён!',3000)};r.readAsDataURL(f)};inp.click()});
     E.btnConnectPeer?.addEventListener('click',()=>{const val=E.peerIdInput?.value.trim();if(!val)return;if(val.includes('key=')){const k=val.split('key=')[1]?.split('&')[0]||'';if(k){P2P.acceptArrow(null,k);E.refModal?.classList.remove('active');rMsg('🤝 Подключаюсь...',3000);return}}rMsg('⚠ Нужна полная ссылка (с key=...)',3000)});
-    E.btnConnectP2P?.addEventListener('click',()=>{const peerId=E.peerConnectInput?.value.trim();if(!peerId)return;if(window.RobinHoodPeerHelp){const knownPeers=window.RobinHoodPeerHelp.getKnownPeers();const found=knownPeers.find(p=>p.info?.peerId===peerId);if(found){P2P.createArrow();rMsg('🔗 Стрела для пира создана',3000)}else{rMsg('🔍 Пир не найден. Попросите его включить "Стать пиром"',4000)}}else{rMsg('⚠ Система помощи сети не загружена',3000)}E.refModal?.classList.remove('active')});
+    E.btnConnectP2P?.addEventListener('click',async()=>{
+        const searchId=E.peerConnectInput?.value.trim();
+        if(!searchId)return;
+        try{
+            const resp=await fetch('https://robincall.stephanclaps-491.workers.dev/announce?peer_id='+encodeURIComponent(P2P.getPeerId()));
+            const data=await resp.json();
+            const found=data.peers?.find(p=>p.peer_id===searchId);
+            if(found){P2P.createArrow();rMsg('🔗 Пир найден! Создаю стрелу...',3000)}
+            else{rMsg('🔍 Пир не в сети. Попросите включить "Стать пиром"',4000)}
+        }catch(e){rMsg('⚠ Трекер недоступен',3000)}
+        E.refModal?.classList.remove('active')
+    });
     document.getElementById('setting-lock')?.addEventListener('click',()=>{if(lockType){if(confirm('Сбросить блокировку?')){localStorage.removeItem('robinhood_lock_v2');lockType=null;lockPinHash='';lockPatternHash='';if(E.lockStatusEl)E.lockStatusEl.textContent='Не задан'}return}isSettingUp=!0;lockScreen.style.display='flex';appContainer.style.display='none';setupLockUI()});
     document.getElementById('setting-terms')?.addEventListener('click',()=>window.open('https://github.com/stepweather-prog/ROBINHOOD-P2P/blob/main/README.md','_blank'));
     E.settingInstall?.addEventListener('click',()=>{if(deferredPrompt)deferredPrompt.prompt().catch(()=>{});else rMsg('📲 Меню браузера → Добавить на экран',4000);E.settingsSheet?.classList.remove('open');E.overlay?.classList.remove('show')});
