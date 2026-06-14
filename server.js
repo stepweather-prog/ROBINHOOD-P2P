@@ -1,3 +1,4 @@
+// ==================== SERVER.JS — RENDER СЕРВЕР ====================
 const http = require('http');
 const crypto = require('crypto');
 
@@ -5,7 +6,7 @@ const PORT = process.env.PORT || 10000;
 const SESSION_TTL = 30 * 60 * 1000;
 const MAX_SESSIONS = 50;
 const CLEANUP_INTERVAL = 30 * 1000;
-const BEACON_TTL = 90 * 1000;
+const BEACON_TTL = 20 * 60 * 1000;
 
 const sessions = {};
 const beacons = {};
@@ -122,4 +123,4 @@ const server = http.createServer((req, res) => {
 });
 
 setInterval(cleanupAll, CLEANUP_INTERVAL);
-server.listen(PORT, () => console.log('RobinHood Server on port ' + PORT));
+server.listen(PORT, () => console.log('RobinHood Render Server on port ' + PORT));
