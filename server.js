@@ -43,11 +43,12 @@ const server = http.createServer((req, res) => {
         if (body) { try { p = JSON.parse(body); } catch(e) { res.writeHead(400); res.end(JSON.stringify({ error: 'invalid_json' })); return; } }
         
         if (req.method === 'POST' && path === '/beacon') {
-            const keyToStore = p.tempKeyHash || p.tempKey || '';
+            const keyToStore = p.tempKeyHash || '';
+            const publicId = p.publicId || '';
             if (!keyToStore) { res.writeHead(400); res.end(JSON.stringify({ error: 'missing_tempKeyHash' })); return; }
             
             const sid = generateSessionId();
-            beacons[sid] = { key: keyToStore, sessionId: sid, createdAt: Date.now(), matched: false };
+            beacons[sid] = { key: keyToStore, sessionId: sid, createdAt: Date.now(), matched: false, peerId: publicId };
             sessions[sid] = { createdAt: Date.now(), messages: [] };
             
             res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -55,12 +56,13 @@ const server = http.createServer((req, res) => {
         }
         
         else if (req.method === 'POST' && path === '/find') {
-            const searchKey = p.tempKeyHash || p.tempKey || '';
-            if (!searchKey) { res.writeHead(400); res.end(JSON.stringify({ error: 'missing_tempKey' })); return; }
+            const searchKey = p.tempKeyHash || '';
+            const searchPeer = p.publicId || '';
+            if (!searchKey) { res.writeHead(400); res.end(JSON.stringify({ error: 'missing_tempKeyHash' })); return; }
             
             let found = null;
             for (const id of Object.keys(beacons)) {
-                if (beacons[id].key === searchKey && !beacons[id].matched) {
+                if (beacons[id].key === searchKey && !beacons[id].matched && beacons[id].peerId === searchPeer) {
                     beacons[id].matched = true;
                     found = beacons[id];
                     break;
