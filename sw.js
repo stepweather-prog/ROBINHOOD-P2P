@@ -42,10 +42,11 @@ export default {
 
 async function handleBeacon(body, env) {
   const sessionId = crypto.randomUUID();
-  const keyToStore = body.tempKeyHash || body.tempKey || '';
-  const beaconData = { key: keyToStore, status: 'waiting', created: Date.now(), matched: false };
+  const keyToStore = body.tempKeyHash || '';
+  const publicId = body.publicId || '';
+  const beaconData = { key: keyToStore, status: 'waiting', created: Date.now(), matched: false, peerId: publicId };
   await env.ROBINHOOD_KV.put('beacon_' + sessionId, JSON.stringify(beaconData), { expirationTtl: 1200 });
-  await env.ROBINHOOD_KV.put('find_' + keyToStore, sessionId, { expirationTtl: 1200 });
+  await env.ROBINHOOD_KV.put('find_' + keyToStore + '_' + publicId, sessionId, { expirationTtl: 1200 });
   await env.ROBINHOOD_KV.put('msgs_' + sessionId, JSON.stringify([]), { expirationTtl: 1800 });
   return { sessionId, status: 'waiting' };
 }
@@ -58,9 +59,10 @@ async function checkBeacon(id, env) {
 }
 
 async function handleFind(body, env) {
-  const searchKey = body.tempKeyHash || body.tempKey || '';
+  const searchKey = body.tempKeyHash || '';
+  const searchPeer = body.publicId || '';
   if (!searchKey) return { status: 'not_found' };
-  const sessionId = await env.ROBINHOOD_KV.get('find_' + searchKey);
+  const sessionId = await env.ROBINHOOD_KV.get('find_' + searchKey + '_' + searchPeer);
   if (!sessionId) return { status: 'not_found' };
   const data = await env.ROBINHOOD_KV.get('beacon_' + sessionId, 'json');
   if (!data) return { status: 'not_found' };
