@@ -383,17 +383,17 @@ async function initApp(){
     if(E.btnVideoInput)E.btnVideoInput.addEventListener('click',toggleVideoCircle);
     if(E.settingBg)E.settingBg.addEventListener('click',()=>{const inp=document.createElement('input');inp.type='file';inp.accept='image/*';inp.onchange=async ev=>{const f=ev.target.files[0];if(!f)return;const r=new FileReader();r.onload=async ev2=>{await saveBgToDB(ev2.target.result);await applyCustomBg(ev2.target.result);rMsg('🖼 Фон обновлён!',3000)};r.readAsDataURL(f)};inp.click()});
     E.btnConnectPeer?.addEventListener('click',()=>{
-        const val=E.peerIdInput?.value.trim();
-        if(!val)return;
-        let k='';
-        if(val.includes('peer=')&&val.includes('key=')){
-            try{const u=new URL(val);k=u.searchParams.get('key')||''}catch(e){}
-        }else if(val.includes('key=')){
-            k=val.split('key=')[1]?.split('&')[0]||'';
-        }
-        if(k){sendToPong('accept',k);E.refModal?.classList.remove('active');rMsg('🤝 Подключаюсь...',3000)}
-        else{rMsg('⚠ Нужна ссылка с ключом',3000)}
-    });
+    const val=E.peerIdInput?.value.trim();
+    if(!val)return;
+    let k='';
+    if(val.includes('peer=')&&val.includes('key=')){
+        try{const u=new URL(val);k=u.searchParams.get('key')||''}catch(e){}
+    }else if(val.includes('key=')){
+        k=val.split('key=')[1]?.split('&')[0]||'';
+    }
+    if(k){sendToPong('accept',k);E.refModal?.classList.remove('active');rMsg('🤝 Подключаюсь...',3000)}
+    else{rMsg('⚠ Нужна ссылка с ключом',3000)}
+});
     document.getElementById('setting-lock')?.addEventListener('click',()=>{if(lockType){if(confirm('Сбросить блокировку?')){localStorage.removeItem('robinhood_lock_v2');lockType=null;lockPinHash='';lockPatternHash='';if(E.lockStatusEl)E.lockStatusEl.textContent='Не задан'}return}isSettingUp=!0;lockScreen.style.display='flex';appContainer.style.display='none';setupLockUI()});
     document.getElementById('setting-terms')?.addEventListener('click',()=>window.open('https://github.com/stepweather-prog/ROBINHOOD-P2P/blob/main/README.md','_blank'));
     E.settingInstall?.addEventListener('click',()=>{if(deferredPrompt)deferredPrompt.prompt().catch(()=>{});else rMsg('📲 Меню браузера → Добавить на экран',4000);E.settingsSheet?.classList.remove('open');E.overlay?.classList.remove('show')});
@@ -417,7 +417,17 @@ async function initApp(){
     window.addEventListener('offline',()=>{setConnectionStatus('offline');rMsg('⚠️ Офлайн',0)});
 
     const params=new URLSearchParams(window.location.search);const refId=params.get('id'),refKey=params.get('key');
-    if(refId&&refKey){rMsg('🔄 Подключаюсь...',0);setTimeout(()=>sendToPong('accept',refKey),800)}
+if(refId&&refKey){
+    rMsg('🔄 Подключаюсь...',0);
+    setTimeout(function(){
+        sendToPong('accept',refKey);
+        setTimeout(function(){
+            if(!currentChannelId){
+                sendToPong('accept',refKey);
+            }
+        },3000);
+    },1000);
+}
     setConnectionStatus('checking');rMsg('🏹 Ждём колчан...',0);
 }
 
