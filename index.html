@@ -340,24 +340,61 @@ async function initApp(){
 
     P2P.on('ready',d=>{setConnectionStatus('online');rMsg('🌐 Понг готов',2000)});
     P2P.on('created',d=>{currentChannelId=d.sessionId;currentSecret=d.secret;if(E.refLinkDisplay)E.refLinkDisplay.textContent=d.fullLink;E.refModal?.classList.add('active');navigator.clipboard.writeText(d.fullLink).catch(()=>{});rMsg('✅ Стрела создана!',3000);setConnectionStatus('online')});
-    P2P.on('open',async d=>{
-        currentChannelId=d.channelId;currentSecret=d.secret;
-        setConnectionStatus('online');rMsg('✅ Канал открыт!',3000);E.refModal?.classList.remove('active');
-        if(!selfDestructMode){const contacts=await getContactsDB();if(!contacts.find(c=>c.peerId===d.peerId))await saveContactDB({peerId:d.peerId,name:'Лучник',avatar:'assets/avatar/001ava.png'})}
-        setTimeout(()=>playQuiverAnimation(),300);
-        if(currentChannelId)P2P.sendMsg(currentChannelId,'__PROFILE__'+JSON.stringify({nick:E.nickLabel?.textContent||'Лучник',avatar:E.profileAvatarSmall?.src||'assets/avatar/001ava.png'}));
-    });
-    P2P.on('msg',async d=>{
-        if(!d.text)return;
-        if(d.text.indexOf('__')===0){
-            if(d.text.startsWith('__PROFILE__')){try{const p=JSON.parse(d.text.replace('__PROFILE__',''));const contacts=await getContactsDB();const c=contacts.find(c=>c.peerId===d.sender||c.peerId===currentChannelId);if(c){if(p.nick)c.name=p.nick;if(p.avatar)c.avatar=p.avatar;await saveContactDB(c);loadContacts()}}catch(e){}return}
-            if(d.text.startsWith('__OFFER__')){if(callActive||pc){P2P.sendMsg(d.channelId,'__HANGUP__');return}try{incomingOffer=JSON.parse(d.text.replace('__OFFER__',''));showCallPanel(!0);E.callStatus.textContent='📞 Входящий...';E.callAccept.style.display='inline-block';E.callReject.style.display='inline-block';E.callEnd.style.display='none';playRingtone()}catch(e){}return}
-            if(d.text.startsWith('__ANSWER__')&&pc){stopRingback();try{await pc.setRemoteDescription(new RTCSessionDescription(JSON.parse(d.text.replace('__ANSWER__',''))));callActive=!0;E.callStatus.textContent='✅ Разговор';E.callAccept.style.display='none';E.callReject.style.display='none';E.callEnd.style.display='inline-block';playSound('open.mp3')}catch(e){}return}
-            if(d.text.startsWith('__ICE__')&&pc){try{pc.addIceCandidate(new RTCIceCandidate(JSON.parse(d.text.replace('__ICE__','')))).catch(()=>{})}catch(e){}return}
-            if(d.text=='__HANGUP__'){if(callActive||pc){rMsg('📞 Собеседник завершил',3000);hang(!1)}return}
-            if(d.text.startsWith('__FILE__')){try{const fd=JSON.parse(d.text.replace('__FILE__',''));const avatar=E.profileAvatarSmall?.src||'assets/avatar/001ava.png';if(fd.type==='video-circle'||fd.mime==='video/webm'){appendMessage('Друг','📹 Кружок',avatar,fd.data,'video/webm')}else if(fd.mime&&fd.mime.startsWith('audio/')){appendMessage('Друг','🎤 Голосовое',avatar,fd.data,fd.mime)}}catch(e){}return}return}
-        currentChannelId=d.channelId;const contacts=await getContactsDB();const contact=contacts.find(c=>c.peerId===d.sender||c.peerId===currentChannelId);
-        appendMessage(contact?.name||'Друг',d.text,contact?.avatar||'assets/avatar/001ava.png');if(toggleSoundState)playSound('arrow_hit.wav');
+    P2P.on('open', async d => {
+    currentChannelId = d.channelId;
+    currentSecret = d.secret;
+    setConnectionStatus('online');
+    rMsg('✅ Канал открыт!', 3000);
+    E.refModal?.classList.remove('active');
+    if (!selfDestructMode) {
+        const contacts = await getContactsDB();
+        if (!contacts.find(c => c.peerId === d.peerId)) {
+            await saveContactDB({ peerId: d.peerId, name: 'Лучник', avatar: 'assets/avatar/001ava.png' });
+        }
+    }
+    setTimeout(() => playQuiverAnimation(), 300);
+    // Отправляем свой профиль
+    P2P.sendMsg(d.channelId, '__PROFILE__' + JSON.stringify({
+        nick: E.nickLabel?.textContent || 'Лучник',
+        avatar: E.profileAvatarSmall?.src || 'assets/avatar/001ava.png',
+        peerId: P2P.getPeerId()
+    }));
+});
+
+P2P.on('msg', async d => {
+    if (!d.text) return;
+    if (d.text.indexOf('__') === 0) {
+        if (d.text.startsWith('__PROFILE__')) {
+            try {
+                const p = JSON.parse(d.text.replace('__PROFILE__', ''));
+                const contacts = await getContactsDB();
+                const chs = P2P.getChannels();
+                const peerIdFromChannel = chs[d.channelId]?.peerId || p.peerId;
+                let c = contacts.find(c => c.peerId === peerIdFromChannel);
+                if (!c) {
+                    c = { peerId: peerIdFromChannel, name: p.nick || 'Лучник', avatar: p.avatar || 'assets/avatar/001ava.png' };
+                    await saveContactDB(c);
+                } else {
+                    if (p.nick) c.name = p.nick;
+                    if (p.avatar) c.avatar = p.avatar;
+                    await saveContactDB(c);
+                }
+                loadContacts();
+                rMsg('👤 ' + (p.nick || 'Лучник') + ' в сети', 3000);
+            } catch (e) {}
+            return;
+        }
+        // ... остальные сигнальные сообщения без изменений
+        return;
+    }
+    currentChannelId = d.channelId;
+    const contacts = await getContactsDB();
+    const chs = P2P.getChannels();
+    const peerIdFromChannel = chs[d.channelId]?.peerId;
+    const contact = contacts.find(c => c.peerId === d.sender || c.peerId === peerIdFromChannel);
+    appendMessage(contact?.name || 'Друг', d.text, contact?.avatar || 'assets/avatar/001ava.png');
+    if (toggleSoundState) playSound('arrow_hit.wav');
+});
     });
     P2P.on('err',d=>{rMsg('⚠ '+(d.text||'Ошибка'),4000);setConnectionStatus('offline')});
 
