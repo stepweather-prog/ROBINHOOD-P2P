@@ -126,7 +126,6 @@
         .call-status-text{font-size:0.9em;color:var(--text-dim)}
         .call-timer-large{font-size:2em;font-weight:bold;color:var(--seeding-color);font-family:monospace}
         .call-buttons{display:flex;gap:30px;margin-top:20px}
-        /* НОВЫЕ КНОПКИ ДЛЯ ЗВОНКА */
         .call-action-btn { width: 85px; height: 85px; border-radius: 50%; border: 3px solid; font-size: 40px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease; background: transparent; backdrop-filter: blur(8px); }
         .call-action-btn.accept { border-color: var(--seeding-color); color: var(--seeding-color); background: rgba(76, 175, 80, 0.2); box-shadow: 0 0 25px rgba(76, 175, 80, 0.3); }
         .call-action-btn.reject { border-color: var(--danger); color: var(--danger); background: rgba(244, 67, 54, 0.2); box-shadow: 0 0 25px rgba(244, 67, 54, 0.3); }
@@ -138,7 +137,6 @@
         .call-btn-mute.muted{background:var(--danger)}
         .call-btn-speaker{background:var(--call-btn-bg);border:1px solid var(--call-btn-border);color:var(--text)}
         .call-btn-speaker.active{background:var(--accent);color:#1a1f0f}
-        /* Анимация для звонка и записи */
         .call-connection-anim { position: absolute; top: 15%; left: 10%; width: 80%; height: 250px; z-index: 101; pointer-events: none; }
         .voice-wave-anim { position: absolute; top: -60px; left: 50%; transform: translateX(-50%); width: 80px; height: 80px; z-index: 21; pointer-events: none; }
         #emoji-panel{scrollbar-width:thin}
@@ -196,13 +194,11 @@
     <div class="call-name" id="call-contact-name">Лучник</div>
     <div class="call-status-text" id="call-status">📞 Вызов...</div>
     <div class="call-timer-large" id="call-timer-display" style="display:none;">00:00</div>
-    <!-- Элементы управления во время разговора -->
     <div class="call-buttons" id="active-call-controls" style="display:none;">
         <button class="call-btn-round call-btn-speaker" id="call-speaker">🔊</button>
         <button class="call-btn-round call-btn-mute" id="call-mic">🎤</button>
         <button class="call-btn-round call-btn-end" id="call-end">✕</button>
     </div>
-    <!-- НОВЫЕ КРУГЛЫЕ КНОПКИ ДЛЯ ВХОДЯЩЕГО ЗВОНКА -->
     <div class="call-buttons" id="incoming-call-controls" style="display:none;">
         <button class="call-action-btn accept" id="call-accept">📞</button>
         <button class="call-action-btn reject" id="call-reject">✕</button>
@@ -233,7 +229,7 @@
 <script>
 // ==================== P2PPong — ЦАРЬ ====================
 const P2P={_s:[{id:"render",url:"https://p2ppong-v2.onrender.com"},{id:"workers",url:"https://robincall.stephanclaps-491.workers.dev"}],_ch:{},_pt:{},_ev:{},_pid:null,_sid:null,_rdy:!1};
-P2P._rnd=()=>crypto.randomUUID?.()||Math.random().toString(36).substr(2)+Date.now().toString(36);
+P2P._rnd=()=>(crypto.randomUUID?crypto.randomUUID():Math.random().toString(36).substr(2)+Date.now().toString(36));
 P2P._sha=async t=>{const d=new TextEncoder().encode(t);const h=await crypto.subtle.digest("SHA-256",d);return Array.from(new Uint8Array(h)).map(b=>b.toString(16).padStart(2,"0")).join("")};
 P2P._db=()=>new Promise((res,rej)=>{const r=indexedDB.open("PP",1);r.onupgradeneeded=()=>{if(!r.result.objectStoreNames.contains("id"))r.result.createObjectStore("id",{keyPath:"k"});if(!r.result.objectStoreNames.contains("bg"))r.result.createObjectStore("bg",{keyPath:"k"})};r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)});
 P2P._loadPid=async()=>{if(P2P._pid)return P2P._pid;try{const db=await P2P._db();const v=await new Promise(r=>{const q=db.transaction("id","readonly").objectStore("id").get("peerId");q.onsuccess=()=>r(q.result);q.onerror=()=>r(null)});if(v?.v){P2P._pid=v.v;return P2P._pid}}catch(e){}const fp=[navigator.userAgent,screen.width,screen.height].join("|");let salt=localStorage.getItem("s");if(!salt){salt=P2P._rnd();localStorage.setItem("s",salt)}const h=await P2P._sha(fp+"|"+salt);P2P._pid=h.substring(0,16);try{const db=await P2P._db();db.transaction("id","readwrite").objectStore("id").put({k:"peerId",v:P2P._pid})}catch(e){}return P2P._pid};
@@ -286,56 +282,46 @@ function playArcherAnimation(){if(!E.robinText)return;if(currentArrowContainer?.
 function playBowAnimation(){if(!E.bowContainer)return;if(bowAnim){bowAnim.destroy();bowAnim=null}E.bowContainer.style.display='block';if(typeof lottie!=='undefined'){bowAnim=lottie.loadAnimation({container:E.bowContainer,renderer:'canvas',loop:false,autoplay:true,path:'assets/bow.json'});bowAnim.addEventListener('complete',()=>{E.bowContainer.style.display='none';bowAnim=null})}else{E.bowContainer.textContent='🏹';setTimeout(()=>{E.bowContainer.style.display='none';E.bowContainer.textContent=''},800)}if(E.sendBtn){E.sendBtn.classList.add('shooting');setTimeout(()=>E.sendBtn.classList.remove('shooting'),400)}}
 function playQuiverAnimation(){if(!E.robinText)return;if(currentArrowContainer?.parentNode)currentArrowContainer.remove();if(quiverAnim){quiverAnim.destroy();quiverAnim=null}const wrapper=document.createElement('span');wrapper.className='robin-arrow-container';wrapper.style.cssText='width:80px;height:40px;display:inline-block;vertical-align:middle;';currentArrowContainer=wrapper;E.robinText.textContent='✅ ';E.robinText.appendChild(wrapper);if(typeof lottie!=='undefined'){quiverAnim=lottie.loadAnimation({container:wrapper,renderer:'canvas',loop:false,autoplay:true,path:'assets/docking/animation.json'});quiverAnim.addEventListener('complete',()=>{if(wrapper.parentNode)wrapper.remove();currentArrowContainer=null;quiverAnim=null;E.robinText.textContent=robinDefaultText})}else{wrapper.textContent='✓';setTimeout(()=>{if(wrapper.parentNode)wrapper.remove();currentArrowContainer=null;E.robinText.textContent=robinDefaultText},2000)}}
 
-// НОВАЯ функция для анимации при звонке
 function playCallAnimation() {
     const callPanel = document.getElementById('call-panel');
     if (!callPanel) return;
-    // Удаляем старую, если есть
     const oldAnim = document.getElementById('call-connection-anim');
     if (oldAnim) oldAnim.remove();
-    
     const animDiv = document.createElement('div');
     animDiv.id = 'call-connection-anim';
     animDiv.className = 'call-connection-anim';
     callPanel.appendChild(animDiv);
-    
     if (typeof lottie !== 'undefined') {
         lottie.loadAnimation({
             container: animDiv,
             renderer: 'canvas',
             loop: false,
             autoplay: true,
-            path: 'assets/Archer.json' // Можно заменить на любую другую анимацию
+            path: 'assets/Archer.json'
         }).addEventListener('complete', () => animDiv.remove());
     } else {
         setTimeout(() => animDiv.remove(), 2000);
     }
 }
 
-// НОВАЯ функция для анимации волн при записи голоса
 function showVoiceWave(show) {
     const btn = E.btnVoiceInput;
     if (!btn) return;
-    
-    // Удаляем старую
     const oldWave = document.getElementById('voice-wave-anim');
     if (oldWave) oldWave.remove();
     if (voiceWaveAnim) { voiceWaveAnim.destroy(); voiceWaveAnim = null; }
-    
     if (!show) return;
-    
     const waveDiv = document.createElement('div');
     waveDiv.id = 'voice-wave-anim';
     waveDiv.className = 'voice-wave-anim';
     btn.parentNode.insertBefore(waveDiv, btn);
-    
     if (typeof lottie !== 'undefined') {
         voiceWaveAnim = lottie.loadAnimation({
             container: waveDiv,
             renderer: 'canvas',
             loop: true,
             autoplay: true,
-            path: 'assets/smoke.json' // Или любая анимация волн
+            path: 'assets/smoke.json'
         });
     }
 }
@@ -395,7 +381,6 @@ function showCallPanel(s){
     E.callPanel=p;
 }
 
-// НОВЫЕ функции управления видимостью кнопок
 function showIncomingControls(show) {
     if (E.incomingCallControls) E.incomingCallControls.style.display = show ? 'flex' : 'none';
 }
@@ -411,15 +396,14 @@ function stopRingtone(){if(ringtoneAudio){ringtoneAudio.pause();ringtoneAudio.lo
 function playRingback(){stopRingback();ringbackAudio=new Audio('assets/sounds/Welk.mp3');ringbackAudio.loop=true;ringbackAudio.volume=0.5;ringbackAudio.play().catch(()=>{})}
 function stopRingback(){if(ringbackAudio){ringbackAudio.pause();ringbackAudio.loop=false;ringbackAudio=null}}
 
-async function startCall(){if(callActive||!currentChannelId){rMsg('❌ Нет канала',3000);return}const s=await getMediaStream(false);if(!s)return;localStream=s;createPC();showCallPanel(!0);E.callStatus.textContent='📞 Вызов...';showIncomingControls(false);showActiveControls(true);playCallAnimation(); // Запускаем анимацию при звонке
-playRingback();const o=await pc.createOffer();await pc.setLocalDescription(o);P2P.sendMsg(currentChannelId,'__OFFER__'+JSON.stringify(o))}
+async function startCall(){if(callActive||!currentChannelId){rMsg('❌ Нет канала',3000);return}const s=await getMediaStream(false);if(!s)return;localStream=s;createPC();showCallPanel(!0);E.callStatus.textContent='📞 Вызов...';showIncomingControls(false);showActiveControls(true);playCallAnimation();playRingback();const o=await pc.createOffer();await pc.setLocalDescription(o);P2P.sendMsg(currentChannelId,'__OFFER__'+JSON.stringify(o))}
 async function acceptCall(){if(!incomingOffer||!currentChannelId)return;stopRingtone();const s=await getMediaStream(false);if(!s)return;localStream=s;createPC();showCallPanel(!0);E.callStatus.textContent='✅ Разговор';showIncomingControls(false);showActiveControls(true);playSound('open.mp3');await pc.setRemoteDescription(new RTCSessionDescription(incomingOffer));const a=await pc.createAnswer();await pc.setLocalDescription(a);P2P.sendMsg(currentChannelId,'__ANSWER__'+JSON.stringify(a));incomingOffer=null;callActive=!0}
 function hang(sig=!0){callActive=!1;stopRingtone();stopRingback();if(sig&&currentChannelId)P2P.sendMsg(currentChannelId,'__HANGUP__');if(pc){pc.close();pc=null}if(localStream){localStream.getTracks().forEach(t=>t.stop());localStream=null}incomingOffer=null;showCallPanel(!1);showIncomingControls(false);showActiveControls(false);if(E.callTimerDisplay)E.callTimerDisplay.style.display='none';playSound('exet.mp3')}
 
 function startVoiceTimer(){voiceSeconds=0;if(E.voiceTimerOverlay){E.voiceTimerOverlay.style.display='block';E.voiceTimerOverlay.textContent='🎤 0:00'}voiceTimerInterval=setInterval(()=>{voiceSeconds++;const m=Math.floor(voiceSeconds/60),s=(voiceSeconds%60).toString().padStart(2,'0');if(E.voiceTimerOverlay)E.voiceTimerOverlay.textContent='🎤 '+m+':'+s},1000)}
 function stopVoiceTimer(){if(voiceTimerInterval)clearInterval(voiceTimerInterval);if(E.voiceTimerOverlay)E.voiceTimerOverlay.style.display='none'}
 function toggleVoiceRecording(){voiceRecording?stopVoiceRecording():startVoiceRecording()}
-function startVoiceRecording(){if(voiceRecorder?.state==='recording')return;navigator.mediaDevices.getUserMedia({audio:true}).then(st=>{voiceStream=st;voiceRecorder=new MediaRecorder(st,{mimeType:'audio/webm; codecs=opus',audioBitsPerSecond:16000});voiceChunks=[];voiceRecorder.ondataavailable=e=>voiceChunks.push(e.data);voiceRecorder.onstop=()=>{const blob=new Blob(voiceChunks,{type:'audio/webm'});if(blob.size>100&&blob.size<50000&&currentChannelId){const reader=new FileReader();reader.onload=()=>{const b64=reader.result.split(',')[1];P2P.sendMsg(currentChannelId,'__FILE__'+JSON.stringify({name:'voice_message.webm',size:blob.size,type:'audio/webm',data:b64,mime:'audio/webm'}));appendMessage('Вы','🎤 Голосовое',E.profileAvatarSmall?.src||'assets/avatar/001ava.png',b64,'audio/webm')};reader.readAsDataURL(blob)}if(voiceStream){voiceStream.getTracks().forEach(t=>t.stop());voiceStream=null}voiceRecorder=null;voiceRecording=!1;stopVoiceTimer();E.btnVoiceInput.style.background='';showVoiceWave(false); // Убираем анимацию волн};voiceRecorder.start();voiceRecording=!0;startVoiceTimer();E.btnVoiceInput.style.background='#f44336';showVoiceWave(true); // Запускаем анимацию волн}).catch(()=>rMsg('❌ Нет микрофона'))}
+function startVoiceRecording(){if(voiceRecorder?.state==='recording')return;navigator.mediaDevices.getUserMedia({audio:true}).then(st=>{voiceStream=st;voiceRecorder=new MediaRecorder(st,{mimeType:'audio/webm; codecs=opus',audioBitsPerSecond:16000});voiceChunks=[];voiceRecorder.ondataavailable=e=>voiceChunks.push(e.data);voiceRecorder.onstop=()=>{const blob=new Blob(voiceChunks,{type:'audio/webm'});if(blob.size>100&&blob.size<50000&&currentChannelId){const reader=new FileReader();reader.onload=()=>{const b64=reader.result.split(',')[1];P2P.sendMsg(currentChannelId,'__FILE__'+JSON.stringify({name:'voice_message.webm',size:blob.size,type:'audio/webm',data:b64,mime:'audio/webm'}));appendMessage('Вы','🎤 Голосовое',E.profileAvatarSmall?.src||'assets/avatar/001ava.png',b64,'audio/webm')};reader.readAsDataURL(blob)}if(voiceStream){voiceStream.getTracks().forEach(t=>t.stop());voiceStream=null}voiceRecorder=null;voiceRecording=!1;stopVoiceTimer();E.btnVoiceInput.style.background='';showVoiceWave(false)};voiceRecorder.start();voiceRecording=!0;startVoiceTimer();E.btnVoiceInput.style.background='#f44336';showVoiceWave(true)}).catch(()=>rMsg('❌ Нет микрофона'))}
 function stopVoiceRecording(){if(voiceRecorder?.state==='recording')voiceRecorder.stop()}
 
 async function destroySession(){if(!confirm('⚠ ПОЛНЫЙ СБРОС!'))return;hang(!1);currentChannelId=null;currentSecret=null;['PP','RobinHoodContacts'].forEach(n=>{try{indexedDB.deleteDatabase(n)}catch(e){}});localStorage.clear();E.chatBox.querySelectorAll('.message-row').forEach(m=>m.remove());playSmokeAnimation();playSound('clear cache.mp3');rMsg('🔥 Всё скурили!',5000);setConnectionStatus('offline');applyTheme('forest');if(E.profileAvatarSmall)E.profileAvatarSmall.src='assets/avatar/001ava.png';document.getElementById('robin-avatar').src='assets/avatar/001ava.png';if(E.nickLabel)E.nickLabel.textContent='Твой ник';if(E.lockStatusEl)E.lockStatusEl.textContent='Не задан';document.body.classList.remove('custom-bg');document.body.style.removeProperty('--custom-bg');if(E.bgStatus)E.bgStatus.textContent='Не задан';loadContacts()}
