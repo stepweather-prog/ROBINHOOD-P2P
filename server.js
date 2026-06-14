@@ -26,6 +26,7 @@ const server = http.createServer((req, res) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    res.setHeader('Access-Control-Max-Age', '86400');
     
     if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
     
@@ -40,21 +41,18 @@ const server = http.createServer((req, res) => {
         let p = {};
         if (body) { try { p = JSON.parse(body); } catch(e) { res.writeHead(400); res.end(JSON.stringify({ error: 'invalid_json' })); return; } }
         
-        // ============ МАЯК — ПРИНИМАЕТ tempKeyHash ИЛИ tempKey ============
         if (req.method === 'POST' && path === '/beacon') {
             const keyToStore = p.tempKeyHash || p.tempKey || '';
             if (!keyToStore) { res.writeHead(400); res.end(JSON.stringify({ error: 'missing_tempKeyHash' })); return; }
             
             const sid = generateSessionId();
             beacons[sid] = { key: keyToStore, sessionId: sid, createdAt: Date.now(), matched: false };
-            // СРАЗУ создаём сессию для сообщений
             sessions[sid] = { createdAt: Date.now(), messages: [] };
             
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ sessionId: sid }));
         }
         
-        // ============ ПОИСК МАЯКА ============
         else if (req.method === 'POST' && path === '/find') {
             const searchKey = p.tempKeyHash || p.tempKey || '';
             if (!searchKey) { res.writeHead(400); res.end(JSON.stringify({ error: 'missing_tempKey' })); return; }
@@ -80,7 +78,6 @@ const server = http.createServer((req, res) => {
             }
         }
         
-        // ============ ПРОВЕРКА СТАТУСА ============
         else if (req.method === 'GET' && path === '/beacon') {
             const id = params.get('id');
             const b = beacons[id];
@@ -89,11 +86,9 @@ const server = http.createServer((req, res) => {
             res.end(JSON.stringify({ matched, sessionId: id }));
         }
         
-        // ============ ОТПРАВКА СООБЩЕНИЯ ============
         else if (req.method === 'POST' && path === '/message') {
             if (!p.sessionId || !p.packet) { res.writeHead(400); res.end(JSON.stringify({ error: 'missing_params' })); return; }
             
-            // Авто-создание сессии если её нет
             if (!sessions[p.sessionId]) {
                 sessions[p.sessionId] = { createdAt: Date.now(), messages: [] };
             }
@@ -107,7 +102,6 @@ const server = http.createServer((req, res) => {
             res.end(JSON.stringify({ status: 'ok' }));
         }
         
-        // ============ ПОЛУЧЕНИЕ СООБЩЕНИЙ ============
         else if (req.method === 'GET' && path === '/message') {
             const id = params.get('id'), since = parseInt(params.get('since')) || 0;
             const s = sessions[id];
@@ -118,7 +112,6 @@ const server = http.createServer((req, res) => {
             res.end(JSON.stringify({ messages: msgs }));
         }
         
-        // ============ PING ============
         else if (req.method === 'GET' && path === '/ping') {
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ status: 'ok', uptime: process.uptime() }));
