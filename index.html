@@ -298,15 +298,16 @@ function switchCamera(){if(!videoCircleStream)return;currentFacingMode=currentFa
 function startVideoCircle(){
     if(videoCircleRecorder?.state==='recording'){stopVideoCircle();return}
     navigator.mediaDevices.getUserMedia({video:{width:{ideal:320},height:{ideal:240},facingMode:currentFacingMode},audio:true}).then(st=>{
-        videoCircleStream=st;videoCircleRecorder=new MediaRecorder(st,{mimeType:'video/webm; codecs=vp8,opus',videoBitsPerSecond:30000});videoCircleChunks=[];
+        videoCircleStream=st;videoCircleRecorder=new MediaRecorder(st,{mimeType:'video/webm; codecs=vp8,opus',videoBitsPerSecond:50000});videoCircleChunks=[];
         if(E.videoCirclePreviewVideo){E.videoCirclePreviewVideo.srcObject=st;E.videoCirclePreview.style.display='block'}
         if(E.videoCircleStop)E.videoCircleStop.style.display='block';
         startRingProgress();
         videoCircleRecorder.ondataavailable=e=>videoCircleChunks.push(e.data);
         videoCircleRecorder.onstop=()=>{stopRingProgress();if(E.videoCirclePreview)E.videoCirclePreview.style.display='none';if(E.videoCircleStop)E.videoCircleStop.style.display='none';
-            const blob=new Blob(videoCircleChunks,{type:'video/webm'});if(blob.size>100&&blob.size<150000&&currentChannelId){const reader=new FileReader();reader.onload=()=>{const b64=reader.result.split(',')[1];P2P.sendMsg(currentChannelId,'__FILE__'+JSON.stringify({type:'video-circle',name:'video_circle.webm',size:blob.size,mime:'video/webm',data:b64}));appendMessage('Вы','📹 Кружок',E.profileAvatarSmall?.src||'assets/avatar/001ava.png',b64,'video/webm')};reader.readAsDataURL(blob)}
+            const blob=new Blob(videoCircleChunks,{type:'video/webm'});if(blob.size>100&&blob.size<50000&&currentChannelId){const reader=new FileReader();reader.onload=()=>{const b64=reader.result.split(',')[1];P2P.sendMsg(currentChannelId,'__FILE__'+JSON.stringify({type:'video-circle',name:'video_circle.webm',size:blob.size,mime:'video/webm',data:b64}));appendMessage('Вы','📹 Кружок',E.profileAvatarSmall?.src||'assets/avatar/001ava.png',b64,'video/webm')};reader.readAsDataURL(blob)}
             st.getTracks().forEach(t=>t.stop());videoCircleRecorder=null;videoRecording=!1;E.btnVideoInput.style.background=''};
         videoCircleRecorder.start();videoRecording=!0;E.btnVideoInput.style.background='#f44336';
+        setTimeout(()=>{if(videoCircleRecorder?.state==='recording')videoCircleRecorder.stop()},10000);
     }).catch(()=>rMsg('❌ Нет камеры'))
 }
 function stopVideoCircle(){if(videoCircleRecorder?.state==='recording')videoCircleRecorder.stop()}
