@@ -394,7 +394,7 @@ P2P.on('msg', async d => {
     const contact = contacts.find(c => c.peerId === d.sender || c.peerId === peerIdFromChannel);
     appendMessage(contact?.name || 'Друг', d.text, contact?.avatar || 'assets/avatar/001ava.png');
     if (toggleSoundState) playSound('arrow_hit.wav');
-});
+
     });
     P2P.on('err',d=>{rMsg('⚠ '+(d.text||'Ошибка'),4000);setConnectionStatus('offline')});
 
