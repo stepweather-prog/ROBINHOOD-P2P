@@ -174,7 +174,7 @@
 <div id="app-container" style="display:none;flex-direction:column;height:100%;">
 <div class="leaves-container" id="leaves-container"></div>
 <div class="header">
-    <div class="header-row-1"><span class="header-title-text">ROBINHOOD P2P</span><span class="header-shield">🏹</span><span class="header-datetime"><span id="header-date"></span> <span id="header-time"></span></span><span class="version-text">v1.4 stable</span></div>
+    <div class="header-row-1"><span class="header-title-text">ROBINHOOD P2P</span><span class="header-shield">🏹</span><span class="header-datetime"><span id="header-date"></span> <span id="header-time"></span></span><span class="version-text">v1.2 Beta</span></div>
     <div class="header-row-2">
         <div class="header-btn" id="btn-avatar"><img src="assets/avatar/001ava.png" class="header-avatar" id="profile-avatar-small" alt="avatar"></div>
         <div class="header-btn" id="btn-arrow"><img src="assets/icons/08icon.png" alt="arrow"></div>
@@ -227,7 +227,13 @@
     <div class="contact-item" id="setting-terms"><div class="contact-info"><span style="font-size:24px;">⚜</span><span class="contact-name">Условия использования</span></div><span>→</span></div>
     <div class="contact-item setting-install-btn hidden" id="setting-install"><div class="contact-info"><img src="assets/avatar/001ava.png" style="width:28px;height:28px;border-radius:6px;"><div><div class="contact-name">RobinHood P2P</div><div style="font-size:0.6em;color:var(--text-dim);">Установить приложение</div></div></div><span>📲</span></div>
 </div></div>
-<div class="modal-overlay" id="ref-modal"><div class="modal-dialog"><h3>🏹 Стрела готова!</h3><div class="code-display" id="ref-link-display"></div><input type="text" id="peer-id-input" placeholder="PeerID или ссылка друга" autocomplete="off" style="width:100%;margin:8px 0;padding:8px;background:var(--input-bg);border:1px solid var(--border);color:var(--input-text);border-radius:8px;font-size:0.75em;font-family:monospace;"><button class="btn-primary" id="btn-connect-peer">🤝 Подключиться</button><button class="btn-primary" id="share-ref-link-btn">📤 Поделиться</button><button class="btn-cancel" id="cancel-arrow-btn">Отмена</button><button class="btn-dark" id="close-ref-modal-btn">Закрыть</button></div></div>
+<div class="modal-overlay" id="ref-modal"><div class="modal-dialog"><h3>🏹 Колчан</h3>
+    <button class="btn-primary" id="btn-create-arrow">🏹 Создать стрелу</button>
+    <div style="color:var(--text-dim);margin:12px 0;">или вставь ссылку / Peer ID:</div>
+    <input type="text" id="peer-id-input" placeholder="PeerID или ссылка друга" autocomplete="off" style="width:100%;margin:8px 0;padding:8px;background:var(--input-bg);border:1px solid var(--border);color:var(--input-text);border-radius:8px;font-size:0.75em;font-family:monospace;">
+    <button class="btn-primary" id="btn-connect-peer">🤝 Подключиться</button>
+    <button class="btn-dark" id="close-ref-modal-btn">Закрыть</button>
+</div></div>
 <div class="modal-overlay" id="tunnel-config-modal"><div class="modal-dialog"><h3>➕ Управление конфигами</h3><div id="tunnel-list" style="max-height:150px;overflow-y:auto;margin-bottom:10px;text-align:left;"></div><button class="btn-primary" id="btn-load-file">📂 Загрузить новый</button><button class="btn-dark" id="btn-warp-gen" style="margin-top:6px;">🌐 Создать новые конфиги AmneziaWG</button><div style="margin:10px 0;color:var(--text-dim);">или вставьте текст:</div><textarea id="tunnel-config-input" style="width:100%;height:100px;background:var(--input-bg);border:1px solid var(--border);color:var(--input-text);border-radius:8px;padding:8px;font-size:0.7em;font-family:monospace;resize:vertical;"></textarea><button class="btn-primary" id="btn-save-tunnel">💾 Сохранить</button><button class="btn-dark" id="btn-cancel-tunnel-config">Закрыть</button><input type="file" id="config-file-input" accept=".conf" style="display:none;"></div></div>
 <div id="bow-above-send"></div>
 </div>
@@ -255,7 +261,7 @@ P2P.init=async()=>{if(P2P._rdy)return;P2P._sid=P2P._rnd();await P2P._loadPid();P
 P2P.init().catch(e=>console.error("[P2PPong]",e));
 
 (function(){
-const E={chatBox:document.getElementById('chat-box'),msgInput:document.getElementById('msg-input'),robinText:document.getElementById('robin-text'),profileAvatarSmall:document.getElementById('profile-avatar-small'),nickLabel:document.getElementById('nick-label'),headerDate:document.getElementById('header-date'),headerTime:document.getElementById('header-time'),avatarSelector:document.getElementById('avatar-selector'),avatarList:document.getElementById('avatar-list'),contactsSheet:document.getElementById('contacts-sheet'),contactsListInner:document.getElementById('contacts-list-inner'),settingsSheet:document.getElementById('settings-sheet'),overlay:document.getElementById('overlay'),refModal:document.getElementById('ref-modal'),refLinkDisplay:document.getElementById('ref-link-display'),sendBtn:document.getElementById('send-btn'),toggleSound:document.getElementById('toggle-sound'),toggleSelfDestruct:document.getElementById('toggle-selfdestruct'),togglePeerHelp:document.getElementById('toggle-peer-help'),themeName:document.getElementById('theme-name'),callPanel:document.getElementById('call-panel'),callStatus:document.getElementById('call-status'),callAccept:document.getElementById('call-accept'),callReject:document.getElementById('call-reject'),callEnd:document.getElementById('call-end'),lockStatusEl:document.getElementById('lock-status'),connectionIcon:document.getElementById('connection-icon'),leavesContainer:document.getElementById('leaves-container'),typingIndicator:document.getElementById('typing-indicator'),bowContainer:document.getElementById('bow-above-send'),emojiPanel:document.getElementById('emoji-panel'),emojiGrid:document.getElementById('emoji-grid'),btnEmoji:document.getElementById('btn-emoji'),voiceTimerOverlay:document.getElementById('voice-timer-overlay'),btnVoiceInput:document.getElementById('btn-voice-input'),settingBg:document.getElementById('setting-bg'),bgStatus:document.getElementById('bg-status'),peerIdInput:document.getElementById('peer-id-input'),btnConnectPeer:document.getElementById('btn-connect-peer'),tunnelConfigModal:document.getElementById('tunnel-config-modal'),tunnelConfigInput:document.getElementById('tunnel-config-input'),tunnelList:document.getElementById('tunnel-list'),configFileInput:document.getElementById('config-file-input'),settingInstall:document.getElementById('setting-install'),myPeerIdDisplay:document.getElementById('my-peer-id-display'),callSpeaker:document.getElementById('call-speaker'),callMic:document.getElementById('call-mic'),callTimerDisplay:document.getElementById('call-timer-display'),activeCallControls:document.getElementById('active-call-controls'),incomingCallControls:document.getElementById('incoming-call-controls'),callWave:document.getElementById('call-wave')};
+const E={chatBox:document.getElementById('chat-box'),msgInput:document.getElementById('msg-input'),robinText:document.getElementById('robin-text'),profileAvatarSmall:document.getElementById('profile-avatar-small'),nickLabel:document.getElementById('nick-label'),headerDate:document.getElementById('header-date'),headerTime:document.getElementById('header-time'),avatarSelector:document.getElementById('avatar-selector'),avatarList:document.getElementById('avatar-list'),contactsSheet:document.getElementById('contacts-sheet'),contactsListInner:document.getElementById('contacts-list-inner'),settingsSheet:document.getElementById('settings-sheet'),overlay:document.getElementById('overlay'),refModal:document.getElementById('ref-modal'),refLinkDisplay:document.getElementById('ref-link-display'),sendBtn:document.getElementById('send-btn'),toggleSound:document.getElementById('toggle-sound'),toggleSelfDestruct:document.getElementById('toggle-selfdestruct'),togglePeerHelp:document.getElementById('toggle-peer-help'),themeName:document.getElementById('theme-name'),callPanel:document.getElementById('call-panel'),callStatus:document.getElementById('call-status'),callAccept:document.getElementById('call-accept'),callReject:document.getElementById('call-reject'),callEnd:document.getElementById('call-end'),lockStatusEl:document.getElementById('lock-status'),connectionIcon:document.getElementById('connection-icon'),leavesContainer:document.getElementById('leaves-container'),typingIndicator:document.getElementById('typing-indicator'),bowContainer:document.getElementById('bow-above-send'),emojiPanel:document.getElementById('emoji-panel'),emojiGrid:document.getElementById('emoji-grid'),btnEmoji:document.getElementById('btn-emoji'),voiceTimerOverlay:document.getElementById('voice-timer-overlay'),btnVoiceInput:document.getElementById('btn-voice-input'),settingBg:document.getElementById('setting-bg'),bgStatus:document.getElementById('bg-status'),peerIdInput:document.getElementById('peer-id-input'),btnConnectPeer:document.getElementById('btn-connect-peer'),btnCreateArrow:document.getElementById('btn-create-arrow'),tunnelConfigModal:document.getElementById('tunnel-config-modal'),tunnelConfigInput:document.getElementById('tunnel-config-input'),tunnelList:document.getElementById('tunnel-list'),configFileInput:document.getElementById('config-file-input'),settingInstall:document.getElementById('setting-install'),myPeerIdDisplay:document.getElementById('my-peer-id-display'),callSpeaker:document.getElementById('call-speaker'),callMic:document.getElementById('call-mic'),callTimerDisplay:document.getElementById('call-timer-display'),activeCallControls:document.getElementById('active-call-controls'),incomingCallControls:document.getElementById('incoming-call-controls'),callWave:document.getElementById('call-wave')};
 
 let currentChannelId=null,currentSecret=null,toggleSoundState=!0,selfDestructMode=!1,peerHelpEnabled=!1;
 let pc=null,localStream=null,callActive=!1,incomingOffer=null,ringtoneAudio=null,ringbackAudio=null;
@@ -318,8 +324,7 @@ function createPC(){
     pc.onconnectionstatechange=()=>{
         console.log('📞 Connection:',pc.connectionState);
         if(pc.connectionState=='connected'){
-            callActive=!0;
-            stopRingback();stopRingtone();
+            callActive=!0;stopRingback();stopRingtone();
             E.callStatus.textContent='✅ Разговор';
             showIncomingControls(false);showActiveControls(true);showCallWave(true);
             playSound('open.mp3');
@@ -385,10 +390,10 @@ function toggleVoiceRecording(){voiceRecording?stopVoiceRecording():startVoiceRe
 function startVoiceRecording(){if(voiceRecorder?.state==='recording')return;navigator.mediaDevices.getUserMedia({audio:true}).then(st=>{voiceStream=st;voiceRecorder=new MediaRecorder(st,{mimeType:'audio/webm; codecs=opus',audioBitsPerSecond:16000});voiceChunks=[];voiceRecorder.ondataavailable=e=>voiceChunks.push(e.data);voiceRecorder.onstop=()=>{const blob=new Blob(voiceChunks,{type:'audio/webm'});if(blob.size>100&&blob.size<50000&&currentChannelId){const reader=new FileReader();reader.onload=()=>{const b64=reader.result.split(',')[1];P2P.sendMsg(currentChannelId,'__FILE__'+JSON.stringify({name:'voice_message.webm',size:blob.size,type:'audio/webm',data:b64,mime:'audio/webm'}));appendMessage('Вы','🎤 Голосовое',E.profileAvatarSmall?.src||'assets/avatar/001ava.png',b64,'audio/webm')};reader.readAsDataURL(blob)}if(voiceStream){voiceStream.getTracks().forEach(t=>t.stop());voiceStream=null}voiceRecorder=null;voiceRecording=!1;stopVoiceTimer();E.btnVoiceInput.style.background='';showVoiceWave(false)};voiceRecorder.start();voiceRecording=!0;startVoiceTimer();E.btnVoiceInput.style.background='#f44336';showVoiceWave(true)}).catch(()=>rMsg('❌ Нет микрофона'))}
 function stopVoiceRecording(){if(voiceRecorder?.state==='recording')voiceRecorder.stop()}
 
-async function destroySession(){if(!confirm('⚠ ПОЛНЫЙ СБРОС!'))return;hang(!1);currentChannelId=null;currentSecret=null;['PP','RobinHoodContacts'].forEach(n=>{try{indexedDB.deleteDatabase(n)}catch(e){}});localStorage.clear();E.chatBox.querySelectorAll('.message-row').forEach(m=>m.remove());playSmokeAnimation();playSound('clear cache.mp3');rMsg('🔥 Всё скурили!',5000);setConnectionStatus('offline');applyTheme('forest');if(E.profileAvatarSmall)E.profileAvatarSmall.src='assets/avatar/001ava.png';document.getElementById('robin-avatar').src='assets/avatar/001ava.png';if(E.nickLabel)E.nickLabel.textContent='Твой ник';if(E.lockStatusEl)E.lockStatusEl.textContent='Не задан';document.body.classList.remove('custom-bg');document.body.style.removeProperty('--custom-bg');if(E.bgStatus)E.bgStatus.textContent='Не задан';loadContacts()}
+async function destroySession(){if(!confirm('⚠ ПОЛНЫЙ СБРОС!'))return;hang(!1);currentChannelId=null;currentSecret=null;['PP','RobinHoodContacts'].forEach(n=>{try{indexedDB.deleteDatabase(n)}catch(e){}});localStorage.clear();E.chatBox.querySelectorAll('.message-row').forEach(m=>m.remove());playSmokeAnimation();playSound('clear cache.mp3');rMsg('🔥 Всё скурили!',5000);setConnectionStatus('offline');applyTheme('paper');if(E.profileAvatarSmall)E.profileAvatarSmall.src='assets/avatar/001ava.png';document.getElementById('robin-avatar').src='assets/avatar/001ava.png';if(E.nickLabel)E.nickLabel.textContent='Твой ник';if(E.lockStatusEl)E.lockStatusEl.textContent='Не задан';document.body.classList.remove('custom-bg');document.body.style.removeProperty('--custom-bg');if(E.bgStatus)E.bgStatus.textContent='Не задан';loadContacts()}
 
 async function initApp(){
-    initLeaves();applyTheme(localStorage.getItem('robinhood_theme')||'forest');
+    initLeaves();applyTheme(localStorage.getItem('robinhood_theme')||'paper');
     const savedAvatar=localStorage.getItem('robinhood_avatar');if(savedAvatar&&E.profileAvatarSmall){E.profileAvatarSmall.src=savedAvatar;document.getElementById('robin-avatar').src=savedAvatar}
     const savedNick=localStorage.getItem('robinhood_nick');if(savedNick&&E.nickLabel)E.nickLabel.textContent=savedNick.substring(0,12);
     toggleSoundState=localStorage.getItem('robinhood_sound')!=='false';if(E.toggleSound)E.toggleSound.checked=toggleSoundState;
@@ -429,7 +434,21 @@ async function initApp(){
     function sendMsgHandler(){const text=E.msgInput.value.trim();if(!text)return;if(!currentChannelId||!currentSecret){P2P._enc(text,currentSecret||P2P._sid).then(enc=>{const queue=JSON.parse(localStorage.getItem('rhoq')||'[]');queue.push({enc,ch:currentChannelId,t:Date.now()});localStorage.setItem('rhoq',JSON.stringify(queue.slice(-20)))}).catch(()=>{});rMsg('📤 Сохранится при подключении',3000);E.msgInput.value='';return}P2P.sendMsg(currentChannelId,text);appendMessage('Вы',text,E.profileAvatarSmall?.src||'assets/avatar/001ava.png');E.msgInput.value='';playArcherAnimation();playBowAnimation();if(toggleSoundState)playSound('shot.mp3')}
     E.sendBtn?.addEventListener('click',sendMsgHandler);
     E.msgInput?.addEventListener('keypress',e=>{if(e.key=='Enter')sendMsgHandler()});
-    document.getElementById('btn-arrow')?.addEventListener('click',()=>{P2P.createArrow();rMsg('🏹 Создаю стрелу...')});
+    
+    // Кнопка СТРЕЛА — открывает модалку
+    document.getElementById('btn-arrow')?.addEventListener('click',()=>{
+        if(E.refLinkDisplay)E.refLinkDisplay.textContent='';
+        if(E.peerIdInput)E.peerIdInput.value='';
+        E.refModal?.classList.add('active');
+    });
+    
+    // Кнопка СОЗДАТЬ СТРЕЛУ в модалке
+    E.btnCreateArrow?.addEventListener('click',()=>{
+        E.refModal?.classList.remove('active');
+        P2P.createArrow();
+        rMsg('🏹 Создаю стрелу...');
+    });
+    
     document.getElementById('btn-clear')?.addEventListener('click',()=>{E.chatBox.querySelectorAll('.message-row').forEach(m=>m.remove());playSmokeAnimation();playSound('clear cache.mp3');rMsg('🚬 Чат скурили!',5000)});
     document.getElementById('btn-avatar')?.addEventListener('click',()=>{closeSheets();loadAvatars();E.avatarSelector?.classList.add('show');E.overlay?.classList.add('show')});
     document.getElementById('btn-settings')?.addEventListener('click',()=>{closeSheets();E.settingsSheet?.classList.add('open');E.overlay?.classList.add('show')});
@@ -443,9 +462,7 @@ async function initApp(){
     document.getElementById('setting-theme-random')?.addEventListener('click',()=>applyGeneratedTheme(generateRandomTheme()));
     document.getElementById('setting-destroy')?.addEventListener('click',()=>{closeSheets();destroySession()});
     document.getElementById('setting-tunnel')?.addEventListener('click',()=>{refreshTunnelList();E.tunnelConfigModal?.classList.add('active')});
-    document.getElementById('cancel-arrow-btn')?.addEventListener('click',()=>E.refModal?.classList.remove('active'));
     document.getElementById('close-ref-modal-btn')?.addEventListener('click',()=>E.refModal?.classList.remove('active'));
-    document.getElementById('share-ref-link-btn')?.addEventListener('click',()=>{const link=E.refLinkDisplay?.textContent;if(link)navigator.clipboard.writeText(link).then(()=>rMsg('📋 Скопировано!')).catch(()=>{})});
     document.getElementById('btn-call')?.addEventListener('click',()=>{callActive?hang(!0):startCall()});
     E.callAccept?.addEventListener('click',acceptCall);
     E.callReject?.addEventListener('click',()=>{if(incomingOffer){stopRingtone();P2P.sendMsg(currentChannelId,'__HANGUP__');incomingOffer=null;showCallPanel(!1)}});
@@ -457,7 +474,16 @@ async function initApp(){
     if(E.togglePeerHelp)E.togglePeerHelp.addEventListener('change',function(){peerHelpEnabled=this.checked;localStorage.setItem('robinhood_peer_help',peerHelpEnabled);if(peerHelpEnabled){const pid=P2P.getPeerId();if(pid&&window.RobinHoodPeerHelp){window.RobinHoodPeerHelp.start(pid);rMsg('🤝 Помощь сети активирована',3000)}}else{if(window.RobinHoodPeerHelp)window.RobinHoodPeerHelp.stop();rMsg('🤝 Помощь сети отключена',3000)}});
     if(E.btnVoiceInput)E.btnVoiceInput.addEventListener('click',toggleVoiceRecording);
     if(E.settingBg)E.settingBg.addEventListener('click',()=>{const inp=document.createElement('input');inp.type='file';inp.accept='image/*';inp.onchange=async ev=>{const f=ev.target.files[0];if(!f)return;const r=new FileReader();r.onload=async ev2=>{await saveBgToDB(ev2.target.result);await applyCustomBg(ev2.target.result);rMsg('🖼 Фон обновлён!',3000)};r.readAsDataURL(f)};inp.click()});
-    E.btnConnectPeer?.addEventListener('click',()=>{const val=E.peerIdInput?.value.trim();if(!val)return;if(val.includes('key=')){const k=val.split('key=')[1]?.split('&')[0]||'';if(k){P2P.acceptArrow(null,k);E.refModal?.classList.remove('active');rMsg('🤝 Подключаюсь...',3000);return}}rMsg('⚠ Нужна полная ссылка (с key=...)',3000)});
+    
+    // Кнопка ПОДКЛЮЧИТЬСЯ — ссылка или Peer ID
+    E.btnConnectPeer?.addEventListener('click',async ()=>{
+        const val=E.peerIdInput?.value.trim();
+        if(!val){rMsg('⚠ Вставь ссылку или Peer ID',3000);return}
+        if(val.includes('key=')){const k=val.split('key=')[1]?.split('&')[0]||'';if(k){E.refModal?.classList.remove('active');P2P.acceptArrow(null,k);rMsg('🤝 Подключаюсь...',3000);return}}
+        if(val.length>=8&&!val.includes('/')){E.refModal?.classList.remove('active');rMsg('🤝 Ищу пира...',3000);if(!P2P._rdy)await P2P.init();const key=P2P._rnd();const kh=await P2P._sha(key);const sec=key;for(const s of P2P._s){const res=await P2P._api(s.id,"POST","/find",{tempKeyHash:kh,publicId:val});if(res?.status==="matched"){const cid=res.sessionId;P2P._ch[cid]={sec,srv:s.id,peerId:val,last:Date.now()};P2P._saveChan(cid,sec,s.id);P2P._poll(cid,s.id);currentChannelId=cid;currentSecret=sec;setConnectionStatus('online');rMsg('✅ Подключено!',3000);if(P2P._ev.open)P2P._ev.open({channelId:cid,role:"joiner",peerId:val,secret:sec});return}}rMsg('⚠ Пир не отвечает',3000);return}
+        rMsg('⚠ Неверный формат',3000);
+    });
+    
     document.getElementById('setting-lock')?.addEventListener('click',()=>{if(lockType){if(confirm('Сбросить блокировку?')){localStorage.removeItem('robinhood_lock_v2');lockType=null;lockPinHash='';lockPatternHash='';if(E.lockStatusEl)E.lockStatusEl.textContent='Не задан'}return}isSettingUp=!0;lockScreen.style.display='flex';appContainer.style.display='none';setupLockUI()});
     document.getElementById('setting-terms')?.addEventListener('click',()=>window.open('https://github.com/stepweather-prog/ROBINHOOD-P2P/blob/main/README.md','_blank'));
     E.settingInstall?.addEventListener('click',()=>{if(deferredPrompt)deferredPrompt.prompt().catch(()=>{});else rMsg('📲 Меню браузера → Добавить на экран',4000);E.settingsSheet?.classList.remove('open');E.overlay?.classList.remove('show')});
@@ -475,12 +501,8 @@ async function initApp(){
     document.addEventListener('click',function(e){const btn=e.target.closest('.header-btn, .contact-item, button, .bow-button');if(!btn)return;if(btn.id==='btn-clear'||btn.id==='setting-destroy')return;playSound('menu.mp3')});
     window.addEventListener('online',()=>{setConnectionStatus('online');rMsg('🌐 Сеть',2000)});
     window.addEventListener('offline',()=>{setConnectionStatus('offline');rMsg('⚠️ Офлайн',0)});
-    
-    // Восстановление канала при обновлении
     const params=new URLSearchParams(window.location.search);const refId=params.get('id'),refKey=params.get('key');
-    if(refId&&refKey){rMsg('🔄 Подключаюсь...',0);setTimeout(()=>P2P.acceptArrow(null,refKey),800)}else{
-        P2P._loadChan().then(saved=>{if(saved){currentChannelId=saved.sid;currentSecret=saved.sec;P2P._ch[saved.sid]={sec:saved.sec,srv:saved.srv,peerId:P2P.getPeerId(),last:Date.now()};P2P._poll(saved.sid,saved.srv);rMsg('🔄 Канал востановлен',3000);setConnectionStatus('online')}});
-    }
+    if(refId&&refKey){rMsg('🔄 Подключаюсь...',0);setTimeout(()=>P2P.acceptArrow(null,refKey),800)}else{P2P._loadChan().then(saved=>{if(saved){currentChannelId=saved.sid;currentSecret=saved.sec;P2P._ch[saved.sid]={sec:saved.sec,srv:saved.srv,peerId:P2P.getPeerId(),last:Date.now()};P2P._poll(saved.sid,saved.srv);rMsg('🔄 Канал востановлен',3000);setConnectionStatus('online')}})}
     setConnectionStatus('checking');rMsg('🏹 Ждём колчан...',0);
 }
 
