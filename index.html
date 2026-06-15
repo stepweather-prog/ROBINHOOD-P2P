@@ -168,7 +168,7 @@
 <div id="app-container" style="display:none;flex-direction:column;height:100%;">
 <div class="leaves-container" id="leaves-container"></div>
 <div class="header">
-    <div class="header-row-1"><span class="header-title-text">ROBINHOOD P2P</span><span class="header-shield">🏹</span><span class="header-datetime"><span id="header-date"></span> <span id="header-time"></span></span><span class="version-text">Улей v2.4</span></div>
+    <div class="header-row-1"><span class="header-title-text">ROBINHOOD P2P</span><span class="header-shield">🏹</span><span class="header-datetime"><span id="header-date"></span> <span id="header-time"></span></span><span class="version-text">Улей v2.5</span></div>
     <div class="header-row-2">
         <div class="header-btn" id="btn-avatar"><img src="assets/avatar/001ava.png" class="header-avatar" id="profile-avatar-small" alt="avatar"></div>
         <div class="header-btn" id="btn-arrow"><img src="assets/icons/08icon.png" alt="arrow"></div>
@@ -226,7 +226,7 @@
 <div id="bow-above-send"></div>
 </div>
 <script>
-// ==================== PP4 + DHT + GZIP + RATCHET v2.4 ====================
+// ==================== PP4 + DHT + GZIP + RATCHET v2.5 ====================
 const PP4={_peerId:null,_beacons:{},_channels:{},_ws:null,_wsUrl:'wss://robincall.stephanclaps-491.workers.dev/ws',_wsReconnectDelay:1000,_maxReconnectDelay:30000};
 const DHT={_nodeId:null,_buckets:[],_storage:{},_k:20,_alpha:3,_peers:new Map(),_signalSend:null};
 if(!window.crypto?.subtle)throw new Error('Требуется HTTPS');
@@ -318,7 +318,7 @@ async function connectToPeerDHT(peerId){const pc=new RTCPeerConnection({iceServe
 function connectWS(){if(PP4._ws&&PP4._ws.readyState===WebSocket.OPEN)return;try{PP4._ws=new WebSocket(PP4._wsUrl);}catch(e){setTimeout(connectWS,PP4._wsReconnectDelay);PP4._wsReconnectDelay=Math.min(PP4._wsReconnectDelay*2,PP4._maxReconnectDelay);return;}PP4._ws.onopen=()=>{PP4._wsReconnectDelay=1000;setConnectionStatus('online');PP4._ws.send(JSON.stringify({action:'subscribe',peerId:PP4._peerId}));};PP4._ws.onmessage=async e=>{let m;try{m=JSON.parse(e.data);}catch(er){return;}if(m.type==='dht-signal'&&m.from!==DHT._nodeId){await handleSignal(m.from,m.data);return;}if(m.type==='blob'){handleIncomingBlob(m.blob,m.channelId);return;}};PP4._ws.onclose=()=>{setConnectionStatus('offline');setTimeout(connectWS,PP4._wsReconnectDelay);PP4._wsReconnectDelay=Math.min(PP4._wsReconnectDelay*2,PP4._maxReconnectDelay);};}
 DHT._signalSend=(targetPeerId,data)=>{if(PP4._ws?.readyState===WebSocket.OPEN)PP4._ws.send(JSON.stringify({action:'dht-signal',targetPeerId,from:DHT._nodeId,data}));};
 
-// ========== СЛЕПОЙ УЛЕЙ: МАЯКИ ЧЕРЕЗ БЛОБЫ (Peer ID для пользователя) ==========
+// ========== СЛЕПОЙ УЛЕЙ: МАЯКИ ЧЕРЕЗ БЛОБЫ ==========
 const BLOB_NS='00000000000000000000000000000000';
 const pendingHandshakes={};
 async function createBeacon(){
@@ -329,17 +329,17 @@ async function createBeacon(){
     PP4._beacons[bid]={keyPair:kp,pubKey:pk,nonce:nonce,beaconKey:beaconKey,expires:Date.now()+1800000,createdAt:Date.now()};
     const packed=JSON.stringify(beacon);
     broadcastBlob(packed,BLOB_NS);
-    // Пользователю показываем Peer ID, а не блоб
     document.getElementById('beacon-display').style.display='block';
     document.getElementById('beacon-display').textContent=PP4._peerId;
 }
 async function connectByPeerId(){
     const targetId=document.getElementById('peer-id-input').value.trim();
     if(!targetId){rMsg('Введи Peer ID',3000);return;}
-    // Отправляем маяк-запрос через блоб
-    const kp=await generateKeyPair();const pk=await exportPublicKey(kp);const nonce=RND();
+    const kp=await generateKeyPair();const pk=await exportPublicKey(kp);const nonce=RND();const bid=RND();
     const beaconKey=await SHA(nonce+'beacon');
     const inner=await encryptAES(JSON.stringify({nonce:nonce,timestamp:Date.now(),peerId:PP4._peerId}),beaconKey);
+    // ✅ СОХРАНЯЕМ МАЯК ВРЕМЕННО — чтобы обработать beacon-response
+    PP4._beacons[bid]={keyPair:kp,pubKey:pk,nonce:nonce,beaconKey:beaconKey,expires:Date.now()+300000,createdAt:Date.now()};
     const beacon={type:'beacon',pubKey:pk,peerId:PP4._peerId,inner:inner,targetPeerId:targetId};
     const packed=JSON.stringify(beacon);
     broadcastBlob(packed,BLOB_NS);
@@ -348,8 +348,7 @@ async function connectByPeerId(){
 async function handleIncomingBlob(blobData,channelId){
     let data;try{data=JSON.parse(blobData);}catch(e){return;}
     if(data.type==='beacon'&&data.pubKey&&data.inner){
-        // Входящий маяк — проверяем, нам ли он предназначен
-        if(data.targetPeerId&&data.targetPeerId!==PP4._peerId)return; // не нам
+        if(data.targetPeerId&&data.targetPeerId!==PP4._peerId)return;
         const remotePubKey=await importPublicKey(data.pubKey);const kp=await generateKeyPair();const myPubKey=await exportPublicKey(kp);
         const ss=await deriveSecret(kp,remotePubKey);const chId=RND();
         PP4._channels[chId]={secret:ss,ratchetKey:ss,ratchetIndex:0,oldKeys:[],peerId:data.peerId,type:'cup',blobs:[],expires:Date.now()+600000,createdAt:Date.now()};
@@ -371,7 +370,7 @@ async function handleIncomingBlob(blobData,channelId){
         ch.blobs.push({...u,from:'them'});ch.expires=Date.now()+600000;saveChannels();const ct=contacts.find(c=>c.channelId===id);const sn=ct?.name||'Друг';
         if(id===activeChannelId)appendMessage(sn,u.d||u.text||'',ct?.avatar);else rMsg('Новое от '+sn,3000);updateCupIndicator();playSound('arrow_hit.wav');return;}
 }
-function broadcastBlob(packed,channelId){const dhtPeers=getClosestPeers(channelId||BLOB_NS,3).filter(p=>p.conn?.readyState==='open');if(dhtPeers.length>0){for(const p of dhtPeers)sendToPeer(p.id,{type:'blob',channelId:channelId||BLOB_NS,blob:packed});return;}if(PP4._ws)PP4._ws.send(JSON.stringify({action:'blob',channelId:channelId||BLOB_NS,blob:packed,peerId:PP4._peerId}));}
+function broadcastBlob(packed,channelId){const dhtPeers=getClosestPeers(channelId||BLOB_NS,3).filter(p=>p.conn?.readyState==='open');if(dhtPeers.length>0){for(const p of dhtPeers)sendToPeer(p.id,{type:'blob',channelId:channelId||BLOB_NS,blob:packed});return;}if(PP4._ws)PP4._ws.send(JSON.stringify({type:'blob',channelId:channelId||BLOB_NS,blob:packed,peerId:PP4._peerId}));}
 async function sendBlobToChannel(channelId,data){const ch=PP4._channels[channelId];if(!ch||!ch.ratchetKey)return false;const packed=await packBlob(data,ch);broadcastBlob(packed,channelId);return true;}
 
 // ========== RATCHET ИНДИКАТОР ==========
