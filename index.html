@@ -167,7 +167,7 @@
 <div id="app-container" style="display:none;flex-direction:column;height:100%;">
 <div class="leaves-container" id="leaves-container"></div>
 <div class="header">
-    <div class="header-row-1"><span class="header-title-text">ROBINHOOD P2P</span><span class="header-shield">🏹</span><span class="header-datetime"><span id="header-date"></span> <span id="header-time"></span></span><span class="version-text">v1.5</span></div>
+    <div class="header-row-1"><span class="header-title-text">ROBINHOOD P2P</span><span class="header-shield">🏹</span><span class="header-datetime"><span id="header-date"></span> <span id="header-time"></span></span><span class="version-text">v1.6</span></div>
     <div class="header-row-2">
         <div class="header-btn" id="btn-avatar"><img src="assets/avatar/001ava.png" class="header-avatar" id="profile-avatar-small" alt="avatar"></div>
         <div class="header-btn" id="btn-arrow"><img src="assets/icons/08icon.png" alt="arrow"></div>
@@ -225,7 +225,7 @@
 <div id="bow-above-send"></div>
 </div>
 <script>
-// ==================== PP4 + DHT ====================
+// ==================== PP4 + DHT v1.6 ====================
 const PP4={_peerId:null,_beacons:{},_channels:{},_requests:[],_ws:null,_wsUrl:'wss://robincall.stephanclaps-491.workers.dev/ws',_wsReconnectDelay:1000,_maxReconnectDelay:30000};
 const DHT={_nodeId:null,_buckets:[],_storage:{},_k:20,_alpha:3,_peers:new Map(),_signalSend:null};
 if(!window.crypto?.subtle)throw new Error('Требуется HTTPS');
@@ -264,8 +264,7 @@ async function handleMessage(msg){
         if(id===activeChannelId)appendMessage(sn,u.d||u.text||'',ct?.avatar);else rMsg('Новое от '+sn,3000);
         updateCupIndicator();playSound('arrow_hit.wav');return;}}
     if(msg.type==='request'){PP4._requests.push({from:msg.from,tempKeyHash:msg.tempKeyHash,time:Date.now(),pubKey:msg.pubKey});playSound('menu.mp3');}
-    if(msg.type==='beacon-created'){PP4._beacons[msg.beaconId]=PP4._beacons[Object.keys(PP4._beacons)[0]];if(PP4._beacons[msg.beaconId]){const oldId=Object.keys(PP4._beacons)[0];if(oldId&&oldId!==msg.beaconId){PP4._beacons[msg.beaconId]=PP4._beacons[oldId];delete PP4._beacons[oldId];}}}
-    if(msg.type==='beacon-match'){const entry=Object.entries(pendingDH).find(([id,e])=>e.keyPair)||Object.entries(PP4._beacons).find(([id,b])=>b.keyPair);if(entry){const[oldId,b]=entry;const chId=msg.channelId;const ss=await deriveSecret(b.keyPair,await importPublicKey(msg.pubKey));PP4._channels[chId]={secret:ss,peerId:msg.peerId,type:'cup',blobs:[],expires:Date.now()+600000,createdAt:Date.now()};delete pendingDH[oldId];delete PP4._beacons[oldId];saveChannels();addContact({peerId:msg.peerId,name:'Лучник',channelId:chId,verified:false,avatar:'001'});updateUI();connectToPeerDHT(msg.peerId).catch(()=>{});setTimeout(()=>playQuiverAnimation(),300);rMsg('✅ Канал открыт!',3000);}}
+    if(msg.type==='beacon-match'){const b=PP4._beacons[msg.channelId];if(b&&b.keyPair){const ss=await deriveSecret(b.keyPair,await importPublicKey(msg.pubKey));PP4._channels[msg.channelId]={secret:ss,peerId:msg.peerId,type:'cup',blobs:[],expires:Date.now()+600000,createdAt:Date.now()};delete PP4._beacons[msg.channelId];delete pendingDH[msg.channelId];saveChannels();addContact({peerId:msg.peerId,name:'Лучник',channelId:msg.channelId,verified:false,avatar:'001'});updateUI();connectToPeerDHT(msg.peerId).catch(()=>{});setTimeout(()=>playQuiverAnimation(),300);rMsg('✅ Канал открыт!',3000);}}
     if(msg.type==='connect-ack'){const e=pendingDH[msg.requestId];if(e&&e.keyPair){const chId=msg.channelId;const ss=await deriveSecret(e.keyPair,await importPublicKey(msg.pubKey));PP4._channels[chId]={secret:ss,peerId:msg.peerId,type:'cup',blobs:[],expires:Date.now()+600000,createdAt:Date.now()};delete pendingDH[msg.requestId];saveChannels();addContact({peerId:msg.peerId,name:'Лучник',channelId:chId,verified:false,avatar:'001'});updateUI();connectToPeerDHT(msg.peerId).catch(()=>{});setTimeout(()=>playQuiverAnimation(),300);rMsg('✅ Канал открыт!',3000);}}
     if(msg.type==='reconnect-request'){const ch=PP4._channels[msg.channelId];if(ch){const oldS=ch.secret;const ct=contacts.find(c=>c.channelId===msg.channelId);const kp=await generateKeyPair();const pk=await exportPublicKey(kp);const ss=await deriveSecret(kp,await importPublicKey(msg.pubKey));ch.secret=ss;ch.reconnect=false;ch.expires=Date.now()+600000;if(ct?.verified&&oldS&&oldS!==ch.secret){ct.verified=false;saveContacts();renderContacts();}if(PP4._ws)PP4._ws.send(JSON.stringify({action:'reconnect-ack',channelId:msg.channelId,pubKey:pk,requestId:msg.requestId,peerId:PP4._peerId}));saveChannels();updateUI();connectToPeerDHT(ch.peerId).catch(()=>{});}}
     if(msg.type==='reconnect-ack'){const e=pendingDH[msg.requestId];if(e){const ch=PP4._channels[msg.channelId];if(ch){const oldS=ch.secret;const ct=contacts.find(c=>c.channelId===msg.channelId);const ss=await deriveSecret(e.keyPair,await importPublicKey(msg.pubKey));ch.secret=ss;ch.reconnect=false;ch.reconnecting=false;ch.expires=Date.now()+600000;if(ct?.verified&&oldS&&oldS!==ch.secret){ct.verified=false;saveContacts();renderContacts();}saveChannels();updateUI();delete pendingDH[msg.requestId];connectToPeerDHT(ch.peerId).catch(()=>{});}}}
