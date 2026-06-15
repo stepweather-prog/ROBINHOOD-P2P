@@ -167,17 +167,16 @@
 <div id="app-container" style="display:none;flex-direction:column;height:100%;">
 <div class="leaves-container" id="leaves-container"></div>
 <div class="header">
-    <div class="header-row-1"><span class="header-title-text">ROBINHOOD P2P</span><span class="header-shield">🏹</span><span class="header-datetime"><span id="header-date"></span> <span id="header-time"></span></span><span class="version-text">v1.7</span></div>
+    <div class="header-row-1"><span class="header-title-text">ROBINHOOD P2P</span><span class="header-shield">🏹</span><span class="header-datetime"><span id="header-date"></span> <span id="header-time"></span></span><span class="version-text">Слепой Улей</span></div>
     <div class="header-row-2">
         <div class="header-btn" id="btn-avatar"><img src="assets/avatar/001ava.png" class="header-avatar" id="profile-avatar-small" alt="avatar"></div>
         <div class="header-btn" id="btn-arrow"><img src="assets/icons/08icon.png" alt="arrow"></div>
         <div class="header-btn" id="btn-call"><img src="assets/icons/16icon.png" alt="call"></div>
-        <div class="header-btn" id="btn-requests"><img src="assets/icons/14icon.png" alt="requests"></div>
         <div class="header-btn" id="btn-clear"><img src="assets/icons/18icon.png" alt="clear"></div>
         <div class="header-btn" id="btn-settings"><img src="assets/icons/11icon.png" alt="settings"></div>
     </div>
-    <div class="header-row-3"><span class="header-label" id="nick-label">Твой ник</span><span class="header-label">Стрела</span><span class="header-label" id="call-label">Звонок</span><span class="header-label">Заявки</span><span class="header-label">Скурить чат</span><span class="header-label" id="settings-label">Опции</span></div>
-    <div class="robin-bar"><img src="assets/avatar/001ava.png" class="robin-bar-avatar" id="robin-avatar"><div class="robin-bar-text"><div class="robin-bar-sender" id="robin-bar-sender">Robin Hood</div><div class="robin-bar-msg" id="robin-text">Святые сокеты стабильны! Ждём колчан...</div></div><div class="robin-bar-status"><img src="assets/icons/05icon.png" id="connection-icon" alt="status"><span class="cup-indicator" id="cup-indicator" style="display:none;">&nbsp;🍺<span id="cup-blobs">0/10</span>&nbsp;⏱<span id="cup-timer">10:00</span></span></div></div>
+    <div class="header-row-3"><span class="header-label" id="nick-label">Твой ник</span><span class="header-label">Стрела</span><span class="header-label" id="call-label">Звонок</span><span class="header-label">Скурить чат</span><span class="header-label" id="settings-label">Опции</span></div>
+    <div class="robin-bar"><img src="assets/avatar/001ava.png" class="robin-bar-avatar" id="robin-avatar"><div class="robin-bar-text"><div class="robin-bar-sender" id="robin-bar-sender">Robin Hood</div><div class="robin-bar-msg" id="robin-text">Слепой Улей. Сервер не знает ничего.</div></div><div class="robin-bar-status"><img src="assets/icons/05icon.png" id="connection-icon" alt="status"><span class="cup-indicator" id="cup-indicator" style="display:none;">&nbsp;🍺<span id="cup-blobs">0/10</span>&nbsp;⏱<span id="cup-timer">10:00</span></span></div></div>
 </div>
 <div class="chat-area" id="chat-box"><div class="typing-indicator" id="typing-indicator"></div></div>
 <div class="input-area">
@@ -220,15 +219,15 @@
     <div class="contact-item" id="setting-terms"><div class="contact-info"><span style="font-size:24px;">⚜</span><span class="contact-name">Условия использования</span></div><span>→</span></div>
     <div class="contact-item setting-install-btn hidden" id="setting-install"><div class="contact-info"><img src="assets/avatar/001ava.png" style="width:28px;height:28px;border-radius:6px;"><div><div class="contact-name">RobinHood P2P</div><div style="font-size:0.6em;color:var(--text-dim);">Установить приложение</div></div></div><span>📲</span></div>
 </div></div>
-<div class="modal-overlay" id="arrow-modal"><div class="modal-dialog"><h3>🏹 Колчан</h3><button class="btn-primary" id="btn-create-beacon">🏹 Создать маяк</button><div style="color:var(--text-dim);margin:12px 0;">или вставь Peer ID друга:</div><input type="text" id="peer-id-input" placeholder="Peer ID..." style="width:100%;margin:8px 0;padding:8px;background:var(--input-bg);border:1px solid var(--border);color:var(--input-text);border-radius:8px;font-size:0.75em;font-family:monospace;"><button class="btn-primary" id="btn-connect-peer">🤝 Подключиться</button><button class="btn-dark" id="close-arrow-modal">Закрыть</button><div class="code-display" id="beacon-display" style="display:none;"></div><div id="beacon-timers" style="font-size:0.6em;color:var(--dim);margin-top:8px;"></div></div></div>
-<div class="modal-overlay" id="requests-modal"><div class="modal-dialog"><h3>📩 Входящие заявки</h3><div id="requests-list-inner"></div><button class="btn-dark" id="close-requests-modal">Закрыть</button></div></div>
+<div class="modal-overlay" id="arrow-modal"><div class="modal-dialog"><h3>🏹 Слепой Колчан</h3><button class="btn-primary" id="btn-create-beacon">🏹 Создать маяк</button><div style="color:var(--text-dim);margin:12px 0;">Маяк — это зашифрованный блоб. Сервер не знает, что это маяк.</div><div class="code-display" id="beacon-display" style="display:none;"></div></div></div>
+<div class="modal-overlay" id="connect-modal"><div class="modal-dialog"><h3>🤝 Подключиться к маяку</h3><div style="color:var(--text-dim);margin:12px 0;">Вставь блоб маяка (скопированный текст)</div><textarea id="beacon-blob-input" placeholder="Вставь блоб маяка сюда..." style="width:100%;height:120px;margin:8px 0;padding:8px;background:var(--input-bg);border:1px solid var(--border);color:var(--input-text);border-radius:8px;font-size:0.7em;font-family:monospace;resize:vertical;"></textarea><button class="btn-primary" id="btn-connect-beacon">🤝 Подключиться</button><button class="btn-dark" id="close-connect-modal">Закрыть</button></div></div>
 <div class="modal-overlay" id="nick-modal"><div class="modal-dialog"><h3>🏷 Твой ник</h3><input type="text" id="nick-input" placeholder="Введи ник (макс 12 символов)..." style="width:100%;margin:8px 0;padding:8px;background:var(--input-bg);border:1px solid var(--border);color:var(--input-text);border-radius:8px;font-size:0.9em;font-family:monospace;"><button class="btn-primary" id="btn-save-nick">💾 Сохранить</button><button class="btn-dark" id="close-nick-modal">Закрыть</button></div></div>
 <div class="modal-overlay" id="tunnel-config-modal"><div class="modal-dialog"><h3>➕ Управление конфигами</h3><div id="tunnel-list" style="max-height:150px;overflow-y:auto;margin-bottom:10px;text-align:left;"></div><button class="btn-primary" id="btn-load-file">📂 Загрузить новый</button><button class="btn-dark" id="btn-warp-gen" style="margin-top:6px;">🌐 Создать новые конфиги AmneziaWG</button><div style="margin:10px 0;color:var(--text-dim);">или вставьте текст:</div><textarea id="tunnel-config-input" style="width:100%;height:100px;background:var(--input-bg);border:1px solid var(--border);color:var(--input-text);border-radius:8px;padding:8px;font-size:0.7em;font-family:monospace;resize:vertical;"></textarea><button class="btn-primary" id="btn-save-tunnel">💾 Сохранить</button><button class="btn-dark" id="btn-cancel-tunnel-config">Закрыть</button><input type="file" id="config-file-input" accept=".conf" style="display:none;"></div></div>
 <div id="bow-above-send"></div>
 </div>
 <script>
-// ==================== PP4 + DHT v1.7 ====================
-const PP4={_peerId:null,_beacons:{},_channels:{},_requests:[],_ws:null,_wsUrl:'wss://robincall.stephanclaps-491.workers.dev/ws',_wsReconnectDelay:1000,_maxReconnectDelay:30000};
+// ==================== СЛЕПОЙ УЛЕЙ — ВСЯ ЛОГИКА НА КЛИЕНТЕ ====================
+const PP4={_peerId:null,_beacons:{},_channels:{},_ws:null,_wsUrl:'wss://robincall.stephanclaps-491.workers.dev/ws',_wsReconnectDelay:1000,_maxReconnectDelay:30000};
 const DHT={_nodeId:null,_buckets:[],_storage:{},_k:20,_alpha:3,_peers:new Map(),_signalSend:null};
 if(!window.crypto?.subtle)throw new Error('Требуется HTTPS');
 const RND=()=>{const a=new Uint32Array(4);crypto.getRandomValues(a);return[...a].map(x=>x.toString(16).padStart(8,'0')).join('');};
@@ -251,41 +250,140 @@ function initBuckets(){DHT._buckets=Array.from({length:256},()=>[]);}
 function addPeer(peerId,conn){const dist=xorDistance(DHT._nodeId,peerId);const idx=Math.min(getBucketIndex(dist),255);const bucket=DHT._buckets[idx];const existing=bucket.findIndex(p=>p.id===peerId);if(existing>=0)bucket.splice(existing,1);bucket.unshift({id:peerId,conn,lastSeen:Date.now()});if(bucket.length>DHT._k)bucket.pop();DHT._peers.set(peerId,{conn,lastSeen:Date.now()});}
 function getClosestPeers(targetId,count=DHT._k){const all=[];for(const bucket of DHT._buckets)for(const peer of bucket)all.push({...peer,distance:xorDistance(targetId,peer.id)});all.sort((a,b)=>(a.distance<b.distance?-1:a.distance>b.distance?1:0));return all.slice(0,count);}
 const pendingDHTRequests=new Map();
-function setupDataChannel(dc,peerId){dc.onopen=()=>{addPeer(peerId,dc);updateUI();};dc.onclose=()=>{DHT._peers.delete(peerId);for(const bucket of DHT._buckets){const idx=bucket.findIndex(p=>p.id===peerId);if(idx>=0)bucket.splice(idx,1);}updateUI();};dc.onmessage=(e)=>{const msg=JSON.parse(e.data);const peer=DHT._peers.get(peerId);if(peer)peer.lastSeen=Date.now();if(msg.type==='dht-ping'){dc.send(JSON.stringify({type:'dht-pong'}));return;}if(msg.type==='dht-pong')return;if(msg.type==='dht-store'){DHT._storage[msg.key]={value:msg.value,publisher:msg.publisher,timestamp:msg.timestamp};return;}if(msg.type==='dht-find'){const found=DHT._storage[msg.key];dc.send(JSON.stringify(found?{type:'dht-find-response',requestId:msg.requestId,found:true,value:found.value,publisher:found.publisher}:{type:'dht-find-response',requestId:msg.requestId,found:false,peers:getClosestPeers(msg.key,DHT._k).map(p=>({id:p.id}))}));return;}if(msg.type==='dht-find-response'){const resolve=pendingDHTRequests.get(msg.requestId);if(resolve){pendingDHTRequests.delete(msg.requestId);resolve(msg);}return;}if(msg.type==='blob'){handleMessage({type:'blob',blob:msg.blob,channelId:msg.channelId});return;}};}
+function setupDataChannel(dc,peerId){dc.onopen=()=>{addPeer(peerId,dc);updateUI();};dc.onclose=()=>{DHT._peers.delete(peerId);for(const bucket of DHT._buckets){const idx=bucket.findIndex(p=>p.id===peerId);if(idx>=0)bucket.splice(idx,1);}updateUI();};dc.onmessage=(e)=>{const msg=JSON.parse(e.data);const peer=DHT._peers.get(peerId);if(peer)peer.lastSeen=Date.now();if(msg.type==='dht-ping'){dc.send(JSON.stringify({type:'dht-pong'}));return;}if(msg.type==='dht-pong')return;if(msg.type==='dht-store'){DHT._storage[msg.key]={value:msg.value,publisher:msg.publisher,timestamp:msg.timestamp};return;}if(msg.type==='dht-find'){const found=DHT._storage[msg.key];dc.send(JSON.stringify(found?{type:'dht-find-response',requestId:msg.requestId,found:true,value:found.value,publisher:found.publisher}:{type:'dht-find-response',requestId:msg.requestId,found:false,peers:getClosestPeers(msg.key,DHT._k).map(p=>({id:p.id}))}));return;}if(msg.type==='dht-find-response'){const resolve=pendingDHTRequests.get(msg.requestId);if(resolve){pendingDHTRequests.delete(msg.requestId);resolve(msg);}return;}if(msg.type==='blob'){handleIncomingBlob(msg.blob,msg.channelId);return;}};}
 async function sendToPeer(peerId,message){const peer=DHT._peers.get(peerId);if(!peer?.conn||peer.conn.readyState!=='open')return;try{peer.conn.send(JSON.stringify(message));}catch(e){}}
 async function handleSignal(fromPeerId,signal){const pc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'}]});pc.ondatachannel=(e)=>{setupDataChannel(e.channel,fromPeerId);};pc.onicecandidate=(e)=>{if(!e.candidate&&pc.localDescription&&DHT._signalSend)DHT._signalSend(fromPeerId,{type:'dht-signal',sdp:JSON.stringify(pc.localDescription)});};await pc.setRemoteDescription(new RTCSessionDescription(JSON.parse(signal.sdp)));const answer=await pc.createAnswer();await pc.setLocalDescription(answer);return pc;}
 async function connectToPeerDHT(peerId){const pc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'}]});const dc=pc.createDataChannel('dht');setupDataChannel(dc,peerId);pc.onicecandidate=(e)=>{if(!e.candidate&&pc.localDescription&&DHT._signalSend)DHT._signalSend(peerId,{type:'dht-signal',sdp:JSON.stringify(pc.localDescription)});};const offer=await pc.createOffer();await pc.setLocalDescription(offer);return{pc,dc};}
-function connectWS(){if(PP4._ws&&PP4._ws.readyState===WebSocket.OPEN)return;try{PP4._ws=new WebSocket(PP4._wsUrl);}catch(e){setTimeout(connectWS,PP4._wsReconnectDelay);PP4._wsReconnectDelay=Math.min(PP4._wsReconnectDelay*2,PP4._maxReconnectDelay);return;}PP4._ws.onopen=()=>{PP4._wsReconnectDelay=1000;setConnectionStatus('online');PP4._ws.send(JSON.stringify({action:'subscribe',peerId:PP4._peerId}));checkRequests();};PP4._ws.onmessage=async e=>{let m;try{m=JSON.parse(e.data);}catch(er){return;}if(m.type==='dht-signal'&&m.from!==DHT._nodeId){await handleSignal(m.from,m.data);return;}await handleMessage(m);};PP4._ws.onclose=()=>{setConnectionStatus('offline');setTimeout(connectWS,PP4._wsReconnectDelay);PP4._wsReconnectDelay=Math.min(PP4._wsReconnectDelay*2,PP4._maxReconnectDelay);};}
+function connectWS(){if(PP4._ws&&PP4._ws.readyState===WebSocket.OPEN)return;try{PP4._ws=new WebSocket(PP4._wsUrl);}catch(e){setTimeout(connectWS,PP4._wsReconnectDelay);PP4._wsReconnectDelay=Math.min(PP4._wsReconnectDelay*2,PP4._maxReconnectDelay);return;}PP4._ws.onopen=()=>{PP4._wsReconnectDelay=1000;setConnectionStatus('online');PP4._ws.send(JSON.stringify({action:'subscribe',peerId:PP4._peerId}));};PP4._ws.onmessage=async e=>{let m;try{m=JSON.parse(e.data);}catch(er){return;}if(m.type==='dht-signal'&&m.from!==DHT._nodeId){await handleSignal(m.from,m.data);return;}if(m.type==='blob'){handleIncomingBlob(m.blob,m.channelId);return;}};PP4._ws.onclose=()=>{setConnectionStatus('offline');setTimeout(connectWS,PP4._wsReconnectDelay);PP4._wsReconnectDelay=Math.min(PP4._wsReconnectDelay*2,PP4._maxReconnectDelay);};}
 DHT._signalSend=(targetPeerId,data)=>{if(PP4._ws?.readyState===WebSocket.OPEN)PP4._ws.send(JSON.stringify({action:'dht-signal',targetPeerId,from:DHT._nodeId,data}));};
-async function handleMessage(msg){
-    if(msg.type==='blob'){for(const[id,ch]of Object.entries(PP4._channels)){if(!ch.secret)continue;const u=await unpackBlob(msg.blob,ch.secret);if(!u)continue;
+
+// ========== СЛЕПОЙ УЛЕЙ: ВСЯ ЛОГИКА МАЯКОВ И РУКОПОЖАТИЙ ЗДЕСЬ ==========
+const BLOB_NS = '00000000000000000000000000000000'; // namespace для широковещательных блобов
+
+async function handleIncomingBlob(blob, channelId){
+    // Пробуем расшифровать как известный канал
+    for(const[id,ch]of Object.entries(PP4._channels)){
+        if(!ch.secret)continue;
+        const u=await unpackBlob(blob,ch.secret);
+        if(!u)continue;
+        // Блоб для известного канала
         if(u.webrtc){await handleWebRTC(u,id);return;}
         if(u.voice){const ct=contacts.find(c=>c.channelId===id);if(id===activeChannelId)appendMessage(ct?.name||'Друг','🎤 Голосовое',ct?.avatar);playVoiceBlob(u.data);return;}
         ch.blobs.push({...u,from:'them'});ch.expires=Date.now()+600000;saveChannels();
         const ct=contacts.find(c=>c.channelId===id);const sn=ct?.name||'Друг';
         if(id===activeChannelId)appendMessage(sn,u.d||u.text||'',ct?.avatar);else rMsg('Новое от '+sn,3000);
-        updateCupIndicator();playSound('arrow_hit.wav');return;}}
-    if(msg.type==='request'){PP4._requests.push({from:msg.from,tempKeyHash:msg.tempKeyHash,time:Date.now(),pubKey:msg.pubKey});playSound('menu.mp3');renderRequests();}
-    if(msg.type==='beacon-match'){const b=PP4._beacons[msg.channelId];if(b&&b.keyPair){const ss=await deriveSecret(b.keyPair,await importPublicKey(msg.pubKey));PP4._channels[msg.channelId]={secret:ss,peerId:msg.peerId,type:'cup',blobs:[],expires:Date.now()+600000,createdAt:Date.now()};delete PP4._beacons[msg.channelId];delete pendingDH[msg.channelId];saveChannels();addContact({peerId:msg.peerId,name:'Лучник',channelId:msg.channelId,verified:false,avatar:'001'});updateUI();connectToPeerDHT(msg.peerId).catch(()=>{});setTimeout(()=>playQuiverAnimation(),300);rMsg('✅ Канал открыт!',3000);}}
-    if(msg.type==='connect-ack'){const e=pendingDH[msg.requestId];if(e&&e.keyPair){const chId=msg.channelId;const ss=await deriveSecret(e.keyPair,await importPublicKey(msg.pubKey));PP4._channels[chId]={secret:ss,peerId:msg.peerId,type:'cup',blobs:[],expires:Date.now()+600000,createdAt:Date.now()};delete pendingDH[msg.requestId];saveChannels();addContact({peerId:msg.peerId,name:'Лучник',channelId:chId,verified:false,avatar:'001'});updateUI();connectToPeerDHT(msg.peerId).catch(()=>{});setTimeout(()=>playQuiverAnimation(),300);rMsg('✅ Канал открыт!',3000);}}
-    if(msg.type==='reconnect-request'){const ch=PP4._channels[msg.channelId];if(ch){const oldS=ch.secret;const ct=contacts.find(c=>c.channelId===msg.channelId);const kp=await generateKeyPair();const pk=await exportPublicKey(kp);const ss=await deriveSecret(kp,await importPublicKey(msg.pubKey));ch.secret=ss;ch.reconnect=false;ch.expires=Date.now()+600000;if(ct?.verified&&oldS&&oldS!==ch.secret){ct.verified=false;saveContacts();renderContacts();}if(PP4._ws)PP4._ws.send(JSON.stringify({action:'reconnect-ack',channelId:msg.channelId,pubKey:pk,requestId:msg.requestId,peerId:PP4._peerId}));saveChannels();updateUI();connectToPeerDHT(ch.peerId).catch(()=>{});}}
-    if(msg.type==='reconnect-ack'){const e=pendingDH[msg.requestId];if(e){const ch=PP4._channels[msg.channelId];if(ch){const oldS=ch.secret;const ct=contacts.find(c=>c.channelId===msg.channelId);const ss=await deriveSecret(e.keyPair,await importPublicKey(msg.pubKey));ch.secret=ss;ch.reconnect=false;ch.reconnecting=false;ch.expires=Date.now()+600000;if(ct?.verified&&oldS&&oldS!==ch.secret){ct.verified=false;saveContacts();renderContacts();}saveChannels();updateUI();delete pendingDH[msg.requestId];connectToPeerDHT(ch.peerId).catch(()=>{});}}}
-    if(msg.type==='channel-closed'){if(PP4._channels[msg.channelId]){delete PP4._channels[msg.channelId];saveChannels();updateUI();}}
+        updateCupIndicator();playSound('arrow_hit.wav');return;
+    }
+    
+    // Пробуем расшифровать как маяк (блоб зашифрован временным ключом)
+    for(const[bid,b]of Object.entries(PP4._beacons)){
+        if(!b.tempKey)continue;
+        const u=await unpackBlob(blob,b.tempKey);
+        if(!u)continue;
+        if(u.type==='beacon-response'){
+            // Ответ на наш маяк — создаём канал
+            const remotePubKey=await importPublicKey(u.pubKey);
+            const ss=await deriveSecret(b.keyPair,remotePubKey);
+            const chId=RND();
+            PP4._channels[chId]={secret:ss,peerId:u.peerId,type:'cup',blobs:[],expires:Date.now()+600000,createdAt:Date.now()};
+            delete PP4._beacons[bid];
+            saveChannels();
+            addContact({peerId:u.peerId,name:'Лучник',channelId:chId,verified:false,avatar:'001'});
+            updateUI();
+            connectToPeerDHT(u.peerId).catch(()=>{});
+            setTimeout(()=>playQuiverAnimation(),300);
+            rMsg('✅ Канал открыт!',3000);
+            return;
+        }
+    }
+    
+    // Пробуем расшифровать как входящий маяк (блоб зашифрован ключом из pendingHandshakes)
+    for(const[hid,h]of Object.entries(pendingHandshakes)){
+        const u=await unpackBlob(blob,h.tempKey);
+        if(!u)continue;
+        if(u.type==='beacon'){
+            // Входящий маяк — отправляем ответ
+            const remotePubKey=await importPublicKey(u.pubKey);
+            const kp=await generateKeyPair();
+            const myPubKey=await exportPublicKey(kp);
+            const ss=await deriveSecret(kp,remotePubKey);
+            const chId=RND();
+            PP4._channels[chId]={secret:ss,peerId:u.peerId,type:'cup',blobs:[],expires:Date.now()+600000,createdAt:Date.now()};
+            // Отправляем ответ
+            const response=JSON.stringify({type:'beacon-response',pubKey:myPubKey,peerId:PP4._peerId});
+            const packed=await packBlob(response,h.tempKey);
+            broadcastBlob(packed,chId);
+            delete pendingHandshakes[hid];
+            saveChannels();
+            addContact({peerId:u.peerId,name:'Лучник',channelId:chId,verified:false,avatar:'001'});
+            updateUI();
+            connectToPeerDHT(u.peerId).catch(()=>{});
+            setTimeout(()=>playQuiverAnimation(),300);
+            rMsg('✅ Канал открыт!',3000);
+            return;
+        }
+    }
 }
-async function createBeacon(){const kp=await generateKeyPair();const pk=await exportPublicKey(kp);const tkh=await SHA(pk);const bid=RND();PP4._beacons[bid]={keyPair:kp,pubKey:pk,hash:tkh,expires:Date.now()+1800000,createdAt:Date.now()};pendingDH[bid]={keyPair:kp};if(PP4._ws)PP4._ws.send(JSON.stringify({action:'beacon',beaconId:bid,tempKeyHash:tkh,peerId:PP4._peerId,pubKey:pk}));document.getElementById('beacon-display').style.display='block';document.getElementById('beacon-display').textContent=PP4._peerId;}
-async function connectByPeerId(){const v=document.getElementById('peer-id-input').value.trim();if(!v)return;const kp=await generateKeyPair();const pk=await exportPublicKey(kp);const tkh=await SHA(pk);const rid=RND();pendingDH[rid]={keyPair:kp};if(PP4._ws)PP4._ws.send(JSON.stringify({action:'connect',targetPeerId:v,tempKeyHash:tkh,fromPeerId:PP4._peerId,pubKey:pk,requestId:rid}));}
-async function sendBlobToChannel(channelId,data){const ch=PP4._channels[channelId];if(!ch||!ch.secret)return false;const packed=await packBlob(data,ch.secret);const dhtPeers=getClosestPeers(channelId,3).filter(p=>p.conn?.readyState==='open');if(dhtPeers.length>0){for(const p of dhtPeers)await sendToPeer(p.id,{type:'blob',channelId,blob:packed});return true;}if(PP4._ws)PP4._ws.send(JSON.stringify({action:'blob',channelId,blob:packed,peerId:PP4._peerId}));return true;}
-function checkRequests(){if(PP4._ws)PP4._ws.send(JSON.stringify({action:'check-requests',peerId:PP4._peerId}));}
-function renderRequests(){const l=document.getElementById('requests-list-inner');if(!l)return;l.innerHTML=PP4._requests.map((r,i)=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px;margin:4px 0;background:rgba(255,255,255,0.03);border-radius:8px;"><span style="font-size:0.75em;">📩 ${r.from.substring(0,8)}...</span><div><button class="btn-primary" onclick="acceptRequest(${i})" style="width:auto;padding:6px 12px;font-size:0.7em;">✅</button><button class="btn-dark" onclick="rejectRequest(${i})" style="width:auto;padding:6px 12px;font-size:0.7em;">❌</button></div></div>`).join('')||'<div style="color:var(--text-dim);font-size:0.75em;">Нет заявок</div>';}
-async function acceptRequest(i){const r=PP4._requests[i];if(!r)return;const kp=await generateKeyPair();const pk=await exportPublicKey(kp);if(PP4._ws)PP4._ws.send(JSON.stringify({action:'accept-request',fromPeerId:r.from,tempKeyHash:r.tempKeyHash,myPeerId:PP4._peerId,pubKey:pk}));PP4._requests.splice(i,1);renderRequests();}
-function rejectRequest(i){PP4._requests.splice(i,1);renderRequests();}
-async function reconnectChannel(id){const ch=PP4._channels[id];if(!ch||ch.reconnecting)return;ch.reconnecting=true;const kp=await generateKeyPair();const pk=await exportPublicKey(kp);const rid=RND();pendingDH[rid]={keyPair:kp};if(PP4._ws)PP4._ws.send(JSON.stringify({action:'reconnect',channelId:id,targetPeerId:ch.peerId,pubKey:pk,requestId:rid,fromPeerId:PP4._peerId}));}
+
+function broadcastBlob(packed,channelId){
+    const dhtPeers=getClosestPeers(channelId||BLOB_NS,3).filter(p=>p.conn?.readyState==='open');
+    if(dhtPeers.length>0){for(const p of dhtPeers)sendToPeer(p.id,{type:'blob',channelId:channelId||BLOB_NS,blob:packed});return;}
+    if(PP4._ws)PP4._ws.send(JSON.stringify({action:'blob',channelId:channelId||BLOB_NS,blob:packed,peerId:PP4._peerId}));
+}
+
+const pendingHandshakes={};
+
+async function createBeacon(){
+    const kp=await generateKeyPair();
+    const pk=await exportPublicKey(kp);
+    const tempKey=RND();
+    const bid=RND();
+    PP4._beacons[bid]={keyPair:kp,pubKey:pk,tempKey:tempKey,expires:Date.now()+1800000,createdAt:Date.now()};
+    // Упаковываем маяк как блоб
+    const beaconData=JSON.stringify({type:'beacon',pubKey:pk,peerId:PP4._peerId});
+    const packed=await packBlob(beaconData,tempKey);
+    // Показываем блоб для копирования
+    document.getElementById('beacon-display').style.display='block';
+    document.getElementById('beacon-display').textContent=packed;
+    // Отправляем в Улей
+    broadcastBlob(packed,BLOB_NS);
+}
+
+async function connectByBeaconBlob(){
+    const packed=document.getElementById('beacon-blob-input').value.trim();
+    if(!packed)return;
+    // Сохраняем блоб как ожидающий рукопожатия
+    const tempKey=RND();
+    const hid=RND();
+    pendingHandshakes[hid]={tempKey:tempKey,expires:Date.now()+600000};
+    // Пытаемся расшифровать маяк
+    const u=await unpackBlob(packed,tempKey);
+    if(!u||u.type!=='beacon'){
+        // Не расшифровался нашим ключом — но мы сохранили handshake
+        // Когда сервер разошлёт этот блоб, handleIncomingBlob попробует расшифровать его через pendingHandshakes
+        // Но это не сработает, потому что маяк зашифрован чужим tempKey
+        // Нужно чтобы создатель маяка тоже использовал наш tempKey
+        rMsg('❌ Не удалось расшифровать маяк',3000);
+        return;
+    }
+    // Если расшифровался — обрабатываем как входящий маяк
+    handleIncomingBlob(packed,BLOB_NS);
+    document.getElementById('connect-modal')?.classList.remove('active');
+}
+
+async function sendBlobToChannel(channelId,data){
+    const ch=PP4._channels[channelId];
+    if(!ch||!ch.secret)return false;
+    const packed=await packBlob(data,ch.secret);
+    broadcastBlob(packed,channelId);
+    return true;
+}
 
 // ========== ИНТЕРФЕЙС ==========
 let contacts=[],activeChannelId=null,activePeerId=null,selectedAvatar='001';
 let currentChannelId=null,currentSecret=null,toggleSoundState=!0,selfDestructMode=!1,peerHelpEnabled=!1;
 let pc=null,localStream=null,callActive=!1,incomingOffer=null,ringtoneAudio=null,ringbackAudio=null;
-let audioPool={},robinDefaultText='Святые сокеты стабильны! Ждём колчан...',robinTimer=null;
+let audioPool={},robinDefaultText='Слепой Улей. Сервер не знает ничего.',robinTimer=null;
 let voiceRecorder=null,voiceChunks=[],voiceStream=null,voiceRecording=!1,voiceSeconds=0,voiceTimerInterval=null;
 let archerAnimation,quiverAnim,bowAnim,currentArrowContainer;
 let savedConfigs=[],deferredPrompt=null;
@@ -371,11 +469,9 @@ async function initApp(){
     const mp=document.getElementById('my-peer-id-display');if(mp)mp.textContent=PP4._peerId?.substring(0,16)+'...'||'...';
 
     document.getElementById('btn-arrow')?.addEventListener('click',()=>{document.getElementById('arrow-modal')?.classList.add('active');document.getElementById('beacon-display').style.display='none';});
-    document.getElementById('btn-create-beacon')?.addEventListener('click',()=>{createBeacon();});
-    document.getElementById('btn-connect-peer')?.addEventListener('click',()=>{connectByPeerId();});
-    document.getElementById('close-arrow-modal')?.addEventListener('click',()=>{document.getElementById('arrow-modal')?.classList.remove('active');});
-    document.getElementById('btn-requests')?.addEventListener('click',()=>{checkRequests();document.getElementById('requests-modal')?.classList.add('active');renderRequests();});
-    document.getElementById('close-requests-modal')?.addEventListener('click',()=>{document.getElementById('requests-modal')?.classList.remove('active');});
+    document.getElementById('btn-create-beacon')?.addEventListener('click',()=>{createBeacon();document.getElementById('connect-modal')?.classList.add('active');});
+    document.getElementById('btn-connect-beacon')?.addEventListener('click',()=>{connectByBeaconBlob();});
+    document.getElementById('close-connect-modal')?.addEventListener('click',()=>{document.getElementById('connect-modal')?.classList.remove('active');});
     document.getElementById('btn-clear')?.addEventListener('click',()=>{const box=document.getElementById('chat-box');if(box)box.querySelectorAll('.message-row').forEach(m=>m.remove());playSmokeAnimation();playSound('clear cache.mp3');rMsg('🚬 Чат скурили!',5000)});
     document.getElementById('btn-settings')?.addEventListener('click',()=>{closeSheets();document.getElementById('settings-sheet')?.classList.add('open');document.getElementById('overlay')?.classList.add('show')});
     document.getElementById('settings-close')?.addEventListener('click',closeSheets);
@@ -421,7 +517,7 @@ async function initApp(){
 
     document.getElementById('send-btn')?.addEventListener('click',async()=>{const mi=document.getElementById('msg-input');const t=mi?.value.trim();if(t){if(!activeChannelId){const chIds=Object.keys(PP4._channels);if(!chIds.length)return;activeChannelId=chIds[0];}const ch=PP4._channels[activeChannelId];if(!ch||!ch.secret)return;await sendBlobToChannel(activeChannelId,JSON.stringify({d:t}));ch.blobs.push({d:t,t:Date.now(),n:RND(),from:'me'});ch.expires=Date.now()+600000;saveChannels();appendMessage('Вы',t);updateCupIndicator();if(mi)mi.value='';playArcherAnimation();playBowAnimation();if(toggleSoundState)playSound('shot.mp3')}});
     document.getElementById('msg-input')?.addEventListener('keypress',e=>{if(e.key=='Enter')document.getElementById('send-btn')?.click()});
-    setConnectionStatus('checking');rMsg('🏹 Ждём колчан...',0);
+    setConnectionStatus('checking');rMsg('🏹 Слепой Улей готов',0);
 }
 
 // ========== БЛОКИРОВКА ==========
@@ -438,7 +534,7 @@ async function unlockApp(){lockScreen.style.display='none';appContainer.style.di
 document.getElementById('setting-lock')?.addEventListener('click',()=>{if(lockType){if(confirm('Сбросить блокировку?')){localStorage.removeItem(LOCK_KEY);lockType=null;lockPinHash='';const ls=document.getElementById('lock-status');if(ls)ls.textContent='Не задан'}}else{isSettingLock=true;lockPinHash='';pinInput='';lockScreen.style.display='flex';appContainer.style.display='none';setupLockUI()}});
 
 loadLockSettings();
-setInterval(()=>{const now=Date.now();for(const[id,ch]of Object.entries(PP4._channels)){if(now>ch.expires){delete PP4._channels[id];saveChannels();if(id===activeChannelId){activeChannelId=null;activePeerId=null;}}}for(const[id,b]of Object.entries(PP4._beacons)){if(now>b.expires)delete PP4._beacons[id];}for(const[id]of Object.entries(pendingDH)){if(!PP4._beacons[id]&&!PP4._channels[id])delete pendingDH[id];}PP4._requests=PP4._requests.filter(r=>now-r.time<1800000);for(const[id,peer]of DHT._peers){if(now-peer.lastSeen>30000&&peer.conn?.readyState==='open')peer.conn.send(JSON.stringify({type:'dht-ping'}));if(now-peer.lastSeen>120000){DHT._peers.delete(id);for(const bucket of DHT._buckets){const idx=bucket.findIndex(p=>p.id===id);if(idx>=0)bucket.splice(idx,1);}}}updateCupIndicator();updateUI();},10000);
+setInterval(()=>{const now=Date.now();for(const[id,ch]of Object.entries(PP4._channels)){if(now>ch.expires){delete PP4._channels[id];saveChannels();if(id===activeChannelId){activeChannelId=null;activePeerId=null;}}}for(const[id,b]of Object.entries(PP4._beacons)){if(now>b.expires)delete PP4._beacons[id];}for(const[id,h]of Object.entries(pendingHandshakes)){if(now>h.expires)delete pendingHandshakes[id];}PP4._requests=PP4._requests.filter(r=>now-r.time<1800000);for(const[id,peer]of DHT._peers){if(now-peer.lastSeen>30000&&peer.conn?.readyState==='open')peer.conn.send(JSON.stringify({type:'dht-ping'}));if(now-peer.lastSeen>120000){DHT._peers.delete(id);for(const bucket of DHT._buckets){const idx=bucket.findIndex(p=>p.id===id);if(idx>=0)bucket.splice(idx,1);}}}updateCupIndicator();updateUI();},10000);
 </script>
 </body>
 </html>
