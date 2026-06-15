@@ -185,7 +185,7 @@
         <div class="header-btn" id="btn-settings"><img src="assets/icons/11icon.png" alt="settings"></div>
     </div>
     <div class="header-row-3"><span class="header-label" id="nick-label">Твой ник</span><span class="header-label">Стрела</span><span class="header-label" id="call-label">Звонок</span><span class="header-label">Скурить чат</span><span class="header-label" id="settings-label">Опции</span></div>
-    <div class="robin-bar"><img src="assets/avatar/001ava.png" class="robin-bar-avatar" id="robin-avatar"><div class="robin-bar-text"><div class="robin-bar-sender" id="robin-bar-sender">Robin Hood</div><div class="robin-bar-msg" id="robin-text">Святые сокеты стабильны! Ждём колчан...</div></div><div class="robin-bar-status"><img src="assets/icons/05icon.png" id="connection-icon" alt="status"></div></div>
+    <div class="robin-bar"><img src="assets/avatar/001ava.png" class="robin-bar-avatar" id="robin-avatar"><div class="robin-bar-text"><div class="robin-bar-sender" id="robin-bar-sender">Robin Hood</div><div class="robin-bar-msg" id="robin-text">Святые сокеты стабильны! Ждём колчан...</div></div><div class="robin-bar-status"><img src="assets/icons/05icon.png" id="connection-icon" alt="status"></div><div class="cup-indicator" id="cup-indicator" style="display:none;"><div>🍺 <span id="cup-blobs">0/10</span></div><div>⏱ <span id="cup-timer">10:00</span></div></div></div>
 </div>
 <div class="chat-area" id="chat-box"><div class="typing-indicator" id="typing-indicator"></div></div>
 <div class="input-area">
@@ -387,7 +387,7 @@ async function initApp(){
     document.getElementById('close-nick-modal')?.addEventListener('click',()=>{document.getElementById('nick-modal')?.classList.remove('active');});
     
     document.getElementById('setting-theme')?.addEventListener('click',()=>{const ct=localStorage.getItem('robinhood_theme')||'paper';const idx=themes.findIndex(t=>t.id==ct);applyTheme(themes[(idx+1)%themes.length].id)});
-    document.getElementById('setting-theme-random')?.addEventListener('click',()=>applyGeneratedTheme(generateRandomTheme()));
+    document.getElementById('setting-theme-random')?.addEventListener('click', generateRandomTheme);
     document.getElementById('setting-destroy')?.addEventListener('click',()=>{closeSheets();destroySession()});
     document.getElementById('setting-tunnel')?.addEventListener('click',()=>{refreshTunnelList();document.getElementById('tunnel-config-modal')?.classList.add('active')});
     document.getElementById('setting-terms')?.addEventListener('click',()=>window.open('https://github.com/stepweather-prog/ROBINHOOD-P2P/blob/main/README.md','_blank'));
