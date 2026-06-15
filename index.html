@@ -220,15 +220,29 @@ async function handleMessage(msg){
         if(id===activeChannelId)addMsg(sn,u.d||u.text||'',ct?.avatar);else document.getElementById('robin-text').textContent=`Новое от ${sn}`;
         updateCupIndicator();return;}}
     if(msg.type==='request'){PP4._requests.push({from:msg.from,tempKeyHash:msg.tempKeyHash,time:Date.now(),pubKey:msg.pubKey});renderRequests();updateRequestsBadge();}
-    if(msg.type==='beacon-match'){const b=PP4._beacons[msg.beaconId];if(b&&b.keyPair){const chId=msg.channelId||RND();const ss=await deriveSecret(b.keyPair,await importPublicKey(msg.pubKey));PP4._channels[chId]={secret:ss,peerId:msg.peerId,type:'cup',blobs:[],expires:Date.now()+600000,createdAt:Date.now()};delete PP4._beacons[msg.beaconId];delete pendingDH[msg.beaconId];saveChannels();addContact({peerId:msg.peerId,name:'Лучник',channelId:chId,verified:false,avatar:'001'});updateUI();connectToPeerDHT(msg.peerId).catch(()=>{});}}
-    if(msg.type==='connect-ack'){const e=pendingDH[msg.requestId];if(e&&e.keyPair){const chId=msg.channelId||RND();const ss=await deriveSecret(e.keyPair,await importPublicKey(msg.pubKey));PP4._channels[chId]={secret:ss,peerId:msg.peerId,type:'cup',blobs:[],expires:Date.now()+600000,createdAt:Date.now()};delete pendingDH[msg.requestId];saveChannels();addContact({peerId:msg.peerId,name:'Лучник',channelId:chId,verified:false,avatar:'001'});updateUI();connectToPeerDHT(msg.peerId).catch(()=>{});}}
+    if(msg.type==='beacon-match'){console.log('📩 Получен beacon-match:',msg);const b=PP4._beacons[msg.beaconId];if(b&&b.keyPair){const chId=msg.channelId||RND();const ss=await deriveSecret(b.keyPair,await importPublicKey(msg.pubKey));PP4._channels[chId]={secret:ss,peerId:msg.peerId,type:'cup',blobs:[],expires:Date.now()+600000,createdAt:Date.now()};delete PP4._beacons[msg.beaconId];delete pendingDH[msg.beaconId];saveChannels();addContact({peerId:msg.peerId,name:'Лучник',channelId:chId,verified:false,avatar:'001'});updateUI();connectToPeerDHT(msg.peerId).catch(()=>{});}}
+    if(msg.type==='connect-ack'){console.log('📩 Получен connect-ack:',msg);const e=pendingDH[msg.requestId];if(e&&e.keyPair){const chId=msg.channelId||RND();const ss=await deriveSecret(e.keyPair,await importPublicKey(msg.pubKey));PP4._channels[chId]={secret:ss,peerId:msg.peerId,type:'cup',blobs:[],expires:Date.now()+600000,createdAt:Date.now()};delete pendingDH[msg.requestId];saveChannels();addContact({peerId:msg.peerId,name:'Лучник',channelId:chId,verified:false,avatar:'001'});updateUI();connectToPeerDHT(msg.peerId).catch(()=>{});}}
     if(msg.type==='reconnect-request'){const ch=PP4._channels[msg.channelId];if(ch){const oldS=ch.secret;const ct=contacts.find(c=>c.channelId===msg.channelId);const kp=await generateKeyPair();const pk=await exportPublicKey(kp);const ss=await deriveSecret(kp,await importPublicKey(msg.pubKey));ch.secret=ss;ch.reconnect=false;ch.expires=Date.now()+600000;if(ct?.verified&&oldS&&oldS!==ch.secret){ct.verified=false;saveContacts();renderContacts();addMsg('⚠','Ключ канала изменился!');}if(PP4._ws)PP4._ws.send(JSON.stringify({action:'reconnect-ack',channelId:msg.channelId,pubKey:pk,requestId:msg.requestId,peerId:PP4._peerId}));saveChannels();updateUI();connectToPeerDHT(ch.peerId).catch(()=>{});}}
     if(msg.type==='reconnect-ack'){const e=pendingDH[msg.requestId];if(e){const ch=PP4._channels[msg.channelId];if(ch){const oldS=ch.secret;const ct=contacts.find(c=>c.channelId===msg.channelId);const ss=await deriveSecret(e.keyPair,await importPublicKey(msg.pubKey));ch.secret=ss;ch.reconnect=false;ch.reconnecting=false;ch.expires=Date.now()+600000;if(ct?.verified&&oldS&&oldS!==ch.secret){ct.verified=false;saveContacts();renderContacts();addMsg('⚠','Ключ канала изменился!');}saveChannels();updateUI();delete pendingDH[msg.requestId];connectToPeerDHT(ch.peerId).catch(()=>{});}}}
     if(msg.type==='channel-closed'){if(PP4._channels[msg.channelId]){delete PP4._channels[msg.channelId];saveChannels();updateUI();}}
 }
 
 async function createBeacon(){const kp=await generateKeyPair();const pk=await exportPublicKey(kp);const tkh=await SHA(pk);const bid=RND();PP4._beacons[bid]={keyPair:kp,pubKey:pk,hash:tkh,expires:Date.now()+1800000,createdAt:Date.now()};pendingDH[bid]={keyPair:kp};if(PP4._ws)PP4._ws.send(JSON.stringify({action:'beacon',beaconId:bid,tempKeyHash:tkh,peerId:PP4._peerId,pubKey:pk}));document.getElementById('beacon-display').style.display='block';document.getElementById('beacon-display').textContent='Твой Peer ID: '+PP4._peerId;renderBeaconTimers();updateUI();}
-async function connectByPeerId(){const v=document.getElementById('peer-id-input').value.trim();if(!v)return;const kp=await generateKeyPair();const pk=await exportPublicKey(kp);const tkh=await SHA(pk);const rid=RND();pendingDH[rid]={keyPair:kp};if(PP4._ws)PP4._ws.send(JSON.stringify({action:'connect',targetPeerId:v,tempKeyHash:tkh,fromPeerId:PP4._peerId,pubKey:pk,requestId:rid}));}
+
+async function connectByPeerId(){
+    const v=document.getElementById('peer-id-input').value.trim();
+    if(!v){console.log('❌ Пустой Peer ID');return;}
+    console.log('🔍 connectByPeerId: ищу',v);
+    console.log('📡 WS readyState:',PP4._ws?.readyState);
+    console.log('📡 Мой Peer ID:',PP4._peerId);
+    const kp=await generateKeyPair();const pk=await exportPublicKey(kp);const tkh=await SHA(pk);const rid=RND();
+    pendingDH[rid]={keyPair:kp};
+    const msg={action:'connect',targetPeerId:v,tempKeyHash:tkh,fromPeerId:PP4._peerId,pubKey:pk,requestId:rid};
+    console.log('📤 Отправляю connect:',JSON.stringify(msg).substring(0,200));
+    if(PP4._ws&&PP4._ws.readyState===WebSocket.OPEN){PP4._ws.send(JSON.stringify(msg));console.log('✅ connect отправлен через WS');document.getElementById('connect-result').textContent='🔍 Ищу пира...';}
+    else{console.log('❌ WS не подключён! readyState:',PP4._ws?.readyState);document.getElementById('connect-result').textContent='❌ Нет связи с сервером';}
+}
+
 async function acceptRequest(i){const r=PP4._requests[i];if(!r)return;const kp=await generateKeyPair();const pk=await exportPublicKey(kp);if(PP4._ws)PP4._ws.send(JSON.stringify({action:'accept-request',fromPeerId:r.from,tempKeyHash:r.tempKeyHash,myPeerId:PP4._peerId,pubKey:pk}));PP4._requests.splice(i,1);renderRequests();updateRequestsBadge();}
 function rejectRequest(i){PP4._requests.splice(i,1);renderRequests();updateRequestsBadge();}
 function checkRequests(){if(PP4._ws)PP4._ws.send(JSON.stringify({action:'check-requests',peerId:PP4._peerId}));}
