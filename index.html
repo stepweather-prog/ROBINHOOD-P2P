@@ -3,16 +3,229 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>RobinHood P2P v2.3</title>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>RobinHood P2P</title>
     <link rel="manifest" href="manifest.json">
     <link rel="icon" type="image/png" href="assets/icons/01icon.png">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.12.2/lottie.min.js"></script>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com 'unsafe-inline'; style-src 'self' 'unsafe-inline'; media-src 'self' blob: data:; connect-src 'self' wss://robincall.stephanclaps-491.workers.dev https://robincall.stephanclaps-491.workers.dev https://api.qrserver.com blob:; img-src 'self' data: blob: https://stepweather-prog.github.io https://api.qrserver.com; frame-src 'self'; manifest-src 'self'; form-action 'none'; base-uri 'self';">
     <style>
-        /* Все CSS стили как у вас были */
+        :root, [data-theme="forest"] { --bg-primary: #1a2a1f; --bg-secondary: #0d1a0c; --accent: #c4a24b; --accent-light: #e8d5a3; --text: #e8e2c7; --text-bright: #f5e6b8; --text-dim: #b8a87a; --border: #c4a24b; --btn-bg: rgba(196,162,75,0.1); --btn-border: rgba(196,162,75,0.3); --btn-hover: rgba(196,162,75,0.25); --sheet-bg: linear-gradient(145deg, #1e2a1a 0%, #0f180d 100%); --input-bg: rgba(20,30,18,0.9); --msg-bg: rgba(30,40,25,0.85); --msg-accent: #c4a24b; --robin-bg: rgba(50,70,40,0.6); --robin-accent: #e8c97a; --overlay-bg: rgba(0,0,0,0.6); --seeding-color: #4caf50; --danger: #f44336; --call-bg: linear-gradient(180deg, #1a2a1f 0%, #0d1a0c 100%); --call-btn-bg: rgba(196,162,75,0.1); --call-btn-border: rgba(196,162,75,0.3); --call-accept-bg: rgba(76,175,80,0.3); --call-reject-bg: rgba(244,67,54,0.3); --input-text: #e8e2c7; }
+        [data-theme="sunset"] { --bg-primary: #2a1a1f; --bg-secondary: #1a0a0f; --accent: #e85d3a; --accent-light: #f0a080; --text: #f0d8c0; --text-bright: #fae8d0; --text-dim: #c08060; --border: #e85d3a; --robin-accent: #f0a080; --seeding-color: #e85d3a; --msg-bg: rgba(40,20,15,0.85); --input-bg: rgba(30,15,10,0.9); --btn-bg: rgba(232,93,58,0.1); --btn-border: rgba(232,93,58,0.3); --btn-hover: rgba(232,93,58,0.25); --sheet-bg: linear-gradient(145deg, #2a1a18 0%, #1a0a08 100%); --call-bg: linear-gradient(180deg, #2a1a1f 0%, #1a0a0f 100%); --call-btn-bg: rgba(232,93,58,0.1); --call-btn-border: rgba(232,93,58,0.3); --input-text: #f0d8c0; }
+        [data-theme="ocean"] { --bg-primary: #0a1a2f; --bg-secondary: #050d18; --accent: #4bc4d0; --accent-light: #90e8f0; --text: #c8f0f8; --text-bright: #e0fafc; --text-dim: #60a0b0; --border: #4bc4d0; --robin-accent: #90e8f0; --seeding-color: #4bc4d0; --msg-bg: rgba(10,25,35,0.85); --input-bg: rgba(8,20,30,0.9); --btn-bg: rgba(75,196,208,0.1); --btn-border: rgba(75,196,208,0.3); --btn-hover: rgba(75,196,208,0.25); --sheet-bg: linear-gradient(145deg, #0a1828 0%, #050d18 100%); --call-bg: linear-gradient(180deg, #0a1a2f 0%, #050d18 100%); --call-btn-bg: rgba(75,196,208,0.1); --call-btn-border: rgba(75,196,208,0.3); --input-text: #c8f0f8; }
+        [data-theme="rose"] { --bg-primary: #2a1520; --bg-secondary: #1a0a12; --accent: #e84b8a; --accent-light: #f090c0; --text: #f0c8e0; --text-bright: #fae0f0; --text-dim: #c06090; --border: #e84b8a; --robin-accent: #f090c0; --seeding-color: #e84b8a; --msg-bg: rgba(35,15,25,0.85); --input-bg: rgba(30,12,20,0.9); --btn-bg: rgba(232,75,138,0.1); --btn-border: rgba(232,75,138,0.3); --btn-hover: rgba(232,75,138,0.25); --sheet-bg: linear-gradient(145deg, #2a1520 0%, #180a12 100%); --call-bg: linear-gradient(180deg, #2a1520 0%, #1a0a12 100%); --call-btn-bg: rgba(232,75,138,0.1); --call-btn-border: rgba(232,75,138,0.3); --input-text: #f0c8e0; }
+        [data-theme="amber"] { --bg-primary: #2a2010; --bg-secondary: #1a1008; --accent: #e8a030; --accent-light: #f0c860; --text: #f0e0c0; --text-bright: #faf0d0; --text-dim: #c0a060; --border: #e8a030; --robin-accent: #f0c860; --seeding-color: #e8a030; --msg-bg: rgba(35,25,15,0.85); --input-bg: rgba(30,22,12,0.9); --btn-bg: rgba(232,160,48,0.1); --btn-border: rgba(232,160,48,0.3); --btn-hover: rgba(232,160,48,0.25); --sheet-bg: linear-gradient(145deg, #2a2010 0%, #181008 100%); --call-bg: linear-gradient(180deg, #2a2010 0%, #1a1008 100%); --call-btn-bg: rgba(232,160,48,0.1); --call-btn-border: rgba(232,160,48,0.3); --input-text: #f0e0c0; }
+        [data-theme="mint"] { --bg-primary: #0a2a1f; --bg-secondary: #051a10; --accent: #4be8b0; --accent-light: #90f0d0; --text: #c0f0e0; --text-bright: #d0faf0; --text-dim: #60c0a0; --border: #4be8b0; --robin-accent: #90f0d0; --seeding-color: #4be8b0; --msg-bg: rgba(10,30,22,0.85); --input-bg: rgba(8,28,20,0.9); --btn-bg: rgba(75,232,176,0.1); --btn-border: rgba(75,232,176,0.3); --btn-hover: rgba(75,232,176,0.25); --sheet-bg: linear-gradient(145deg, #0a2a1f 0%, #051a10 100%); --call-bg: linear-gradient(180deg, #0a2a1f 0%, #051a10 100%); --call-btn-bg: rgba(75,232,176,0.1); --call-btn-border: rgba(75,232,176,0.3); --input-text: #c0f0e0; }
+        [data-theme="lavender"] { --bg-primary: #1a1530; --bg-secondary: #0d0a20; --accent: #8b5cf6; --accent-light: #b090f8; --text: #d0c8f8; --text-bright: #e0d8fc; --text-dim: #9080c0; --border: #8b5cf6; --robin-accent: #b090f8; --seeding-color: #8b5cf6; --msg-bg: rgba(20,15,35,0.85); --input-bg: rgba(18,12,30,0.9); --btn-bg: rgba(139,92,246,0.1); --btn-border: rgba(139,92,246,0.3); --btn-hover: rgba(139,92,246,0.25); --sheet-bg: linear-gradient(145deg, #1a1528 0%, #0d0a18 100%); --call-bg: linear-gradient(180deg, #1a1530 0%, #0d0a20 100%); --call-btn-bg: rgba(139,92,246,0.1); --call-btn-border: rgba(139,92,246,0.3); --input-text: #d0c8f8; }
+        [data-theme="cherry"] { --bg-primary: #2a0a15; --bg-secondary: #1a0510; --accent: #e8304b; --accent-light: #f06080; --text: #f0c0d0; --text-bright: #fae0e5; --text-dim: #c05070; --border: #e8304b; --robin-accent: #f06080; --seeding-color: #e8304b; --msg-bg: rgba(35,8,18,0.85); --input-bg: rgba(30,8,15,0.9); --btn-bg: rgba(232,48,75,0.1); --btn-border: rgba(232,48,75,0.3); --btn-hover: rgba(232,48,75,0.25); --sheet-bg: linear-gradient(145deg, #2a0a15 0%, #180510 100%); --call-bg: linear-gradient(180deg, #2a0a15 0%, #1a0510 100%); --call-btn-bg: rgba(232,48,75,0.1); --call-btn-border: rgba(232,48,75,0.3); --input-text: #f0c0d0; }
+        [data-theme="emerald"] { --bg-primary: #0a2a15; --bg-secondary: #051a0d; --accent: #30e860; --accent-light: #60f090; --text: #c0f0d0; --text-bright: #d0fae0; --text-dim: #50c070; --border: #30e860; --robin-accent: #60f090; --seeding-color: #30e860; --msg-bg: rgba(10,30,18,0.85); --input-bg: rgba(8,28,15,0.9); --btn-bg: rgba(48,232,96,0.1); --btn-border: rgba(48,232,96,0.3); --btn-hover: rgba(48,232,96,0.25); --sheet-bg: linear-gradient(145deg, #0a2a15 0%, #051a0d 100%); --call-bg: linear-gradient(180deg, #0a2a15 0%, #051a0d 100%); --call-btn-bg: rgba(48,232,96,0.1); --call-btn-border: rgba(48,232,96,0.3); --input-text: #c0f0d0; }
+        [data-theme="slate"] { --bg-primary: #1a1a2a; --bg-secondary: #0d0d1a; --accent: #6b7db3; --accent-light: #a0b0e0; --text: #c8d0f0; --text-bright: #d8e0fa; --text-dim: #8090b0; --border: #6b7db3; --robin-accent: #a0b0e0; --seeding-color: #6b7db3; --msg-bg: rgba(20,20,30,0.85); --input-bg: rgba(18,18,28,0.9); --btn-bg: rgba(107,125,179,0.1); --btn-border: rgba(107,125,179,0.3); --btn-hover: rgba(107,125,179,0.25); --sheet-bg: linear-gradient(145deg, #1a1a28 0%, #0d0d18 100%); --call-bg: linear-gradient(180deg, #1a1a2a 0%, #0d0d1a 100%); --call-btn-bg: rgba(107,125,179,0.1); --call-btn-border: rgba(107,125,179,0.3); --input-text: #c8d0f0; }
+        [data-theme="coral"] { --bg-primary: #2a1a18; --bg-secondary: #1a0d0a; --accent: #e87050; --accent-light: #f0a080; --text: #f0d8c8; --text-bright: #fae8d8; --text-dim: #c09070; --border: #e87050; --robin-accent: #f0a080; --seeding-color: #e87050; --msg-bg: rgba(35,18,14,0.85); --input-bg: rgba(30,18,12,0.9); --btn-bg: rgba(232,112,80,0.1); --btn-border: rgba(232,112,80,0.3); --btn-hover: rgba(232,112,80,0.25); --sheet-bg: linear-gradient(145deg, #2a1a18 0%, #180d0a 100%); --call-bg: linear-gradient(180deg, #2a1a18 0%, #1a0d0a 100%); --call-btn-bg: rgba(232,112,80,0.1); --call-btn-border: rgba(232,112,80,0.3); --input-text: #f0d8c8; }
+        [data-theme="plum"] { --bg-primary: #201a2a; --bg-secondary: #100d1a; --accent: #9b59b6; --accent-light: #c090e0; --text: #d8c8f0; --text-bright: #e8d8fa; --text-dim: #9080b0; --border: #9b59b6; --robin-accent: #c090e0; --seeding-color: #9b59b6; --msg-bg: rgba(25,18,30,0.85); --input-bg: rgba(22,18,28,0.9); --btn-bg: rgba(155,89,182,0.1); --btn-border: rgba(155,89,182,0.3); --btn-hover: rgba(155,89,182,0.25); --sheet-bg: linear-gradient(145deg, #201a28 0%, #100d18 100%); --call-bg: linear-gradient(180deg, #201a2a 0%, #100d1a 100%); --call-btn-bg: rgba(155,89,182,0.1); --call-btn-border: rgba(155,89,182,0.3); --input-text: #d8c8f0; }
+        [data-theme="morning"] { --bg-primary: #f5f0e8; --bg-secondary: #e8e0d5; --accent: #8b7355; --accent-light: #a0845c; --text: #3a3028; --text-bright: #1a1008; --text-dim: #8a7a6a; --border: #8b7355; --robin-accent: #6b5540; --seeding-color: #5a8a4a; --danger: #c0392b; --msg-bg: rgba(255,250,245,0.85); --input-bg: rgba(255,255,255,0.9); --btn-bg: rgba(139,115,85,0.1); --btn-border: rgba(139,115,85,0.3); --btn-hover: rgba(139,115,85,0.25); --sheet-bg: linear-gradient(145deg, #f5f0e8 0%, #e8e0d5 100%); --call-bg: linear-gradient(180deg, #f5f0e8 0%, #e8e0d5 100%); --call-btn-bg: rgba(139,115,85,0.1); --call-btn-border: rgba(139,115,85,0.3); --input-text: #3a3028; --call-accept-bg: rgba(90,138,74,0.3); --call-reject-bg: rgba(192,57,43,0.3); }
+        [data-theme="paper"] { --bg-primary: #faf8f5; --bg-secondary: #f0ede8; --accent: #4a6741; --accent-light: #6b8f5a; --text: #2a2a2a; --text-bright: #111; --text-dim: #888; --border: #ccc; --robin-accent: #5a7b4a; --seeding-color: #4a8a3a; --danger: #d33; --msg-bg: rgba(255,255,255,0.9); --input-bg: rgba(255,255,255,0.95); --btn-bg: rgba(74,103,65,0.08); --btn-border: rgba(74,103,65,0.2); --btn-hover: rgba(74,103,65,0.18); --sheet-bg: linear-gradient(145deg, #faf8f5 0%, #f0ede8 100%); --call-bg: linear-gradient(180deg, #faf8f5 0%, #f0ede8 100%); --call-btn-bg: rgba(74,103,65,0.08); --call-btn-border: rgba(74,103,65,0.2); --input-text: #2a2a2a; --call-accept-bg: rgba(74,138,58,0.3); --call-reject-bg: rgba(221,51,51,0.3); }
+        * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+        html,body { height:100%; overflow:hidden; font-family:'Segoe UI','Inter',sans-serif; font-size:clamp(14px,2.5vw,16px); }
+        body { background:linear-gradient(135deg, var(--bg-primary), var(--bg-secondary)); color:var(--text); display:flex; flex-direction:column; height:100dvh; position:relative; }
+        body.custom-bg::before { background-image:var(--custom-bg)!important; background-size:cover!important; background-position:center!important; }
+        body::before { content:""; position:fixed; top:0; left:0; width:100%; height:100%; background-image:url('assets/icons/background.webp'); background-size:cover; background-position:center; z-index:0; opacity:0.35; }
+        .leaves-container { position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:1; overflow:hidden; }
+        .leaf,.feather{position:absolute;top:-50px;animation:fall linear infinite;opacity:0.8}
+        .leaf{font-size:clamp(14px,3vw,22px)}.feather{font-size:clamp(10px,2.5vw,18px)}
+        @keyframes fall{0%{transform:translateY(-50px) rotate(0deg) translateX(0);opacity:.9}25%{transform:translateY(25vh) rotate(90deg) translateX(40px);opacity:.8}50%{transform:translateY(50vh) rotate(180deg) translateX(-30px);opacity:.7}75%{transform:translateY(75vh) rotate(270deg) translateX(35px);opacity:.5}100%{transform:translateY(105vh) rotate(360deg) translateX(-20px);opacity:0}}
+        .leaf:nth-child(odd){animation-duration:15s}.leaf:nth-child(even){animation-duration:20s}.feather:nth-child(odd){animation-duration:24s}.feather:nth-child(even){animation-duration:30s}
+        .leaves-container.sleeping .leaf,.leaves-container.sleeping .feather{animation-play-state:paused;opacity:0.15}
+        .header{background:linear-gradient(135deg,var(--bg-primary),var(--bg-secondary));border-bottom:2px solid var(--border);backdrop-filter:blur(8px);z-index:10;padding:6px 10px;display:flex;flex-direction:column;gap:4px;flex-shrink:0}
+        .header-row-1{display:flex;align-items:center;gap:6px}
+        .header-title-text{font-size:clamp(1em,3vw,1.3em);font-weight:bold;background:linear-gradient(135deg,var(--accent-light),var(--accent));-webkit-background-clip:text;background-clip:text;color:transparent}
+        .header-datetime{font-size:clamp(0.6em,2vw,0.75em);color:var(--text-dim);margin-left:auto;display:flex;gap:4px}
+        .header-row-2{display:flex;justify-content:space-around;align-items:center}
+        .header-row-3{display:flex;justify-content:space-around;font-size:0.7em;color:var(--text-dim);margin-top:2px}
+        .header-row-3 span{width:clamp(40px,9vw,48px);text-align:center;cursor:pointer;font-weight:500;letter-spacing:0.3px}
+        .header-btn{width:clamp(44px,10vw,52px);height:clamp(44px,10vw,52px);display:flex;align-items:center;justify-content:center;cursor:pointer;border-radius:50%;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);transition:all 0.15s;position:relative;backdrop-filter:blur(8px);box-shadow:0 2px 8px rgba(0,0,0,0.15)}
+        .header-btn:active{background:rgba(255,255,255,0.12);transform:scale(0.93);box-shadow:0 1px 4px rgba(0,0,0,0.2)}
+        .header-btn img{width:60%;height:60%;object-fit:contain;padding:0}
+        .header-label{font-size:0.7em;color:var(--text-dim);text-align:center;width:clamp(40px,9vw,48px);cursor:pointer;font-weight:500}
+        .header-avatar{width:clamp(32px,7vw,38px);height:clamp(32px,7vw,38px);border-radius:50%;object-fit:cover;border:2px solid var(--border)}
+        .robin-bar{background:rgba(50,70,40,0.6);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-radius:14px;padding:8px 14px;display:flex;align-items:center;gap:10px;width:100%;border-left:3px solid var(--robin-accent);border:1px solid rgba(255,255,255,0.1);box-shadow:0 4px 16px rgba(0,0,0,0.2),inset 0 1px 0 rgba(255,255,255,0.05)}
+        .robin-bar-avatar{width:40px;height:40px;border-radius:50%;border:2px solid var(--robin-accent);object-fit:cover;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,0.3)}
+        .robin-bar-text{flex:1;min-width:0;text-shadow:0 1px 2px rgba(0,0,0,0.3)}
+        .robin-bar-sender{font-weight:900;font-size:0.85em;color:var(--text-bright)}
+        .robin-bar-msg{font-size:0.85em;color:rgba(255,255,255,0.85);white-space:normal;word-break:break-word}
+        .robin-bar-status{flex-shrink:0;display:flex;align-items:center;gap:4px}
+        .robin-bar-status img{width:14px;height:14px;object-fit:contain}
+        .chat-area{flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:8px;scrollbar-width:none;z-index:1}
+        .chat-area::-webkit-scrollbar{display:none}
+        .message-row{display:flex;align-items:flex-start;gap:8px;background:var(--msg-bg);backdrop-filter:blur(8px);padding:8px 10px;border-radius:14px;border-left:3px solid var(--msg-accent);animation:msgIn 0.3s ease}
+        @keyframes msgIn{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:translateX(0)}}
+        .input-area{background:linear-gradient(135deg,var(--bg-primary),var(--bg-secondary));backdrop-filter:blur(8px);padding:8px;display:flex;gap:6px;align-items:center;border-top:1px solid var(--border);z-index:1;flex-shrink:0}
+        #msg-input{flex:1;background:var(--input-bg);border:1px solid var(--border);padding:10px 12px;color:var(--input-text);border-radius:10px;font-size:clamp(14px,2.5vw,16px);outline:none;font-family:monospace;min-width:0}
+        #msg-input:focus{border-color:var(--accent-light);box-shadow:0 0 8px rgba(196,162,75,0.5)}
+        #btn-emoji{width:32px;height:32px;font-size:16px;border:none;background:transparent;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+        .bow-button{width:clamp(44px,10vw,52px);height:clamp(44px,10vw,52px);cursor:pointer;filter:drop-shadow(0 2px 6px rgba(0,0,0,0.3));flex-shrink:0;transition:transform 0.1s}
+        .bow-button:active{transform:scale(0.92)}
+        .bow-button img{width:100%;height:100%;object-fit:contain}
+        .bow-button.shooting{animation:bowShoot 0.4s ease-out}
+        @keyframes bowShoot{0%{transform:scale(1) rotate(0deg)}30%{transform:scale(1.2) rotate(-15deg)}60%{transform:scale(0.9) rotate(5deg)}100%{transform:scale(1) rotate(0deg)}}
+        .avatar{width:clamp(38px,8vw,44px);height:clamp(38px,8vw,44px);border-radius:50%;object-fit:cover;background-color:#2a3a25;flex-shrink:0;border:2px solid var(--border)}
+        .msg-body{flex:1;min-width:0}.msg-sender{font-weight:900;color:var(--text-bright);font-size:0.9em}
+        .msg-body div{font-size:0.9em;line-height:1.4;color:var(--text)}.msg-status{font-size:0.6em;color:var(--text-dim);text-align:right;margin-top:4px}
+        .bottom-sheet,.avatar-selector{position:fixed;top:0;left:0;width:min(85%,380px);height:100%;background:var(--sheet-bg);border-right:2px solid var(--border);z-index:200;transform:translateX(-100%);transition:transform 0.3s;overflow-y:auto;backdrop-filter:blur(16px)}
+        .bottom-sheet.open,.avatar-selector.show{transform:translateX(0)}
+        .bottom-sheet-header{padding:16px;font-weight:bold;color:var(--accent-light);border-bottom:1px solid var(--border);display:flex;justify-content:space-between}
+        .bottom-sheet-close{background:none;border:none;color:var(--accent-light);font-size:22px;cursor:pointer}
+        .bottom-sheet-list{padding:6px 12px}
+        .contact-item{display:flex;align-items:center;justify-content:space-between;padding:12px 10px;margin:5px 0;border-radius:12px;background:rgba(128,128,128,0.05);border:1px solid var(--btn-border);cursor:pointer;transition:all 0.15s;color:var(--text)}
+        .contact-item:active{background:var(--btn-hover);transform:scale(0.97)}
+        .contact-info{display:flex;align-items:center;gap:10px;flex:1}
+        .contact-info img{width:28px;height:28px;object-fit:contain}
+        .contact-name{font-weight:600;font-size:0.9em;color:var(--accent-light)}
+        .delete-contact{background:none;border:none;color:#c97a5a;font-size:18px;cursor:pointer}
+        .avatar-selector{padding:16px}.avatar-selector p{color:var(--accent-light);margin-bottom:12px;text-align:center}
+        #avatar-list{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;max-height:calc(100vh - 100px);overflow-y:auto;scrollbar-width:none}
+        #avatar-list::-webkit-scrollbar{display:none}
+        .avatar-option{width:clamp(45px,10vw,55px);height:clamp(45px,10vw,55px);border-radius:50%;object-fit:cover;cursor:pointer;border:2px solid transparent;transition:all 0.15s;margin:3px}
+        .avatar-option:active{border-color:var(--accent-light);transform:scale(0.9)}
+        .overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:var(--overlay-bg);backdrop-filter:blur(4px);display:none;z-index:190}
+        .overlay.show{display:block}
+        .modal-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:300;justify-content:center;align-items:center}
+        .modal-overlay.active{display:flex}
+        .modal-dialog{background:var(--sheet-bg);padding:20px;border-radius:20px;width:85%;max-width:380px;text-align:center;border:2px solid var(--border);color:var(--text)}
+        .modal-dialog h3{color:var(--accent-light);margin-bottom:12px}
+        .modal-dialog button{width:100%;padding:12px;margin-top:8px;border:none;border-radius:10px;font-weight:bold;cursor:pointer;transition:all 0.15s}
+        .modal-dialog button:active{transform:scale(0.95)}
+        .btn-primary{background:linear-gradient(135deg,var(--accent),#b8903a);color:#1a1f0f}
+        .btn-dark{background:#4a3a2a;color:#eee}.btn-cancel{background:#5a3a2a;color:#eee}
+        .code-display{background:rgba(0,0,0,0.3);border:1px solid var(--border);color:var(--accent-light);border-radius:10px;padding:10px;font-size:0.75em;word-break:break-all;margin:12px 0;font-family:monospace;user-select:all}
+        .toggle-switch{position:relative;display:inline-block;width:44px;height:24px}
+        .toggle-switch input{opacity:0;width:0;height:0}
+        .toggle-slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:rgba(128,128,128,0.15);border-radius:24px;border:2px solid var(--border)}
+        .toggle-slider:before{content:"";position:absolute;height:16px;width:16px;left:2px;bottom:2px;background:var(--text-dim);border-radius:50%}
+        .toggle-switch input:checked+.toggle-slider{background:var(--seeding-color)}
+        .toggle-switch input:checked+.toggle-slider:before{transform:translateX(20px);background:white}
+        .smoke-anim{position:fixed;bottom:50%;left:50%;transform:translate(-50%,50%);width:280px;height:280px;z-index:500;pointer-events:none;animation:smokeRise 3s ease-out forwards}
+        @keyframes smokeRise{0%{opacity:1;transform:translate(-50%,50%) scale(0.5)}100%{opacity:0;transform:translate(-50%,-100%) scale(1.5)}}
+        #lock-screen{position:fixed;top:0;left:0;width:100%;height:100%;z-index:9999;display:none;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--bg-primary),var(--bg-secondary))}
+        .lock-title{font-size:1.5em;font-weight:bold;background:linear-gradient(135deg,var(--accent-light),var(--accent));-webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:20px}
+        .lock-subtitle{color:var(--text-dim);font-size:0.85em;margin-bottom:10px}
+        .lock-pin-dots{display:flex;gap:12px;margin:16px 0}
+        .lock-pin-dot{width:14px;height:14px;border-radius:50%;border:2px solid var(--border)}
+        .lock-pin-dot.filled{background:var(--accent-light)}
+        .lock-numpad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:280px}
+        .lock-num{width:70px;height:70px;border-radius:50%;border:2px solid var(--border);background:var(--btn-bg);color:var(--text);font-size:1.5em;cursor:pointer;display:flex;align-items:center;justify-content:center}
+        .lock-num:active{background:var(--accent)}.lock-num.zero{grid-column:2}
+        .lock-error{color:var(--danger);font-size:0.8em;margin-top:8px}
+        #call-panel{display:none;position:fixed;top:0;left:0;width:100%;height:100dvh;background:var(--call-bg);backdrop-filter:blur(20px);z-index:100;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:40px 20px}
+        .call-avatar-large{width:100px;height:100px;border-radius:50%;object-fit:cover;border:3px solid var(--accent);animation:callPulse 2s ease-in-out infinite}
+        @keyframes callPulse{0%,100%{box-shadow:0 0 20px rgba(196,162,75,0.3)}50%{box-shadow:0 0 40px rgba(196,162,75,0.6)}}
+        .call-name{font-size:1.2em;font-weight:bold;color:var(--accent-light)}
+        .call-status-text{font-size:0.9em;color:var(--text-dim)}
+        .call-timer-large{font-size:2em;font-weight:bold;color:var(--seeding-color);font-family:monospace}
+        .call-buttons{display:flex;gap:30px;margin-top:20px}
+        .call-btn-round{width:65px;height:65px;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:28px;transition:all 0.2s}
+        .call-btn-round:active{transform:scale(0.9)}
+        .call-btn-end{background:var(--danger);color:white}
+        .call-btn-mute{background:var(--call-btn-bg);border:1px solid var(--call-btn-border);color:var(--text)}
+        .call-btn-mute.muted{background:var(--danger)}
+        .call-btn-speaker{background:var(--call-btn-bg);border:1px solid var(--call-btn-border);color:var(--text)}
+        .call-btn-speaker.active{background:var(--accent);color:#1a1f0f}
+        .call-action-btn{width:85px;height:85px;border-radius:50%;border:3px solid;font-size:40px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.2s;background:transparent;backdrop-filter:blur(8px)}
+        .call-action-btn.accept{border-color:var(--seeding-color);color:var(--seeding-color);background:rgba(76,175,80,0.2);box-shadow:0 0 25px rgba(76,175,80,0.3)}
+        .call-action-btn.reject{border-color:var(--danger);color:var(--danger);background:rgba(244,67,54,0.2);box-shadow:0 0 25px rgba(244,67,54,0.3)}
+        .call-action-btn:active{transform:scale(0.8);filter:brightness(1.5)}
+        .voice-wave-anim{position:absolute;top:-50px;left:50%;transform:translateX(-50%);display:flex;align-items:flex-end;gap:3px;height:36px;z-index:21;pointer-events:none}
+        .voice-wave-bar{width:4px;background:var(--danger);border-radius:2px;animation:waveAnim 0.5s ease-in-out infinite}
+        .voice-wave-bar:nth-child(1){animation-delay:0s;height:10px}.voice-wave-bar:nth-child(2){animation-delay:0.08s;height:18px}.voice-wave-bar:nth-child(3){animation-delay:0.16s;height:12px}.voice-wave-bar:nth-child(4){animation-delay:0.24s;height:22px}.voice-wave-bar:nth-child(5){animation-delay:0.32s;height:16px}.voice-wave-bar:nth-child(6){animation-delay:0.4s;height:20px}.voice-wave-bar:nth-child(7){animation-delay:0.48s;height:10px}.voice-wave-bar:nth-child(8){animation-delay:0.56s;height:24px}
+        @keyframes waveAnim{0%,100%{transform:scaleY(1)}50%{transform:scaleY(0.4)}}
+        #emoji-panel{scrollbar-width:none}
+        #emoji-panel::-webkit-scrollbar{display:none}
+        #emoji-grid span{font-size:clamp(20px,4vw,24px);cursor:pointer;padding:5px;border-radius:6px;transition:all 0.1s}
+        #emoji-grid span:active{background:var(--btn-hover);transform:scale(0.9)}
+        .voice-timer-overlay{display:none;position:absolute;top:-28px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.85);color:var(--danger);font-family:monospace;font-size:0.8em;padding:3px 8px;border-radius:6px;z-index:20;pointer-events:none}
+        #bow-above-send{position:fixed;bottom:60px;right:12px;width:100px;height:100px;z-index:100;pointer-events:none;display:none}
+        .robin-arrow-container{display:inline-block;vertical-align:middle;margin-left:6px}
+        .typing-indicator{font-size:0.65em;color:var(--text-dim);padding:2px 10px;font-style:italic;min-height:16px}
+        .version-text{font-size:0.55em;color:var(--text-dim)}
+        .audio-player{display:flex;align-items:center;gap:8px;width:100%;max-width:250px;background:var(--msg-bg);border:1px solid var(--btn-border);border-radius:20px;padding:6px 12px}
+        .audio-play-btn{width:36px;height:36px;border-radius:50%;border:none;background:var(--accent);color:#1a1f0f;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+        .audio-wave{flex:1;display:flex;align-items:flex-end;gap:2px;height:24px}
+        .audio-wave-bar{width:3px;background:var(--accent);border-radius:1px;animation:waveAnim 0.8s ease-in-out infinite}
+        .audio-wave-bar:nth-child(1){animation-delay:0s;height:8px}.audio-wave-bar:nth-child(2){animation-delay:0.1s;height:14px}.audio-wave-bar:nth-child(3){animation-delay:0.2s;height:10px}.audio-wave-bar:nth-child(4){animation-delay:0.3s;height:18px}.audio-wave-bar:nth-child(5){animation-delay:0.4s;height:12px}.audio-wave-bar:nth-child(6){animation-delay:0.5s;height:16px}.audio-wave-bar:nth-child(7){animation-delay:0.6s;height:8px}.audio-wave-bar:nth-child(8){animation-delay:0.7s;height:20px}
+        @keyframes waveAnim{0%,100%{transform:scaleY(1)}50%{transform:scaleY(0.4)}}
+        .audio-playing .audio-wave-bar{animation-play-state:running}
+        .audio-paused .audio-wave-bar{animation-play-state:paused}
+        .audio-time{font-size:0.65em;color:var(--text-dim);min-width:32px;text-align:right;font-family:monospace}
+        #btn-voice-input{width:clamp(44px,10vw,52px)!important;height:clamp(44px,10vw,52px)!important;border-radius:50%!important}
+        .cup-indicator{font-size:0.65em;color:var(--text-dim);display:inline-flex;align-items:center;gap:2px}
+        .cup-indicator .low{color:var(--danger)}.cup-indicator .ok{color:var(--accent)}.cup-indicator .full{color:var(--seeding-color)}
+        .ratchet-indicator{font-size:0.6em;padding:2px 6px;border-radius:4px;font-family:monospace;white-space:nowrap}
     </style>
 </head>
 <body>
-<!-- Весь HTML как у вас -->
+<div id="lock-screen"></div>
+<div id="app-container" style="display:none;flex-direction:column;height:100%;">
+<div class="leaves-container" id="leaves-container"></div>
+<div class="header">
+    <div class="header-row-1"><span class="header-title-text">ROBINHOOD P2P</span><span class="header-shield">🏹</span><span class="header-datetime"><span id="header-date"></span> <span id="header-time"></span></span><span class="version-text">Улей v2.3</span></div>
+    <div class="header-row-2">
+        <div class="header-btn" id="btn-avatar"><img src="assets/avatar/001ava.png" class="header-avatar" id="profile-avatar-small" alt="avatar"></div>
+        <div class="header-btn" id="btn-arrow"><img src="assets/icons/08icon.png" alt="arrow"></div>
+        <div class="header-btn" id="btn-call"><img src="assets/icons/16icon.png" alt="call"></div>
+        <div class="header-btn" id="btn-clear"><img src="assets/icons/18icon.png" alt="clear"></div>
+        <div class="header-btn" id="btn-settings"><img src="assets/icons/11icon.png" alt="settings"></div>
+    </div>
+    <div class="header-row-3"><span class="header-label" id="nick-label">Твой ник</span><span class="header-label">Стрела</span><span class="header-label" id="call-label">Звонок</span><span class="header-label">Скурить чат</span><span class="header-label" id="settings-label">Опции</span></div>
+    <div class="robin-bar"><img src="assets/avatar/001ava.png" class="robin-bar-avatar" id="robin-avatar"><div class="robin-bar-text"><div class="robin-bar-sender" id="robin-bar-sender">Robin Hood</div><div class="robin-bar-msg" id="robin-text">Слепой Улей + GZIP + Ratchet</div></div><div class="robin-bar-status"><span class="ratchet-indicator" id="ratchet-indicator" style="display:none;" title="Ratchet: 0 оборотов">🔄 0</span><img src="assets/icons/05icon.png" id="connection-icon" alt="status"><span class="cup-indicator" id="cup-indicator" style="display:none;">&nbsp;🍺<span id="cup-blobs">0/10</span>&nbsp;⏱<span id="cup-timer">10:00</span></span></div></div>
+</div>
+<div class="chat-area" id="chat-box"><div class="typing-indicator" id="typing-indicator"></div></div>
+<div class="input-area">
+    <input type="text" id="msg-input" placeholder="Выпустить стрелу" autocomplete="off">
+    <button id="btn-emoji">😊</button>
+    <button class="header-btn" id="btn-voice-input" style="flex-shrink:0;position:relative;"><img src="assets/icons/03icon.png" alt="voice"></button>
+    <img src="assets/icons/02icon.png" class="bow-button" id="send-btn" alt="Отправить">
+</div>
+<div id="emoji-panel" style="display:none;position:fixed;bottom:55px;left:0;width:100%;background:linear-gradient(135deg,var(--bg-primary),var(--bg-secondary));border-top:2px solid var(--border);z-index:50;padding:8px;max-height:180px;overflow-y:auto;"><div id="emoji-grid" style="display:grid;grid-template-columns:repeat(8,1fr);gap:6px;text-align:center;"></div></div>
+<div id="call-panel">
+    <img id="call-avatar" class="call-avatar-large" src="assets/avatar/001ava.png">
+    <div class="call-name" id="call-contact-name">Лучник</div>
+    <div class="call-status-text" id="call-status">📞 Вызов...</div>
+    <div class="call-timer-large" id="call-timer-display" style="display:none;">00:00</div>
+    <div class="call-buttons" id="active-call-controls" style="display:none;">
+        <button class="call-btn-round call-btn-speaker" id="call-speaker">🔊</button>
+        <button class="call-btn-round call-btn-mute" id="call-mic">🎤</button>
+        <button class="call-btn-round call-btn-end" id="call-end">✕</button>
+    </div>
+    <div class="call-buttons" id="incoming-call-controls" style="display:none;">
+        <button class="call-action-btn accept" id="call-accept">📞</button>
+        <button class="call-action-btn reject" id="call-reject">✕</button>
+    </div>
+</div>
+<div class="overlay" id="overlay"></div>
+<div class="avatar-selector" id="avatar-selector"><p>🏹 Выбери лучника 🏹</p><div id="avatar-list"></div></div>
+<div class="bottom-sheet" id="contacts-sheet"><div class="bottom-sheet-header"><span>🏹 Лучники Шервуда</span><button class="bottom-sheet-close" id="contacts-close">✕</button></div><div class="bottom-sheet-list" id="contacts-list-inner"></div></div>
+<div class="bottom-sheet" id="settings-sheet"><div class="bottom-sheet-header"><span>⚙️ Опции Шервуда</span><button class="bottom-sheet-close" id="settings-close">✕</button></div><div class="bottom-sheet-list">
+    <div class="contact-item" id="setting-peer-id"><div class="contact-info"><span style="font-size:24px;">🆔</span><span class="contact-name">Мой Peer ID</span></div><span style="font-size:24px;cursor:pointer;" title="Копировать">📋</span></div>
+    <div class="contact-item" id="setting-contacts"><div class="contact-info"><img src="assets/icons/10icon.png"><span class="contact-name">Лучники</span></div><span>→</span></div>
+    <div class="contact-item" id="setting-sound"><div class="contact-info"><img src="assets/icons/15icon.png"><span class="contact-name">Звук</span></div><label class="toggle-switch"><input type="checkbox" id="toggle-sound" checked><span class="toggle-slider"></span></label></div>
+    <div class="contact-item" id="setting-theme"><div class="contact-info"><img src="assets/icons/12icon.png"><span class="contact-name">Тема</span></div><span id="theme-name">Бумага</span></div>
+    <div class="contact-item" id="setting-theme-random"><div class="contact-info"><span style="font-size:24px;">🎲</span><span class="contact-name">Авто-тема</span></div><span>🎨</span></div>
+    <div class="contact-item" id="setting-bg"><div class="contact-info"><img src="assets/icons/13icon.png"><span class="contact-name">Свой фон</span></div><span id="bg-status">Не задан</span></div>
+    <div class="contact-item" id="setting-peer-help"><div class="contact-info"><img src="assets/icons/07icon.png"><span class="contact-name">Стать пиром</span></div><label class="toggle-switch"><input type="checkbox" id="toggle-peer-help"><span class="toggle-slider"></span></label></div>
+    <div class="contact-item" id="setting-self-destruct"><div class="contact-info"><img src="assets/icons/09icon.png"><span class="contact-name">Курить всегда</span></div><label class="toggle-switch"><input type="checkbox" id="toggle-selfdestruct"><span class="toggle-slider"></span></label></div>
+    <div class="contact-item" id="setting-tunnel"><div class="contact-info"><span style="font-size:24px;">🔒</span><span class="contact-name">Туннели AmneziaWG</span></div><span>→</span></div>
+    <div class="contact-item" id="setting-lock"><div class="contact-info"><span style="font-size:24px;">🔐</span><span class="contact-name">Блокировка</span></div><span id="lock-status">Не задан</span></div>
+    <div class="contact-item" id="setting-destroy"><div class="contact-info"><img src="assets/icons/18icon.png"><span class="contact-name">Скурить всё</span></div><span>⚠</span></div>
+    <div class="contact-item" id="setting-terms"><div class="contact-info"><span style="font-size:24px;">⚜</span><span class="contact-name">Условия использования</span></div><span>→</span></div>
+    <div class="contact-item setting-install-btn hidden" id="setting-install"><div class="contact-info"><img src="assets/avatar/001ava.png" style="width:28px;height:28px;border-radius:6px;"><div><div class="contact-name">RobinHood P2P</div><div style="font-size:0.6em;color:var(--text-dim);">Установить приложение</div></div></div><span>📲</span></div>
+</div></div>
+<div class="modal-overlay" id="arrow-modal"><div class="modal-dialog"><h3>🏹 Слепой Колчан</h3><button class="btn-primary" id="btn-create-beacon">🏹 Создать маяк</button><div class="code-display" id="beacon-display" style="display:none;"></div><button class="btn-dark" id="close-arrow-modal" style="margin-top:8px;">Закрыть</button></div></div>
+<div class="modal-overlay" id="connect-modal"><div class="modal-dialog"><h3>🤝 Подключиться к маяку</h3><textarea id="beacon-blob-input" placeholder="Вставь блоб маяка сюда..." style="width:100%;height:120px;margin:8px 0;padding:8px;background:var(--input-bg);border:1px solid var(--border);color:var(--input-text);border-radius:8px;font-size:0.7em;font-family:monospace;resize:vertical;"></textarea><button class="btn-primary" id="btn-connect-beacon">🤝 Подключиться</button><button class="btn-dark" id="close-connect-modal">Закрыть</button></div></div>
+<div class="modal-overlay" id="nick-modal"><div class="modal-dialog"><h3>🏷 Твой ник</h3><input type="text" id="nick-input" placeholder="Введи ник (макс 12 символов)..." style="width:100%;margin:8px 0;padding:8px;background:var(--input-bg);border:1px solid var(--border);color:var(--input-text);border-radius:8px;font-size:0.9em;font-family:monospace;"><button class="btn-primary" id="btn-save-nick">💾 Сохранить</button><button class="btn-dark" id="close-nick-modal">Закрыть</button></div></div>
+<div class="modal-overlay" id="tunnel-config-modal"><div class="modal-dialog"><h3>➕ Управление конфигами</h3><div id="tunnel-list" style="max-height:150px;overflow-y:auto;margin-bottom:10px;text-align:left;"></div><button class="btn-primary" id="btn-load-file">📂 Загрузить новый</button><button class="btn-dark" id="btn-warp-gen" style="margin-top:6px;">🌐 Создать новые конфиги AmneziaWG</button><div style="margin:10px 0;color:var(--text-dim);">или вставьте текст:</div><textarea id="tunnel-config-input" style="width:100%;height:100px;background:var(--input-bg);border:1px solid var(--border);color:var(--input-text);border-radius:8px;padding:8px;font-size:0.7em;font-family:monospace;resize:vertical;"></textarea><button class="btn-primary" id="btn-save-tunnel">💾 Сохранить</button><button class="btn-dark" id="btn-cancel-tunnel-config">Закрыть</button><input type="file" id="config-file-input" accept=".conf" style="display:none;"></div></div>
+<div id="bow-above-send"></div>
+</div>
 <script>
 // ==================== PP4 + DHT + GZIP + RATCHET v2.3 ====================
 const PP4={_peerId:null,_beacons:{},_channels:{},_ws:null,_wsUrl:'wss://robincall.stephanclaps-491.workers.dev/ws',_wsReconnectDelay:1000,_maxReconnectDelay:30000};
@@ -28,7 +241,7 @@ async function deriveSecret(kp,remotePubKey){const b=await crypto.subtle.deriveB
 async function encryptAES(text,secret){const k=await crypto.subtle.importKey('raw',new TextEncoder().encode(secret.substring(0,32)),{name:'AES-GCM'},false,['encrypt']);const iv=crypto.getRandomValues(new Uint8Array(12));const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},k,new TextEncoder().encode(text));const c=new Uint8Array(iv.length+new Uint8Array(ct).length);c.set(iv);c.set(new Uint8Array(ct),iv.length);return btoa(String.fromCharCode(...c));}
 async function decryptAES(enc,secret){try{const k=await crypto.subtle.importKey('raw',new TextEncoder().encode(secret.substring(0,32)),{name:'AES-GCM'},false,['decrypt']);const c=Uint8Array.from(atob(enc),x=>x.charCodeAt(0));return new TextDecoder().decode(await crypto.subtle.decrypt({name:'AES-GCM',iv:c.slice(0,12)},k,c.slice(12)));}catch(e){return null;}}
 
-// ========== GZIP ==========
+// ========== GZIP COMPRESSION ==========
 async function compressData(str){try{const data=new TextEncoder().encode(str);const cs=new CompressionStream('gzip');const writer=cs.writable.getWriter();writer.write(data);writer.close();const reader=cs.readable.getReader();const chunks=[];while(true){const{done,value}=await reader.read();if(done)break;chunks.push(value);}const totalLength=chunks.reduce((s,c)=>s+c.length,0);const combined=new Uint8Array(totalLength);let offset=0;for(const chunk of chunks){combined.set(chunk,offset);offset+=chunk.length;}return btoa(String.fromCharCode(...combined));}catch(e){return btoa(str);}}
 async function decompressData(b64){try{const bytes=Uint8Array.from(atob(b64),c=>c.charCodeAt(0));const ds=new DecompressionStream('gzip');const writer=ds.writable.getWriter();writer.write(bytes);writer.close();const reader=ds.readable.getReader();const chunks=[];while(true){const{done,value}=await reader.read();if(done)break;chunks.push(value);}const totalLength=chunks.reduce((s,c)=>s+c.length,0);const combined=new Uint8Array(totalLength);let offset=0;for(const chunk of chunks){combined.set(chunk,offset);offset+=chunk.length;}return new TextDecoder().decode(combined);}catch(e){return atob(b64);}}
 
@@ -106,6 +319,7 @@ async function connectToPeerDHT(peerId){const pc=new RTCPeerConnection({iceServe
 function connectWS(){if(PP4._ws&&PP4._ws.readyState===WebSocket.OPEN)return;try{PP4._ws=new WebSocket(PP4._wsUrl);}catch(e){setTimeout(connectWS,PP4._wsReconnectDelay);PP4._wsReconnectDelay=Math.min(PP4._wsReconnectDelay*2,PP4._maxReconnectDelay);return;}PP4._ws.onopen=()=>{PP4._wsReconnectDelay=1000;setConnectionStatus('online');PP4._ws.send(JSON.stringify({action:'subscribe',peerId:PP4._peerId}));};PP4._ws.onmessage=async e=>{let m;try{m=JSON.parse(e.data);}catch(er){return;}if(m.type==='dht-signal'&&m.from!==DHT._nodeId){await handleSignal(m.from,m.data);return;}if(m.type==='blob'){handleIncomingBlob(m.blob,m.channelId);return;}};PP4._ws.onclose=()=>{setConnectionStatus('offline');setTimeout(connectWS,PP4._wsReconnectDelay);PP4._wsReconnectDelay=Math.min(PP4._wsReconnectDelay*2,PP4._maxReconnectDelay);};}
 DHT._signalSend=(targetPeerId,data)=>{if(PP4._ws?.readyState===WebSocket.OPEN)PP4._ws.send(JSON.stringify({action:'dht-signal',targetPeerId,from:DHT._nodeId,data}));};
 
+// ========== СЛЕПОЙ УЛЕЙ: МАЯКИ ЧЕРЕЗ БЛОБЫ ==========
 const BLOB_NS='00000000000000000000000000000000';
 const pendingHandshakes={};
 async function createBeacon(){const kp=await generateKeyPair();const pk=await exportPublicKey(kp);const nonce=RND();const bid=RND();const beaconKey=await SHA(nonce+'beacon');const inner=await encryptAES(JSON.stringify({nonce:nonce,timestamp:Date.now(),peerId:PP4._peerId}),beaconKey);const beacon={type:'beacon',pubKey:pk,peerId:PP4._peerId,inner:inner};PP4._beacons[bid]={keyPair:kp,pubKey:pk,nonce:nonce,beaconKey:beaconKey,expires:Date.now()+1800000,createdAt:Date.now()};const packed=JSON.stringify(beacon);document.getElementById('beacon-display').style.display='block';document.getElementById('beacon-display').textContent=packed;broadcastBlob(packed,BLOB_NS);}
@@ -120,6 +334,7 @@ function broadcastBlob(packed,channelId){const dhtPeers=getClosestPeers(channelI
 async function sendBlobToChannel(channelId,data){const ch=PP4._channels[channelId];if(!ch||!ch.ratchetKey)return false;const packed=await packBlob(data,ch);broadcastBlob(packed,channelId);return true;}
 async function connectByBeaconBlob(){const packed=document.getElementById('beacon-blob-input').value.trim();if(!packed)return;handleIncomingBlob(packed,BLOB_NS);document.getElementById('connect-modal')?.classList.remove('active');}
 
+// ========== RATCHET ИНДИКАТОР ==========
 function updateRatchetIndicator(){
     const chId=activeChannelId||Object.keys(PP4._channels)[0];
     const ch=chId?PP4._channels[chId]:null;
@@ -139,13 +354,15 @@ function updateRatchetIndicator(){
     indicator.title='Ratchet: '+ri+' оборотов';
 }
 
+// ========== ИНТЕРФЕЙС ==========
 let contacts=[],activeChannelId=null,activePeerId=null,selectedAvatar='001';
-let toggleSoundState=!0,selfDestructMode=!1,peerHelpEnabled=!1;
+let currentChannelId=null,currentSecret=null,toggleSoundState=!0,selfDestructMode=!1,peerHelpEnabled=!1;
 let pc=null,localStream=null,callActive=!1,incomingOffer=null,ringtoneAudio=null,ringbackAudio=null;
 let audioPool={},robinDefaultText='Слепой Улей. Сервер не знает ничего.',robinTimer=null;
 let voiceRecorder=null,voiceChunks=[],voiceStream=null,voiceRecording=!1,voiceSeconds=0,voiceTimerInterval=null;
 let archerAnimation,quiverAnim,bowAnim,currentArrowContainer;
-let savedConfigs=[],deferredPrompt=null,speakerOn=!0,micOn=!0;
+let savedConfigs=[],deferredPrompt=null;
+let speakerOn=!0,micOn=!0;
 let iceBuffer=[],iceFlushTimer=null;
 const avatars=[];for(let i=1;i<=168;i++)avatars.push('assets/avatar/'+String(i).padStart(3,'0')+'ava.png');
 try{savedConfigs=JSON.parse(localStorage.getItem('robinhood_tunnels')||'[]')}catch(e){}
@@ -154,10 +371,12 @@ function safeHtml(s){if(!s)return'';const d=document.createElement('div');d.text
 function rMsg(t,d=4000){const rt=document.getElementById('robin-text');if(!rt)return;clearTimeout(robinTimer);rt.textContent=t;if(d>0)robinTimer=setTimeout(()=>{rt.textContent=robinDefaultText},d)}
 function setConnectionStatus(s){const ic=document.getElementById('connection-icon');if(ic)ic.src=s==='online'?'assets/icons/06icon.png':'assets/icons/05icon.png'}
 function playSound(f){if(!toggleSoundState)return;if(!audioPool[f]){audioPool[f]=new Audio('assets/sounds/'+f);audioPool[f].volume=0.5}const a=audioPool[f];a.currentTime=0;a.play().catch(()=>{})}
-function closeSheets(){document.getElementById('avatar-selector')?.classList.remove('show');document.getElementById('contacts-sheet')?.classList.remove('open');document.getElementById('settings-sheet')?.classList.remove('open');document.getElementById('overlay')?.classList.remove('show')}
+function playSmokeAnimation(){const smoke=document.createElement('div');smoke.className='smoke-anim';document.body.appendChild(smoke);if(typeof lottie!=='undefined')lottie.loadAnimation({container:smoke,renderer:'canvas',loop:false,autoplay:true,path:'assets/smoke.json'});setTimeout(()=>{if(smoke.parentNode)smoke.remove()},5000)}
+function closeSheets(){document.getElementById('avatar-selector')?.classList.remove('show');document.getElementById('contacts-sheet')?.classList.remove('open');document.getElementById('settings-sheet')?.classList.remove('open');document.getElementById('overlay')?.classList.remove('show');}
 function updateDateTime(){const now=new Date();const de=document.getElementById('header-date');const te=document.getElementById('header-time');if(de)de.textContent=now.toLocaleDateString('ru-RU',{day:'2-digit',month:'2-digit',year:'numeric'});if(te)te.textContent=now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}
 setInterval(updateDateTime,1000);updateDateTime();
-let inactivityTimer;function resetInactivityTimer(){clearTimeout(inactivityTimer);document.getElementById('leaves-container')?.classList.remove('sleeping');inactivityTimer=setTimeout(()=>{document.getElementById('leaves-container')?.classList.add('sleeping')},30000)}
+function resetInactivityTimer(){clearTimeout(inactivityTimer);document.getElementById('leaves-container')?.classList.remove('sleeping');inactivityTimer=setTimeout(()=>{document.getElementById('leaves-container')?.classList.add('sleeping')},30000)}
+let inactivityTimer;
 document.addEventListener('pointermove',resetInactivityTimer);document.addEventListener('pointerdown',resetInactivityTimer);document.addEventListener('keypress',resetInactivityTimer);
 window.addEventListener('blur',()=>document.getElementById('leaves-container')?.classList.add('sleeping'));
 window.addEventListener('focus',()=>{document.getElementById('leaves-container')?.classList.remove('sleeping');resetInactivityTimer()});
@@ -175,10 +394,13 @@ function applyTheme(id){document.documentElement.setAttribute('data-theme',id);l
 function generateRandomTheme(){const hue=Math.floor(Math.random()*360),sat=40+Math.floor(Math.random()*50),bgLight=5+Math.floor(Math.random()*15),bgDark=2+Math.floor(Math.random()*8),id='random_'+Date.now();const s=`[data-theme="${id}"]{--bg-primary:hsl(${hue},${sat}%,${bgLight}%);--bg-secondary:hsl(${hue},${sat-10}%,${bgDark}%);--accent:hsl(${(hue+30)%360},${sat+10}%,50%);--accent-light:hsl(${(hue+30)%360},${sat+20}%,70%);--text:hsl(${hue},20%,85%);--text-bright:hsl(${hue},25%,92%);--text-dim:hsl(${hue},15%,60%);--border:hsl(${(hue+30)%360},${sat+10}%,50%);--btn-bg:hsla(${(hue+30)%360},${sat+10}%,50%,0.1);--btn-border:hsla(${(hue+30)%360},${sat+10}%,50%,0.3);--btn-hover:hsla(${(hue+30)%360},${sat+10}%,50%,0.25);--sheet-bg:linear-gradient(145deg,hsl(${hue},${sat}%,${bgLight}%)0%,hsl(${hue},${sat-10}%,${bgDark}%)100%);--input-bg:hsla(${hue},${sat-10}%,${bgLight+2}%,0.9);--msg-bg:hsla(${hue},${sat-5}%,${bgLight+3}%,0.85);--msg-accent:hsl(${(hue+30)%360},${sat+10}%,50%);--robin-bg:hsla(${hue},${sat}%,${bgLight+8}%,0.9);--robin-accent:hsl(${(hue+30)%360},${sat+20}%,65%);--overlay-bg:rgba(0,0,0,0.6);--call-bg:linear-gradient(180deg,hsl(${hue},${sat}%,${bgLight}%)0%,hsl(${hue},${sat-10}%,${bgDark}%)100%);--call-btn-bg:hsla(${(hue+30)%360},${sat+10}%,50%,0.1);--call-btn-border:hsla(${(hue+30)%360},${sat+10}%,50%,0.3);--input-text:hsl(${hue},20%,85%)}`;let el=document.getElementById('gen-theme');if(!el){el=document.createElement('style');el.id='gen-theme';document.head.appendChild(el);}el.textContent=s;document.documentElement.setAttribute('data-theme',id);const tn=document.getElementById('theme-name');if(tn)tn.textContent='Авто';localStorage.setItem('robinhood_theme',id)}
 
 function loadAvatars(){const list=document.getElementById('avatar-list');if(!list)return;list.innerHTML='';avatars.forEach(src=>{const img=document.createElement('img');img.src=src;img.className='avatar-option';img.onerror=()=>img.src='assets/avatar/001ava.png';img.onclick=()=>{const pas=document.getElementById('profile-avatar-small');if(pas)pas.src=src;document.getElementById('robin-avatar').src=src;localStorage.setItem('robinhood_avatar',src);closeSheets();rMsg('🖼 Аватар обновлён');};list.appendChild(img);})}
+async function saveBgToDB(dataUrl){try{const db=await new Promise(r=>{const req=indexedDB.open('PP',1);req.onsuccess=()=>r(req.result)});db.transaction('bg','readwrite').objectStore('bg').put({k:'custom_bg',v:dataUrl})}catch(e){}}
+async function getBgFromDB(){try{const db=await new Promise(r=>{const req=indexedDB.open('PP',1);req.onsuccess=()=>r(req.result)});return await new Promise(res=>{const q=db.transaction('bg','readonly').objectStore('bg').get('custom_bg');q.onsuccess=()=>res(q.result?.v||null);q.onerror=()=>res(null)})}catch(e){return null}}
+async function applyCustomBg(dataUrl){if(dataUrl){document.body.style.setProperty('--custom-bg',`url(${dataUrl})`);document.body.classList.add('custom-bg');const bs=document.getElementById('bg-status');if(bs)bs.textContent='Задан'}else{document.body.classList.remove('custom-bg');document.body.style.removeProperty('--custom-bg');const bs=document.getElementById('bg-status');if(bs)bs.textContent='Не задан'}}
 function addContact(c){if(!contacts.find(x=>x.peerId===c.peerId)){contacts.push(c);saveContacts();}renderContacts();}
 function saveContacts(){localStorage.setItem('rh_contacts',JSON.stringify(contacts));}
 function loadContacts(){try{const r=localStorage.getItem('rh_contacts');if(r)contacts=JSON.parse(r);}catch(e){}}
-function renderContacts(){const l=document.getElementById('contacts-list-inner');if(!l)return;l.innerHTML=contacts.map(c=>{const av=c.avatar&&c.avatar!=='001'?'assets/avatar/'+c.avatar+'ava.png':'assets/avatar/001ava.png';return`<div class="contact-item" onclick="openChat('${c.peerId}')"><div class="contact-info"><img src="${av}" onerror="this.src='assets/avatar/001ava.png'" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid var(--border);"><span class="contact-name">${safeHtml(c.name)}</span></div><button class="delete-contact" data-peerid="${c.peerId}">✖</button></div>`;}).join('')||'<div style="color:var(--text-dim);text-align:center;padding:20px;">🏹 Лучников нет</div>';l.querySelectorAll('.delete-contact').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();const pid=b.dataset.peerid;if(confirm('Уволить?')){contacts=contacts.filter(c=>c.peerId!==pid);saveContacts();renderContacts();}}))}
+function renderContacts(){const l=document.getElementById('contacts-list-inner');if(!l)return;l.innerHTML=contacts.map(c=>{const av=c.avatar&&c.avatar!=='001'?'assets/avatar/'+c.avatar+'ava.png':'assets/avatar/001ava.png';return`<div class="contact-item" onclick="openChat('${c.peerId}')"><div class="contact-info"><img src="${av}" onerror="this.src='assets/avatar/001ava.png'" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid var(--border);"><span class="contact-name">${safeHtml(c.name)}</span></div>${c.channelId&&PP4._channels[c.channelId]?.reconnect?`<button onclick="event.stopPropagation();reconnectChannel('${c.channelId}')" style="font-size:0.6em;padding:4px 8px;">🔄</button>`:''}<button class="delete-contact" data-peerid="${c.peerId}">✖</button></div>`;}).join('')||'<div style="color:var(--text-dim);text-align:center;padding:20px;">🏹 Лучников нет</div>';l.querySelectorAll('.delete-contact').forEach(b=>b.addEventListener('click',async e=>{e.stopPropagation();const pid=b.dataset.peerid;if(confirm('Уволить?')){contacts=contacts.filter(c=>c.peerId!==pid);saveContacts();renderContacts();}}))}
 function openChat(peerId){document.getElementById('contacts-sheet').classList.remove('open');document.getElementById('overlay').classList.remove('show');const ct=contacts.find(c=>c.peerId===peerId);if(!ct||!ct.channelId)return;activePeerId=peerId;activeChannelId=ct.channelId;document.getElementById('robin-bar-sender').textContent=ct.name||'Лучник';const box=document.getElementById('chat-box');box.innerHTML='<div class="typing-indicator" id="typing-indicator"></div>';const ch=PP4._channels[ct.channelId];if(ch&&ch.blobs)ch.blobs.forEach(b=>{const im=b.from==='me';appendMessage(im?'Вы':(ct.name||'Друг'),b.d||b.text||'',im?selectedAvatar:ct.avatar);});updateCupIndicator();updateRatchetIndicator();}
 function updateCupIndicator(){const chId=activeChannelId||Object.keys(PP4._channels)[0];const ch=chId?PP4._channels[chId]:null;const ind=document.getElementById('cup-indicator');if(!ch||!ind){if(ind)ind.style.display='none';return;}ind.style.display='inline-flex';const bc=ch.blobs?ch.blobs.length:0;const be=document.getElementById('cup-blobs');if(be){be.textContent=bc+'/10';be.className=bc>=10?'full':bc>=7?'ok':'';}const totalSec=Math.max(0,Math.round((ch.expires-Date.now())/1000));const min=Math.floor(totalSec/60);const sec=totalSec%60;const te=document.getElementById('cup-timer');if(te){te.textContent=min+':'+sec.toString().padStart(2,'0');te.className=min<=2?'low':min<=5?'ok':'';}}
 function updateUI(){const rt=document.getElementById('robin-text');if(rt)rt.textContent=`Каналов: ${Object.keys(PP4._channels).length} | DHT: ${DHT._peers.size}`;}
@@ -206,7 +428,8 @@ function startVoiceRecording(){if(voiceRecorder?.state==='recording')return;navi
 function stopVoiceRecording(){if(voiceRecorder?.state==='recording')voiceRecorder.stop()}
 function playVoiceBlob(b64){const a=new Audio('data:audio/webm;base64,'+b64);a.play().catch(()=>{})}
 
-// ========== ИНИТ ==========
+async function destroySession(){if(!confirm('⚠ ПОЛНЫЙ СБРОС!'))return;hang(!1);currentChannelId=null;currentSecret=null;['PP','RobinHoodContacts'].forEach(n=>{try{indexedDB.deleteDatabase(n)}catch(e){}});localStorage.clear();const box=document.getElementById('chat-box');if(box)box.querySelectorAll('.message-row').forEach(m=>m.remove());playSmokeAnimation();playSound('clear cache.mp3');rMsg('🔥 Всё скурили!',5000);setConnectionStatus('offline');applyTheme('paper');const pas=document.getElementById('profile-avatar-small');if(pas)pas.src='assets/avatar/001ava.png';document.getElementById('robin-avatar').src='assets/avatar/001ava.png';const nl=document.getElementById('nick-label');if(nl)nl.textContent='Твой ник';const ls=document.getElementById('lock-status');if(ls)ls.textContent='Не задан';document.body.classList.remove('custom-bg');document.body.style.removeProperty('--custom-bg');const bs=document.getElementById('bg-status');if(bs)bs.textContent='Не задан';contacts=[];saveContacts();renderContacts()}
+
 async function initApp(){
     initLeaves();applyTheme(localStorage.getItem('robinhood_theme')||'paper');
     const savedAvatar=localStorage.getItem('robinhood_avatar');if(savedAvatar){selectedAvatar=savedAvatar.includes('/')?savedAvatar.split('/').pop()?.replace('ava.png','')||'001':savedAvatar;const pas=document.getElementById('profile-avatar-small');if(pas)pas.src='assets/avatar/'+selectedAvatar+'ava.png';document.getElementById('robin-avatar').src='assets/avatar/'+selectedAvatar+'ava.png'}
@@ -214,12 +437,22 @@ async function initApp(){
     toggleSoundState=localStorage.getItem('robinhood_sound')!=='false';const ts=document.getElementById('toggle-sound');if(ts)ts.checked=toggleSoundState;
     selfDestructMode=localStorage.getItem('robinhood_selfdestruct')==='true';const sd=document.getElementById('toggle-selfdestruct');if(sd)sd.checked=selfDestructMode;
     peerHelpEnabled=localStorage.getItem('robinhood_peer_help')==='true';const ph=document.getElementById('toggle-peer-help');if(ph)ph.checked=peerHelpEnabled;
+    const savedBg=await getBgFromDB();if(savedBg)await applyCustomBg(savedBg);
+    const ls=document.getElementById('lock-status');if(ls)ls.textContent=lockType==='pin'?'Пин-код':'Не задан';
+    const isPWA=window.matchMedia('(display-mode: standalone)').matches||navigator.standalone||false;
+    const si=document.getElementById('setting-install');if(!isPWA&&si)si.classList.remove('hidden');
+    const mp=document.getElementById('my-peer-id-display');if(mp)mp.textContent=PP4._peerId?.substring(0,16)+'...'||'...';
+
     document.getElementById('btn-arrow')?.addEventListener('click',()=>{document.getElementById('arrow-modal')?.classList.add('active');document.getElementById('beacon-display').style.display='none';});
     document.getElementById('btn-create-beacon')?.addEventListener('click',()=>{createBeacon();document.getElementById('connect-modal')?.classList.add('active');});
-    document.getElementById('btn-connect-beacon')?.addEventListener('click',connectByBeaconBlob);
-    document.getElementById('close-connect-modal')?.addEventListener('click',()=>{document.getElementById('connect-modal')?.classList.remove('active');});
     document.getElementById('close-arrow-modal')?.addEventListener('click',()=>{document.getElementById('arrow-modal')?.classList.remove('active');});
-    document.getElementById('btn-clear')?.addEventListener('click',()=>{const box=document.getElementById('chat-box');if(box)box.querySelectorAll('.message-row').forEach(m=>m.remove());rMsg('🚬 Чат скурили!',5000)});
+    document.getElementById('btn-connect-beacon')?.addEventListener('click',()=>{connectByBeaconBlob();});
+    document.getElementById('close-connect-modal')?.addEventListener('click',()=>{document.getElementById('connect-modal')?.classList.remove('active');});
+    document.getElementById('arrow-modal')?.addEventListener('click',function(e){if(e.target===this)this.classList.remove('active');});
+    document.getElementById('connect-modal')?.addEventListener('click',function(e){if(e.target===this)this.classList.remove('active');});
+    document.getElementById('nick-modal')?.addEventListener('click',function(e){if(e.target===this)this.classList.remove('active');});
+    document.getElementById('tunnel-config-modal')?.addEventListener('click',function(e){if(e.target===this)this.classList.remove('active');});
+    document.getElementById('btn-clear')?.addEventListener('click',()=>{const box=document.getElementById('chat-box');if(box)box.querySelectorAll('.message-row').forEach(m=>m.remove());playSmokeAnimation();playSound('clear cache.mp3');rMsg('🚬 Чат скурили!',5000)});
     document.getElementById('btn-settings')?.addEventListener('click',()=>{closeSheets();document.getElementById('settings-sheet')?.classList.add('open');document.getElementById('overlay')?.classList.add('show')});
     document.getElementById('settings-close')?.addEventListener('click',closeSheets);
     document.getElementById('contacts-close')?.addEventListener('click',closeSheets);
@@ -232,23 +465,56 @@ async function initApp(){
     document.getElementById('close-nick-modal')?.addEventListener('click',()=>{document.getElementById('nick-modal')?.classList.remove('active');});
     document.getElementById('setting-theme')?.addEventListener('click',()=>{const ct=localStorage.getItem('robinhood_theme')||'paper';const idx=themes.findIndex(t=>t.id==ct);applyTheme(themes[(idx+1)%themes.length].id)});
     document.getElementById('setting-theme-random')?.addEventListener('click',generateRandomTheme);
+    document.getElementById('setting-destroy')?.addEventListener('click',()=>{closeSheets();destroySession()});
+    document.getElementById('setting-tunnel')?.addEventListener('click',()=>{refreshTunnelList();document.getElementById('tunnel-config-modal')?.classList.add('active')});
+    document.getElementById('setting-terms')?.addEventListener('click',()=>window.open('https://github.com/stepweather-prog/ROBINHOOD-P2P/blob/main/README.md','_blank'));
+    si?.addEventListener('click',()=>{if(deferredPrompt)deferredPrompt.prompt().catch(()=>{});else rMsg('📲 Меню браузера → Добавить на экран',4000);document.getElementById('settings-sheet')?.classList.remove('open');document.getElementById('overlay')?.classList.remove('show')});
+    window.addEventListener('beforeinstallprompt',e=>{deferredPrompt=e;});
+
     document.getElementById('btn-call')?.addEventListener('click',()=>{callActive?hang(!0):startCall()});
     document.getElementById('call-accept')?.addEventListener('click',acceptCall);
-    document.getElementById('call-reject')?.addEventListener('click',()=>{if(incomingOffer){stopRingtone();sendWebRTCMsg('webrtc-hangup','');incomingOffer=null;document.getElementById('call-panel').style.display='none'}});
+    document.getElementById('call-reject')?.addEventListener('click',()=>{if(incomingOffer){stopRingtone();sendWebRTCMsg('webrtc-hangup','');incomingOffer=null;const cp=document.getElementById('call-panel');if(cp)cp.style.display='none'}});
     document.getElementById('call-end')?.addEventListener('click',()=>hang(!0));
     document.getElementById('call-speaker')?.addEventListener('click',()=>{speakerOn=!speakerOn;const s=document.getElementById('call-speaker');if(s){s.classList.toggle('active',speakerOn);s.textContent=speakerOn?'🔊':'🔇'}});
     document.getElementById('call-mic')?.addEventListener('click',()=>{if(!localStream)return;micOn=!micOn;localStream.getAudioTracks().forEach(t=>t.enabled=micOn);const m=document.getElementById('call-mic');if(m){m.classList.toggle('muted',!micOn);m.textContent=micOn?'🎤':'🚫'}});
     if(ts)ts.addEventListener('change',function(){toggleSoundState=this.checked;localStorage.setItem('robinhood_sound',toggleSoundState)});
-    if(sd)sd.addEventListener('change',function(){selfDestructMode=this.checked;localStorage.setItem('robinhood_selfdestruct',selfDestructMode)});
-    if(ph)ph.addEventListener('change',function(){peerHelpEnabled=this.checked;localStorage.setItem('robinhood_peer_help',peerHelpEnabled)});
+    if(sd)sd.addEventListener('change',function(){selfDestructMode=this.checked;localStorage.setItem('robinhood_selfdestruct',selfDestructMode);if(selfDestructMode&&activeChannelId){sendBlobToChannel(activeChannelId,JSON.stringify({d:'__SMOKE__'}));rMsg('🚬 Сообщения будут исчезать',3000)}});
+    if(ph)ph.addEventListener('change',function(){peerHelpEnabled=this.checked;localStorage.setItem('robinhood_peer_help',peerHelpEnabled);if(peerHelpEnabled){rMsg('🤝 Помощь сети активирована',3000)}else{rMsg('🤝 Помощь сети отключена',3000)}});
     document.getElementById('btn-voice-input')?.addEventListener('click',toggleVoiceRecording);
+    document.getElementById('setting-bg')?.addEventListener('click',()=>{const inp=document.createElement('input');inp.type='file';inp.accept='image/*';inp.onchange=async ev=>{const f=ev.target.files[0];if(!f)return;const r=new FileReader();r.onload=async ev2=>{await saveBgToDB(ev2.target.result);await applyCustomBg(ev2.target.result);rMsg('🖼 Фон обновлён!',3000)};r.readAsDataURL(f)};inp.click()});
+
+    function refreshTunnelList(){const tl=document.getElementById('tunnel-list');if(!tl)return;tl.innerHTML='';savedConfigs.forEach((cfg,i)=>{const div=document.createElement('div');div.style.cssText='display:flex;align-items:center;justify-content:space-between;padding:8px;margin:4px 0;background:rgba(255,255,255,0.05);border-radius:8px;font-size:0.75em;';div.innerHTML=`<span>🔒 ${cfg.name}</span><button style="padding:6px 12px;border-radius:6px;border:1px solid #f44336;background:rgba(244,67,54,0.15);color:#f44336;cursor:pointer;font-size:0.7em;">🗑</button>`;div.querySelector('button').addEventListener('click',e=>{e.stopPropagation();if(confirm('Удалить?')){savedConfigs.splice(i,1);localStorage.setItem('robinhood_tunnels',JSON.stringify(savedConfigs));refreshTunnelList()}});tl.appendChild(div)})}
+    document.getElementById('btn-load-file')?.addEventListener('click',()=>document.getElementById('config-file-input')?.click());
+    document.getElementById('config-file-input')?.addEventListener('change',e=>{const f=e.target.files[0];if(f){const r=new FileReader();r.onload=ev=>{const tc=document.getElementById('tunnel-config-input');if(tc)tc.value=ev.target.result};r.readAsText(f)}});
+    document.getElementById('btn-save-tunnel')?.addEventListener('click',()=>{const c=document.getElementById('tunnel-config-input')?.value.trim();if(!c)return;savedConfigs.push({name:'Конфиг '+(savedConfigs.length+1),config:c});localStorage.setItem('robinhood_tunnels',JSON.stringify(savedConfigs));const tc=document.getElementById('tunnel-config-input');if(tc)tc.value='';refreshTunnelList()});
+    document.getElementById('btn-cancel-tunnel-config')?.addEventListener('click',()=>{document.getElementById('tunnel-config-modal')?.classList.remove('active')});
+    document.getElementById('btn-warp-gen')?.addEventListener('click',()=>window.open('https://warp-generator.github.io/','_blank'));
+
+    const emojis=['😀','😂','🤣','😍','😘','😜','😎','🤩','🥳','😢','😡','👍','👎','❤️','🔥','🎉','💀','🏹','🌲','🏰','🦊','🐺','✨','⚔️','🛡️','🍺','🍗','🏕️','🌙','☀️','🌟','💪','🤝','🙏','👑','💰','🎯','📞','💬','🔔','❌','✅','🎵','📜','⚜️'];
+    const eg=document.getElementById('emoji-grid');if(eg)emojis.forEach(e=>{const span=document.createElement('span');span.textContent=e;span.addEventListener('click',()=>{const mi=document.getElementById('msg-input');if(mi){mi.value+=e;mi.focus()}});eg.appendChild(span)});
+    const be=document.getElementById('btn-emoji');if(be)be.addEventListener('click',()=>{const ep=document.getElementById('emoji-panel');if(ep)ep.style.display=ep.style.display==='block'?'none':'block'});
+    document.addEventListener('click',e=>{const ep=document.getElementById('emoji-panel');if(ep&&!ep.contains(e.target)&&e.target!==be)ep.style.display='none'});
+
     document.getElementById('send-btn')?.addEventListener('click',async()=>{const mi=document.getElementById('msg-input');const t=mi?.value.trim();if(t){if(!activeChannelId){const chIds=Object.keys(PP4._channels);if(!chIds.length)return;activeChannelId=chIds[0];}const ch=PP4._channels[activeChannelId];if(!ch||!ch.ratchetKey)return;await sendBlobToChannel(activeChannelId,JSON.stringify({d:t}));ch.blobs.push({d:t,t:Date.now(),n:RND(),from:'me'});ch.expires=Date.now()+600000;saveChannels();appendMessage('Вы',t);updateCupIndicator();updateRatchetIndicator();if(mi)mi.value='';playArcherAnimation();playBowAnimation();if(toggleSoundState)playSound('shot.mp3')}});
     document.getElementById('msg-input')?.addEventListener('keypress',e=>{if(e.key=='Enter')document.getElementById('send-btn')?.click()});
     setConnectionStatus('checking');rMsg('🏹 Слепой Улей готов',0);
 }
 
+// ========== БЛОКИРОВКА ==========
+const LOCK_KEY='robinhood_lock_v2';let lockType=null,lockPinHash='',pinInput='',isSettingLock=false,failedAttempts=0;
+const lockScreen=document.getElementById('lock-screen'),appContainer=document.getElementById('app-container');
+async function loadLockSettings(){const saved=JSON.parse(localStorage.getItem(LOCK_KEY)||'null');if(saved){lockType=saved.type;lockPinHash=saved.pinHash||''}failedAttempts=0;if(!lockType){lockScreen.style.display='none';appContainer.style.display='flex';PP4._peerId=await generateHardwarePeerId();DHT._nodeId=PP4._peerId;initBuckets();loadChannels();loadContacts();connectWS();initApp()}else{lockScreen.style.display='flex';appContainer.style.display='none';setupLockUI()}}
+function setupLockUI(){const pinSection=document.getElementById('lock-pin-section');const patternSection=document.getElementById('lock-pattern-section');const subtitle=document.getElementById('lock-subtitle');const error=document.getElementById('lock-error');if(pinSection)pinSection.style.display='';if(patternSection)patternSection.style.display='none';if(subtitle)subtitle.textContent=isSettingLock?'Задайте пин-код (5 цифр)':'Введите пин-код';if(error)error.textContent='';pinInput='';drawNumpad();updatePinDots()}
+function drawNumpad(){const np=document.getElementById('lock-numpad');if(!np)return;np.innerHTML='';for(let i=1;i<=9;i++){const btn=document.createElement('button');btn.className='lock-num';btn.textContent=i;btn.onclick=()=>addPinDigit(i.toString());np.appendChild(btn)}const btn0=document.createElement('button');btn0.className='lock-num zero';btn0.textContent='0';btn0.onclick=()=>addPinDigit('0');np.appendChild(btn0);const btnDel=document.createElement('button');btnDel.className='lock-num';btnDel.textContent='⌫';btnDel.onclick=()=>{pinInput=pinInput.slice(0,-1);updatePinDots()};np.appendChild(btnDel)}
+function addPinDigit(d){if(pinInput.length>=5)return;pinInput+=d;updatePinDots();if(pinInput.length===5)setTimeout(()=>verifyPin(),200)}
+function updatePinDots(){const dots=document.querySelectorAll('.lock-pin-dot');dots.forEach((d,i)=>d.classList.toggle('filled',i<pinInput.length))}
+async function sha256Hash(text){const d=new TextEncoder().encode(text);const h=await crypto.subtle.digest('SHA-256',d);return Array.from(new Uint8Array(h)).map(b=>b.toString(16).padStart(2,'0')).join('')}
+async function verifyPin(){if(isSettingLock){if(!lockPinHash){lockPinHash=pinInput;pinInput='';updatePinDots();if(document.getElementById('lock-subtitle'))document.getElementById('lock-subtitle').textContent='Повторите пин-код';return}if(pinInput===lockPinHash){const hash=await sha256Hash(pinInput);localStorage.setItem(LOCK_KEY,JSON.stringify({type:'pin',pinHash:hash}));lockType='pin';lockPinHash=hash;isSettingLock=false;pinInput='';updatePinDots();const ls=document.getElementById('lock-status');if(ls)ls.textContent='Пин-код';unlockApp()}else{const err=document.getElementById('lock-error');if(err)err.textContent='Не совпадают. Попробуйте снова.';lockPinHash='';pinInput='';updatePinDots();const sub=document.getElementById('lock-subtitle');if(sub)sub.textContent='Задайте пин-код (5 цифр)'}}else{const hash=await sha256Hash(pinInput);if(hash===lockPinHash){failedAttempts=0;unlockApp()}else{failedAttempts++;pinInput='';updatePinDots();if(failedAttempts>=3){document.querySelectorAll('.lock-num').forEach(b=>b.disabled=true);const err=document.getElementById('lock-error');if(err)err.textContent='Заблокировано. Обновите страницу.'}else{const err=document.getElementById('lock-error');if(err)err.textContent=`Неверно. Осталось попыток: ${3-failedAttempts}`}}}}
+async function unlockApp(){lockScreen.style.display='none';appContainer.style.display='flex';if(!PP4._peerId){PP4._peerId=await generateHardwarePeerId();DHT._nodeId=PP4._peerId;initBuckets();loadChannels();loadContacts();connectWS()}initApp()}
+document.getElementById('setting-lock')?.addEventListener('click',()=>{if(lockType){if(confirm('Сбросить блокировку?')){localStorage.removeItem(LOCK_KEY);lockType=null;lockPinHash='';const ls=document.getElementById('lock-status');if(ls)ls.textContent='Не задан'}}else{isSettingLock=true;lockPinHash='';pinInput='';lockScreen.style.display='flex';appContainer.style.display='none';setupLockUI()}});
+
 loadLockSettings();
-setInterval(()=>{const now=Date.now();for(const[id,ch]of Object.entries(PP4._channels)){if(now>ch.expires){delete PP4._channels[id];saveChannels();if(id===activeChannelId){activeChannelId=null;activePeerId=null;}}}for(const[id,b]of Object.entries(PP4._beacons)){if(now>b.expires)delete PP4._beacons[id];}for(const[id,peer]of DHT._peers){if(now-peer.lastSeen>30000&&peer.conn?.readyState==='open')peer.conn.send(JSON.stringify({type:'dht-ping'}));if(now-peer.lastSeen>120000){DHT._peers.delete(id);for(const bucket of DHT._buckets){const idx=bucket.findIndex(p=>p.id===id);if(idx>=0)bucket.splice(idx,1);}}}updateCupIndicator();updateRatchetIndicator();updateUI();},10000);
+setInterval(()=>{const now=Date.now();for(const[id,ch]of Object.entries(PP4._channels)){if(now>ch.expires){delete PP4._channels[id];saveChannels();if(id===activeChannelId){activeChannelId=null;activePeerId=null;}}}for(const[id,b]of Object.entries(PP4._beacons)){if(now>b.expires)delete PP4._beacons[id];}for(const[id,h]of Object.entries(pendingHandshakes)){if(now>h.expires)delete pendingHandshakes[id];}for(const[id,peer]of DHT._peers){if(now-peer.lastSeen>30000&&peer.conn?.readyState==='open')peer.conn.send(JSON.stringify({type:'dht-ping'}));if(now-peer.lastSeen>120000){DHT._peers.delete(id);for(const bucket of DHT._buckets){const idx=bucket.findIndex(p=>p.id===id);if(idx>=0)bucket.splice(idx,1);}}}updateCupIndicator();updateRatchetIndicator();updateUI();},10000);
 </script>
 </body>
 </html>
