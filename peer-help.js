@@ -7,7 +7,7 @@ var PEER_HELP_VERSION='1.0.1';
 var ANNOUNCE_INTERVAL=300000;
 var CLEANUP_INTERVAL=600000;
 var MAX_PEERS=10;
-var DHT_BOOTSTRAP=['wss://tracker.openwebtorrent.com','wss://tracker.btorrent.xyz'];
+var DHT_BOOTSTRAP=['https://robincall.stephanclaps-491.workers.dev'];
 var active=false,peerId=null,magnetURI=null,announceTimer=null,cleanupTimer=null;
 var knownPeers=new Map(),totalUploaded=0,totalDownloaded=0,isAnnouncing=false;
 function sha1(str){function rotateLeft(n,s){return(n<<s)|(n>>>(32-s))}function toHexStr(n){var s='';for(var i=7;i>=0;i--){s+=((n>>>(i*4))&0x0F).toString(16)}return s}var blockStart,i,j,W=new Array(80),H0=0x67452301,H1=0xEFCDAB89,H2=0x98BADCFE,H3=0x10325476,H4=0xC3D2E1F0,A,B,C,D,E,temp;str=unescape(encodeURIComponent(str));var msg=[];for(i=0;i<str.length;i++)msg.push(str.charCodeAt(i));msg.push(0x80);while(msg.length%64!==56)msg.push(0);var len=str.length*8;for(i=0;i<4;i++)msg.push((len>>>(24-i*8))&0xFF);for(blockStart=0;blockStart<msg.length;blockStart+=64){for(i=0;i<16;i++)W[i]=msg[blockStart+i*4]<<24|msg[blockStart+i*4+1]<<16|msg[blockStart+i*4+2]<<8|msg[blockStart+i*4+3];for(i=16;i<80;i++)W[i]=rotateLeft(W[i-3]^W[i-8]^W[i-14]^W[i-16],1);A=H0;B=H1;C=H2;D=H3;E=H4;for(i=0;i<80;i++){if(i<20)temp=(B&C)|(~B&D);else if(i<40)temp=B^C^D;else if(i<60)temp=(B&C)|(B&D)|(C&D);else temp=B^C^D;temp=(rotateLeft(A,5)+temp+E+W[i]+(i<20?0x5A827999:i<40?0x6ED9EBA1:i<60?0x8F1BBCDC:0xCA62C1D6))|0;E=D;D=C;C=rotateLeft(B,30);B=A;A=temp}H0=(H0+A)|0;H1=(H1+B)|0;H2=(H2+C)|0;H3=(H3+D)|0;H4=(H4+E)|0}return toHexStr(H0)+toHexStr(H1)+toHexStr(H2)+toHexStr(H3)+toHexStr(H4)}
