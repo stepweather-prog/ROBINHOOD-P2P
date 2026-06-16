@@ -170,7 +170,7 @@
 <div id="app-container" style="display:none;flex-direction:column;height:100%;">
 <div class="leaves-container" id="leaves-container"></div>
 <div class="header">
-    <div class="header-row-1"><span class="header-title-text">ROBINHOOD P2P</span><span class="header-shield">🏹</span><span class="header-datetime"><span id="header-date"></span> <span id="header-time"></span></span><span class="version-text">Улей v3.1</span></div>
+    <div class="header-row-1"><span class="header-title-text">ROBINHOOD P2P</span><span class="header-shield">🏹</span><span class="header-datetime"><span id="header-date"></span> <span id="header-time"></span></span><span class="version-text">Улей v3.2</span></div>
     <div class="header-row-2">
         <div class="header-btn" id="btn-avatar"><img src="assets/avatar/001ava.png" class="header-avatar" id="profile-avatar-small" alt="avatar"></div>
         <div class="header-btn" id="btn-arrow"><img src="assets/icons/08icon.png" alt="arrow"></div>
@@ -229,7 +229,7 @@
 <div id="bow-above-send"></div>
 </div>
 <script>
-// ==================== P2PPong v5.2 — СЛЕПОЙ УЛЕЙ ПОД КАПОТОМ ====================
+// ==================== PP4 + DHT + GZIP + RATCHET v3.2 ====================
 const PP4={_peerId:null,_beacons:{},_channels:{},_ws:null,_wsUrl:'wss://robincall.stephanclaps-491.workers.dev/ws',_wsReconnectDelay:1000,_maxReconnectDelay:30000};
 const DHT={_nodeId:null,_buckets:[],_storage:{},_k:20,_alpha:3,_peers:new Map(),_signalSend:null};
 if(!window.crypto?.subtle)throw new Error('Требуется HTTPS');
@@ -242,62 +242,15 @@ async function importPublicKey(b64){const r=Uint8Array.from(atob(b64),c=>c.charC
 async function deriveSecret(kp,remotePubKey){const b=await crypto.subtle.deriveBits({name:'ECDH',public:remotePubKey},kp.privateKey,256);return Array.from(new Uint8Array(b)).map(b=>b.toString(16).padStart(2,'0')).join('');}
 async function encryptAES(text,secret){const k=await crypto.subtle.importKey('raw',new TextEncoder().encode(secret.substring(0,32)),{name:'AES-GCM'},false,['encrypt']);const iv=crypto.getRandomValues(new Uint8Array(12));const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},k,new TextEncoder().encode(text));const c=new Uint8Array(iv.length+new Uint8Array(ct).length);c.set(iv);c.set(new Uint8Array(ct),iv.length);return btoa(String.fromCharCode(...c));}
 async function decryptAES(enc,secret){try{const k=await crypto.subtle.importKey('raw',new TextEncoder().encode(secret.substring(0,32)),{name:'AES-GCM'},false,['decrypt']);const c=Uint8Array.from(atob(enc),x=>x.charCodeAt(0));return new TextDecoder().decode(await crypto.subtle.decrypt({name:'AES-GCM',iv:c.slice(0,12)},k,c.slice(12)));}catch(e){return null;}}
-
-// ========== GZIP ==========
 async function compressData(str){try{const data=new TextEncoder().encode(str);const cs=new CompressionStream('gzip');const writer=cs.writable.getWriter();writer.write(data);writer.close();const reader=cs.readable.getReader();const chunks=[];while(true){const{done,value}=await reader.read();if(done)break;chunks.push(value);}const totalLength=chunks.reduce((s,c)=>s+c.length,0);const combined=new Uint8Array(totalLength);let offset=0;for(const chunk of chunks){combined.set(chunk,offset);offset+=chunk.length;}return btoa(String.fromCharCode(...combined));}catch(e){return btoa(str);}}
 async function decompressData(b64){try{const bytes=Uint8Array.from(atob(b64),c=>c.charCodeAt(0));const ds=new DecompressionStream('gzip');const writer=ds.writable.getWriter();writer.write(bytes);writer.close();const reader=ds.readable.getReader();const chunks=[];while(true){const{done,value}=await reader.read();if(done)break;chunks.push(value);}const totalLength=chunks.reduce((s,c)=>s+c.length,0);const combined=new Uint8Array(totalLength);let offset=0;for(const chunk of chunks){combined.set(chunk,offset);offset+=chunk.length;}return new TextDecoder().decode(combined);}catch(e){return atob(b64);}}
-
-// ========== HMAC + RATCHET ==========
 async function computeHMAC(data,secret){const hmacKey=await crypto.subtle.importKey('raw',new TextEncoder().encode(secret.substring(0,32)),{name:'HMAC',hash:'SHA-256'},false,['sign']);const signature=await crypto.subtle.sign('HMAC',hmacKey,new TextEncoder().encode(data));return btoa(String.fromCharCode(...new Uint8Array(signature)));}
 async function verifyHMAC(data,signature,secret){try{const hmacKey=await crypto.subtle.importKey('raw',new TextEncoder().encode(secret.substring(0,32)),{name:'HMAC',hash:'SHA-256'},false,['verify']);const sigBytes=Uint8Array.from(atob(signature),c=>c.charCodeAt(0));return await crypto.subtle.verify('HMAC',hmacKey,sigBytes,new TextEncoder().encode(data));}catch(e){return false;}}
 async function advanceRatchet(ch){const oldKey=ch.ratchetKey||ch.secret;const salt=(ch.ratchetIndex||0).toString(16).padStart(16,'0');const newKey=await SHA(oldKey+salt);ch.ratchetKey=newKey;ch.ratchetIndex=(ch.ratchetIndex||0)+1;if(!ch.oldKeys)ch.oldKeys=[];ch.oldKeys.push({index:ch.ratchetIndex-1,key:oldKey});if(ch.oldKeys.length>50)ch.oldKeys.shift();updateRatchetIndicator();return newKey;}
-
-async function packBlob(jsonString,ch){
-    const compressed=await compressData(jsonString);
-    const padSize=Math.floor(Math.random()*50)+20;
-    const randomPad=btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(padSize))));
-    const data=JSON.stringify({z:compressed,t:Date.now(),n:RND(),pad:randomPad,ri:ch.ratchetIndex||0});
-    const currentKey=ch.ratchetKey||ch.secret;
-    const hmac=await computeHMAC(data,currentKey);
-    const packed=hmac+'|'+data;
-    let padded=packed;
-    if(padded.length<4096){const pad=crypto.getRandomValues(new Uint8Array(4096-padded.length));padded+=String.fromCharCode(...pad);}
-    else padded=padded.substring(0,4096);
-    await advanceRatchet(ch);
-    return await encryptAES(padded,ch.secret);
-}
-
-async function tryDecryptWithKey(decrypted,key){
-    const separatorIndex=decrypted.indexOf('|');
-    if(separatorIndex===-1)return null;
-    const hmac=decrypted.substring(0,separatorIndex);
-    const data=decrypted.substring(separatorIndex+1).trim().replace(/\x00+$/,'');
-    const valid=await verifyHMAC(data,hmac,key);
-    if(!valid)return null;
-    try{const parsed=JSON.parse(data);
-        if(parsed.z){const decompressed=await decompressData(parsed.z);const inner=JSON.parse(decompressed);inner._t=parsed.t;inner._ri=parsed.ri;return inner;}
-        delete parsed.pad;delete parsed.ri;return parsed;
-    }catch(e){return null;}
-}
-
-async function unpackBlob(blob,ch){
-    const dec=await decryptAES(blob,ch.secret);
-    if(!dec)return null;
-    let result=await tryDecryptWithKey(dec,ch.ratchetKey||ch.secret);
-    if(result)return result;
-    if(ch.oldKeys){for(let i=ch.oldKeys.length-1;i>=0;i--){result=await tryDecryptWithKey(dec,ch.oldKeys[i].key);if(result)return result;}}
-    return null;
-}
-
-async function requestRatchetResync(ch){
-    const chId=Object.keys(PP4._channels).find(id=>PP4._channels[id]===ch);
-    if(!chId)return;
-    const resyncData=JSON.stringify({type:'ratchet-resync',secret:ch.secret,peerId:PP4._peerId});
-    const packed=await encryptAES(resyncData,ch.secret);
-    broadcastBlob(packed,chId);
-    rMsg('🔄 Ресинхронизация ratchet...',3000);
-}
-
+async function packBlob(jsonString,ch){const compressed=await compressData(jsonString);const padSize=Math.floor(Math.random()*50)+20;const randomPad=btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(padSize))));const data=JSON.stringify({z:compressed,t:Date.now(),n:RND(),pad:randomPad,ri:ch.ratchetIndex||0});const currentKey=ch.ratchetKey||ch.secret;const hmac=await computeHMAC(data,currentKey);const packed=hmac+'|'+data;let padded=packed;if(padded.length<4096){const pad=crypto.getRandomValues(new Uint8Array(4096-padded.length));padded+=String.fromCharCode(...pad);}else padded=padded.substring(0,4096);await advanceRatchet(ch);return await encryptAES(padded,ch.secret);}
+async function tryDecryptWithKey(decrypted,key){const separatorIndex=decrypted.indexOf('|');if(separatorIndex===-1)return null;const hmac=decrypted.substring(0,separatorIndex);const data=decrypted.substring(separatorIndex+1).trim().replace(/\x00+$/,'');const valid=await verifyHMAC(data,hmac,key);if(!valid)return null;try{const parsed=JSON.parse(data);if(parsed.z){const decompressed=await decompressData(parsed.z);const inner=JSON.parse(decompressed);inner._t=parsed.t;inner._ri=parsed.ri;return inner;}delete parsed.pad;delete parsed.ri;return parsed;}catch(e){return null;}}
+async function unpackBlob(blob,ch){const dec=await decryptAES(blob,ch.secret);if(!dec)return null;let result=await tryDecryptWithKey(dec,ch.ratchetKey||ch.secret);if(result)return result;if(ch.oldKeys){for(let i=ch.oldKeys.length-1;i>=0;i--){result=await tryDecryptWithKey(dec,ch.oldKeys[i].key);if(result)return result;}}return null;}
+async function requestRatchetResync(ch){const chId=Object.keys(PP4._channels).find(id=>PP4._channels[id]===ch);if(!chId)return;const resyncData=JSON.stringify({type:'ratchet-resync',secret:ch.secret,peerId:PP4._peerId});const packed=await encryptAES(resyncData,ch.secret);broadcastBlob(packed,chId);rMsg('🔄 Ресинхронизация ratchet...',3000);}
 function saveChannels(){const d=Object.entries(PP4._channels).map(([id,ch])=>({id,peerId:ch.peerId,type:ch.type,expires:ch.expires,createdAt:ch.createdAt}));localStorage.setItem('pp4_channels',JSON.stringify(d));}
 function loadChannels(){try{const r=localStorage.getItem('pp4_channels');if(!r)return;JSON.parse(r).forEach(ch=>{if(Date.now()<ch.expires)PP4._channels[ch.id]={...ch,blobs:[],secret:null,reconnect:true};});}catch(e){}}
 let pendingDH={};
@@ -314,11 +267,9 @@ async function connectToPeerDHT(peerId){const pc=new RTCPeerConnection({iceServe
 function connectWS(){if(PP4._ws&&PP4._ws.readyState===WebSocket.OPEN)return;try{PP4._ws=new WebSocket(PP4._wsUrl);}catch(e){setTimeout(connectWS,PP4._wsReconnectDelay);PP4._wsReconnectDelay=Math.min(PP4._wsReconnectDelay*2,PP4._maxReconnectDelay);return;}PP4._ws.onopen=()=>{PP4._wsReconnectDelay=1000;setConnectionStatus('online');PP4._ws.send(JSON.stringify({action:'subscribe',peerId:PP4._peerId}));};PP4._ws.onmessage=async e=>{let m;try{m=JSON.parse(e.data);}catch(er){return;}if(m.type==='dht-signal'&&m.from!==DHT._nodeId){await handleSignal(m.from,m.data);return;}if(m.type==='blob'){handleIncomingBlob(m.blob,m.channelId);return;}};PP4._ws.onclose=()=>{setConnectionStatus('offline');setTimeout(connectWS,PP4._wsReconnectDelay);PP4._wsReconnectDelay=Math.min(PP4._wsReconnectDelay*2,PP4._maxReconnectDelay);};}
 DHT._signalSend=(targetPeerId,data)=>{if(PP4._ws?.readyState===WebSocket.OPEN)PP4._ws.send(JSON.stringify({action:'dht-signal',targetPeerId,from:DHT._nodeId,data}));};
 
-// ==================== СЛЕПОЙ УЛЕЙ — ВСЯ ЛОГИКА ТУТ ====================
 const BLOB_NS='00000000000000000000000000000000';
 let incomingBeacons=[];
 
-// Понг командует: создать маяк
 async function createBeacon(){
     const targetId=document.getElementById('peer-id-input').value.trim();
     if(!targetId){rMsg('Введи Peer ID друга',3000);return;}
@@ -332,27 +283,34 @@ async function createBeacon(){
     document.getElementById('arrow-modal')?.classList.remove('active');
 }
 
-// Понг решает: мигать кнопкой Заявок
 function ponkNotify(){
     const btn=document.getElementById('btn-requests');
     if(!btn)return;
     if(incomingBeacons.length>0){btn.classList.add('blink');}else{btn.classList.remove('blink');}
 }
 
-// Понг проверяет: пользователь нажал Заявки — подтверждает что живой
 function ponkConfirm(){
     if(incomingBeacons.length===0)return;
-    const beacon=incomingBeacons.shift();
-    // Понг уже создал канал когда маяк пришёл. Здесь просто подтверждаем.
+    incomingBeacons.shift();
     ponkNotify();
     rMsg('✅ Подтверждено!',2000);
 }
 
-// Понг обрабатывает входящие блобы — многоликий
+// Авто-установка активного канала при получении любого сообщения
+function ensureActiveChannel(channelId){
+    if(activeChannelId)return;
+    activeChannelId=channelId;
+    const ct=contacts.find(c=>c.channelId===channelId);
+    if(ct){
+        activePeerId=ct.peerId;
+        document.getElementById('robin-bar-sender').textContent=ct.name||'Лучник';
+    }
+    updateRatchetIndicator();
+}
+
 async function handleIncomingBlob(blobData,channelId){
     let data;try{data=JSON.parse(blobData);}catch(e){return;}
     
-    // Входящий маяк — Понг сам создаёт канал и отправляет ответ
     if(data.type==='beacon'&&data.pubKey&&data.inner){
         if(data.targetPeerId&&data.targetPeerId!==PP4._peerId)return;
         const remotePubKey=await importPublicKey(data.pubKey);const kp=await generateKeyPair();const myPubKey=await exportPublicKey(kp);
@@ -362,13 +320,10 @@ async function handleIncomingBlob(blobData,channelId){
         saveChannels();addContact({peerId:data.peerId,name:'Лучник',channelId:chId,verified:false,avatar:'001'});
         updateUI();setTimeout(()=>playQuiverAnimation(),300);
         rMsg('✅ Канал открыт!',3000);
-        // Понг говорит: есть входящий — мигай
-        incomingBeacons.push({data,time:Date.now()});
-        ponkNotify();
+        incomingBeacons.push({data,time:Date.now()});ponkNotify();
         return;
     }
     
-    // Ответ на наш маяк — Понг завершает рукопожатие
     if(data.type==='beacon-response'&&data.pubKey&&data.inner){
         for(const[bid,b]of Object.entries(PP4._beacons)){
             if(!b.beaconKey)continue;const dec=await decryptAES(data.inner,b.beaconKey);if(!dec)continue;
@@ -381,21 +336,50 @@ async function handleIncomingBlob(blobData,channelId){
         }
     }
     
-    // Ресинхронизация ratchet
     if(data.type==='ratchet-resync'&&data.secret){
         const chId=Object.keys(PP4._channels).find(id=>PP4._channels[id].peerId===data.peerId);
         if(chId){const ch=PP4._channels[chId];ch.ratchetKey=data.secret;ch.ratchetIndex=0;ch.oldKeys=[];rMsg('✅ Ratchet перезапущен',3000);updateRatchetIndicator();}return;
     }
     
-    // Обычное сообщение
+    // Обычные сообщения, голосовые, звонки
     for(const[id,ch]of Object.entries(PP4._channels)){
-        if(!ch.ratchetKey)continue;const u=await unpackBlob(blobData,ch);if(!u)continue;if(u._pad)delete u._pad;
-        if(u.webrtc){await handleWebRTC(u,id);return;}
-        if(u.voice){const ct=contacts.find(c=>c.channelId===id);if(id===activeChannelId)appendMessage(ct?.name||'Друг','🎤 Голосовое',ct?.avatar);playVoiceBlob(u.data);return;}
-        ch.blobs.push({...u,from:'them'});ch.expires=Date.now()+600000;saveChannels();
-        const ct=contacts.find(c=>c.channelId===id);const sn=ct?.name||'Друг';
-        if(id===activeChannelId)appendMessage(sn,u.d||u.text||'',ct?.avatar);else rMsg('Новое от '+sn,3000);
-        updateCupIndicator();playSound('arrow_hit.wav');return;
+        if(!ch.ratchetKey)continue;
+        const u=await unpackBlob(blobData,ch);
+        if(!u)continue;
+        if(u._pad)delete u._pad;
+        
+        ensureActiveChannel(id);
+        
+        // Звонок
+        if(u.webrtc){
+            await handleWebRTC(u,id);
+            return;
+        }
+        
+        // Голосовое — с плеером
+        if(u.voice){
+            const ct=contacts.find(c=>c.channelId===id);
+            const senderName=ct?.name||'Друг';
+            const senderAvatar=ct?.avatar||'001';
+            appendMessage(senderName,'🎤 Голосовое',senderAvatar,u.data,'audio/webm');
+            if(id!==activeChannelId)rMsg('🎤 Голосовое от '+senderName,3000);
+            playVoiceBlob(u.data);
+            updateCupIndicator();
+            return;
+        }
+        
+        // Текстовое сообщение
+        ch.blobs.push({...u,from:'them'});
+        ch.expires=Date.now()+600000;
+        saveChannels();
+        const ct=contacts.find(c=>c.channelId===id);
+        const sn=ct?.name||'Друг';
+        const sa=ct?.avatar||'001';
+        appendMessage(sn,u.d||u.text||'',sa);
+        if(id!==activeChannelId)rMsg('Новое от '+sn,3000);
+        updateCupIndicator();
+        playSound('arrow_hit.wav');
+        return;
     }
 }
 
@@ -410,7 +394,6 @@ async function sendBlobToChannel(channelId,data){
     const packed=await packBlob(data,ch);broadcastBlob(packed,channelId);return true;
 }
 
-// ========== RATCHET ИНДИКАТОР ==========
 function updateRatchetIndicator(){
     const chId=activeChannelId||Object.keys(PP4._channels)[0];const ch=chId?PP4._channels[chId]:null;const indicator=document.getElementById('ratchet-indicator');
     if(!indicator)return;if(!ch||!ch.ratchetKey){indicator.style.display='none';return;}indicator.style.display='inline';
@@ -419,7 +402,6 @@ function updateRatchetIndicator(){
     indicator.style.color=color;indicator.style.background='rgba(0,0,0,0.3)';indicator.textContent=icon+' '+ri;indicator.title='Ratchet: '+ri+' оборотов';
 }
 
-// ========== ИНТЕРФЕЙС (НЕ ТРОГАТЬ) ==========
 let contacts=[],activeChannelId=null,activePeerId=null,selectedAvatar='001';
 let toggleSoundState=!0,selfDestructMode=!1,peerHelpEnabled=!1;
 let pc=null,localStream=null,callActive=!1,incomingOffer=null,ringtoneAudio=null,ringbackAudio=null;
@@ -479,11 +461,17 @@ function stopRingback(){if(ringbackAudio){ringbackAudio.pause();ringbackAudio.lo
 async function startCall(){if(callActive||!activeChannelId){rMsg('❌ Нет канала',3000);return}const s=await getMediaStream(false);if(!s){rMsg('❌ Нет микрофона',3000);return}localStream=s;createPC();const cp=document.getElementById('call-panel');if(cp)cp.style.display='flex';document.getElementById('call-avatar').src='assets/avatar/'+selectedAvatar+'ava.png';document.getElementById('call-contact-name').textContent=document.getElementById('nick-label')?.textContent||'Лучник';document.getElementById('call-status').textContent='📞 Вызов...';showIncomingControls(false);showActiveControls(true);showCallWave(false);playRingback();const o=await pc.createOffer();await pc.setLocalDescription(o);setTimeout(()=>{sendWebRTCMsg('webrtc-offer',JSON.stringify(o))},800)}
 async function acceptCall(){if(!incomingOffer||!activeChannelId)return;stopRingtone();stopRingback();const s=await getMediaStream(false);if(!s)return;localStream=s;createPC();const cp=document.getElementById('call-panel');if(cp)cp.style.display='flex';document.getElementById('call-avatar').src='assets/avatar/'+selectedAvatar+'ava.png';document.getElementById('call-contact-name').textContent=document.getElementById('nick-label')?.textContent||'Лучник';document.getElementById('call-status').textContent='✅ Разговор';showIncomingControls(false);showActiveControls(true);showCallWave(true);playSound('open.mp3');await pc.setRemoteDescription(new RTCSessionDescription(incomingOffer));iceBuffer.forEach(c=>pc.addIceCandidate(new RTCIceCandidate(c)).catch(()=>{}));iceBuffer=[];const a=await pc.createAnswer();await pc.setLocalDescription(a);sendWebRTCMsg('webrtc-answer',JSON.stringify(a));incomingOffer=null;callActive=!0}
 function hang(sig=!0){callActive=!1;stopRingtone();stopRingback();if(sig&&activeChannelId)sendWebRTCMsg('webrtc-hangup','');if(pc){pc.close();pc=null}if(localStream){localStream.getTracks().forEach(t=>t.stop());localStream=null}incomingOffer=null;iceBuffer=[];if(iceFlushTimer)clearTimeout(iceFlushTimer);const cp=document.getElementById('call-panel');if(cp)cp.style.display='none';showIncomingControls(false);showActiveControls(false);showCallWave(false);playSound('exet.mp3')}
-async function handleWebRTC(u,channelId){if(u.webrtc==='webrtc-offer'){if(callActive||pc){sendWebRTCMsg('webrtc-hangup','');return}iceBuffer=[];incomingOffer=JSON.parse(u.sdp);const cp=document.getElementById('call-panel');if(cp)cp.style.display='flex';document.getElementById('call-status').textContent='📞 Входящий...';showActiveControls(false);showIncomingControls(true);showCallWave(false);playRingtone()}if(u.webrtc==='webrtc-answer'&&pc){stopRingback();try{await pc.setRemoteDescription(new RTCSessionDescription(JSON.parse(u.sdp)));iceBuffer.forEach(c=>pc.addIceCandidate(new RTCIceCandidate(c)).catch(()=>{}));iceBuffer=[];callActive=!0;document.getElementById('call-status').textContent='✅ Разговор';showIncomingControls(false);showActiveControls(true);showCallWave(true);playSound('open.mp3')}catch(e){}}if(u.webrtc==='webrtc-ice'&&pc){try{const c=JSON.parse(u.sdp);if(pc.remoteDescription)pc.addIceCandidate(new RTCIceCandidate(c)).catch(()=>{});else iceBuffer.push(c);}catch(e){}}if(u.webrtc==='webrtc-hangup'){if(callActive||pc){rMsg('📞 Собеседник завершил',3000);hang(!1)}}}
+async function handleWebRTC(u,channelId){
+    ensureActiveChannel(channelId);
+    if(u.webrtc==='webrtc-offer'){if(callActive||pc){sendWebRTCMsg('webrtc-hangup','');return}iceBuffer=[];incomingOffer=JSON.parse(u.sdp);const cp=document.getElementById('call-panel');if(cp)cp.style.display='flex';document.getElementById('call-status').textContent='📞 Входящий...';showActiveControls(false);showIncomingControls(true);showCallWave(false);playRingtone()}
+    if(u.webrtc==='webrtc-answer'&&pc){stopRingback();try{await pc.setRemoteDescription(new RTCSessionDescription(JSON.parse(u.sdp)));iceBuffer.forEach(c=>pc.addIceCandidate(new RTCIceCandidate(c)).catch(()=>{}));iceBuffer=[];callActive=!0;document.getElementById('call-status').textContent='✅ Разговор';showIncomingControls(false);showActiveControls(true);showCallWave(true);playSound('open.mp3')}catch(e){}}
+    if(u.webrtc==='webrtc-ice'&&pc){try{const c=JSON.parse(u.sdp);if(pc.remoteDescription)pc.addIceCandidate(new RTCIceCandidate(c)).catch(()=>{});else iceBuffer.push(c);}catch(e){}}
+    if(u.webrtc==='webrtc-hangup'){if(callActive||pc){rMsg('📞 Собеседник завершил',3000);hang(!1)}}
+}
 function startVoiceTimer(){voiceSeconds=0;const vt=document.getElementById('voice-timer-overlay');if(vt){vt.style.display='block';vt.textContent='🎤 0:00'}voiceTimerInterval=setInterval(()=>{voiceSeconds++;const m=Math.floor(voiceSeconds/60),s=(voiceSeconds%60).toString().padStart(2,'0');const vt=document.getElementById('voice-timer-overlay');if(vt)vt.textContent='🎤 '+m+':'+s},1000)}
 function stopVoiceTimer(){if(voiceTimerInterval)clearInterval(voiceTimerInterval);const vt=document.getElementById('voice-timer-overlay');if(vt)vt.style.display='none'}
 function toggleVoiceRecording(){voiceRecording?stopVoiceRecording():startVoiceRecording()}
-function startVoiceRecording(){if(voiceRecorder?.state==='recording')return;navigator.mediaDevices.getUserMedia({audio:true}).then(st=>{voiceStream=st;voiceRecorder=new MediaRecorder(st,{mimeType:'audio/webm; codecs=opus',audioBitsPerSecond:16000});voiceChunks=[];voiceRecorder.ondataavailable=e=>voiceChunks.push(e.data);voiceRecorder.onstop=()=>{const blob=new Blob(voiceChunks,{type:'audio/webm'});if(blob.size>100&&blob.size<300000&&activeChannelId){const reader=new FileReader();reader.onload=async()=>{const b64=reader.result.split(',')[1];await sendBlobToChannel(activeChannelId,JSON.stringify({voice:true,data:b64}));appendMessage('Вы','🎤 Голосовое','assets/avatar/'+selectedAvatar+'ava.png')};reader.readAsDataURL(blob)}if(voiceStream){voiceStream.getTracks().forEach(t=>t.stop());voiceStream=null}voiceRecorder=null;voiceRecording=!1;stopVoiceTimer();document.getElementById('btn-voice-input').style.background='';showVoiceWave(false)};voiceRecorder.start();voiceRecording=!0;startVoiceTimer();document.getElementById('btn-voice-input').style.background='#f44336';showVoiceWave(true)}).catch(()=>rMsg('❌ Нет микрофона'))}
+function startVoiceRecording(){if(voiceRecorder?.state==='recording')return;navigator.mediaDevices.getUserMedia({audio:true}).then(st=>{voiceStream=st;voiceRecorder=new MediaRecorder(st,{mimeType:'audio/webm; codecs=opus',audioBitsPerSecond:16000});voiceChunks=[];voiceRecorder.ondataavailable=e=>voiceChunks.push(e.data);voiceRecorder.onstop=()=>{const blob=new Blob(voiceChunks,{type:'audio/webm'});if(blob.size>100&&blob.size<300000&&activeChannelId){const reader=new FileReader();reader.onload=async()=>{const b64=reader.result.split(',')[1];await sendBlobToChannel(activeChannelId,JSON.stringify({voice:true,data:b64}));appendMessage('Вы','🎤 Голосовое','assets/avatar/'+selectedAvatar+'ava.png',b64,'audio/webm')};reader.readAsDataURL(blob)}if(voiceStream){voiceStream.getTracks().forEach(t=>t.stop());voiceStream=null}voiceRecorder=null;voiceRecording=!1;stopVoiceTimer();document.getElementById('btn-voice-input').style.background='';showVoiceWave(false)};voiceRecorder.start();voiceRecording=!0;startVoiceTimer();document.getElementById('btn-voice-input').style.background='#f44336';showVoiceWave(true)}).catch(()=>rMsg('❌ Нет микрофона'))}
 function stopVoiceRecording(){if(voiceRecorder?.state==='recording')voiceRecorder.stop()}
 function playVoiceBlob(b64){const a=new Audio('data:audio/webm;base64,'+b64);a.play().catch(()=>{})}
 async function reconnectChannel(id){const ch=PP4._channels[id];if(!ch||ch.reconnecting)return;ch.reconnecting=true;const kp=await generateKeyPair();const pk=await exportPublicKey(kp);const rid=RND();pendingDH[rid]={keyPair:kp};if(PP4._ws)PP4._ws.send(JSON.stringify({action:'reconnect',channelId:id,targetPeerId:ch.peerId,pubKey:pk,requestId:rid,fromPeerId:PP4._peerId}));}
@@ -501,18 +489,12 @@ async function initApp(){
     const isPWA=window.matchMedia('(display-mode: standalone)').matches||navigator.standalone||false;
     const si=document.getElementById('setting-install');if(!isPWA&&si)si.classList.remove('hidden');
 
-    // Кнопка Стрела — открыть Колчан
     document.getElementById('btn-arrow')?.addEventListener('click',()=>{document.getElementById('arrow-modal')?.classList.add('active');});
-    // Создать маяк — Понг командует
     document.getElementById('btn-create-beacon')?.addEventListener('click',()=>{createBeacon();});
-    // Закрыть модалку
     document.getElementById('close-arrow-modal')?.addEventListener('click',()=>{document.getElementById('arrow-modal')?.classList.remove('active');});
     document.getElementById('arrow-modal')?.addEventListener('click',function(e){if(e.target===this)this.classList.remove('active');});
-    // Кнопка Заявки — Понг проверяет пользователя
     document.getElementById('btn-requests')?.addEventListener('click',()=>{ponkConfirm();});
-    // Скурить чат
     document.getElementById('btn-clear')?.addEventListener('click',()=>{const box=document.getElementById('chat-box');if(box)box.querySelectorAll('.message-row').forEach(m=>m.remove());playSmokeAnimation();playSound('clear cache.mp3');rMsg('🚬 Чат скурили!',5000)});
-    // Настройки
     document.getElementById('btn-settings')?.addEventListener('click',()=>{closeSheets();document.getElementById('settings-sheet')?.classList.add('open');document.getElementById('overlay')?.classList.add('show')});
     document.getElementById('settings-close')?.addEventListener('click',closeSheets);
     document.getElementById('contacts-close')?.addEventListener('click',closeSheets);
@@ -557,7 +539,6 @@ async function initApp(){
     setConnectionStatus('checking');rMsg('🏹 Слепой Улей готов',0);
 }
 
-// ========== БЛОКИРОВКА ==========
 const LOCK_KEY='robinhood_lock_v2';let lockType=null,lockPinHash='',pinInput='',isSettingLock=false,failedAttempts=0;
 const lockScreen=document.getElementById('lock-screen'),appContainer=document.getElementById('app-container');
 async function loadLockSettings(){const saved=JSON.parse(localStorage.getItem(LOCK_KEY)||'null');if(saved){lockType=saved.type;lockPinHash=saved.pinHash||''}failedAttempts=0;if(!lockType){lockScreen.style.display='none';appContainer.style.display='flex';PP4._peerId=await generateHardwarePeerId();DHT._nodeId=PP4._peerId;initBuckets();loadChannels();loadContacts();connectWS();initApp()}else{lockScreen.style.display='flex';appContainer.style.display='none';setupLockUI()}}
