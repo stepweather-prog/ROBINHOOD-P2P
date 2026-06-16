@@ -6,13 +6,12 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>RobinHoodP2P/P2PPongAi Blind hive</title>
+    <title>RobinHoodP2P</title>
     <link rel="manifest" href="manifest.json">
     <link rel="icon" type="image/png" href="assets/icons/01icon.png">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.12.2/lottie.min.js"></script>
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com 'unsafe-inline'; style-src 'self' 'unsafe-inline'; media-src 'self' blob: data:; connect-src 'self' wss://robincall.stephanclaps-491.workers.dev https://robincall.stephanclaps-491.workers.dev https://api.qrserver.com blob:; img-src 'self' data: blob: https://stepweather-prog.github.io https://api.qrserver.com; frame-src 'self'; manifest-src 'self'; form-action 'none'; base-uri 'self';">
     <style>
-        /* === ВСЕ CSS СТИЛИ ИЗ v3.3 БЕЗ ИЗМЕНЕНИЙ === */
         :root, [data-theme="forest"] { --bg-primary: #1a2a1f; --bg-secondary: #0d1a0c; --accent: #c4a24b; --accent-light: #e8d5a3; --text: #e8e2c7; --text-bright: #f5e6b8; --text-dim: #b8a87a; --border: #c4a24b; --btn-bg: rgba(196,162,75,0.1); --btn-border: rgba(196,162,75,0.3); --btn-hover: rgba(196,162,75,0.25); --sheet-bg: linear-gradient(145deg, #1e2a1a 0%, #0f180d 100%); --input-bg: rgba(20,30,18,0.9); --msg-bg: rgba(30,40,25,0.85); --msg-accent: #c4a24b; --robin-bg: rgba(50,70,40,0.6); --robin-accent: #e8c97a; --overlay-bg: rgba(0,0,0,0.6); --seeding-color: #4caf50; --danger: #f44336; --call-bg: linear-gradient(180deg, #1a2a1f 0%, #0d1a0c 100%); --call-btn-bg: rgba(196,162,75,0.1); --call-btn-border: rgba(196,162,75,0.3); --call-accept-bg: rgba(76,175,80,0.3); --call-reject-bg: rgba(244,67,54,0.3); --input-text: #e8e2c7; }
         [data-theme="sunset"] { --bg-primary: #2a1a1f; --bg-secondary: #1a0a0f; --accent: #e85d3a; --accent-light: #f0a080; --text: #f0d8c0; --text-bright: #fae8d0; --text-dim: #c08060; --border: #e85d3a; --robin-accent: #f0a080; --seeding-color: #e85d3a; --msg-bg: rgba(40,20,15,0.85); --input-bg: rgba(30,15,10,0.9); --btn-bg: rgba(232,93,58,0.1); --btn-border: rgba(232,93,58,0.3); --btn-hover: rgba(232,93,58,0.25); --sheet-bg: linear-gradient(145deg, #2a1a18 0%, #1a0a08 100%); --call-bg: linear-gradient(180deg, #2a1a1f 0%, #1a0a0f 100%); --call-btn-bg: rgba(232,93,58,0.1); --call-btn-border: rgba(232,93,58,0.3); --input-text: #f0d8c0; }
         [data-theme="ocean"] { --bg-primary: #0a1a2f; --bg-secondary: #050d18; --accent: #4bc4d0; --accent-light: #90e8f0; --text: #c8f0f8; --text-bright: #e0fafc; --text-dim: #60a0b0; --border: #4bc4d0; --robin-accent: #90e8f0; --seeding-color: #4bc4d0; --msg-bg: rgba(10,25,35,0.85); --input-bg: rgba(8,20,30,0.9); --btn-bg: rgba(75,196,208,0.1); --btn-border: rgba(75,196,208,0.3); --btn-hover: rgba(75,196,208,0.25); --sheet-bg: linear-gradient(145deg, #0a1828 0%, #050d18 100%); --call-bg: linear-gradient(180deg, #0a1a2f 0%, #050d18 100%); --call-btn-bg: rgba(75,196,208,0.1); --call-btn-border: rgba(75,196,208,0.3); --input-text: #c8f0f8; }
@@ -331,7 +330,6 @@ const PitupiAI = {
         } catch(e) { logError('PitupiAI/save', e); }
     },
 
-    // Иерархическая память
     _forgetOldPatterns() {
         const now = Date.now();
         const MAX_AGE = 7 * 24 * 3600 * 1000;
@@ -347,7 +345,6 @@ const PitupiAI = {
         }
     },
 
-    // Защита ядра
     enforceCoreMinimums() {
         for (const [key, min] of Object.entries(this._core.minWeights)) {
             if (this._weights[key] < min) this._weights[key] = min;
@@ -356,7 +353,6 @@ const PitupiAI = {
         for (const key of Object.keys(this._weights)) this._weights[key] /= total;
     },
 
-    // Граф знаний с ограничениями
     addGraphEdge(fromId, toId, quality, restrictions = {}) {
         this._knowledge.graph.nodes.set(fromId, { lastSeen: Date.now() });
         this._knowledge.graph.nodes.set(toId, { lastSeen: Date.now() });
@@ -386,7 +382,6 @@ const PitupiAI = {
         return paths[0] || { direct: true, quality: 0.3, via: null, restrictions: {} };
     },
 
-    // Классификация ограничений
     classifyNetworkRestriction(peerId, event, details = {}) {
         if (event === 'ice_failed' && details?.iceConnectionState === 'failed') {
             this._core.natTypes.set(peerId, 'symmetric');
@@ -407,7 +402,6 @@ const PitupiAI = {
         return recent.length >= 3;
     },
 
-    // Адаптивные реакции
     adaptToRestrictions(restrictionType) {
         switch(restrictionType) {
             case 'symmetric_nat':
@@ -431,12 +425,10 @@ const PitupiAI = {
         this.save();
     },
 
-    // Предсказание нагрузки
     _recordTimeLoad() { const hour = new Date().getHours(); this._knowledge.timeLoad[hour] = (this._knowledge.timeLoad[hour] || 0) + 1; },
     predictLoad(hour) { const h = hour ?? new Date().getHours(); const maxLoad = Math.max(1, ...this._knowledge.timeLoad); return this._knowledge.timeLoad[h] / maxLoad; },
     shouldReduceActivity() { return this.predictLoad() > 0.7; },
 
-    // Геолокация
     async _detectGeo() {
         this._knowledge.geoServers.set('default', { server: 'stun:stun.l.google.com:19302', latency: 100, region: 'global' });
         this._knowledge.geoServers.set('backup1', { server: 'stun:stun1.l.google.com:19302', latency: 150, region: 'global' });
@@ -458,7 +450,6 @@ const PitupiAI = {
         return result;
     },
 
-    // Федерированное обучение (с нормализацией)
     async _federateWeights() {
         if (!peerHelpEnabled) return;
         for (const [peerId, peer] of DHT._peers) {
@@ -493,7 +484,6 @@ const PitupiAI = {
         this._learn('federated_update', { from: fromPeerId.substring(0, 8), weights: { ...this._weights } });
     },
 
-    // Оценка пиров
     ratePeer(peerId, event, details = {}) {
         if (!this._knowledge.peers.has(peerId)) this._knowledge.peers.set(peerId, { reliability: 0.5, latency: 0, lastSeen: Date.now(), routeQuality: 0.5 });
         const peer = this._knowledge.peers.get(peerId);
@@ -599,7 +589,7 @@ const PitupiAI = {
     }
 };
 
-// ========== PP4 + DHT + GZIP + RATCHET (v3.3 без изменений, кроме addPeer) ==========
+// ========== PP4 + DHT + GZIP + RATCHET ==========
 const PP4={_peerId:null,_beacons:{},_channels:{},_ws:null,_wsUrl:'wss://robincall.stephanclaps-491.workers.dev/ws',_wsReconnectDelay:1000,_maxReconnectDelay:30000};
 const DHT={_nodeId:null,_buckets:[],_storage:{},_k:20,_alpha:3,_peers:new Map(),_signalSend:null};
 if(!window.crypto?.subtle)throw new Error('Требуется HTTPS');
@@ -645,7 +635,6 @@ async function connectToPeerDHT(peerId){let pc,dc;try{pc=new RTCPeerConnection({
 function connectWS(){if(PP4._ws&&PP4._ws.readyState===WebSocket.OPEN)return;try{PP4._ws=new WebSocket(PP4._wsUrl);}catch(e){logError('connectWS',e);rMsg('❌ Ошибка подключения к сети',5000);setTimeout(connectWS,PP4._wsReconnectDelay);PP4._wsReconnectDelay=Math.min(PP4._wsReconnectDelay*2,PP4._maxReconnectDelay);return;}PP4._ws.onopen=()=>{PP4._wsReconnectDelay=1000;setConnectionStatus('online');try{PP4._ws.send(JSON.stringify({action:'subscribe',peerId:PP4._peerId}));}catch(e){logError('connectWS/subscribe',e);}};PP4._ws.onmessage=async e=>{let m;try{m=JSON.parse(e.data);}catch(er){logError('WS/onmessage',er);return;}if(m.type==='dht-signal'&&m.from!==DHT._nodeId){await handleSignal(m.from,m.data);return;}if(m.type==='blob'){handleIncomingBlob(m.blob,m.channelId);return;}};PP4._ws.onclose=()=>{setConnectionStatus('offline');PitupiAI.ratePeer('ws_signal','ws_disconnected',{code:1006});setTimeout(connectWS,PP4._wsReconnectDelay);PP4._wsReconnectDelay=Math.min(PP4._wsReconnectDelay*2,PP4._maxReconnectDelay);};}
 DHT._signalSend=(targetPeerId,data)=>{if(PP4._ws?.readyState===WebSocket.OPEN){try{PP4._ws.send(JSON.stringify({action:'dht-signal',targetPeerId,from:DHT._nodeId,data}));}catch(e){logError('DHT._signalSend',e);}}};
 
-// ========== СЛЕПОЙ УЛЕЙ — МАЯКИ ==========
 const BLOB_NS='00000000000000000000000000000000';
 let incomingBeacons=[];
 function getMyNick(){return document.getElementById('nick-label')?.textContent||'Лучник';}
@@ -659,7 +648,6 @@ function broadcastBlob(packed,channelId){const dhtPeers=getClosestPeers(channelI
 async function sendBlobToChannel(channelId,data){const ch=PP4._channels[channelId];if(!ch||!ch.ratchetKey)return false;const packed=await packBlob(data,ch);broadcastBlob(packed,channelId);return true;}
 function updateRatchetIndicator(){const chId=activeChannelId||Object.keys(PP4._channels)[0];const ch=chId?PP4._channels[chId]:null;const indicator=document.getElementById('ratchet-indicator');if(!indicator)return;if(!ch||!ch.ratchetKey){indicator.style.display='none';return;}indicator.style.display='inline';const ri=ch.ratchetIndex||0;let color,icon;if(ri===0){color='var(--danger)';icon='⚠️';}else if(ri<10){color='orange';icon='🔄';}else if(ri<50){color='var(--accent)';icon='🔒';}else{color='var(--seeding-color)';icon='🔐';}indicator.style.color=color;indicator.style.background='rgba(0,0,0,0.3)';indicator.textContent=icon+' '+ri;indicator.title='Ratchet: '+ri+' оборотов';}
 
-// ========== UI ==========
 let contacts=[],activeChannelId=null,activePeerId=null,selectedAvatar='001';
 let toggleSoundState=!0,selfDestructMode=!1,peerHelpEnabled=!1;
 let pc=null,localStream=null,callActive=!1,incomingOffer=null,ringtoneAudio=null,ringbackAudio=null;
@@ -708,7 +696,6 @@ function updateUI(){const rt=document.getElementById('robin-text');if(rt)rt.text
 function appendMessage(sender,text,avatarSrc,audioData,audioMime){const box=document.getElementById('chat-box');const row=document.createElement('div');row.className='message-row';const time=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});const av=avatarSrc&&avatarSrc!=='001'?'assets/avatar/'+avatarSrc+'ava.png':'assets/avatar/001ava.png';if(audioData&&audioMime&&audioMime.startsWith('audio/')){const player=createAudioPlayer(audioData,audioMime);row.innerHTML=`<img src="${av}" class="avatar" onerror="this.src='assets/avatar/001ava.png'"><div class="msg-body"><div class="msg-sender">${safeHtml(sender)}</div></div>`;row.querySelector('.msg-body').appendChild(player);const ts=document.createElement('div');ts.className='msg-status';ts.textContent=time;row.querySelector('.msg-body').appendChild(ts);}else{row.innerHTML=`<img src="${av}" class="avatar" onerror="this.src='assets/avatar/001ava.png'"><div class="msg-body"><div class="msg-sender">${safeHtml(sender)}</div><div>${safeHtml(text)}</div><div class="msg-status">${time}</div></div>`}const msgId='msg_'+Date.now()+Math.random();row.dataset.msgId=msgId;box.insertBefore(row,document.getElementById('typing-indicator'));box.scrollTop=box.scrollHeight;if(selfDestructMode){setTimeout(()=>{const el=document.querySelector(`[data-msg-id="${msgId}"]`);if(el){el.style.transition='opacity 0.5s';el.style.opacity='0';setTimeout(()=>{if(el.parentNode)el.remove()},500)}},30000)}}
 function createAudioPlayer(audioData,audioMime){const container=document.createElement('div');container.className='audio-player audio-paused';const audio=new Audio('data:'+audioMime+';base64,'+audioData);let isPlaying=false;const playBtn=document.createElement('button');playBtn.className='audio-play-btn';playBtn.textContent='▶';const waveDiv=document.createElement('div');waveDiv.className='audio-wave';for(let i=0;i<8;i++){const bar=document.createElement('div');bar.className='audio-wave-bar';waveDiv.appendChild(bar)}const timeSpan=document.createElement('span');timeSpan.className='audio-time';timeSpan.textContent='0:00';playBtn.addEventListener('click',()=>{if(isPlaying){audio.pause();container.classList.remove('audio-playing');container.classList.add('audio-paused');playBtn.textContent='▶'}else{audio.play();container.classList.remove('audio-paused');container.classList.add('audio-playing');playBtn.textContent='⏸'}isPlaying=!isPlaying});audio.addEventListener('timeupdate',()=>{const m=Math.floor(audio.currentTime/60);const s=Math.floor(audio.currentTime%60).toString().padStart(2,'0');timeSpan.textContent=m+':'+s});audio.addEventListener('ended',()=>{container.classList.remove('audio-playing');container.classList.add('audio-paused');playBtn.textContent='▶';isPlaying=false});container.appendChild(playBtn);container.appendChild(waveDiv);container.appendChild(timeSpan);return container;}
 
-// ========== ЗВОНКИ ==========
 async function getMediaStream(video=false,facingMode='user'){try{return await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:!0,noiseSuppression:!0},video:video?{width:{ideal:320},height:{ideal:240},facingMode}:false});}catch(e){logError('getMediaStream',e);return null;}}
 function createPC(){if(pc){pc.close();pc=null}iceBuffer=[];if(iceFlushTimer)clearTimeout(iceFlushTimer);try{pc=new RTCPeerConnection({iceServers:PitupiAI.getBestICEServers()});}catch(e){logError('createPC',e);return;}if(localStream)localStream.getTracks().forEach(t=>pc.addTrack(t,localStream));pc.ontrack=e=>{if(e.streams[0]){const a=new Audio();a.srcObject=e.streams[0];a.play().catch(er=>{logError('ontrack/play',er);});}};pc.onicecandidate=e=>{if(e.candidate){iceBuffer.push(e.candidate);}else{iceFlushTimer=setTimeout(()=>{iceBuffer.forEach(c=>sendWebRTCMsg('webrtc-ice',JSON.stringify(c)));iceBuffer=[];},300);}};pc.onconnectionstatechange=()=>{if(pc.connectionState=='connected'){callActive=!0;stopRingback();stopRingtone();document.getElementById('call-status').textContent='✅ Разговор';showIncomingControls(false);showActiveControls(true);showCallWave(true);playSound('open.mp3');}if(pc.connectionState=='disconnected'||pc.connectionState=='failed'){PitupiAI.ratePeer(activePeerId||'unknown','ice_failed',{iceConnectionState:pc.connectionState});hang(!1);}};return pc;}
 async function sendWebRTCMsg(type,sdp){if(!activeChannelId)return;await sendBlobToChannel(activeChannelId,JSON.stringify({webrtc:type,sdp}));}
@@ -729,7 +716,6 @@ function playVoiceBlob(b64){const a=new Audio('data:audio/webm;base64,'+b64);a.p
 async function reconnectChannel(id){const ch=PP4._channels[id];if(!ch||ch.reconnecting)return;ch.reconnecting=true;const kp=await generateKeyPair();const pk=await exportPublicKey(kp);const rid=RND();pendingDH[rid]={keyPair:kp};if(PP4._ws){try{PP4._ws.send(JSON.stringify({action:'reconnect',channelId:id,targetPeerId:ch.peerId,pubKey:pk,requestId:rid,fromPeerId:PP4._peerId}));}catch(e){logError('reconnectChannel',e);}}}
 async function destroySession(){if(!confirm('⚠ ПОЛНЫЙ СБРОС!'))return;hang(!1);['PP','RobinHoodContacts'].forEach(n=>{try{indexedDB.deleteDatabase(n);}catch(e){logError('destroySession/indexedDB',e);}});try{localStorage.clear();}catch(e){logError('destroySession/localStorage',e);}const box=document.getElementById('chat-box');if(box)box.querySelectorAll('.message-row').forEach(m=>m.remove());playSmokeAnimation();playSound('clear cache.mp3');rMsg('🔥 Всё скурили!',5000);setConnectionStatus('offline');applyTheme('paper');const pas=document.getElementById('profile-avatar-small');if(pas)pas.src='assets/avatar/001ava.png';document.getElementById('robin-avatar').src='assets/avatar/001ava.png';const nl=document.getElementById('nick-label');if(nl)nl.textContent='Твой ник';const ls=document.getElementById('lock-status');if(ls)ls.textContent='Не задан';document.body.classList.remove('custom-bg');document.body.style.removeProperty('--custom-bg');const bs=document.getElementById('bg-status');if(bs)bs.textContent='Не задан';contacts=[];saveContacts();renderContacts();}
 
-// AI Stats UI
 function showAIStats(){
     const stats = PitupiAI.getStats();
     const panel = document.getElementById('ai-stats-panel');
@@ -786,8 +772,8 @@ async function initApp(){
     document.getElementById('overlay')?.addEventListener('click',closeSheets);
     document.getElementById('btn-avatar')?.addEventListener('click',()=>{closeSheets();loadAvatars();document.getElementById('avatar-selector')?.classList.add('show');document.getElementById('overlay')?.classList.add('show');});
     document.getElementById('nick-label')?.addEventListener('click',()=>{const modal=document.getElementById('nick-modal');const input=document.getElementById('nick-input');if(modal&&input){input.value=document.getElementById('nick-label')?.textContent||'';modal.classList.add('active');}});
-    document.getElementById('btn-save-nick')?.addEventListener('click',()=>{const n=document.getElementById('nick-input')?.value.tri;}catch(e){logError('save-nick',e);}}document.getElementById('nick-modal')?.classList.remove('active');});
-    document.getElementById('close-nick-modal')?.addEventListener('click',()=>{document.getElementById('nick-modal')?.classList.remove('active');});m();if(n){const nl=document.getElementById('nick-label');if(nl)nl.textContent=n.substring(0,12);try{localStorage.setItem('robinhood_nick',n.substring(0,12))
+    document.getElementById('btn-save-nick')?.addEventListener('click',()=>{const n=document.getElementById('nick-input')?.value.trim();if(n){const nl=document.getElementById('nick-label');if(nl)nl.textContent=n.substring(0,12);try{localStorage.setItem('robinhood_nick',n.substring(0,12));}catch(e){logError('save-nick',e);}}document.getElementById('nick-modal')?.classList.remove('active');});
+    document.getElementById('close-nick-modal')?.addEventListener('click',()=>{document.getElementById('nick-modal')?.classList.remove('active');});
     document.getElementById('setting-theme')?.addEventListener('click',()=>{const ct=localStorage.getItem('robinhood_theme')||'paper';const idx=themes.findIndex(t=>t.id===ct);applyTheme(themes[(idx+1)%themes.length].id);});
     document.getElementById('setting-theme-random')?.addEventListener('click',generateRandomTheme);
     document.getElementById('setting-destroy')?.addEventListener('click',()=>{closeSheets();destroySession();});
