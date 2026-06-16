@@ -5,7 +5,6 @@
 // ===================================================================
 
 const P2PPong = {
-    // ==================== СОСТОЯНИЕ ====================
     _peerId: null,
     _beacons: {},
     _channels: {},
@@ -24,7 +23,6 @@ const P2PPong = {
     _peerHelpActive: false,
     _housekeepInterval: null,
 
-    // ==================== ШИНА СОБЫТИЙ ====================
     on(event, callback) {
         if (!this._listeners[event]) this._listeners[event] = [];
         this._listeners[event].push(callback);
@@ -40,10 +38,8 @@ const P2PPong = {
         });
     },
 
-    // ==================== ИНИЦИАЛИЗАЦИЯ ====================
     async init() {
         if (this._state !== 'idle') return;
-
         this._state = 'connecting';
         this._emit('state-change', { state: 'connecting' });
 
@@ -69,6 +65,13 @@ const P2PPong = {
             }
 
             this._connectSignal();
+
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible') {
+                    if (!this._ws || this._ws.readyState > 1) this._connectSignal();
+                }
+            });
+
             this._startHousekeeping();
 
             this._state = 'online';
@@ -84,10 +87,8 @@ const P2PPong = {
         }
     },
 
-    // ==================== СИГНАЛЬНЫЙ СЕРВЕР ====================
     _connectSignal() {
         const server = this._signalServers[this._currentSignalIndex];
-
         if (server.type === 'websocket') {
             this._connectWebSocket(server.url);
         } else if (server.type === 'http') {
@@ -97,12 +98,8 @@ const P2PPong = {
 
     _connectWebSocket(url) {
         if (this._ws && this._ws.readyState === WebSocket.OPEN) return;
-
-        try {
-            this._ws = new WebSocket(url);
-        } catch(e) {
-            this._switchSignalServer();
-            return;
+        try { this._ws = new WebSocket(url); } catch(e) {
+            this._switchSignalServer(); return;
         }
 
         this._ws.onopen = () => {
@@ -110,28 +107,24 @@ const P2PPong = {
             this._state = 'online';
             this._emit('state-change', { state: 'online' });
             this._emit('signal-connected', { server: 'Cloudflare' });
-            try {
-                this._ws.send(JSON.stringify({ action: 'subscribe', peerId: this._peerId }));
-            } catch(e) {}
+            try { this._ws.send(JSON.stringify({ action: 'subscribe', peerId: this._peerId })); } catch(e) {}
         };
 
         this._ws.onmessage = async (e) => {
             let msg;
             try { msg = JSON.parse(e.data); } catch(er) {
-                this._handleIncomingBlob(e.data, null);
-                return;
+                this._handleIncomingBlob(e.data, null); return;
             }
             if (msg.type === 'dht-signal' && msg.from !== DHT._nodeId) {
-                await handleSignal(msg.from, msg.data);
-                return;
+                await handleSignal(msg.from, msg.data); return;
             }
             if (msg.type === 'blob') {
-                this._handleIncomingBlob(msg.blob, msg.channelId);
-                return;
+                this._handleIncomingBlob(msg.blob, msg.channelId); return;
             }
         };
 
         this._ws.onclose = () => {
+            if (document.visibilityState === 'hidden') return;
             this._state = 'offline';
             this._emit('state-change', { state: 'offline' });
             this._switchSignalServer();
@@ -212,7 +205,6 @@ const P2PPong = {
         setTimeout(() => this._connectSignal(), delay);
     },
 
-    // ==================== КАНАЛЫ ====================
     _startHousekeeping() {
         this._housekeepInterval = setInterval(() => {
             const now = Date.now();
@@ -238,7 +230,6 @@ const P2PPong = {
         }, 10000);
     },
 
-    // ==================== МАЯКИ ====================
     async createBeacon(targetPeerId, metadata = {}) {
         if (!targetPeerId) return null;
         const kp = await generateKeyPair();
@@ -255,7 +246,6 @@ const P2PPong = {
         return bid;
     },
 
-    // ==================== СООБЩЕНИЯ ====================
     async sendMessage(channelId, data) {
         const ch = this._channels[channelId];
         if (!ch || !ch.ratchetKey) return false;
@@ -271,7 +261,6 @@ const P2PPong = {
         return true;
     },
 
-    // ==================== ОБРАБОТКА ВХОДЯЩИХ ====================
     async _handleIncomingBlob(blobData, channelId) {
         let data;
         try { data = JSON.parse(blobData); } catch(e) { return; }
@@ -366,7 +355,6 @@ const P2PPong = {
         }
     },
 
-    // ==================== ТРАНСПОРТ ====================
     _broadcastBlob(packed, channelId) {
         const targetId = channelId || BLOB_NS;
         const dhtPeers = getClosestPeers(targetId, 3).filter(p => p.conn?.readyState === 'open');
@@ -381,7 +369,6 @@ const P2PPong = {
         }
     },
 
-    // ==================== СОХРАНЕНИЕ ====================
     async _saveChannels() {
         const data = Object.entries(this._channels).map(([id, ch]) => ({ id, peerId: ch.peerId, type: ch.type, expires: ch.expires, createdAt: ch.createdAt }));
         await encryptToStorage('p2ppong_channels', JSON.stringify(data));
@@ -402,7 +389,6 @@ const P2PPong = {
     }
 };
 
-// Вспомогательные функции
 const DEBUG = false;
 function logError(c, e) { if (DEBUG) console.error(`[${c}]`, e); }
 function logWarn(c, m) { if (DEBUG) console.warn(`[${c}]`, m); }
