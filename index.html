@@ -170,7 +170,7 @@
 <div id="app-container" style="display:none;flex-direction:column;height:100%;">
 <div class="leaves-container" id="leaves-container"></div>
 <div class="header">
-    <div class="header-row-1"><span class="header-title-text">ROBINHOOD P2P</span><span class="header-shield">🏹</span><span class="header-datetime"><span id="header-date"></span> <span id="header-time"></span></span><span class="version-text">Улей v3.0</span></div>
+    <div class="header-row-1"><span class="header-title-text">ROBINHOOD P2P</span><span class="header-shield">🏹</span><span class="header-datetime"><span id="header-date"></span> <span id="header-time"></span></span><span class="version-text">Улей v3.1</span></div>
     <div class="header-row-2">
         <div class="header-btn" id="btn-avatar"><img src="assets/avatar/001ava.png" class="header-avatar" id="profile-avatar-small" alt="avatar"></div>
         <div class="header-btn" id="btn-arrow"><img src="assets/icons/08icon.png" alt="arrow"></div>
@@ -229,7 +229,7 @@
 <div id="bow-above-send"></div>
 </div>
 <script>
-// ==================== PP4 + DHT + RATCHET v3.0 ====================
+// ==================== P2PPong v5.2 — СЛЕПОЙ УЛЕЙ ПОД КАПОТОМ ====================
 const PP4={_peerId:null,_beacons:{},_channels:{},_ws:null,_wsUrl:'wss://robincall.stephanclaps-491.workers.dev/ws',_wsReconnectDelay:1000,_maxReconnectDelay:30000};
 const DHT={_nodeId:null,_buckets:[],_storage:{},_k:20,_alpha:3,_peers:new Map(),_signalSend:null};
 if(!window.crypto?.subtle)throw new Error('Требуется HTTPS');
@@ -289,6 +289,15 @@ async function unpackBlob(blob,ch){
     return null;
 }
 
+async function requestRatchetResync(ch){
+    const chId=Object.keys(PP4._channels).find(id=>PP4._channels[id]===ch);
+    if(!chId)return;
+    const resyncData=JSON.stringify({type:'ratchet-resync',secret:ch.secret,peerId:PP4._peerId});
+    const packed=await encryptAES(resyncData,ch.secret);
+    broadcastBlob(packed,chId);
+    rMsg('🔄 Ресинхронизация ratchet...',3000);
+}
+
 function saveChannels(){const d=Object.entries(PP4._channels).map(([id,ch])=>({id,peerId:ch.peerId,type:ch.type,expires:ch.expires,createdAt:ch.createdAt}));localStorage.setItem('pp4_channels',JSON.stringify(d));}
 function loadChannels(){try{const r=localStorage.getItem('pp4_channels');if(!r)return;JSON.parse(r).forEach(ch=>{if(Date.now()<ch.expires)PP4._channels[ch.id]={...ch,blobs:[],secret:null,reconnect:true};});}catch(e){}}
 let pendingDH={};
@@ -305,10 +314,11 @@ async function connectToPeerDHT(peerId){const pc=new RTCPeerConnection({iceServe
 function connectWS(){if(PP4._ws&&PP4._ws.readyState===WebSocket.OPEN)return;try{PP4._ws=new WebSocket(PP4._wsUrl);}catch(e){setTimeout(connectWS,PP4._wsReconnectDelay);PP4._wsReconnectDelay=Math.min(PP4._wsReconnectDelay*2,PP4._maxReconnectDelay);return;}PP4._ws.onopen=()=>{PP4._wsReconnectDelay=1000;setConnectionStatus('online');PP4._ws.send(JSON.stringify({action:'subscribe',peerId:PP4._peerId}));};PP4._ws.onmessage=async e=>{let m;try{m=JSON.parse(e.data);}catch(er){return;}if(m.type==='dht-signal'&&m.from!==DHT._nodeId){await handleSignal(m.from,m.data);return;}if(m.type==='blob'){handleIncomingBlob(m.blob,m.channelId);return;}};PP4._ws.onclose=()=>{setConnectionStatus('offline');setTimeout(connectWS,PP4._wsReconnectDelay);PP4._wsReconnectDelay=Math.min(PP4._wsReconnectDelay*2,PP4._maxReconnectDelay);};}
 DHT._signalSend=(targetPeerId,data)=>{if(PP4._ws?.readyState===WebSocket.OPEN)PP4._ws.send(JSON.stringify({action:'dht-signal',targetPeerId,from:DHT._nodeId,data}));};
 
-// ========== СЛЕПОЙ УЛЕЙ ==========
+// ==================== СЛЕПОЙ УЛЕЙ — ВСЯ ЛОГИКА ТУТ ====================
 const BLOB_NS='00000000000000000000000000000000';
 let incomingBeacons=[];
 
+// Понг командует: создать маяк
 async function createBeacon(){
     const targetId=document.getElementById('peer-id-input').value.trim();
     if(!targetId){rMsg('Введи Peer ID друга',3000);return;}
@@ -322,31 +332,43 @@ async function createBeacon(){
     document.getElementById('arrow-modal')?.classList.remove('active');
 }
 
-async function acceptIncomingBeacon(){
-    if(incomingBeacons.length===0)return;
-    const beacon=incomingBeacons.shift();
-    const data=beacon.data;
-    const remotePubKey=await importPublicKey(data.pubKey);const kp=await generateKeyPair();const myPubKey=await exportPublicKey(kp);
-    const ss=await deriveSecret(kp,remotePubKey);const chId=RND();
-    PP4._channels[chId]={secret:ss,ratchetKey:ss,ratchetIndex:0,oldKeys:[],peerId:data.peerId,type:'cup',blobs:[],expires:Date.now()+600000,createdAt:Date.now()};
-    broadcastBlob(JSON.stringify({type:'beacon-response',pubKey:myPubKey,peerId:PP4._peerId,inner:data.inner}),BLOB_NS);
-    saveChannels();addContact({peerId:data.peerId,name:'Лучник',channelId:chId,verified:false,avatar:'001'});
-    updateUI();setTimeout(()=>playQuiverAnimation(),300);
-    rMsg('✅ Канал открыт!',3000);
-    updateRequestsBadge();
+// Понг решает: мигать кнопкой Заявок
+function ponkNotify(){
+    const btn=document.getElementById('btn-requests');
+    if(!btn)return;
+    if(incomingBeacons.length>0){btn.classList.add('blink');}else{btn.classList.remove('blink');}
 }
 
+// Понг проверяет: пользователь нажал Заявки — подтверждает что живой
+function ponkConfirm(){
+    if(incomingBeacons.length===0)return;
+    const beacon=incomingBeacons.shift();
+    // Понг уже создал канал когда маяк пришёл. Здесь просто подтверждаем.
+    ponkNotify();
+    rMsg('✅ Подтверждено!',2000);
+}
+
+// Понг обрабатывает входящие блобы — многоликий
 async function handleIncomingBlob(blobData,channelId){
     let data;try{data=JSON.parse(blobData);}catch(e){return;}
-    // Входящий маяк
+    
+    // Входящий маяк — Понг сам создаёт канал и отправляет ответ
     if(data.type==='beacon'&&data.pubKey&&data.inner){
         if(data.targetPeerId&&data.targetPeerId!==PP4._peerId)return;
+        const remotePubKey=await importPublicKey(data.pubKey);const kp=await generateKeyPair();const myPubKey=await exportPublicKey(kp);
+        const ss=await deriveSecret(kp,remotePubKey);const chId=RND();
+        PP4._channels[chId]={secret:ss,ratchetKey:ss,ratchetIndex:0,oldKeys:[],peerId:data.peerId,type:'cup',blobs:[],expires:Date.now()+600000,createdAt:Date.now()};
+        broadcastBlob(JSON.stringify({type:'beacon-response',pubKey:myPubKey,peerId:PP4._peerId,inner:data.inner}),BLOB_NS);
+        saveChannels();addContact({peerId:data.peerId,name:'Лучник',channelId:chId,verified:false,avatar:'001'});
+        updateUI();setTimeout(()=>playQuiverAnimation(),300);
+        rMsg('✅ Канал открыт!',3000);
+        // Понг говорит: есть входящий — мигай
         incomingBeacons.push({data,time:Date.now()});
-        updateRequestsBadge();
-        rMsg('📩 Входящий запрос!',3000);
+        ponkNotify();
         return;
     }
-    // Ответ на наш маяк
+    
+    // Ответ на наш маяк — Понг завершает рукопожатие
     if(data.type==='beacon-response'&&data.pubKey&&data.inner){
         for(const[bid,b]of Object.entries(PP4._beacons)){
             if(!b.beaconKey)continue;const dec=await decryptAES(data.inner,b.beaconKey);if(!dec)continue;
@@ -358,6 +380,13 @@ async function handleIncomingBlob(blobData,channelId){
             rMsg('✅ Канал открыт!',3000);return;
         }
     }
+    
+    // Ресинхронизация ratchet
+    if(data.type==='ratchet-resync'&&data.secret){
+        const chId=Object.keys(PP4._channels).find(id=>PP4._channels[id].peerId===data.peerId);
+        if(chId){const ch=PP4._channels[chId];ch.ratchetKey=data.secret;ch.ratchetIndex=0;ch.oldKeys=[];rMsg('✅ Ratchet перезапущен',3000);updateRatchetIndicator();}return;
+    }
+    
     // Обычное сообщение
     for(const[id,ch]of Object.entries(PP4._channels)){
         if(!ch.ratchetKey)continue;const u=await unpackBlob(blobData,ch);if(!u)continue;if(u._pad)delete u._pad;
@@ -390,13 +419,7 @@ function updateRatchetIndicator(){
     indicator.style.color=color;indicator.style.background='rgba(0,0,0,0.3)';indicator.textContent=icon+' '+ri;indicator.title='Ratchet: '+ri+' оборотов';
 }
 
-function updateRequestsBadge(){
-    const btn=document.getElementById('btn-requests');
-    if(!btn)return;
-    if(incomingBeacons.length>0){btn.classList.add('blink');}else{btn.classList.remove('blink');}
-}
-
-// ========== ИНТЕРФЕЙС ==========
+// ========== ИНТЕРФЕЙС (НЕ ТРОГАТЬ) ==========
 let contacts=[],activeChannelId=null,activePeerId=null,selectedAvatar='001';
 let toggleSoundState=!0,selfDestructMode=!1,peerHelpEnabled=!1;
 let pc=null,localStream=null,callActive=!1,incomingOffer=null,ringtoneAudio=null,ringbackAudio=null;
@@ -463,6 +486,7 @@ function toggleVoiceRecording(){voiceRecording?stopVoiceRecording():startVoiceRe
 function startVoiceRecording(){if(voiceRecorder?.state==='recording')return;navigator.mediaDevices.getUserMedia({audio:true}).then(st=>{voiceStream=st;voiceRecorder=new MediaRecorder(st,{mimeType:'audio/webm; codecs=opus',audioBitsPerSecond:16000});voiceChunks=[];voiceRecorder.ondataavailable=e=>voiceChunks.push(e.data);voiceRecorder.onstop=()=>{const blob=new Blob(voiceChunks,{type:'audio/webm'});if(blob.size>100&&blob.size<300000&&activeChannelId){const reader=new FileReader();reader.onload=async()=>{const b64=reader.result.split(',')[1];await sendBlobToChannel(activeChannelId,JSON.stringify({voice:true,data:b64}));appendMessage('Вы','🎤 Голосовое','assets/avatar/'+selectedAvatar+'ava.png')};reader.readAsDataURL(blob)}if(voiceStream){voiceStream.getTracks().forEach(t=>t.stop());voiceStream=null}voiceRecorder=null;voiceRecording=!1;stopVoiceTimer();document.getElementById('btn-voice-input').style.background='';showVoiceWave(false)};voiceRecorder.start();voiceRecording=!0;startVoiceTimer();document.getElementById('btn-voice-input').style.background='#f44336';showVoiceWave(true)}).catch(()=>rMsg('❌ Нет микрофона'))}
 function stopVoiceRecording(){if(voiceRecorder?.state==='recording')voiceRecorder.stop()}
 function playVoiceBlob(b64){const a=new Audio('data:audio/webm;base64,'+b64);a.play().catch(()=>{})}
+async function reconnectChannel(id){const ch=PP4._channels[id];if(!ch||ch.reconnecting)return;ch.reconnecting=true;const kp=await generateKeyPair();const pk=await exportPublicKey(kp);const rid=RND();pendingDH[rid]={keyPair:kp};if(PP4._ws)PP4._ws.send(JSON.stringify({action:'reconnect',channelId:id,targetPeerId:ch.peerId,pubKey:pk,requestId:rid,fromPeerId:PP4._peerId}));}
 async function destroySession(){if(!confirm('⚠ ПОЛНЫЙ СБРОС!'))return;hang(!1);['PP','RobinHoodContacts'].forEach(n=>{try{indexedDB.deleteDatabase(n)}catch(e){}});localStorage.clear();const box=document.getElementById('chat-box');if(box)box.querySelectorAll('.message-row').forEach(m=>m.remove());playSmokeAnimation();playSound('clear cache.mp3');rMsg('🔥 Всё скурили!',5000);setConnectionStatus('offline');applyTheme('paper');const pas=document.getElementById('profile-avatar-small');if(pas)pas.src='assets/avatar/001ava.png';document.getElementById('robin-avatar').src='assets/avatar/001ava.png';const nl=document.getElementById('nick-label');if(nl)nl.textContent='Твой ник';const ls=document.getElementById('lock-status');if(ls)ls.textContent='Не задан';document.body.classList.remove('custom-bg');document.body.style.removeProperty('--custom-bg');const bs=document.getElementById('bg-status');if(bs)bs.textContent='Не задан';contacts=[];saveContacts();renderContacts()}
 
 async function initApp(){
@@ -477,12 +501,18 @@ async function initApp(){
     const isPWA=window.matchMedia('(display-mode: standalone)').matches||navigator.standalone||false;
     const si=document.getElementById('setting-install');if(!isPWA&&si)si.classList.remove('hidden');
 
+    // Кнопка Стрела — открыть Колчан
     document.getElementById('btn-arrow')?.addEventListener('click',()=>{document.getElementById('arrow-modal')?.classList.add('active');});
+    // Создать маяк — Понг командует
     document.getElementById('btn-create-beacon')?.addEventListener('click',()=>{createBeacon();});
+    // Закрыть модалку
     document.getElementById('close-arrow-modal')?.addEventListener('click',()=>{document.getElementById('arrow-modal')?.classList.remove('active');});
     document.getElementById('arrow-modal')?.addEventListener('click',function(e){if(e.target===this)this.classList.remove('active');});
-    document.getElementById('btn-requests')?.addEventListener('click',()=>{acceptIncomingBeacon();});
+    // Кнопка Заявки — Понг проверяет пользователя
+    document.getElementById('btn-requests')?.addEventListener('click',()=>{ponkConfirm();});
+    // Скурить чат
     document.getElementById('btn-clear')?.addEventListener('click',()=>{const box=document.getElementById('chat-box');if(box)box.querySelectorAll('.message-row').forEach(m=>m.remove());playSmokeAnimation();playSound('clear cache.mp3');rMsg('🚬 Чат скурили!',5000)});
+    // Настройки
     document.getElementById('btn-settings')?.addEventListener('click',()=>{closeSheets();document.getElementById('settings-sheet')?.classList.add('open');document.getElementById('overlay')?.classList.add('show')});
     document.getElementById('settings-close')?.addEventListener('click',closeSheets);
     document.getElementById('contacts-close')?.addEventListener('click',closeSheets);
