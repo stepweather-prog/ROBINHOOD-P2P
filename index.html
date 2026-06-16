@@ -168,7 +168,7 @@
 <div id="app-container" style="display:none;flex-direction:column;height:100%;">
 <div class="leaves-container" id="leaves-container"></div>
 <div class="header">
-    <div class="header-row-1"><span class="header-title-text">ROBINHOOD P2P</span><span class="header-shield">🏹</span><span class="header-datetime"><span id="header-date"></span> <span id="header-time"></span></span><span class="version-text">Улей v2.5</span></div>
+    <div class="header-row-1"><span class="header-title-text">ROBINHOOD P2P</span><span class="header-shield">🏹</span><span class="header-datetime"><span id="header-date"></span> <span id="header-time"></span></span><span class="version-text">Улей v3.0</span></div>
     <div class="header-row-2">
         <div class="header-btn" id="btn-avatar"><img src="assets/avatar/001ava.png" class="header-avatar" id="profile-avatar-small" alt="avatar"></div>
         <div class="header-btn" id="btn-arrow"><img src="assets/icons/08icon.png" alt="arrow"></div>
@@ -177,7 +177,7 @@
         <div class="header-btn" id="btn-settings"><img src="assets/icons/11icon.png" alt="settings"></div>
     </div>
     <div class="header-row-3"><span class="header-label" id="nick-label">Твой ник</span><span class="header-label">Стрела</span><span class="header-label" id="call-label">Звонок</span><span class="header-label">Скурить чат</span><span class="header-label" id="settings-label">Опции</span></div>
-    <div class="robin-bar"><img src="assets/avatar/001ava.png" class="robin-bar-avatar" id="robin-avatar"><div class="robin-bar-text"><div class="robin-bar-sender" id="robin-bar-sender">Robin Hood</div><div class="robin-bar-msg" id="robin-text">Слепой Улей + Ratchet</div></div><div class="robin-bar-status"><span class="ratchet-indicator" id="ratchet-indicator" style="display:none;">🔄 0</span><img src="assets/icons/05icon.png" id="connection-icon" alt="status"><span class="cup-indicator" id="cup-indicator" style="display:none;">&nbsp;🍺<span id="cup-blobs">0/10</span>&nbsp;⏱<span id="cup-timer">10:00</span></span></div></div>
+    <div class="robin-bar"><img src="assets/avatar/001ava.png" class="robin-bar-avatar" id="robin-avatar"><div class="robin-bar-text"><div class="robin-bar-sender" id="robin-bar-sender">Robin Hood</div><div class="robin-bar-msg" id="robin-text">Слепой Улей v3.0</div></div><div class="robin-bar-status"><span class="ratchet-indicator" id="ratchet-indicator" style="display:none;">🔄 0</span><img src="assets/icons/05icon.png" id="connection-icon" alt="status"><span class="cup-indicator" id="cup-indicator" style="display:none;">&nbsp;🍺<span id="cup-blobs">0/10</span>&nbsp;⏱<span id="cup-timer">10:00</span></span></div></div>
 </div>
 <div class="chat-area" id="chat-box"><div class="typing-indicator" id="typing-indicator"></div></div>
 <div class="input-area">
@@ -226,7 +226,7 @@
 <div id="bow-above-send"></div>
 </div>
 <script>
-// ==================== PP4 + DHT + GZIP + RATCHET v2.5 ====================
+// ==================== PP4 + DHT + GZIP + RATCHET v3.0 — ЧИСТЫЙ ИНТЕРФЕЙС ====================
 const PP4={_peerId:null,_beacons:{},_channels:{},_ws:null,_wsUrl:'wss://robincall.stephanclaps-491.workers.dev/ws',_wsReconnectDelay:1000,_maxReconnectDelay:30000};
 const DHT={_nodeId:null,_buckets:[],_storage:{},_k:20,_alpha:3,_peers:new Map(),_signalSend:null};
 if(!window.crypto?.subtle)throw new Error('Требуется HTTPS');
@@ -239,62 +239,15 @@ async function importPublicKey(b64){const r=Uint8Array.from(atob(b64),c=>c.charC
 async function deriveSecret(kp,remotePubKey){const b=await crypto.subtle.deriveBits({name:'ECDH',public:remotePubKey},kp.privateKey,256);return Array.from(new Uint8Array(b)).map(b=>b.toString(16).padStart(2,'0')).join('');}
 async function encryptAES(text,secret){const k=await crypto.subtle.importKey('raw',new TextEncoder().encode(secret.substring(0,32)),{name:'AES-GCM'},false,['encrypt']);const iv=crypto.getRandomValues(new Uint8Array(12));const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},k,new TextEncoder().encode(text));const c=new Uint8Array(iv.length+new Uint8Array(ct).length);c.set(iv);c.set(new Uint8Array(ct),iv.length);return btoa(String.fromCharCode(...c));}
 async function decryptAES(enc,secret){try{const k=await crypto.subtle.importKey('raw',new TextEncoder().encode(secret.substring(0,32)),{name:'AES-GCM'},false,['decrypt']);const c=Uint8Array.from(atob(enc),x=>x.charCodeAt(0));return new TextDecoder().decode(await crypto.subtle.decrypt({name:'AES-GCM',iv:c.slice(0,12)},k,c.slice(12)));}catch(e){return null;}}
-
-// ========== GZIP ==========
 async function compressData(str){try{const data=new TextEncoder().encode(str);const cs=new CompressionStream('gzip');const writer=cs.writable.getWriter();writer.write(data);writer.close();const reader=cs.readable.getReader();const chunks=[];while(true){const{done,value}=await reader.read();if(done)break;chunks.push(value);}const totalLength=chunks.reduce((s,c)=>s+c.length,0);const combined=new Uint8Array(totalLength);let offset=0;for(const chunk of chunks){combined.set(chunk,offset);offset+=chunk.length;}return btoa(String.fromCharCode(...combined));}catch(e){return btoa(str);}}
 async function decompressData(b64){try{const bytes=Uint8Array.from(atob(b64),c=>c.charCodeAt(0));const ds=new DecompressionStream('gzip');const writer=ds.writable.getWriter();writer.write(bytes);writer.close();const reader=ds.readable.getReader();const chunks=[];while(true){const{done,value}=await reader.read();if(done)break;chunks.push(value);}const totalLength=chunks.reduce((s,c)=>s+c.length,0);const combined=new Uint8Array(totalLength);let offset=0;for(const chunk of chunks){combined.set(chunk,offset);offset+=chunk.length;}return new TextDecoder().decode(combined);}catch(e){return atob(b64);}}
-
-// ========== HMAC + RATCHET ==========
 async function computeHMAC(data,secret){const hmacKey=await crypto.subtle.importKey('raw',new TextEncoder().encode(secret.substring(0,32)),{name:'HMAC',hash:'SHA-256'},false,['sign']);const signature=await crypto.subtle.sign('HMAC',hmacKey,new TextEncoder().encode(data));return btoa(String.fromCharCode(...new Uint8Array(signature)));}
 async function verifyHMAC(data,signature,secret){try{const hmacKey=await crypto.subtle.importKey('raw',new TextEncoder().encode(secret.substring(0,32)),{name:'HMAC',hash:'SHA-256'},false,['verify']);const sigBytes=Uint8Array.from(atob(signature),c=>c.charCodeAt(0));return await crypto.subtle.verify('HMAC',hmacKey,sigBytes,new TextEncoder().encode(data));}catch(e){return false;}}
 async function advanceRatchet(ch){const oldKey=ch.ratchetKey||ch.secret;const salt=(ch.ratchetIndex||0).toString(16).padStart(16,'0');const newKey=await SHA(oldKey+salt);ch.ratchetKey=newKey;ch.ratchetIndex=(ch.ratchetIndex||0)+1;if(!ch.oldKeys)ch.oldKeys=[];ch.oldKeys.push({index:ch.ratchetIndex-1,key:oldKey});if(ch.oldKeys.length>50)ch.oldKeys.shift();updateRatchetIndicator();return newKey;}
-
-async function packBlob(jsonString,ch){
-    const compressed=await compressData(jsonString);
-    const padSize=Math.floor(Math.random()*50)+20;
-    const randomPad=btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(padSize))));
-    const data=JSON.stringify({z:compressed,t:Date.now(),n:RND(),pad:randomPad,ri:ch.ratchetIndex||0});
-    const currentKey=ch.ratchetKey||ch.secret;
-    const hmac=await computeHMAC(data,currentKey);
-    const packed=hmac+'|'+data;
-    let padded=packed;
-    if(padded.length<4096){const pad=crypto.getRandomValues(new Uint8Array(4096-padded.length));padded+=String.fromCharCode(...pad);}
-    else padded=padded.substring(0,4096);
-    await advanceRatchet(ch);
-    return await encryptAES(padded,ch.secret);
-}
-
-async function tryDecryptWithKey(decrypted,key){
-    const separatorIndex=decrypted.indexOf('|');
-    if(separatorIndex===-1)return null;
-    const hmac=decrypted.substring(0,separatorIndex);
-    const data=decrypted.substring(separatorIndex+1).trim().replace(/\x00+$/,'');
-    const valid=await verifyHMAC(data,hmac,key);
-    if(!valid)return null;
-    try{const parsed=JSON.parse(data);
-        if(parsed.z){const decompressed=await decompressData(parsed.z);const inner=JSON.parse(decompressed);inner._t=parsed.t;inner._ri=parsed.ri;return inner;}
-        delete parsed.pad;delete parsed.ri;return parsed;
-    }catch(e){return null;}
-}
-
-async function unpackBlob(blob,ch){
-    const dec=await decryptAES(blob,ch.secret);
-    if(!dec)return null;
-    let result=await tryDecryptWithKey(dec,ch.ratchetKey||ch.secret);
-    if(result)return result;
-    if(ch.oldKeys){for(let i=ch.oldKeys.length-1;i>=0;i--){result=await tryDecryptWithKey(dec,ch.oldKeys[i].key);if(result)return result;}}
-    return null;
-}
-
-async function requestRatchetResync(ch){
-    const chId=Object.keys(PP4._channels).find(id=>PP4._channels[id]===ch);
-    if(!chId)return;
-    const resyncData=JSON.stringify({type:'ratchet-resync',secret:ch.secret,peerId:PP4._peerId});
-    const packed=await encryptAES(resyncData,ch.secret);
-    broadcastBlob(packed,chId);
-    rMsg('🔄 Ресинхронизация ratchet...',3000);
-}
-
+async function packBlob(jsonString,ch){const compressed=await compressData(jsonString);const padSize=Math.floor(Math.random()*50)+20;const randomPad=btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(padSize))));const data=JSON.stringify({z:compressed,t:Date.now(),n:RND(),pad:randomPad,ri:ch.ratchetIndex||0});const currentKey=ch.ratchetKey||ch.secret;const hmac=await computeHMAC(data,currentKey);const packed=hmac+'|'+data;let padded=packed;if(padded.length<4096){const pad=crypto.getRandomValues(new Uint8Array(4096-padded.length));padded+=String.fromCharCode(...pad);}else padded=padded.substring(0,4096);await advanceRatchet(ch);return await encryptAES(padded,ch.secret);}
+async function tryDecryptWithKey(decrypted,key){const separatorIndex=decrypted.indexOf('|');if(separatorIndex===-1)return null;const hmac=decrypted.substring(0,separatorIndex);const data=decrypted.substring(separatorIndex+1).trim().replace(/\x00+$/,'');const valid=await verifyHMAC(data,hmac,key);if(!valid)return null;try{const parsed=JSON.parse(data);if(parsed.z){const decompressed=await decompressData(parsed.z);const inner=JSON.parse(decompressed);inner._t=parsed.t;inner._ri=parsed.ri;return inner;}delete parsed.pad;delete parsed.ri;return parsed;}catch(e){return null;}}
+async function unpackBlob(blob,ch){const dec=await decryptAES(blob,ch.secret);if(!dec)return null;let result=await tryDecryptWithKey(dec,ch.ratchetKey||ch.secret);if(result)return result;if(ch.oldKeys){for(let i=ch.oldKeys.length-1;i>=0;i--){result=await tryDecryptWithKey(dec,ch.oldKeys[i].key);if(result)return result;}}return null;}
+async function requestRatchetResync(ch){const chId=Object.keys(PP4._channels).find(id=>PP4._channels[id]===ch);if(!chId)return;const resyncData=JSON.stringify({type:'ratchet-resync',secret:ch.secret,peerId:PP4._peerId});const packed=await encryptAES(resyncData,ch.secret);broadcastBlob(packed,chId);rMsg('🔄 Ресинхронизация ratchet...',3000);}
 function saveChannels(){const d=Object.entries(PP4._channels).map(([id,ch])=>({id,peerId:ch.peerId,type:ch.type,expires:ch.expires,createdAt:ch.createdAt}));localStorage.setItem('pp4_channels',JSON.stringify(d));}
 function loadChannels(){try{const r=localStorage.getItem('pp4_channels');if(!r)return;JSON.parse(r).forEach(ch=>{if(Date.now()<ch.expires)PP4._channels[ch.id]={...ch,blobs:[],secret:null,reconnect:true};});}catch(e){}}
 let pendingDH={};
@@ -311,7 +264,7 @@ async function connectToPeerDHT(peerId){const pc=new RTCPeerConnection({iceServe
 function connectWS(){if(PP4._ws&&PP4._ws.readyState===WebSocket.OPEN)return;try{PP4._ws=new WebSocket(PP4._wsUrl);}catch(e){setTimeout(connectWS,PP4._wsReconnectDelay);PP4._wsReconnectDelay=Math.min(PP4._wsReconnectDelay*2,PP4._maxReconnectDelay);return;}PP4._ws.onopen=()=>{PP4._wsReconnectDelay=1000;setConnectionStatus('online');PP4._ws.send(JSON.stringify({action:'subscribe',peerId:PP4._peerId}));};PP4._ws.onmessage=async e=>{let m;try{m=JSON.parse(e.data);}catch(er){return;}if(m.type==='dht-signal'&&m.from!==DHT._nodeId){await handleSignal(m.from,m.data);return;}if(m.type==='blob'){handleIncomingBlob(m.blob,m.channelId);return;}};PP4._ws.onclose=()=>{setConnectionStatus('offline');setTimeout(connectWS,PP4._wsReconnectDelay);PP4._wsReconnectDelay=Math.min(PP4._wsReconnectDelay*2,PP4._maxReconnectDelay);};}
 DHT._signalSend=(targetPeerId,data)=>{if(PP4._ws?.readyState===WebSocket.OPEN)PP4._ws.send(JSON.stringify({action:'dht-signal',targetPeerId,from:DHT._nodeId,data}));};
 
-// ========== СЛЕПОЙ УЛЕЙ ==========
+// ========== СЛЕПОЙ УЛЕЙ — ВСЯ ЛОГИКА НА КЛИЕНТЕ ==========
 const BLOB_NS='00000000000000000000000000000000';
 
 async function createBeacon(){
@@ -326,6 +279,7 @@ async function createBeacon(){
     document.getElementById('beacon-display').textContent=PP4._peerId;
 }
 
+// Кнопка «Подключиться» просто отправляет маяк с targetPeerId — P2PPong сам разберётся
 async function connectByPeerId(){
     const targetId=document.getElementById('peer-id-input').value.trim();
     if(!targetId){rMsg('Введи Peer ID',3000);return;}
@@ -355,11 +309,8 @@ async function handleIncomingBlob(blobData,channelId){
     // Ответ на наш маяк
     if(data.type==='beacon-response'&&data.pubKey&&data.inner){
         for(const[bid,b]of Object.entries(PP4._beacons)){
-            if(!b.beaconKey)continue;
-            const dec=await decryptAES(data.inner,b.beaconKey);
-            if(!dec)continue;
-            let payload;try{payload=JSON.parse(dec);}catch(e){continue;}
-            if(payload.nonce!==b.nonce)continue;
+            if(!b.beaconKey)continue;const dec=await decryptAES(data.inner,b.beaconKey);if(!dec)continue;
+            let payload;try{payload=JSON.parse(dec);}catch(e){continue;}if(payload.nonce!==b.nonce)continue;
             const remotePubKey=await importPublicKey(data.pubKey);const ss=await deriveSecret(b.keyPair,remotePubKey);const chId=RND();
             PP4._channels[chId]={secret:ss,ratchetKey:ss,ratchetIndex:0,oldKeys:[],peerId:data.peerId,type:'cup',blobs:[],expires:Date.now()+600000,createdAt:Date.now()};
             delete PP4._beacons[bid];saveChannels();addContact({peerId:data.peerId,name:'Лучник',channelId:chId,verified:false,avatar:'001'});
@@ -368,55 +319,18 @@ async function handleIncomingBlob(blobData,channelId){
         }
     }
     // Ресинхронизация ratchet
-    if(data.type==='ratchet-resync'&&data.secret){
-        const chId=Object.keys(PP4._channels).find(id=>PP4._channels[id].peerId===data.peerId);
-        if(chId){const ch=PP4._channels[chId];ch.ratchetKey=data.secret;ch.ratchetIndex=0;ch.oldKeys=[];rMsg('✅ Ratchet перезапущен',3000);updateRatchetIndicator();}return;
-    }
+    if(data.type==='ratchet-resync'&&data.secret){const chId=Object.keys(PP4._channels).find(id=>PP4._channels[id].peerId===data.peerId);if(chId){const ch=PP4._channels[chId];ch.ratchetKey=data.secret;ch.ratchetIndex=0;ch.oldKeys=[];rMsg('✅ Ratchet перезапущен',3000);updateRatchetIndicator();}return;}
     // Обычное сообщение
-    for(const[id,ch]of Object.entries(PP4._channels)){
-        if(!ch.ratchetKey)continue;
-        const u=await unpackBlob(blobData,ch);
-        if(!u)continue;
-        if(u._pad)delete u._pad;
-        if(u.webrtc){await handleWebRTC(u,id);return;}
-        if(u.voice){const ct=contacts.find(c=>c.channelId===id);if(id===activeChannelId)appendMessage(ct?.name||'Друг','🎤 Голосовое',ct?.avatar);playVoiceBlob(u.data);return;}
-        ch.blobs.push({...u,from:'them'});ch.expires=Date.now()+600000;saveChannels();
-        const ct=contacts.find(c=>c.channelId===id);const sn=ct?.name||'Друг';
-        if(id===activeChannelId)appendMessage(sn,u.d||u.text||'',ct?.avatar);else rMsg('Новое от '+sn,3000);
-        updateCupIndicator();playSound('arrow_hit.wav');return;
-    }
+    for(const[id,ch]of Object.entries(PP4._channels)){if(!ch.ratchetKey)continue;const u=await unpackBlob(blobData,ch);if(!u)continue;if(u._pad)delete u._pad;
+        if(u.webrtc){await handleWebRTC(u,id);return;}if(u.voice){const ct=contacts.find(c=>c.channelId===id);if(id===activeChannelId)appendMessage(ct?.name||'Друг','🎤 Голосовое',ct?.avatar);playVoiceBlob(u.data);return;}
+        ch.blobs.push({...u,from:'them'});ch.expires=Date.now()+600000;saveChannels();const ct=contacts.find(c=>c.channelId===id);const sn=ct?.name||'Друг';
+        if(id===activeChannelId)appendMessage(sn,u.d||u.text||'',ct?.avatar);else rMsg('Новое от '+sn,3000);updateCupIndicator();playSound('arrow_hit.wav');return;}
 }
-
-function broadcastBlob(packed,channelId){
-    const dhtPeers=getClosestPeers(channelId||BLOB_NS,3).filter(p=>p.conn?.readyState==='open');
-    if(dhtPeers.length>0){for(const p of dhtPeers)sendToPeer(p.id,{type:'blob',channelId:channelId||BLOB_NS,blob:packed});return;}
-    if(PP4._ws)PP4._ws.send(JSON.stringify({type:'blob',channelId:channelId||BLOB_NS,blob:packed,peerId:PP4._peerId}));
-}
-
-async function sendBlobToChannel(channelId,data){
-    const ch=PP4._channels[channelId];
-    if(!ch||!ch.ratchetKey)return false;
-    const packed=await packBlob(data,ch);
-    broadcastBlob(packed,channelId);
-    return true;
-}
+function broadcastBlob(packed,channelId){const dhtPeers=getClosestPeers(channelId||BLOB_NS,3).filter(p=>p.conn?.readyState==='open');if(dhtPeers.length>0){for(const p of dhtPeers)sendToPeer(p.id,{type:'blob',channelId:channelId||BLOB_NS,blob:packed});return;}if(PP4._ws)PP4._ws.send(JSON.stringify({type:'blob',channelId:channelId||BLOB_NS,blob:packed,peerId:PP4._peerId}));}
+async function sendBlobToChannel(channelId,data){const ch=PP4._channels[channelId];if(!ch||!ch.ratchetKey)return false;const packed=await packBlob(data,ch);broadcastBlob(packed,channelId);return true;}
 
 // ========== RATCHET ИНДИКАТОР ==========
-function updateRatchetIndicator(){
-    const chId=activeChannelId||Object.keys(PP4._channels)[0];
-    const ch=chId?PP4._channels[chId]:null;
-    const indicator=document.getElementById('ratchet-indicator');
-    if(!indicator)return;
-    if(!ch||!ch.ratchetKey){indicator.style.display='none';return;}
-    indicator.style.display='inline';
-    const ri=ch.ratchetIndex||0;
-    let color,icon;
-    if(ri===0){color='var(--danger)';icon='⚠️';}
-    else if(ri<10){color='orange';icon='🔄';}
-    else if(ri<50){color='var(--accent)';icon='🔒';}
-    else{color='var(--seeding-color)';icon='🔐';}
-    indicator.style.color=color;indicator.style.background='rgba(0,0,0,0.3)';indicator.textContent=icon+' '+ri;indicator.title='Ratchet: '+ri+' оборотов';
-}
+function updateRatchetIndicator(){const chId=activeChannelId||Object.keys(PP4._channels)[0];const ch=chId?PP4._channels[chId]:null;const indicator=document.getElementById('ratchet-indicator');if(!indicator)return;if(!ch||!ch.ratchetKey){indicator.style.display='none';return;}indicator.style.display='inline';const ri=ch.ratchetIndex||0;let color,icon;if(ri===0){color='var(--danger)';icon='⚠️';}else if(ri<10){color='orange';icon='🔄';}else if(ri<50){color='var(--accent)';icon='🔒';}else{color='var(--seeding-color)';icon='🔐';}indicator.style.color=color;indicator.style.background='rgba(0,0,0,0.3)';indicator.textContent=icon+' '+ri;indicator.title='Ratchet: '+ri+' оборотов';}
 
 // ========== ИНТЕРФЕЙС ==========
 let contacts=[],activeChannelId=null,activePeerId=null,selectedAvatar='001';
@@ -439,8 +353,7 @@ function playSmokeAnimation(){const smoke=document.createElement('div');smoke.cl
 function closeSheets(){document.getElementById('avatar-selector')?.classList.remove('show');document.getElementById('contacts-sheet')?.classList.remove('open');document.getElementById('settings-sheet')?.classList.remove('open');document.getElementById('overlay')?.classList.remove('show');}
 function updateDateTime(){const now=new Date();const de=document.getElementById('header-date');const te=document.getElementById('header-time');if(de)de.textContent=now.toLocaleDateString('ru-RU',{day:'2-digit',month:'2-digit',year:'numeric'});if(te)te.textContent=now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}
 setInterval(updateDateTime,1000);updateDateTime();
-function resetInactivityTimer(){clearTimeout(inactivityTimer);document.getElementById('leaves-container')?.classList.remove('sleeping');inactivityTimer=setTimeout(()=>{document.getElementById('leaves-container')?.classList.add('sleeping')},30000)}
-let inactivityTimer;
+function resetInactivityTimer(){clearTimeout(inactivityTimer);document.getElementById('leaves-container')?.classList.remove('sleeping');inactivityTimer=setTimeout(()=>{document.getElementById('leaves-container')?.classList.add('sleeping')},30000)}let inactivityTimer;
 document.addEventListener('pointermove',resetInactivityTimer);document.addEventListener('pointerdown',resetInactivityTimer);document.addEventListener('keypress',resetInactivityTimer);
 window.addEventListener('blur',()=>document.getElementById('leaves-container')?.classList.add('sleeping'));
 window.addEventListener('focus',()=>{document.getElementById('leaves-container')?.classList.remove('sleeping');resetInactivityTimer()});
@@ -456,7 +369,6 @@ function showActiveControls(show){const ac=document.getElementById('active-call-
 const themes=[{id:'forest',name:'Лес'},{id:'sunset',name:'Закат'},{id:'ocean',name:'Океан'},{id:'rose',name:'Роза'},{id:'amber',name:'Янтарь'},{id:'mint',name:'Мята'},{id:'lavender',name:'Лаванда'},{id:'cherry',name:'Вишня'},{id:'emerald',name:'Изумруд'},{id:'slate',name:'Сланец'},{id:'coral',name:'Коралл'},{id:'plum',name:'Слива'},{id:'morning',name:'Утро'},{id:'paper',name:'Бумага'}];
 function applyTheme(id){document.documentElement.setAttribute('data-theme',id);localStorage.setItem('robinhood_theme',id);const t=themes.find(t=>t.id===id)||themes[0];const tn=document.getElementById('theme-name');if(tn)tn.textContent=t.name}
 function generateRandomTheme(){const hue=Math.floor(Math.random()*360),sat=40+Math.floor(Math.random()*50),bgLight=5+Math.floor(Math.random()*15),bgDark=2+Math.floor(Math.random()*8),id='random_'+Date.now();const s=`[data-theme="${id}"]{--bg-primary:hsl(${hue},${sat}%,${bgLight}%);--bg-secondary:hsl(${hue},${sat-10}%,${bgDark}%);--accent:hsl(${(hue+30)%360},${sat+10}%,50%);--accent-light:hsl(${(hue+30)%360},${sat+20}%,70%);--text:hsl(${hue},20%,85%);--text-bright:hsl(${hue},25%,92%);--text-dim:hsl(${hue},15%,60%);--border:hsl(${(hue+30)%360},${sat+10}%,50%);--btn-bg:hsla(${(hue+30)%360},${sat+10}%,50%,0.1);--btn-border:hsla(${(hue+30)%360},${sat+10}%,50%,0.3);--btn-hover:hsla(${(hue+30)%360},${sat+10}%,50%,0.25);--sheet-bg:linear-gradient(145deg,hsl(${hue},${sat}%,${bgLight}%)0%,hsl(${hue},${sat-10}%,${bgDark}%)100%);--input-bg:hsla(${hue},${sat-10}%,${bgLight+2}%,0.9);--msg-bg:hsla(${hue},${sat-5}%,${bgLight+3}%,0.85);--msg-accent:hsl(${(hue+30)%360},${sat+10}%,50%);--robin-bg:hsla(${hue},${sat}%,${bgLight+8}%,0.9);--robin-accent:hsl(${(hue+30)%360},${sat+20}%,65%);--overlay-bg:rgba(0,0,0,0.6);--call-bg:linear-gradient(180deg,hsl(${hue},${sat}%,${bgLight}%)0%,hsl(${hue},${sat-10}%,${bgDark}%)100%);--call-btn-bg:hsla(${(hue+30)%360},${sat+10}%,50%,0.1);--call-btn-border:hsla(${(hue+30)%360},${sat+10}%,50%,0.3);--input-text:hsl(${hue},20%,85%)}`;let el=document.getElementById('gen-theme');if(!el){el=document.createElement('style');el.id='gen-theme';document.head.appendChild(el);}el.textContent=s;document.documentElement.setAttribute('data-theme',id);const tn=document.getElementById('theme-name');if(tn)tn.textContent='Авто';localStorage.setItem('robinhood_theme',id)}
-
 function loadAvatars(){const list=document.getElementById('avatar-list');if(!list)return;list.innerHTML='';avatars.forEach(src=>{const img=document.createElement('img');img.src=src;img.className='avatar-option';img.onerror=()=>img.src='assets/avatar/001ava.png';img.onclick=()=>{const pas=document.getElementById('profile-avatar-small');if(pas)pas.src=src;document.getElementById('robin-avatar').src=src;localStorage.setItem('robinhood_avatar',src);closeSheets();rMsg('🖼 Аватар обновлён');};list.appendChild(img);})}
 async function saveBgToDB(dataUrl){try{const db=await new Promise(r=>{const req=indexedDB.open('PP',1);req.onsuccess=()=>r(req.result)});db.transaction('bg','readwrite').objectStore('bg').put({k:'custom_bg',v:dataUrl})}catch(e){}}
 async function getBgFromDB(){try{const db=await new Promise(r=>{const req=indexedDB.open('PP',1);req.onsuccess=()=>r(req.result)});return await new Promise(res=>{const q=db.transaction('bg','readonly').objectStore('bg').get('custom_bg');q.onsuccess=()=>res(q.result?.v||null);q.onerror=()=>res(null)})}catch(e){return null}}
@@ -470,8 +382,6 @@ function updateCupIndicator(){const chId=activeChannelId||Object.keys(PP4._chann
 function updateUI(){const rt=document.getElementById('robin-text');if(rt)rt.textContent=`Каналов: ${Object.keys(PP4._channels).length} | DHT: ${DHT._peers.size}`;}
 function appendMessage(sender,text,avatarSrc,audioData,audioMime){const box=document.getElementById('chat-box');const row=document.createElement('div');row.className='message-row';const time=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});const av=avatarSrc||'assets/avatar/'+selectedAvatar+'ava.png';if(audioData&&audioMime&&audioMime.startsWith('audio/')){const player=createAudioPlayer(audioData,audioMime);row.innerHTML=`<img src="${av}" class="avatar" onerror="this.src='assets/avatar/001ava.png'"><div class="msg-body"><div class="msg-sender">${safeHtml(sender)}</div></div>`;row.querySelector('.msg-body').appendChild(player);const ts=document.createElement('div');ts.className='msg-status';ts.textContent=time;row.querySelector('.msg-body').appendChild(ts);}else{row.innerHTML=`<img src="${av}" class="avatar" onerror="this.src='assets/avatar/001ava.png'"><div class="msg-body"><div class="msg-sender">${safeHtml(sender)}</div><div>${safeHtml(text)}</div><div class="msg-status">${time}</div></div>`}const msgId='msg_'+Date.now()+Math.random();row.dataset.msgId=msgId;box.insertBefore(row,document.getElementById('typing-indicator'));box.scrollTop=box.scrollHeight;if(selfDestructMode){setTimeout(()=>{const el=document.querySelector(`[data-msg-id="${msgId}"]`);if(el){el.style.transition='opacity 0.5s';el.style.opacity='0';setTimeout(()=>{if(el.parentNode)el.remove()},500)}},30000)}}
 function createAudioPlayer(audioData,audioMime){const container=document.createElement('div');container.className='audio-player audio-paused';const audio=new Audio('data:'+audioMime+';base64,'+audioData);let isPlaying=false;const playBtn=document.createElement('button');playBtn.className='audio-play-btn';playBtn.textContent='▶';const waveDiv=document.createElement('div');waveDiv.className='audio-wave';for(let i=0;i<8;i++){const bar=document.createElement('div');bar.className='audio-wave-bar';waveDiv.appendChild(bar)}const timeSpan=document.createElement('span');timeSpan.className='audio-time';timeSpan.textContent='0:00';playBtn.addEventListener('click',()=>{if(isPlaying){audio.pause();container.classList.remove('audio-playing');container.classList.add('audio-paused');playBtn.textContent='▶'}else{audio.play();container.classList.remove('audio-paused');container.classList.add('audio-playing');playBtn.textContent='⏸'}isPlaying=!isPlaying});audio.addEventListener('timeupdate',()=>{const m=Math.floor(audio.currentTime/60);const s=Math.floor(audio.currentTime%60).toString().padStart(2,'0');timeSpan.textContent=m+':'+s});audio.addEventListener('ended',()=>{container.classList.remove('audio-playing');container.classList.add('audio-paused');playBtn.textContent='▶';isPlaying=false});container.appendChild(playBtn);container.appendChild(waveDiv);container.appendChild(timeSpan);return container;}
-
-// ========== ЗВОНКИ ==========
 async function getMediaStream(video=false,facingMode='user'){try{return await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:!0,noiseSuppression:!0},video:video?{width:{ideal:320},height:{ideal:240},facingMode}:false})}catch(e){return null}}
 function createPC(){if(pc){pc.close();pc=null}iceBuffer=[];if(iceFlushTimer)clearTimeout(iceFlushTimer);pc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'},{urls:'stun:stun2.l.google.com:19302'}]});if(localStream)localStream.getTracks().forEach(t=>pc.addTrack(t,localStream));pc.ontrack=e=>{if(e.streams[0]){const a=new Audio();a.srcObject=e.streams[0];a.play().catch(()=>{})}};pc.onicecandidate=e=>{if(e.candidate){iceBuffer.push(e.candidate);}else{iceFlushTimer=setTimeout(()=>{iceBuffer.forEach(c=>sendWebRTCMsg('webrtc-ice',JSON.stringify(c)));iceBuffer=[];},300);}};pc.onconnectionstatechange=()=>{if(pc.connectionState=='connected'){callActive=!0;stopRingback();stopRingtone();document.getElementById('call-status').textContent='✅ Разговор';showIncomingControls(false);showActiveControls(true);showCallWave(true);playSound('open.mp3')}if(pc.connectionState=='disconnected'||pc.connectionState=='failed')hang(!1)};return pc}
 async function sendWebRTCMsg(type,sdp){if(!activeChannelId)return;await sendBlobToChannel(activeChannelId,JSON.stringify({webrtc:type,sdp}));}
@@ -483,15 +393,12 @@ async function startCall(){if(callActive||!activeChannelId){rMsg('❌ Нет к�
 async function acceptCall(){if(!incomingOffer||!activeChannelId)return;stopRingtone();stopRingback();const s=await getMediaStream(false);if(!s)return;localStream=s;createPC();const cp=document.getElementById('call-panel');if(cp)cp.style.display='flex';document.getElementById('call-avatar').src='assets/avatar/'+selectedAvatar+'ava.png';document.getElementById('call-contact-name').textContent=document.getElementById('nick-label')?.textContent||'Лучник';document.getElementById('call-status').textContent='✅ Разговор';showIncomingControls(false);showActiveControls(true);showCallWave(true);playSound('open.mp3');await pc.setRemoteDescription(new RTCSessionDescription(incomingOffer));iceBuffer.forEach(c=>pc.addIceCandidate(new RTCIceCandidate(c)).catch(()=>{}));iceBuffer=[];const a=await pc.createAnswer();await pc.setLocalDescription(a);sendWebRTCMsg('webrtc-answer',JSON.stringify(a));incomingOffer=null;callActive=!0}
 function hang(sig=!0){callActive=!1;stopRingtone();stopRingback();if(sig&&activeChannelId)sendWebRTCMsg('webrtc-hangup','');if(pc){pc.close();pc=null}if(localStream){localStream.getTracks().forEach(t=>t.stop());localStream=null}incomingOffer=null;iceBuffer=[];if(iceFlushTimer)clearTimeout(iceFlushTimer);const cp=document.getElementById('call-panel');if(cp)cp.style.display='none';showIncomingControls(false);showActiveControls(false);showCallWave(false);playSound('exet.mp3')}
 async function handleWebRTC(u,channelId){if(u.webrtc==='webrtc-offer'){if(callActive||pc){sendWebRTCMsg('webrtc-hangup','');return}iceBuffer=[];incomingOffer=JSON.parse(u.sdp);const cp=document.getElementById('call-panel');if(cp)cp.style.display='flex';document.getElementById('call-status').textContent='📞 Входящий...';showActiveControls(false);showIncomingControls(true);showCallWave(false);playRingtone()}if(u.webrtc==='webrtc-answer'&&pc){stopRingback();try{await pc.setRemoteDescription(new RTCSessionDescription(JSON.parse(u.sdp)));iceBuffer.forEach(c=>pc.addIceCandidate(new RTCIceCandidate(c)).catch(()=>{}));iceBuffer=[];callActive=!0;document.getElementById('call-status').textContent='✅ Разговор';showIncomingControls(false);showActiveControls(true);showCallWave(true);playSound('open.mp3')}catch(e){}}if(u.webrtc==='webrtc-ice'&&pc){try{const c=JSON.parse(u.sdp);if(pc.remoteDescription)pc.addIceCandidate(new RTCIceCandidate(c)).catch(()=>{});else iceBuffer.push(c);}catch(e){}}if(u.webrtc==='webrtc-hangup'){if(callActive||pc){rMsg('📞 Собеседник завершил',3000);hang(!1)}}}
-
-// ========== ГОЛОСОВЫЕ ==========
 function startVoiceTimer(){voiceSeconds=0;const vt=document.getElementById('voice-timer-overlay');if(vt){vt.style.display='block';vt.textContent='🎤 0:00'}voiceTimerInterval=setInterval(()=>{voiceSeconds++;const m=Math.floor(voiceSeconds/60),s=(voiceSeconds%60).toString().padStart(2,'0');const vt=document.getElementById('voice-timer-overlay');if(vt)vt.textContent='🎤 '+m+':'+s},1000)}
 function stopVoiceTimer(){if(voiceTimerInterval)clearInterval(voiceTimerInterval);const vt=document.getElementById('voice-timer-overlay');if(vt)vt.style.display='none'}
 function toggleVoiceRecording(){voiceRecording?stopVoiceRecording():startVoiceRecording()}
 function startVoiceRecording(){if(voiceRecorder?.state==='recording')return;navigator.mediaDevices.getUserMedia({audio:true}).then(st=>{voiceStream=st;voiceRecorder=new MediaRecorder(st,{mimeType:'audio/webm; codecs=opus',audioBitsPerSecond:16000});voiceChunks=[];voiceRecorder.ondataavailable=e=>voiceChunks.push(e.data);voiceRecorder.onstop=()=>{const blob=new Blob(voiceChunks,{type:'audio/webm'});if(blob.size>100&&blob.size<300000&&activeChannelId){const reader=new FileReader();reader.onload=async()=>{const b64=reader.result.split(',')[1];await sendBlobToChannel(activeChannelId,JSON.stringify({voice:true,data:b64}));appendMessage('Вы','🎤 Голосовое','assets/avatar/'+selectedAvatar+'ava.png')};reader.readAsDataURL(blob)}if(voiceStream){voiceStream.getTracks().forEach(t=>t.stop());voiceStream=null}voiceRecorder=null;voiceRecording=!1;stopVoiceTimer();document.getElementById('btn-voice-input').style.background='';showVoiceWave(false)};voiceRecorder.start();voiceRecording=!0;startVoiceTimer();document.getElementById('btn-voice-input').style.background='#f44336';showVoiceWave(true)}).catch(()=>rMsg('❌ Нет микрофона'))}
 function stopVoiceRecording(){if(voiceRecorder?.state==='recording')voiceRecorder.stop()}
 function playVoiceBlob(b64){const a=new Audio('data:audio/webm;base64,'+b64);a.play().catch(()=>{})}
-
 async function destroySession(){if(!confirm('⚠ ПОЛНЫЙ СБРОС!'))return;hang(!1);currentChannelId=null;currentSecret=null;['PP','RobinHoodContacts'].forEach(n=>{try{indexedDB.deleteDatabase(n)}catch(e){}});localStorage.clear();const box=document.getElementById('chat-box');if(box)box.querySelectorAll('.message-row').forEach(m=>m.remove());playSmokeAnimation();playSound('clear cache.mp3');rMsg('🔥 Всё скурили!',5000);setConnectionStatus('offline');applyTheme('paper');const pas=document.getElementById('profile-avatar-small');if(pas)pas.src='assets/avatar/001ava.png';document.getElementById('robin-avatar').src='assets/avatar/001ava.png';const nl=document.getElementById('nick-label');if(nl)nl.textContent='Твой ник';const ls=document.getElementById('lock-status');if(ls)ls.textContent='Не задан';document.body.classList.remove('custom-bg');document.body.style.removeProperty('--custom-bg');const bs=document.getElementById('bg-status');if(bs)bs.textContent='Не задан';contacts=[];saveContacts();renderContacts()}
 
 async function initApp(){
@@ -544,19 +451,16 @@ async function initApp(){
     if(ph)ph.addEventListener('change',function(){peerHelpEnabled=this.checked;localStorage.setItem('robinhood_peer_help',peerHelpEnabled);if(peerHelpEnabled){rMsg('🤝 Помощь сети активирована',3000)}else{rMsg('🤝 Помощь сети отключена',3000)}});
     document.getElementById('btn-voice-input')?.addEventListener('click',toggleVoiceRecording);
     document.getElementById('setting-bg')?.addEventListener('click',()=>{const inp=document.createElement('input');inp.type='file';inp.accept='image/*';inp.onchange=async ev=>{const f=ev.target.files[0];if(!f)return;const r=new FileReader();r.onload=async ev2=>{await saveBgToDB(ev2.target.result);await applyCustomBg(ev2.target.result);rMsg('🖼 Фон обновлён!',3000)};r.readAsDataURL(f)};inp.click()});
-
     function refreshTunnelList(){const tl=document.getElementById('tunnel-list');if(!tl)return;tl.innerHTML='';savedConfigs.forEach((cfg,i)=>{const div=document.createElement('div');div.style.cssText='display:flex;align-items:center;justify-content:space-between;padding:8px;margin:4px 0;background:rgba(255,255,255,0.05);border-radius:8px;font-size:0.75em;';div.innerHTML=`<span>🔒 ${cfg.name}</span><button style="padding:6px 12px;border-radius:6px;border:1px solid #f44336;background:rgba(244,67,54,0.15);color:#f44336;cursor:pointer;font-size:0.7em;">🗑</button>`;div.querySelector('button').addEventListener('click',e=>{e.stopPropagation();if(confirm('Удалить?')){savedConfigs.splice(i,1);localStorage.setItem('robinhood_tunnels',JSON.stringify(savedConfigs));refreshTunnelList()}});tl.appendChild(div)})}
     document.getElementById('btn-load-file')?.addEventListener('click',()=>document.getElementById('config-file-input')?.click());
     document.getElementById('config-file-input')?.addEventListener('change',e=>{const f=e.target.files[0];if(f){const r=new FileReader();r.onload=ev=>{const tc=document.getElementById('tunnel-config-input');if(tc)tc.value=ev.target.result};r.readAsText(f)}});
     document.getElementById('btn-save-tunnel')?.addEventListener('click',()=>{const c=document.getElementById('tunnel-config-input')?.value.trim();if(!c)return;savedConfigs.push({name:'Конфиг '+(savedConfigs.length+1),config:c});localStorage.setItem('robinhood_tunnels',JSON.stringify(savedConfigs));const tc=document.getElementById('tunnel-config-input');if(tc)tc.value='';refreshTunnelList()});
     document.getElementById('btn-cancel-tunnel-config')?.addEventListener('click',()=>{document.getElementById('tunnel-config-modal')?.classList.remove('active')});
     document.getElementById('btn-warp-gen')?.addEventListener('click',()=>window.open('https://warp-generator.github.io/','_blank'));
-
     const emojis=['😀','😂','🤣','😍','😘','😜','😎','🤩','🥳','😢','😡','👍','👎','❤️','🔥','🎉','💀','🏹','🌲','🏰','🦊','🐺','✨','⚔️','🛡️','🍺','🍗','🏕️','🌙','☀️','🌟','💪','🤝','🙏','👑','💰','🎯','📞','💬','🔔','❌','✅','🎵','📜','⚜️'];
     const eg=document.getElementById('emoji-grid');if(eg)emojis.forEach(e=>{const span=document.createElement('span');span.textContent=e;span.addEventListener('click',()=>{const mi=document.getElementById('msg-input');if(mi){mi.value+=e;mi.focus()}});eg.appendChild(span)});
     const be=document.getElementById('btn-emoji');if(be)be.addEventListener('click',()=>{const ep=document.getElementById('emoji-panel');if(ep)ep.style.display=ep.style.display==='block'?'none':'block'});
     document.addEventListener('click',e=>{const ep=document.getElementById('emoji-panel');if(ep&&!ep.contains(e.target)&&e.target!==be)ep.style.display='none'});
-
     document.getElementById('send-btn')?.addEventListener('click',async()=>{const mi=document.getElementById('msg-input');const t=mi?.value.trim();if(t){if(!activeChannelId){const chIds=Object.keys(PP4._channels);if(!chIds.length)return;activeChannelId=chIds[0];}const ch=PP4._channels[activeChannelId];if(!ch||!ch.ratchetKey)return;await sendBlobToChannel(activeChannelId,JSON.stringify({d:t}));ch.blobs.push({d:t,t:Date.now(),n:RND(),from:'me'});ch.expires=Date.now()+600000;saveChannels();appendMessage('Вы',t);updateCupIndicator();updateRatchetIndicator();if(mi)mi.value='';playArcherAnimation();playBowAnimation();if(toggleSoundState)playSound('shot.mp3')}});
     document.getElementById('msg-input')?.addEventListener('keypress',e=>{if(e.key=='Enter')document.getElementById('send-btn')?.click()});
     setConnectionStatus('checking');rMsg('🏹 Слепой Улей готов',0);
@@ -574,7 +478,6 @@ async function sha256Hash(text){const d=new TextEncoder().encode(text);const h=a
 async function verifyPin(){if(isSettingLock){if(!lockPinHash){lockPinHash=pinInput;pinInput='';updatePinDots();if(document.getElementById('lock-subtitle'))document.getElementById('lock-subtitle').textContent='Повторите пин-код';return}if(pinInput===lockPinHash){const hash=await sha256Hash(pinInput);localStorage.setItem(LOCK_KEY,JSON.stringify({type:'pin',pinHash:hash}));lockType='pin';lockPinHash=hash;isSettingLock=false;pinInput='';updatePinDots();const ls=document.getElementById('lock-status');if(ls)ls.textContent='Пин-код';unlockApp()}else{const err=document.getElementById('lock-error');if(err)err.textContent='Не совпадают. Попробуйте снова.';lockPinHash='';pinInput='';updatePinDots();const sub=document.getElementById('lock-subtitle');if(sub)sub.textContent='Задайте пин-код (5 цифр)'}}else{const hash=await sha256Hash(pinInput);if(hash===lockPinHash){failedAttempts=0;unlockApp()}else{failedAttempts++;pinInput='';updatePinDots();if(failedAttempts>=3){document.querySelectorAll('.lock-num').forEach(b=>b.disabled=true);const err=document.getElementById('lock-error');if(err)err.textContent='Заблокировано. Обновите страницу.'}else{const err=document.getElementById('lock-error');if(err)err.textContent=`Неверно. Осталось попыток: ${3-failedAttempts}`}}}}
 async function unlockApp(){lockScreen.style.display='none';appContainer.style.display='flex';if(!PP4._peerId){PP4._peerId=await generateHardwarePeerId();DHT._nodeId=PP4._peerId;initBuckets();loadChannels();loadContacts();connectWS()}initApp()}
 document.getElementById('setting-lock')?.addEventListener('click',()=>{if(lockType){if(confirm('Сбросить блокировку?')){localStorage.removeItem(LOCK_KEY);lockType=null;lockPinHash='';const ls=document.getElementById('lock-status');if(ls)ls.textContent='Не задан'}}else{isSettingLock=true;lockPinHash='';pinInput='';lockScreen.style.display='flex';appContainer.style.display='none';setupLockUI()}});
-
 loadLockSettings();
 setInterval(()=>{const now=Date.now();for(const[id,ch]of Object.entries(PP4._channels)){if(now>ch.expires){delete PP4._channels[id];saveChannels();if(id===activeChannelId){activeChannelId=null;activePeerId=null;}}}for(const[id,b]of Object.entries(PP4._beacons)){if(now>b.expires)delete PP4._beacons[id];}for(const[id,peer]of DHT._peers){if(now-peer.lastSeen>30000&&peer.conn?.readyState==='open')peer.conn.send(JSON.stringify({type:'dht-ping'}));if(now-peer.lastSeen>120000){DHT._peers.delete(id);for(const bucket of DHT._buckets){const idx=bucket.findIndex(p=>p.id===id);if(idx>=0)bucket.splice(idx,1);}}}updateCupIndicator();updateRatchetIndicator();updateUI();},10000);
 </script>
