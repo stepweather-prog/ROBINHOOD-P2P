@@ -1,5 +1,5 @@
 // ==================== RobinHood UI v5.4.2 ====================
-// Чистый интерфейс. Ядро: P2PPong. Все пути к файлам сохранены.
+// Чистый интерфейс. Ядро: P2PPong. Все пути синхронизированы с index.html
 
 let contacts = [],
     activeChannelId = null,
@@ -35,7 +35,7 @@ let hangInProgress = false;
 let incomingBeacons = [];
 
 const avatars = [];
-for (let i = 1; i <= 168; i++) avatars.push('avatar/' + String(i).padStart(3, '0') + 'ava.png');
+for (let i = 1; i <= 168; i++) avatars.push('assets/avatar/' + String(i).padStart(3, '0') + 'ava.png');
 
 // ==================== ВСПОМОГАТЕЛЬНЫЕ UI-ФУНКЦИИ ====================
 function safeHtml(s) {
@@ -55,13 +55,13 @@ function rMsg(t, d = 4000) {
 
 function setConnectionStatus(s) {
     const ic = document.getElementById('connection-icon');
-    if (ic) ic.src = s === 'online' ? 'icons/06icon.png' : 'icons/05icon.png';
+    if (ic) ic.src = s === 'online' ? 'assets/icons/06icon.png' : 'assets/icons/05icon.png';
 }
 
 function playSound(f) {
     if (!toggleSoundState) return;
     if (!audioPool[f]) {
-        audioPool[f] = new Audio('sounds/' + f);
+        audioPool[f] = new Audio('assets/sounds/' + f);
         audioPool[f].volume = 0.5;
     }
     const a = audioPool[f];
@@ -89,7 +89,7 @@ function playSmokeAnimation() {
                 renderer: 'canvas',
                 loop: false,
                 autoplay: true,
-                path: 'smoke.json'
+                path: 'assets/smoke.json'
             });
         } catch (e) {}
     }
@@ -114,10 +114,10 @@ function playArcherAnimation() {
                 renderer: 'canvas',
                 loop: false,
                 autoplay: true,
-                path: 'Archer.json'
+                path: 'assets/Archer.json'
             });
             archerAnimation.addEventListener('complete', () => {
-                wrapper.remove();
+                if (wrapper.parentNode) wrapper.remove();
                 currentArrowContainer = null;
                 archerAnimation = null;
                 rt.textContent = robinDefaultText;
@@ -152,7 +152,7 @@ function playBowAnimation() {
                 renderer: 'canvas',
                 loop: false,
                 autoplay: true,
-                path: 'bow.json'
+                path: 'assets/bow.json'
             });
             bowAnim.addEventListener('complete', () => {
                 bc.style.display = 'none';
@@ -188,7 +188,7 @@ function playQuiverAnimation() {
                 renderer: 'canvas',
                 loop: false,
                 autoplay: true,
-                path: 'animation.json'
+                path: 'assets/docking/animation.json'
             });
             quiverAnim.addEventListener('complete', () => {
                 if (wrapper.parentNode) wrapper.remove();
@@ -278,7 +278,7 @@ function updateCallButtonState() {
 
 function playRingtone() {
     stopRingtone();
-    ringtoneAudio = new Audio('sounds/melodi.mp3');
+    ringtoneAudio = new Audio('assets/sounds/melodi.mp3');
     ringtoneAudio.loop = true;
     ringtoneAudio.volume = 0.5;
     ringtoneAudio.play().catch(e => {});
@@ -290,7 +290,7 @@ function stopRingtone() {
 
 function playRingback() {
     stopRingback();
-    ringbackAudio = new Audio('sounds/Welk.mp3');
+    ringbackAudio = new Audio('assets/sounds/Welk.mp3');
     ringbackAudio.loop = true;
     ringbackAudio.volume = 0.5;
     ringbackAudio.play().catch(e => {});
@@ -383,14 +383,14 @@ function appendMessage(sender, text, avatarSrc, audioData, audioMime) {
     const av = getAvatarUrl(avatarSrc);
     if (audioData && audioMime && audioMime.startsWith('audio/')) {
         const player = createAudioPlayer(audioData, audioMime);
-        row.innerHTML = `<img src="${av}" class="avatar" onerror="this.src='avatar/001ava.png'"><div class="msg-body"><div class="msg-sender">${safeHtml(sender)}</div></div>`;
+        row.innerHTML = `<img src="${av}" class="avatar" onerror="this.src='assets/avatar/001ava.png'"><div class="msg-body"><div class="msg-sender">${safeHtml(sender)}</div></div>`;
         row.querySelector('.msg-body').appendChild(player);
         const ts = document.createElement('div');
         ts.className = 'msg-status';
         ts.textContent = time;
         row.querySelector('.msg-body').appendChild(ts);
     } else {
-        row.innerHTML = `<img src="${av}" class="avatar" onerror="this.src='avatar/001ava.png'"><div class="msg-body"><div class="msg-sender">${safeHtml(sender)}</div><div>${safeHtml(text)}</div><div class="msg-status">${time}</div></div>`;
+        row.innerHTML = `<img src="${av}" class="avatar" onerror="this.src='assets/avatar/001ava.png'"><div class="msg-body"><div class="msg-sender">${safeHtml(sender)}</div><div>${safeHtml(text)}</div><div class="msg-status">${time}</div></div>`;
     }
     const msgId = 'msg_' + Date.now() + Math.random();
     row.dataset.msgId = msgId;
@@ -480,10 +480,10 @@ function showChatForChannel(channelId) {
 
 // ==================== КОНТАКТЫ ====================
 function getAvatarUrl(avatarSrc) {
-    if (!avatarSrc || avatarSrc === '001') return 'avatar/001ava.png';
-    if (avatarSrc.startsWith('avatar/')) return avatarSrc.endsWith('.png') ? avatarSrc : avatarSrc + 'ava.png';
+    if (!avatarSrc || avatarSrc === '001') return 'assets/avatar/001ava.png';
+    if (avatarSrc.startsWith('assets/')) return avatarSrc.endsWith('.png') ? avatarSrc : avatarSrc + 'ava.png';
     if (avatarSrc.includes('/')) return avatarSrc.endsWith('.png') ? avatarSrc : avatarSrc + 'ava.png';
-    return 'avatar/' + avatarSrc + 'ava.png';
+    return 'assets/avatar/' + avatarSrc + 'ava.png';
 }
 
 function addContact(c) {
@@ -516,7 +516,7 @@ function renderContacts() {
     if (!l) return;
     l.innerHTML = contacts.map(c => {
         const av = getAvatarUrl(c.avatar || '001');
-        return `<div class="contact-item" onclick="openChat('${c.peerId}')"><div class="contact-info"><img src="${av}" onerror="this.src='avatar/001ava.png'" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid var(--border);"><span class="contact-name">${safeHtml(c.name)}</span></div>${c.channelId && P2PPong._channels[c.channelId]?.reconnect ? `<button onclick="event.stopPropagation();reconnectChannel('${c.channelId}')" style="font-size:0.6em;padding:4px 8px;">🔄</button>` : ''}<button class="delete-contact" data-peerid="${c.peerId}">✖</button></div>`;
+        return `<div class="contact-item" onclick="openChat('${c.peerId}')"><div class="contact-info"><img src="${av}" onerror="this.src='assets/avatar/001ava.png'" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid var(--border);"><span class="contact-name">${safeHtml(c.name)}</span></div>${c.channelId && P2PPong._channels[c.channelId]?.reconnect ? `<button onclick="event.stopPropagation();reconnectChannel('${c.channelId}')" style="font-size:0.6em;padding:4px 8px;">🔄</button>` : ''}<button class="delete-contact" data-peerid="${c.peerId}">✖</button></div>`;
     }).join('') || '<div style="color:var(--text-dim);text-align:center;padding:20px;">🏹 Лучников нет</div>';
     l.querySelectorAll('.delete-contact').forEach(b => b.addEventListener('click', async e => {
         e.stopPropagation();
@@ -610,7 +610,7 @@ function loadAvatars() {
         const img = document.createElement('img');
         img.src = src;
         img.className = 'avatar-option';
-        img.onerror = () => img.src = 'avatar/001ava.png';
+        img.onerror = () => img.src = 'assets/avatar/001ava.png';
         img.onclick = () => {
             const pas = document.getElementById('profile-avatar-small');
             if (pas) pas.src = src;
@@ -901,7 +901,7 @@ async function startCall() {
     const cp = document.getElementById('call-panel');
     if (cp) cp.style.display = 'flex';
     const ct = contacts.find(c => c.channelId === activeChannelId);
-    document.getElementById('call-avatar').src = 'avatar/' + (ct?.avatar || selectedAvatar) + 'ava.png';
+    document.getElementById('call-avatar').src = 'assets/avatar/' + (ct?.avatar || selectedAvatar) + 'ava.png';
     document.getElementById('call-contact-name').textContent = ct?.name || document.getElementById('nick-label')?.textContent || 'Лучник';
     document.getElementById('call-status').textContent = '📞 Вызов...';
     showIncomingControls(false);
@@ -927,7 +927,7 @@ async function acceptCall() {
     const cp = document.getElementById('call-panel');
     if (cp) cp.style.display = 'flex';
     const ct = contacts.find(c => c.channelId === activeChannelId);
-    document.getElementById('call-avatar').src = 'avatar/' + (ct?.avatar || selectedAvatar) + 'ava.png';
+    document.getElementById('call-avatar').src = 'assets/avatar/' + (ct?.avatar || selectedAvatar) + 'ava.png';
     document.getElementById('call-contact-name').textContent = ct?.name || document.getElementById('nick-label')?.textContent || 'Лучник';
     document.getElementById('call-status').textContent = '✅ Разговор';
     showIncomingControls(false);
@@ -973,15 +973,12 @@ function hang(sig = true) {
 
 // ==================== ОБРАБОТЧИКИ ЯДРА ====================
 function initUI() {
-    // НЕ инициализируем ядро — оно инициализируется через P2PPong.init()
-
-    // Подписка на события ядра
     P2PPong.on('ready', (data) => {
-        document.getElementById('peer-id-display')?.textContent = data.peerId?.substring(0, 16) + '...';
         setConnectionStatus('online');
         rMsg('🏹 Слепой Улей готов', 0);
         loadContacts();
         renderContacts();
+        updateAIStats();
     });
 
     P2PPong.on('state-change', (data) => {
@@ -1000,12 +997,14 @@ function initUI() {
         }
         updateCupIndicator();
         updateRatchetIndicator();
+        updateAIStats();
         playSound('arrow_hit.wav');
     });
 
     P2PPong.on('message-sent', (data) => {
         updateCupIndicator();
         updateRatchetIndicator();
+        updateAIStats();
     });
 
     P2PPong.on('voice-message', (data) => {
@@ -1019,6 +1018,7 @@ function initUI() {
             playVoiceBlob(data.data);
         }
         updateCupIndicator();
+        updateAIStats();
     });
 
     P2PPong.on('beacon-received', (data) => {
@@ -1038,6 +1038,7 @@ function initUI() {
         addContact({ peerId: data.peerId, name: data.nick || 'Лучник', channelId: data.channelId, verified: false, avatar: data.avatar || '001' });
         updateCupIndicator();
         updateRatchetIndicator();
+        updateAIStats();
     });
 
     P2PPong.on('channel-expired', (data) => {
@@ -1047,6 +1048,7 @@ function initUI() {
             document.getElementById('robin-bar-sender').textContent = 'RobinHood P2P';
             document.getElementById('chat-box').innerHTML = '<div class="typing-indicator" id="typing-indicator"></div>';
         }
+        updateAIStats();
     });
 
     P2PPong.on('ratchet-reset', (data) => {
@@ -1063,7 +1065,7 @@ function initUI() {
             const ct = contacts.find(c => c.channelId === data.channelId);
             const cp = document.getElementById('call-panel');
             if (cp) cp.style.display = 'flex';
-            document.getElementById('call-avatar').src = 'avatar/' + (ct?.avatar || '001') + 'ava.png';
+            document.getElementById('call-avatar').src = 'assets/avatar/' + (ct?.avatar || '001') + 'ava.png';
             document.getElementById('call-contact-name').textContent = ct?.name || 'Лучник';
             document.getElementById('call-status').textContent = '📞 Входящий...';
             showActiveControls(false);
@@ -1108,8 +1110,96 @@ function initUI() {
         setConnectionStatus('offline');
         rMsg('🔥 Сессия завершена', 0);
     });
+}
 
-    // ==================== ОБРАБОТЧИКИ UI ====================
+function updateAIStats() {
+    const stats = P2PPong.getStats();
+    const indicator = document.getElementById('ai-indicator');
+    if (indicator) {
+        indicator.style.display = 'inline';
+        indicator.textContent = '🛡️ ' + stats.channels + ' кан.';
+        indicator.title = 'Каналов: ' + stats.channels + ' | DHT: ' + stats.dhtPeers + ' | Отправлено: ' + stats.messagesSent + ' | Получено: ' + stats.messagesReceived;
+    }
+}
+
+function showAIStats() {
+    const stats = P2PPong.getStats();
+    const panel = document.getElementById('ai-stats-panel');
+    if (!panel) return;
+    panel.innerHTML = `
+        <div class="ai-stat-row"><span class="ai-stat-label">Статус</span><span class="ai-stat-value">${stats.state}</span></div>
+        <div class="ai-stat-row"><span class="ai-stat-label">Каналов</span><span class="ai-stat-value">${stats.channels}</span></div>
+        <div class="ai-stat-row"><span class="ai-stat-label">DHT пиров</span><span class="ai-stat-value">${stats.dhtPeers}</span></div>
+        <div class="ai-stat-row"><span class="ai-stat-label">Отправлено</span><span class="ai-stat-value">${stats.messagesSent}</span></div>
+        <div class="ai-stat-row"><span class="ai-stat-label">Получено</span><span class="ai-stat-value">${stats.messagesReceived}</span></div>
+        <div class="ai-stat-row"><span class="ai-stat-label">Peer ID</span><span class="ai-stat-value" style="font-size:0.55em;">${stats.peerId?.substring(0,16)}...</span></div>
+    `;
+    document.getElementById('ai-stats-sheet')?.classList.add('open');
+    document.getElementById('overlay')?.classList.add('show');
+}
+
+function updateDateTime() {
+    const now = new Date();
+    const de = document.getElementById('header-date');
+    const te = document.getElementById('header-time');
+    if (de) de.textContent = now.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    if (te) te.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function resetInactivityTimer() {
+    clearTimeout(inactivityTimer);
+    document.getElementById('leaves-container')?.classList.remove('sleeping');
+    inactivityTimer = setTimeout(() => {
+        document.getElementById('leaves-container')?.classList.add('sleeping');
+    }, 30000);
+}
+let inactivityTimer;
+document.addEventListener('pointermove', resetInactivityTimer);
+document.addEventListener('pointerdown', resetInactivityTimer);
+document.addEventListener('keypress', resetInactivityTimer);
+window.addEventListener('blur', () => document.getElementById('leaves-container')?.classList.add('sleeping'));
+window.addEventListener('focus', () => { document.getElementById('leaves-container')?.classList.remove('sleeping'); resetInactivityTimer(); });
+
+function initLeaves() {
+    const c = document.getElementById('leaves-container');
+    if (!c || c.children.length > 0) return;
+    const emojis = ['🍁', '🍂', '🌿', '🍃', '🪶', '🍁', '🍂', '🌿', '🍃', '🪶', '🍁', '🌿'];
+    for (let i = 0; i < 14; i++) {
+        const el = document.createElement('span');
+        el.className = i % 3 == 0 ? 'feather' : 'leaf';
+        el.textContent = emojis[i];
+        el.style.left = Math.random() * 100 + '%';
+        el.style.animationDelay = Math.random() * 15 + 's';
+        el.style.animationDuration = (16 + Math.random() * 18) + 's';
+        c.appendChild(el);
+    }
+    resetInactivityTimer();
+}
+
+async function reconnectChannel(id) {
+    const ch = P2PPong._channels[id];
+    if (!ch || ch.reconnecting) return;
+    ch.reconnecting = true;
+    if (P2PPong._ws && P2PPong._ws.readyState === WebSocket.OPEN) {
+        const kp = await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveBits']);
+        const pk = await crypto.subtle.exportKey('raw', kp.publicKey);
+        const pkB64 = btoa(String.fromCharCode(...new Uint8Array(pk)));
+        const rid = Array.from(crypto.getRandomValues(new Uint32Array(4))).map(x => x.toString(16).padStart(8, '0')).join('');
+        try {
+            P2PPong._ws.send(JSON.stringify({
+                action: 'reconnect',
+                channelId: id,
+                targetPeerId: ch.peerId,
+                pubKey: pkB64,
+                requestId: rid,
+                fromPeerId: P2PPong._peerId
+            }));
+        } catch (e) {}
+    }
+}
+
+// ==================== ИНИЦИАЛИЗАЦИЯ UI ====================
+function initApp() {
     initLeaves();
     applyTheme(localStorage.getItem('robinhood_theme') || 'slate');
 
@@ -1117,8 +1207,8 @@ function initUI() {
     if (savedAvatar) {
         selectedAvatar = savedAvatar.includes('/') ? savedAvatar.split('/').pop()?.replace('ava.png', '') || '001' : savedAvatar;
         const pas = document.getElementById('profile-avatar-small');
-        if (pas) pas.src = 'avatar/' + selectedAvatar + 'ava.png';
-        document.getElementById('robin-avatar').src = 'avatar/' + selectedAvatar + 'ava.png';
+        if (pas) pas.src = 'assets/avatar/' + selectedAvatar + 'ava.png';
+        document.getElementById('robin-avatar').src = 'assets/avatar/' + selectedAvatar + 'ava.png';
     }
 
     const savedNick = localStorage.getItem('robinhood_nick');
@@ -1188,6 +1278,10 @@ function initUI() {
         showAIStats();
     });
 
+    document.getElementById('setting-immunity-mode')?.addEventListener('click', () => {
+        rMsg('🛡️ Режим сети: P2PPong', 3000);
+    });
+
     document.getElementById('setting-peer-id')?.addEventListener('click', () => {
         const pid = P2PPong._peerId;
         if (pid) {
@@ -1243,8 +1337,8 @@ function initUI() {
             rMsg('🔥 Всё скурили!', 5000);
             setConnectionStatus('offline');
             applyTheme('slate');
-            document.getElementById('profile-avatar-small')?.src = 'avatar/001ava.png';
-            document.getElementById('robin-avatar').src = 'avatar/001ava.png';
+            document.getElementById('profile-avatar-small')?.src = 'assets/avatar/001ava.png';
+            document.getElementById('robin-avatar').src = 'assets/avatar/001ava.png';
             document.getElementById('nick-label')?.textContent = 'Твой ник';
             document.getElementById('lock-status')?.textContent = 'Не задан';
             document.body.classList.remove('custom-bg');
@@ -1253,6 +1347,7 @@ function initUI() {
             contacts = [];
             saveContacts();
             renderContacts();
+            P2PPong.destroy();
         }
     });
 
@@ -1354,8 +1449,7 @@ function initUI() {
         span.textContent = e;
         span.addEventListener('click', () => {
             const mi = document.getElementById('msg-input');
-            if (mi) { mi.value += e;
-                mi.focus(); }
+            if (mi) { mi.value += e; mi.focus(); }
         });
         eg.appendChild(span);
     });
@@ -1385,6 +1479,7 @@ function initUI() {
                 appendMessage('Вы', t, selectedAvatar);
                 updateCupIndicator();
                 updateRatchetIndicator();
+                updateAIStats();
                 if (mi) mi.value = '';
                 playArcherAnimation();
                 playBowAnimation();
@@ -1400,89 +1495,12 @@ function initUI() {
     setConnectionStatus('checking');
     updateDateTime();
     setInterval(updateDateTime, 1000);
+    updateAIStats();
+    setInterval(updateAIStats, 10000);
 }
 
 function getMyNick() { return document.getElementById('nick-label')?.textContent || 'Лучник'; }
-
 function getMyAvatar() { return selectedAvatar || '001'; }
-
-function showAIStats() {
-    const stats = P2PPong.getStats();
-    const panel = document.getElementById('ai-stats-panel');
-    if (!panel) return;
-    panel.innerHTML = `
-        <div class="ai-stat-row"><span class="ai-stat-label">Статус</span><span class="ai-stat-value">${stats.state}</span></div>
-        <div class="ai-stat-row"><span class="ai-stat-label">Каналов</span><span class="ai-stat-value">${stats.channels}</span></div>
-        <div class="ai-stat-row"><span class="ai-stat-label">DHT пиров</span><span class="ai-stat-value">${stats.dhtPeers}</span></div>
-        <div class="ai-stat-row"><span class="ai-stat-label">Отправлено</span><span class="ai-stat-value">${stats.messagesSent}</span></div>
-        <div class="ai-stat-row"><span class="ai-stat-label">Получено</span><span class="ai-stat-value">${stats.messagesReceived}</span></div>
-        <div class="ai-stat-row"><span class="ai-stat-label">Peer ID</span><span class="ai-stat-value" style="font-size:0.55em;">${stats.peerId?.substring(0,16)}...</span></div>
-    `;
-    document.getElementById('ai-stats-sheet')?.classList.add('open');
-    document.getElementById('overlay')?.classList.add('show');
-}
-
-function updateDateTime() {
-    const now = new Date();
-    const de = document.getElementById('header-date');
-    const te = document.getElementById('header-time');
-    if (de) de.textContent = now.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
-    if (te) te.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-}
-
-function resetInactivityTimer() {
-    clearTimeout(inactivityTimer);
-    document.getElementById('leaves-container')?.classList.remove('sleeping');
-    inactivityTimer = setTimeout(() => {
-        document.getElementById('leaves-container')?.classList.add('sleeping');
-    }, 30000);
-}
-let inactivityTimer;
-document.addEventListener('pointermove', resetInactivityTimer);
-document.addEventListener('pointerdown', resetInactivityTimer);
-document.addEventListener('keypress', resetInactivityTimer);
-window.addEventListener('blur', () => document.getElementById('leaves-container')?.classList.add('sleeping'));
-window.addEventListener('focus', () => { document.getElementById('leaves-container')?.classList.remove('sleeping');
-    resetInactivityTimer(); });
-
-function initLeaves() {
-    const c = document.getElementById('leaves-container');
-    if (!c || c.children.length > 0) return;
-    const emojis = ['🍁', '🍂', '🌿', '🍃', '🪶', '🍁', '🍂', '🌿', '🍃', '🪶', '🍁', '🌿'];
-    for (let i = 0; i < 14; i++) {
-        const el = document.createElement('span');
-        el.className = i % 3 == 0 ? 'feather' : 'leaf';
-        el.textContent = emojis[i];
-        el.style.left = Math.random() * 100 + '%';
-        el.style.animationDelay = Math.random() * 15 + 's';
-        el.style.animationDuration = (16 + Math.random() * 18) + 's';
-        c.appendChild(el);
-    }
-    resetInactivityTimer();
-}
-
-async function reconnectChannel(id) {
-    const ch = P2PPong._channels[id];
-    if (!ch || ch.reconnecting) return;
-    ch.reconnecting = true;
-    // Отправляем через WebSocket (ядро само разберётся)
-    if (P2PPong._ws && P2PPong._ws.readyState === WebSocket.OPEN) {
-        const kp = await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveBits']);
-        const pk = await crypto.subtle.exportKey('raw', kp.publicKey);
-        const pkB64 = btoa(String.fromCharCode(...new Uint8Array(pk)));
-        const rid = Array.from(crypto.getRandomValues(new Uint32Array(4))).map(x => x.toString(16).padStart(8, '0')).join('');
-        try {
-            P2PPong._ws.send(JSON.stringify({
-                action: 'reconnect',
-                channelId: id,
-                targetPeerId: ch.peerId,
-                pubKey: pkB64,
-                requestId: rid,
-                fromPeerId: P2PPong._peerId
-            }));
-        } catch (e) {}
-    }
-}
 
 window.addEventListener('beforeunload', () => {
     if (callActive) hang(false);
@@ -1491,11 +1509,9 @@ window.addEventListener('beforeunload', () => {
 });
 
 // ==================== ЗАПУСК ====================
-loadLockSettings();
-
-// Как только ядро будет готово (после разблокировки или если блокировки нет)
-// initUI() вызывается внутри unlockApp() или loadLockSettings()
-// Подписываемся на ready, чтобы доинициализировать UI
 P2PPong.on('ready', () => {
     initUI();
+    initApp();
 });
+
+loadLockSettings();
