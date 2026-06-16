@@ -334,8 +334,8 @@ const P2PPong = {
     },
 
     // Запуск опроса после копирования Peer ID (пир А — sender)
-    startSenderPolling(myPeerId) {
-        const keyHash = await SHA(myPeerId + myPeerId); // временный ключ — ждём маяк
+    async startSenderPolling(myPeerId) {
+    const keyHash = await SHA(myPeerId + myPeerId); // временный ключ — ждём маяк
         // На самом деле keyHash должен передаваться от пира Б пиру А
         // Пока запускаем с меткой что мы sender
         this.startBeaconPolling('waiting_' + myPeerId, 'sender');
