@@ -171,6 +171,14 @@ ECDH на кривой P-256. Каждая сторона генерирует e
 
 - **HTTPS** (обязательно для Web Crypto API)
 - Современный браузер: Web Crypto API, WebRTC, WebSocket, CompressionStream
+- 
+## Связанные проекты
+
+| Проект | Репозиторий | Описание |
+|--------|-------------|----------|
+| P2PPong Core | [github.com/stepweather-prog/P2PPong](https://github.com/stepweather-prog/P2PPong) | Ядро платформы (криптография, транспорт, DHT) |
+| Cloudflare Worker | `worker.js` в репозитории P2PPong | Сигнальный сервер (WebSocket) |
+| Render Server | `server.js` в репозитории P2PPong | Резервный сигнальный сервер (HTTP) |
 
 ## Ответственность
 
