@@ -1308,8 +1308,8 @@ function initApp() {
     document.getElementById('btn-save-nick')?.addEventListener('click', () => {
         const n = document.getElementById('nick-input')?.value.trim();
         if (n) {
-            const nl = document.getElementById('nick-label');
-            if (nl) nl.textContent = n.substring(0, 12);
+            const nl2 = document.getElementById('nick-label');
+            if (nl2) nl2.textContent = n.substring(0, 12);
             try { localStorage.setItem('robinhood_nick', n.substring(0, 12)); } catch (e) {}
         }
         document.getElementById('nick-modal')?.classList.remove('active');
@@ -1331,19 +1331,24 @@ function initApp() {
             hang(false);
             ['PP', 'RobinHoodContacts'].forEach(n => { try { indexedDB.deleteDatabase(n); } catch (e) {} });
             try { localStorage.clear(); } catch (e) {}
-            document.getElementById('chat-box')?.querySelectorAll('.message-row').forEach(m => m.remove());
+            const box2 = document.getElementById('chat-box');
+            if (box2) box2.querySelectorAll('.message-row').forEach(m => m.remove());
             playSmokeAnimation();
             playSound('clear cache.mp3');
             rMsg('🔥 Всё скурили!', 5000);
             setConnectionStatus('offline');
             applyTheme('slate');
-            document.getElementById('profile-avatar-small')?.src = 'assets/avatar/001ava.png';
+            const pas2 = document.getElementById('profile-avatar-small');
+            if (pas2) pas2.src = 'assets/avatar/001ava.png';
             document.getElementById('robin-avatar').src = 'assets/avatar/001ava.png';
-            document.getElementById('nick-label')?.textContent = 'Твой ник';
-            document.getElementById('lock-status')?.textContent = 'Не задан';
+            const nl3 = document.getElementById('nick-label');
+            if (nl3) nl3.textContent = 'Твой ник';
+            const ls2 = document.getElementById('lock-status');
+            if (ls2) ls2.textContent = 'Не задан';
             document.body.classList.remove('custom-bg');
             document.body.style.removeProperty('--custom-bg');
-            document.getElementById('bg-status')?.textContent = 'Не задан';
+            const bs2 = document.getElementById('bg-status');
+            if (bs2) bs2.textContent = 'Не задан';
             contacts = [];
             saveContacts();
             renderContacts();
@@ -1370,8 +1375,8 @@ function initApp() {
             stopRingtone();
             sendWebRTCMsg('webrtc-hangup', '');
             incomingOffer = null;
-            const cp = document.getElementById('call-panel');
-            if (cp) cp.style.display = 'none';
+            const cp2 = document.getElementById('call-panel');
+            if (cp2) cp2.style.display = 'none';
             updateCallButtonState();
         }
     });
@@ -1428,8 +1433,8 @@ function initApp() {
                 try { localStorage.removeItem(LOCK_KEY); } catch (e) {}
                 lockType = null;
                 lockPinHash = '';
-                const ls = document.getElementById('lock-status');
-                if (ls) ls.textContent = 'Не задан';
+                const ls3 = document.getElementById('lock-status');
+                if (ls3) ls3.textContent = 'Не задан';
             }
         } else {
             isSettingLock = true;
