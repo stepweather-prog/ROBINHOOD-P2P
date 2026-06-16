@@ -31,6 +31,7 @@
         body { background:linear-gradient(135deg, var(--bg-primary), var(--bg-secondary)); color:var(--text); display:flex; flex-direction:column; height:100dvh; position:relative; }
         body.custom-bg::before { background-image:var(--custom-bg)!important; background-size:cover!important; background-position:center!important; }
         body::before { content:""; position:fixed; top:0; left:0; width:100%; height:100%; background-image:url('assets/icons/background.webp'); background-size:cover; background-position:center; z-index:0; opacity:0.35; }
+        [data-theme="paper"] body::before, [data-theme="morning"] body::before { opacity:0.06; background-image:none; }
         .leaves-container { position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:1; overflow:hidden; }
         .leaf,.feather{position:absolute;top:-50px;animation:fall linear infinite;opacity:0.8}
         .leaf{font-size:clamp(14px,3vw,22px)}.feather{font-size:clamp(10px,2.5vw,18px)}
@@ -66,7 +67,7 @@
         #msg-input{flex:1;background:var(--input-bg);border:1px solid var(--border);padding:10px 12px;color:var(--input-text);border-radius:10px;font-size:clamp(14px,2.5vw,16px);outline:none;font-family:monospace;min-width:0}
         #msg-input:focus{border-color:var(--accent-light);box-shadow:0 0 8px rgba(196,162,75,0.5)}
         #btn-emoji{width:32px;height:32px;font-size:16px;border:none;background:transparent;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-        .bow-button{width:clamp(44px,10vw,52px);height:clamp(44px,10vw,52px);cursor:pointer;filter:drop-shadow(0 2px 6px rgba(0,0,0,0.3));flex-shrink:0;transition:transform 0.1s}
+        .bow-button{width:clamp(36px,8vw,44px);height:clamp(36px,8vw,44px);cursor:pointer;filter:drop-shadow(0 2px 6px rgba(0,0,0,0.3));flex-shrink:0;transition:transform 0.1s}
         .bow-button:active{transform:scale(0.92)}
         .bow-button img{width:100%;height:100%;object-fit:contain}
         .bow-button.shooting{animation:bowShoot 0.4s ease-out}
@@ -137,15 +138,14 @@
         .call-action-btn.accept{border-color:var(--seeding-color);color:var(--seeding-color);background:rgba(76,175,80,0.2);box-shadow:0 0 25px rgba(76,175,80,0.3)}
         .call-action-btn.reject{border-color:var(--danger);color:var(--danger);background:rgba(244,67,54,0.2);box-shadow:0 0 25px rgba(244,67,54,0.3)}
         .call-action-btn:active{transform:scale(0.8);filter:brightness(1.5)}
-        .voice-wave-anim{position:absolute;top:-50px;left:50%;transform:translateX(-50%);display:flex;align-items:flex-end;gap:3px;height:36px;z-index:21;pointer-events:none}
-        .voice-wave-bar{width:4px;background:var(--danger);border-radius:2px;animation:waveAnim 0.5s ease-in-out infinite}
-        .voice-wave-bar:nth-child(1){animation-delay:0s;height:10px}.voice-wave-bar:nth-child(2){animation-delay:0.08s;height:18px}.voice-wave-bar:nth-child(3){animation-delay:0.16s;height:12px}.voice-wave-bar:nth-child(4){animation-delay:0.24s;height:22px}.voice-wave-bar:nth-child(5){animation-delay:0.32s;height:16px}.voice-wave-bar:nth-child(6){animation-delay:0.4s;height:20px}.voice-wave-bar:nth-child(7){animation-delay:0.48s;height:10px}.voice-wave-bar:nth-child(8){animation-delay:0.56s;height:24px}
-        @keyframes waveAnim{0%,100%{transform:scaleY(1)}50%{transform:scaleY(0.4)}}
+        .voice-recording-indicator{position:absolute;top:-38px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:6px;z-index:22;pointer-events:none}
+        .voice-timer-text{color:var(--danger);font-family:monospace;font-size:0.75em;background:rgba(0,0,0,0.85);padding:2px 6px;border-radius:4px;white-space:nowrap}
+        .voice-wave-bar{width:3px;background:var(--danger);border-radius:1px;animation:voiceWaveAnim 0.5s ease-in-out infinite}
+        @keyframes voiceWaveAnim{0%,100%{transform:scaleY(1)}50%{transform:scaleY(0.4)}}
         #emoji-panel{scrollbar-width:none}
         #emoji-panel::-webkit-scrollbar{display:none}
         #emoji-grid span{font-size:clamp(20px,4vw,24px);cursor:pointer;padding:5px;border-radius:6px;transition:all 0.1s}
         #emoji-grid span:active{background:var(--btn-hover);transform:scale(0.9)}
-        .voice-timer-overlay{display:none;position:absolute;top:-28px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.85);color:var(--danger);font-family:monospace;font-size:0.8em;padding:3px 8px;border-radius:6px;z-index:20;pointer-events:none}
         #bow-above-send{position:fixed;bottom:60px;right:12px;width:100px;height:100px;z-index:100;pointer-events:none;display:none}
         .robin-arrow-container{display:inline-block;vertical-align:middle;margin-left:6px}
         .typing-indicator{font-size:0.65em;color:var(--text-dim);padding:2px 10px;font-style:italic;min-height:16px}
@@ -182,17 +182,16 @@
 <div id="app-container" style="display:none;flex-direction:column;height:100%;">
 <div class="leaves-container" id="leaves-container"></div>
 <div class="header">
-    <div class="header-row-1"><span class="header-title-text">RobinHoodP2P</span><span class="header-shield">🏹</span><span class="header-datetime"><span id="header-date"></span> <span id="header-time"></span></span><span class="version-text">v4.1 AI</span></div>
+    <div class="header-row-1"><span class="header-title-text">RobinHoodP2P</span><span class="header-shield">🏹</span><span class="header-datetime"><span id="header-date"></span> <span id="header-time"></span></span><span class="version-text">v4.2</span></div>
     <div class="header-row-2">
         <div class="header-btn" id="btn-avatar"><img src="assets/avatar/001ava.png" class="header-avatar" id="profile-avatar-small" alt="avatar"></div>
         <div class="header-btn" id="btn-arrow"><img src="assets/icons/08icon.png" alt="arrow"></div>
         <div class="header-btn" id="btn-call"><img src="assets/icons/16icon.png" alt="call"></div>
         <div class="header-btn" id="btn-requests"><img src="assets/icons/14icon.png" alt="requests"></div>
-        <div class="header-btn" id="btn-ai-stats"><span style="font-size:1.5em;">🧠</span></div>
         <div class="header-btn" id="btn-clear"><img src="assets/icons/18icon.png" alt="clear"></div>
         <div class="header-btn" id="btn-settings"><img src="assets/icons/11icon.png" alt="settings"></div>
     </div>
-    <div class="header-row-3"><span class="header-label" id="nick-label">Твой ник</span><span class="header-label">Крафт стрел</span><span class="header-label">Звонок</span><span class="header-label">Открытый колчан</span><span class="header-label">AI Статы</span><span class="header-label">Скурить</span><span class="header-label">Опции</span></div>
+    <div class="header-row-3"><span class="header-label" id="nick-label">Твой ник</span><span class="header-label">Крафт стрел</span><span class="header-label">Звонок</span><span class="header-label">Открытый колчан</span><span class="header-label">Скурить</span><span class="header-label">Опции</span></div>
     <div class="robin-bar"><img src="assets/avatar/001ava.png" class="robin-bar-avatar" id="robin-avatar"><div class="robin-bar-text"><div class="robin-bar-sender" id="robin-bar-sender">Pitupi Pong</div><div class="robin-bar-msg" id="robin-text">🧠 Самообучаемый Улей</div></div><div class="robin-bar-status"><span class="ratchet-indicator" id="ratchet-indicator" style="display:none;">🔄 0</span><span class="ai-indicator" id="ai-indicator" style="display:none;" title="AI: анализ сети">🧠 0%</span><img src="assets/icons/05icon.png" id="connection-icon" alt="status"><span class="cup-indicator" id="cup-indicator" style="display:none;">&nbsp;🍺<span id="cup-blobs">0/10</span>&nbsp;⏱<span id="cup-timer">10:00</span></span></div></div>
 </div>
 <div class="chat-area" id="chat-box"><div class="typing-indicator" id="typing-indicator"></div></div>
@@ -200,7 +199,6 @@
     <input type="text" id="msg-input" placeholder="Выпустить стрелу" autocomplete="off">
     <button id="btn-emoji">😊</button>
     <button class="header-btn" id="btn-voice-input" style="flex-shrink:0;position:relative;"><img src="assets/icons/03icon.png" alt="voice"></button>
-    <div class="voice-timer-overlay" id="voice-timer-overlay"></div>
     <img src="assets/icons/02icon.png" class="bow-button" id="send-btn" alt="Отправить">
 </div>
 <div id="emoji-panel" style="display:none;position:fixed;bottom:55px;left:0;width:100%;background:linear-gradient(135deg,var(--bg-primary),var(--bg-secondary));border-top:2px solid var(--border);z-index:50;padding:8px;max-height:180px;overflow-y:auto;"><div id="emoji-grid" style="display:grid;grid-template-columns:repeat(8,1fr);gap:6px;text-align:center;"></div></div>
@@ -229,7 +227,7 @@
     <div class="contact-item" id="setting-contacts"><div class="contact-info"><img src="assets/icons/10icon.png"><span class="contact-name">Лучники</span></div><span>→</span></div>
     <div class="contact-item" id="setting-ai-stats"><div class="contact-info"><span style="font-size:24px;">🧠</span><span class="contact-name">Pitupi AI Статистика</span></div><span>→</span></div>
     <div class="contact-item" id="setting-sound"><div class="contact-info"><img src="assets/icons/15icon.png"><span class="contact-name">Звук</span></div><label class="toggle-switch"><input type="checkbox" id="toggle-sound" checked><span class="toggle-slider"></span></label></div>
-    <div class="contact-item" id="setting-theme"><div class="contact-info"><img src="assets/icons/12icon.png"><span class="contact-name">Тема</span></div><span id="theme-name">Бумага</span></div>
+    <div class="contact-item" id="setting-theme"><div class="contact-info"><img src="assets/icons/12icon.png"><span class="contact-name">Тема</span></div><span id="theme-name">Изумруд</span></div>
     <div class="contact-item" id="setting-theme-random"><div class="contact-info"><span style="font-size:24px;">🎲</span><span class="contact-name">Авто-тема</span></div><span>🎨</span></div>
     <div class="contact-item" id="setting-bg"><div class="contact-info"><img src="assets/icons/13icon.png"><span class="contact-name">Свой фон</span></div><span id="bg-status">Не задан</span></div>
     <div class="contact-item" id="setting-peer-help"><div class="contact-info"><img src="assets/icons/07icon.png"><span class="contact-name">Стать пиром</span></div><label class="toggle-switch"><input type="checkbox" id="toggle-peer-help"><span class="toggle-slider"></span></label></div>
@@ -246,350 +244,52 @@
 <div id="bow-above-send"></div>
 </div>
 <script>
-// ==================== PITUPI PONG v4.1 — ГОМЕОСТАТИЧЕСКИЙ AI ====================
+// ==================== PITUPI PONG v4.2 ====================
 const DEBUG = true;
 function logError(context, error) { if (DEBUG) console.error(`[${context}]`, error); }
 function logWarn(context, msg) { if (DEBUG) console.warn(`[${context}]`, msg); }
 
-// ========== PITUPI AI — САМООБУЧАЕМЫЙ МОДУЛЬ С ГОМЕОСТАЗОМ ==========
 const PitupiAI = {
-    _knowledge: {
-        peers: new Map(),
-        channels: new Map(),
-        routes: new Map(),
-        patterns: [],
-        graph: { nodes: new Map(), edges: new Map() },
-        timeLoad: Array(24).fill(0),
-        geoServers: new Map(),
-        federation: { weights: {}, peerContributions: new Map(), lastSync: 0 },
-        restrictions: new Map()
-    },
+    _knowledge: { peers: new Map(), channels: new Map(), routes: new Map(), patterns: [], graph: { nodes: new Map(), edges: new Map() }, timeLoad: Array(24).fill(0), geoServers: new Map(), federation: { weights: {}, peerContributions: new Map(), lastSync: 0 }, restrictions: new Map() },
     _weights: { routeQuality: 0.3, peerReliability: 0.25, channelStability: 0.2, latencyImpact: 0.15, historicalPattern: 0.1 },
-    _core: {
-        minWeights: { routeQuality: 0.15, peerReliability: 0.15, channelStability: 0.10, latencyImpact: 0.05, historicalPattern: 0.05 },
-        trustedServers: new Map(),
-        natTypes: new Map(),
-        blockedHours: new Set()
-    },
-    _autoHealInterval: null,
-    _federationInterval: null,
-    _timeLoadInterval: null,
-    _forgetInterval: null,
-    _preferTurnServers: false,
-    _tryTcpIceTransport: false,
-
+    _core: { minWeights: { routeQuality: 0.15, peerReliability: 0.15, channelStability: 0.10, latencyImpact: 0.05, historicalPattern: 0.05 }, trustedServers: new Map(), natTypes: new Map(), blockedHours: new Set() },
+    _autoHealInterval: null, _federationInterval: null, _timeLoadInterval: null, _forgetInterval: null, _preferTurnServers: false, _tryTcpIceTransport: false,
     init() {
         try {
             const saved = localStorage.getItem('pitupi_knowledge');
-            if (saved) {
-                const data = JSON.parse(saved);
-                if (data.patterns) this._knowledge.patterns = data.patterns;
-                if (data.weights) this._weights = data.weights;
-                if (data.timeLoad) this._knowledge.timeLoad = data.timeLoad;
-                if (data.federation) this._knowledge.federation = data.federation;
-                if (data.graph) {
-                    for (const [k, v] of Object.entries(data.graph.nodes)) this._knowledge.graph.nodes.set(k, v);
-                    for (const [k, v] of Object.entries(data.graph.edges)) { this._knowledge.graph.edges.set(k, v); }
-                }
-                if (data.core) {
-                    if (data.core.natTypes) for (const [k, v] of Object.entries(data.core.natTypes)) this._core.natTypes.set(k, v);
-                    if (data.core.blockedHours) this._core.blockedHours = new Set(data.core.blockedHours);
-                    if (data.core.preferredTurn) this._preferTurnServers = data.core.preferredTurn;
-                }
-                if (data.restrictions) for (const [k, v] of Object.entries(data.restrictions)) this._knowledge.restrictions.set(k, v);
-            }
+            if (saved) { const data = JSON.parse(saved); if (data.patterns) this._knowledge.patterns = data.patterns; if (data.weights) this._weights = data.weights; if (data.timeLoad) this._knowledge.timeLoad = data.timeLoad; if (data.federation) this._knowledge.federation = data.federation; if (data.graph) { for (const [k, v] of Object.entries(data.graph.nodes)) this._knowledge.graph.nodes.set(k, v); for (const [k, v] of Object.entries(data.graph.edges)) this._knowledge.graph.edges.set(k, v); } if (data.core) { if (data.core.natTypes) for (const [k, v] of Object.entries(data.core.natTypes)) this._core.natTypes.set(k, v); if (data.core.blockedHours) this._core.blockedHours = new Set(data.core.blockedHours); if (data.core.preferredTurn) this._preferTurnServers = data.core.preferredTurn; } if (data.restrictions) for (const [k, v] of Object.entries(data.restrictions)) this._knowledge.restrictions.set(k, v); }
         } catch(e) { logError('PitupiAI/init', e); }
-        this._timeLoadInterval = setInterval(() => this._recordTimeLoad(), 300000);
-        this._autoHealInterval = setInterval(() => this._autoHealAll(), 60000);
-        this._federationInterval = setInterval(() => this._federateWeights(), 300000);
-        this._forgetInterval = setInterval(() => this._forgetOldPatterns(), 3600000);
-        this._detectGeo();
+        this._timeLoadInterval = setInterval(() => this._recordTimeLoad(), 300000); this._autoHealInterval = setInterval(() => this._autoHealAll(), 60000); this._federationInterval = setInterval(() => this._federateWeights(), 300000); this._forgetInterval = setInterval(() => this._forgetOldPatterns(), 3600000); this._detectGeo();
     },
-
     save() {
-        try {
-            const graphData = { nodes: {}, edges: {} };
-            for (const [k, v] of this._knowledge.graph.nodes) graphData.nodes[k] = v;
-            for (const [k, v] of this._knowledge.graph.edges) graphData.edges[k] = v;
-            const restrictionsData = {};
-            for (const [k, v] of this._knowledge.restrictions) restrictionsData[k] = v;
-            const coreData = {
-                natTypes: {}, blockedHours: [...this._core.blockedHours],
-                preferredTurn: this._preferTurnServers
-            };
-            for (const [k, v] of this._core.natTypes) coreData.natTypes[k] = v;
-            localStorage.setItem('pitupi_knowledge', JSON.stringify({
-                patterns: this._knowledge.patterns.slice(-500),
-                weights: this._weights,
-                timeLoad: this._knowledge.timeLoad,
-                federation: this._knowledge.federation,
-                graph: graphData,
-                core: coreData,
-                restrictions: restrictionsData
-            }));
-        } catch(e) { logError('PitupiAI/save', e); }
+        try { const graphData = { nodes: {}, edges: {} }; for (const [k, v] of this._knowledge.graph.nodes) graphData.nodes[k] = v; for (const [k, v] of this._knowledge.graph.edges) graphData.edges[k] = v; const restrictionsData = {}; for (const [k, v] of this._knowledge.restrictions) restrictionsData[k] = v; const coreData = { natTypes: {}, blockedHours: [...this._core.blockedHours], preferredTurn: this._preferTurnServers }; for (const [k, v] of this._core.natTypes) coreData.natTypes[k] = v; localStorage.setItem('pitupi_knowledge', JSON.stringify({ patterns: this._knowledge.patterns.slice(-500), weights: this._weights, timeLoad: this._knowledge.timeLoad, federation: this._knowledge.federation, graph: graphData, core: coreData, restrictions: restrictionsData })); } catch(e) { logError('PitupiAI/save', e); }
     },
-
-    _forgetOldPatterns() {
-        const now = Date.now();
-        const MAX_AGE = 7 * 24 * 3600 * 1000;
-        this._knowledge.patterns = this._knowledge.patterns.filter(p => {
-            if (p.core === true) return true;
-            if (now - p.time > MAX_AGE) return false;
-            return true;
-        });
-        if (this._knowledge.patterns.length > 1000) {
-            const toKeep = this._knowledge.patterns.filter(p => p.core === true);
-            const nonCore = this._knowledge.patterns.filter(p => p.core !== true).sort((a, b) => b.time - a.time).slice(0, 800);
-            this._knowledge.patterns = [...toKeep, ...nonCore];
-        }
-    },
-
-    enforceCoreMinimums() {
-        for (const [key, min] of Object.entries(this._core.minWeights)) {
-            if (this._weights[key] < min) this._weights[key] = min;
-        }
-        const total = Object.values(this._weights).reduce((s, w) => s + w, 0);
-        for (const key of Object.keys(this._weights)) this._weights[key] /= total;
-    },
-
-    addGraphEdge(fromId, toId, quality, restrictions = {}) {
-        this._knowledge.graph.nodes.set(fromId, { lastSeen: Date.now() });
-        this._knowledge.graph.nodes.set(toId, { lastSeen: Date.now() });
-        const edgeKey = `${fromId}→${toId}`;
-        const existing = this._knowledge.graph.edges.get(edgeKey) || { weight: 0.5, count: 0, lastUsed: 0, restrictions: {} };
-        existing.weight = existing.weight * 0.7 + quality * 0.3;
-        existing.count++;
-        existing.lastUsed = Date.now();
-        if (restrictions.natType) { existing.restrictions.natType = restrictions.natType; this._knowledge.restrictions.set(edgeKey, { type: 'nat', subtype: restrictions.natType, detectedAt: Date.now() }); }
-        if (restrictions.blockedPorts) { existing.restrictions.blockedPorts = restrictions.blockedPorts; this._knowledge.restrictions.set(edgeKey, { type: 'blocked_ports', ports: restrictions.blockedPorts, detectedAt: Date.now() }); }
-        if (restrictions.dpiDetected) { existing.restrictions.dpiDetected = true; this._knowledge.restrictions.set(edgeKey, { type: 'dpi', detectedAt: Date.now() }); }
-        if (Object.keys(existing.restrictions).length > 0) existing.weight = Math.max(0.1, existing.weight - 0.1);
-        this._knowledge.graph.edges.set(edgeKey, existing);
-    },
-
-    getBestPath(fromId, toId) {
-        const paths = [];
-        for (const [key, edge] of this._knowledge.graph.edges) {
-            const [a, b] = key.split('→');
-            if (a === fromId && b === toId) paths.push({ direct: true, quality: edge.weight, via: null, restrictions: edge.restrictions || {} });
-            else if (b === toId && this._knowledge.graph.edges.has(`${fromId}→${a}`)) {
-                const hop = this._knowledge.graph.edges.get(`${fromId}→${a}`);
-                paths.push({ direct: false, quality: (edge.weight + hop.weight) / 2, via: a, restrictions: edge.restrictions || {} });
-            }
-        }
-        paths.sort((a, b) => b.quality - a.quality);
-        return paths[0] || { direct: true, quality: 0.3, via: null, restrictions: {} };
-    },
-
-    classifyNetworkRestriction(peerId, event, details = {}) {
-        if (event === 'ice_failed' && details?.iceConnectionState === 'failed') {
-            this._core.natTypes.set(peerId, 'symmetric');
-            this._learn('restriction_detected', { type: 'symmetric_nat', peerId, core: true });
-        }
-        if (event === 'ws_disconnected' && details?.code === 1006) {
-            this._learn('restriction_detected', { type: 'ws_blocked', peerId, core: true });
-        }
-        if (event === 'connection_timeout' && this._detectRepeatedTimeouts(peerId)) {
-            const hour = new Date().getHours();
-            this._core.blockedHours.add(hour);
-            this._learn('restriction_detected', { type: 'timed_block', peerId, hour, core: true });
-        }
-    },
-
-    _detectRepeatedTimeouts(peerId) {
-        const recent = this._knowledge.patterns.filter(p => p.event === 'connection_timeout' && p.data?.peerId === peerId && Date.now() - p.time < 3600000);
-        return recent.length >= 3;
-    },
-
-    adaptToRestrictions(restrictionType) {
-        switch(restrictionType) {
-            case 'symmetric_nat':
-                this._preferTurnServers = true;
-                logWarn('PitupiAI', 'Адаптация: предпочитаю TURN-сервера');
-                break;
-            case 'udp_blocked':
-                this._tryTcpIceTransport = true;
-                logWarn('PitupiAI', 'Адаптация: пробую TCP ICE транспорт');
-                break;
-            case 'ws_blocked':
-                logWarn('PitupiAI', 'Адаптация: WebSocket заблокирован, пробую альтернативный порт');
-                break;
-            case 'timed_restriction':
-                const hour = new Date().getHours();
-                this._knowledge.timeLoad[hour] = 999;
-                logWarn('PitupiAI', `Адаптация: час ${hour} помечен как заблокированный`);
-                break;
-        }
-        this._learn('restriction_adaptation', { type: restrictionType, action: 'adapted', core: true });
-        this.save();
-    },
-
+    _forgetOldPatterns() { const now = Date.now(); const MAX_AGE = 7 * 24 * 3600 * 1000; this._knowledge.patterns = this._knowledge.patterns.filter(p => { if (p.core === true) return true; if (now - p.time > MAX_AGE) return false; return true; }); if (this._knowledge.patterns.length > 1000) { const toKeep = this._knowledge.patterns.filter(p => p.core === true); const nonCore = this._knowledge.patterns.filter(p => p.core !== true).sort((a, b) => b.time - a.time).slice(0, 800); this._knowledge.patterns = [...toKeep, ...nonCore]; } },
+    enforceCoreMinimums() { for (const [key, min] of Object.entries(this._core.minWeights)) { if (this._weights[key] < min) this._weights[key] = min; } const total = Object.values(this._weights).reduce((s, w) => s + w, 0); for (const key of Object.keys(this._weights)) this._weights[key] /= total; },
+    addGraphEdge(fromId, toId, quality, restrictions = {}) { this._knowledge.graph.nodes.set(fromId, { lastSeen: Date.now() }); this._knowledge.graph.nodes.set(toId, { lastSeen: Date.now() }); const edgeKey = `${fromId}→${toId}`; const existing = this._knowledge.graph.edges.get(edgeKey) || { weight: 0.5, count: 0, lastUsed: 0, restrictions: {} }; existing.weight = existing.weight * 0.7 + quality * 0.3; existing.count++; existing.lastUsed = Date.now(); if (restrictions.natType) { existing.restrictions.natType = restrictions.natType; this._knowledge.restrictions.set(edgeKey, { type: 'nat', subtype: restrictions.natType, detectedAt: Date.now() }); } if (restrictions.blockedPorts) { existing.restrictions.blockedPorts = restrictions.blockedPorts; this._knowledge.restrictions.set(edgeKey, { type: 'blocked_ports', ports: restrictions.blockedPorts, detectedAt: Date.now() }); } if (restrictions.dpiDetected) { existing.restrictions.dpiDetected = true; this._knowledge.restrictions.set(edgeKey, { type: 'dpi', detectedAt: Date.now() }); } if (Object.keys(existing.restrictions).length > 0) existing.weight = Math.max(0.1, existing.weight - 0.1); this._knowledge.graph.edges.set(edgeKey, existing); },
+    getBestPath(fromId, toId) { const paths = []; for (const [key, edge] of this._knowledge.graph.edges) { const [a, b] = key.split('→'); if (a === fromId && b === toId) paths.push({ direct: true, quality: edge.weight, via: null, restrictions: edge.restrictions || {} }); else if (b === toId && this._knowledge.graph.edges.has(`${fromId}→${a}`)) { const hop = this._knowledge.graph.edges.get(`${fromId}→${a}`); paths.push({ direct: false, quality: (edge.weight + hop.weight) / 2, via: a, restrictions: edge.restrictions || {} }); } } paths.sort((a, b) => b.quality - a.quality); return paths[0] || { direct: true, quality: 0.3, via: null, restrictions: {} }; },
+    classifyNetworkRestriction(peerId, event, details = {}) { if (event === 'ice_failed' && details?.iceConnectionState === 'failed') { this._core.natTypes.set(peerId, 'symmetric'); this._learn('restriction_detected', { type: 'symmetric_nat', peerId, core: true }); } if (event === 'ws_disconnected' && details?.code === 1006) { this._learn('restriction_detected', { type: 'ws_blocked', peerId, core: true }); } if (event === 'connection_timeout' && this._detectRepeatedTimeouts(peerId)) { const hour = new Date().getHours(); this._core.blockedHours.add(hour); this._learn('restriction_detected', { type: 'timed_block', peerId, hour, core: true }); } },
+    _detectRepeatedTimeouts(peerId) { const recent = this._knowledge.patterns.filter(p => p.event === 'connection_timeout' && p.data?.peerId === peerId && Date.now() - p.time < 3600000); return recent.length >= 3; },
+    adaptToRestrictions(restrictionType) { switch(restrictionType) { case 'symmetric_nat': this._preferTurnServers = true; logWarn('PitupiAI', 'Адаптация: предпочитаю TURN-сервера'); break; case 'udp_blocked': this._tryTcpIceTransport = true; logWarn('PitupiAI', 'Адаптация: пробую TCP ICE транспорт'); break; case 'ws_blocked': logWarn('PitupiAI', 'Адаптация: WebSocket заблокирован'); break; case 'timed_restriction': const hour = new Date().getHours(); this._knowledge.timeLoad[hour] = 999; logWarn('PitupiAI', `Адаптация: час ${hour} помечен как заблокированный`); break; } this._learn('restriction_adaptation', { type: restrictionType, action: 'adapted', core: true }); this.save(); },
     _recordTimeLoad() { const hour = new Date().getHours(); this._knowledge.timeLoad[hour] = (this._knowledge.timeLoad[hour] || 0) + 1; },
     predictLoad(hour) { const h = hour ?? new Date().getHours(); const maxLoad = Math.max(1, ...this._knowledge.timeLoad); return this._knowledge.timeLoad[h] / maxLoad; },
     shouldReduceActivity() { return this.predictLoad() > 0.7; },
-
-    async _detectGeo() {
-        this._knowledge.geoServers.set('default', { server: 'stun:stun.l.google.com:19302', latency: 100, region: 'global' });
-        this._knowledge.geoServers.set('backup1', { server: 'stun:stun1.l.google.com:19302', latency: 150, region: 'global' });
-        this._knowledge.geoServers.set('backup2', { server: 'stun:stun2.l.google.com:19302', latency: 200, region: 'global' });
-        if (this._preferTurnServers) {
-            this._knowledge.geoServers.set('turn1', { server: 'turn:openrelay.metered.ca:80', latency: 300, region: 'global', isTurn: true });
-            this._knowledge.geoServers.set('turn2', { server: 'turn:openrelay.metered.ca:443', latency: 350, region: 'global', isTurn: true });
-        }
-    },
-
-    getBestICEServers() {
-        const servers = [...this._knowledge.geoServers.values()].sort((a, b) => a.latency - b.latency);
-        const result = servers.slice(0, 3).map(s => {
-            const url = s.isTurn ? `${s.server}?transport=tcp` : s.server;
-            const config = { urls: url };
-            if (this._tryTcpIceTransport && !s.isTurn) config.transport = 'tcp';
-            return config;
-        });
-        return result;
-    },
-
-    async _federateWeights() {
-        if (!peerHelpEnabled) return;
-        for (const [peerId, peer] of DHT._peers) {
-            if (peer.conn?.readyState === 'open') {
-                try {
-                    const response = await this._sendFederatedQuery(peerId, { type: 'pitupi-federate', weights: this._weights, timestamp: Date.now() });
-                    if (response?.weights) this.receiveFederatedWeights(response.weights, peerId);
-                } catch(e) {}
-            }
-        }
-        this._knowledge.federation.lastSync = Date.now();
-        this.save();
-    },
-
-    async _sendFederatedQuery(peerId, data) {
-        return new Promise((resolve) => {
-            const requestId = RND();
-            pendingDHTRequests.set(requestId, resolve);
-            sendToPeer(peerId, { ...data, requestId });
-            setTimeout(() => { if (pendingDHTRequests.has(requestId)) { pendingDHTRequests.delete(requestId); resolve(null); } }, 5000);
-        });
-    },
-
-    receiveFederatedWeights(remoteWeights, fromPeerId) {
-        if (!this._knowledge.federation.peerContributions) this._knowledge.federation.peerContributions = new Map();
-        for (const [key, value] of Object.entries(remoteWeights)) {
-            const myW = this._weights[key] || 0;
-            this._weights[key] = myW * 0.9 + value * 0.1;
-        }
-        this.enforceCoreMinimums();
-        this._knowledge.federation.peerContributions.set(fromPeerId, Date.now());
-        this._learn('federated_update', { from: fromPeerId.substring(0, 8), weights: { ...this._weights } });
-    },
-
-    ratePeer(peerId, event, details = {}) {
-        if (!this._knowledge.peers.has(peerId)) this._knowledge.peers.set(peerId, { reliability: 0.5, latency: 0, lastSeen: Date.now(), routeQuality: 0.5 });
-        const peer = this._knowledge.peers.get(peerId);
-        switch(event) {
-            case 'connected': peer.reliability = Math.min(1, peer.reliability + 0.1); peer.lastSeen = Date.now(); break;
-            case 'disconnected': peer.reliability = Math.max(0, peer.reliability - 0.2); this.classifyNetworkRestriction(peerId, 'connection_timeout', details); break;
-            case 'message_received': peer.reliability = Math.min(1, peer.reliability + 0.05); peer.lastSeen = Date.now(); break;
-            case 'message_failed': peer.reliability = Math.max(0, peer.reliability - 0.15); break;
-            case 'channel_error': peer.routeQuality = Math.max(0, peer.routeQuality - 0.1); break;
-            case 'ice_failed': this.classifyNetworkRestriction(peerId, 'ice_failed', details); break;
-            case 'ws_disconnected': this.classifyNetworkRestriction(peerId, 'ws_disconnected', details); break;
-        }
-        this._learn('peer_rating', { peerId, event, reliability: peer.reliability });
-        return peer.reliability;
-    },
-
-    async selectBestRoute(targetPeerId, candidates) {
-        const scored = await Promise.all(candidates.map(async (peer) => {
-            let score = 0;
-            const knowledge = this._knowledge.peers.get(peer.id);
-            if (knowledge) { score += knowledge.reliability * this._weights.peerReliability; score += knowledge.routeQuality * this._weights.routeQuality; }
-            else score += 0.3;
-            const path = this.getBestPath(PP4._peerId, targetPeerId);
-            score += path.quality * this._weights.historicalPattern;
-            if (Object.keys(path.restrictions).length > 0) score *= 0.7;
-            if (this.shouldReduceActivity()) score *= 0.8;
-            return { peer, score };
-        }));
-        scored.sort((a, b) => b.score - a.score);
-        return scored[0]?.peer || candidates[0];
-    },
-
-    predictChannelAvailability(channelId) {
-        const ch = this._knowledge.channels.get(channelId); if (!ch) return 0.5;
-        const now = Date.now(); const age = now - (ch.createdAt || now); const stability = ch.stability || 0.5; const errors = ch.errors || 0;
-        if (age > 300000 && errors < 3) return Math.min(1, stability + 0.2);
-        if (errors > 5) return Math.max(0, stability - 0.3);
-        return stability;
-    },
-
-    async autoHealChannel(channelId) {
-        const ch = PP4._channels[channelId]; if (!ch) return false;
-        const availability = this.predictChannelAvailability(channelId);
-        if (availability < 0.3) {
-            logWarn('PitupiAI', `Авто-восстановление колчана ${channelId.substring(0,6)}...`);
-            await requestRatchetResync(ch);
-            const candidates = getClosestPeers(ch.peerId, 5);
-            if (candidates.length > 1) {
-                const bestRoute = await this.selectBestRoute(ch.peerId, candidates);
-                if (bestRoute.id !== ch.peerId) logWarn('PitupiAI', `Альтернативный маршрут через ${bestRoute.id.substring(0,6)}`);
-            }
-            return true;
-        }
-        return false;
-    },
-
+    async _detectGeo() { this._knowledge.geoServers.set('default', { server: 'stun:stun.l.google.com:19302', latency: 100, region: 'global' }); this._knowledge.geoServers.set('backup1', { server: 'stun:stun1.l.google.com:19302', latency: 150, region: 'global' }); this._knowledge.geoServers.set('backup2', { server: 'stun:stun2.l.google.com:19302', latency: 200, region: 'global' }); if (this._preferTurnServers) { this._knowledge.geoServers.set('turn1', { server: 'turn:openrelay.metered.ca:80', latency: 300, region: 'global', isTurn: true }); this._knowledge.geoServers.set('turn2', { server: 'turn:openrelay.metered.ca:443', latency: 350, region: 'global', isTurn: true }); } },
+    getBestICEServers() { const servers = [...this._knowledge.geoServers.values()].sort((a, b) => a.latency - b.latency); const result = servers.slice(0, 3).map(s => { const url = s.isTurn ? `${s.server}?transport=tcp` : s.server; const config = { urls: url }; if (this._tryTcpIceTransport && !s.isTurn) config.transport = 'tcp'; return config; }); return result; },
+    async _federateWeights() { if (!peerHelpEnabled) return; for (const [peerId, peer] of DHT._peers) { if (peer.conn?.readyState === 'open') { try { const response = await this._sendFederatedQuery(peerId, { type: 'pitupi-federate', weights: this._weights, timestamp: Date.now() }); if (response?.weights) this.receiveFederatedWeights(response.weights, peerId); } catch(e) {} } } this._knowledge.federation.lastSync = Date.now(); this.save(); },
+    async _sendFederatedQuery(peerId, data) { return new Promise((resolve) => { const requestId = RND(); pendingDHTRequests.set(requestId, resolve); sendToPeer(peerId, { ...data, requestId }); setTimeout(() => { if (pendingDHTRequests.has(requestId)) { pendingDHTRequests.delete(requestId); resolve(null); } }, 5000); }); },
+    receiveFederatedWeights(remoteWeights, fromPeerId) { if (!this._knowledge.federation.peerContributions) this._knowledge.federation.peerContributions = new Map(); for (const [key, value] of Object.entries(remoteWeights)) { const myW = this._weights[key] || 0; this._weights[key] = myW * 0.9 + value * 0.1; } this.enforceCoreMinimums(); this._knowledge.federation.peerContributions.set(fromPeerId, Date.now()); this._learn('federated_update', { from: fromPeerId.substring(0, 8), weights: { ...this._weights } }); },
+    ratePeer(peerId, event, details = {}) { if (!this._knowledge.peers.has(peerId)) this._knowledge.peers.set(peerId, { reliability: 0.5, latency: 0, lastSeen: Date.now(), routeQuality: 0.5 }); const peer = this._knowledge.peers.get(peerId); switch(event) { case 'connected': peer.reliability = Math.min(1, peer.reliability + 0.1); peer.lastSeen = Date.now(); break; case 'disconnected': peer.reliability = Math.max(0, peer.reliability - 0.2); this.classifyNetworkRestriction(peerId, 'connection_timeout', details); break; case 'message_received': peer.reliability = Math.min(1, peer.reliability + 0.05); peer.lastSeen = Date.now(); break; case 'message_failed': peer.reliability = Math.max(0, peer.reliability - 0.15); break; case 'channel_error': peer.routeQuality = Math.max(0, peer.routeQuality - 0.1); break; case 'ice_failed': this.classifyNetworkRestriction(peerId, 'ice_failed', details); break; case 'ws_disconnected': this.classifyNetworkRestriction(peerId, 'ws_disconnected', details); break; } this._learn('peer_rating', { peerId, event, reliability: peer.reliability }); return peer.reliability; },
+    async selectBestRoute(targetPeerId, candidates) { const scored = await Promise.all(candidates.map(async (peer) => { let score = 0; const knowledge = this._knowledge.peers.get(peer.id); if (knowledge) { score += knowledge.reliability * this._weights.peerReliability; score += knowledge.routeQuality * this._weights.routeQuality; } else score += 0.3; const path = this.getBestPath(PP4._peerId, targetPeerId); score += path.quality * this._weights.historicalPattern; if (Object.keys(path.restrictions).length > 0) score *= 0.7; if (this.shouldReduceActivity()) score *= 0.8; return { peer, score }; })); scored.sort((a, b) => b.score - a.score); return scored[0]?.peer || candidates[0]; },
+    predictChannelAvailability(channelId) { const ch = this._knowledge.channels.get(channelId); if (!ch) return 0.5; const now = Date.now(); const age = now - (ch.createdAt || now); const stability = ch.stability || 0.5; const errors = ch.errors || 0; if (age > 300000 && errors < 3) return Math.min(1, stability + 0.2); if (errors > 5) return Math.max(0, stability - 0.3); return stability; },
+    async autoHealChannel(channelId) { const ch = PP4._channels[channelId]; if (!ch) return false; const availability = this.predictChannelAvailability(channelId); if (availability < 0.3) { logWarn('PitupiAI', `Авто-восстановление колчана ${channelId.substring(0,6)}...`); await requestRatchetResync(ch); const candidates = getClosestPeers(ch.peerId, 5); if (candidates.length > 1) { const bestRoute = await this.selectBestRoute(ch.peerId, candidates); if (bestRoute.id !== ch.peerId) logWarn('PitupiAI', `Альтернативный маршрут через ${bestRoute.id.substring(0,6)}`); } return true; } return false; },
     async _autoHealAll() { for (const [id] of Object.entries(PP4._channels)) await this.autoHealChannel(id); this.save(); },
-
-    _learn(event, data) {
-        this._knowledge.patterns.push({ time: Date.now(), event, data: JSON.parse(JSON.stringify(data)), core: data?.core === true });
-        if (this._knowledge.patterns.length % 100 === 0) this._analyzePatterns();
-        if (this._knowledge.patterns.length % 50 === 0) this.save();
-    },
-
-    _analyzePatterns() {
-        const recent = this._knowledge.patterns.slice(-200);
-        const successRoutes = recent.filter(p => p.event === 'route_success');
-        const failRoutes = recent.filter(p => p.event === 'route_fail');
-        if (successRoutes.length + failRoutes.length > 20) {
-            const successRate = successRoutes.length / (successRoutes.length + failRoutes.length);
-            if (successRate > 0.8) { this._weights.routeQuality += 0.02; this._weights.latencyImpact -= 0.01; }
-            else if (successRate < 0.4) { this._weights.routeQuality -= 0.02; this._weights.peerReliability += 0.02; }
-            this.enforceCoreMinimums();
-        }
-    },
-
-    getStats() {
-        const topPeers = [...this._knowledge.peers.entries()].sort((a, b) => b[1].reliability - a[1].reliability).slice(0, 5);
-        const currentLoad = this.predictLoad();
-        const lastFed = this._knowledge.federation.lastSync ? Math.round((Date.now() - this._knowledge.federation.lastSync) / 60000) : 'никогда';
-        const restrictionCount = this._knowledge.restrictions.size;
-        const natTypesDetected = [...this._core.natTypes.values()].filter((v, i, a) => a.indexOf(v) === i);
-        return {
-            peersTracked: this._knowledge.peers.size, channelsMonitored: this._knowledge.channels.size,
-            patternsLearned: this._knowledge.patterns.length, graphNodes: this._knowledge.graph.nodes.size,
-            graphEdges: this._knowledge.graph.edges.size, currentLoad: (currentLoad * 100).toFixed(0) + '%',
-            topReliablePeers: topPeers.map(([id, data]) => ({ id: id.substring(0, 8), reliability: data.reliability.toFixed(2) })),
-            weights: { ...this._weights }, federationPeers: this._knowledge.federation.peerContributions?.size || 0,
-            lastFederation: lastFed, geoServers: this._knowledge.geoServers.size,
-            restrictionsDetected: restrictionCount, natTypes: natTypesDetected.join(', ') || 'нет',
-            blockedHours: [...this._core.blockedHours].join(', ') || 'нет', preferTurn: this._preferTurnServers ? 'Да' : 'Нет',
-            tcpTransport: this._tryTcpIceTransport ? 'Да' : 'Нет'
-        };
-    },
-
-    updateUI() {
-        const indicator = document.getElementById('ai-indicator'); if (!indicator) return;
-        const stats = this.getStats();
-        indicator.style.display = 'inline';
-        indicator.textContent = '🧠 ' + stats.currentLoad;
-        const restrictions = stats.restrictionsDetected > 0 ? ` | 🚫${stats.restrictionsDetected}` : '';
-        indicator.title = `Пиры: ${stats.peersTracked} | Паттерны: ${stats.patternsLearned} | Граф: ${stats.graphNodes} узлов${restrictions}`;
-    }
+    _learn(event, data) { this._knowledge.patterns.push({ time: Date.now(), event, data: JSON.parse(JSON.stringify(data)), core: data?.core === true }); if (this._knowledge.patterns.length % 100 === 0) this._analyzePatterns(); if (this._knowledge.patterns.length % 50 === 0) this.save(); },
+    _analyzePatterns() { const recent = this._knowledge.patterns.slice(-200); const successRoutes = recent.filter(p => p.event === 'route_success'); const failRoutes = recent.filter(p => p.event === 'route_fail'); if (successRoutes.length + failRoutes.length > 20) { const successRate = successRoutes.length / (successRoutes.length + failRoutes.length); if (successRate > 0.8) { this._weights.routeQuality += 0.02; this._weights.latencyImpact -= 0.01; } else if (successRate < 0.4) { this._weights.routeQuality -= 0.02; this._weights.peerReliability += 0.02; } this.enforceCoreMinimums(); } },
+    getStats() { const topPeers = [...this._knowledge.peers.entries()].sort((a, b) => b[1].reliability - a[1].reliability).slice(0, 5); const currentLoad = this.predictLoad(); const lastFed = this._knowledge.federation.lastSync ? Math.round((Date.now() - this._knowledge.federation.lastSync) / 60000) : 'никогда'; const restrictionCount = this._knowledge.restrictions.size; const natTypesDetected = [...this._core.natTypes.values()].filter((v, i, a) => a.indexOf(v) === i); return { peersTracked: this._knowledge.peers.size, channelsMonitored: this._knowledge.channels.size, patternsLearned: this._knowledge.patterns.length, graphNodes: this._knowledge.graph.nodes.size, graphEdges: this._knowledge.graph.edges.size, currentLoad: (currentLoad * 100).toFixed(0) + '%', topReliablePeers: topPeers.map(([id, data]) => ({ id: id.substring(0, 8), reliability: data.reliability.toFixed(2) })), weights: { ...this._weights }, federationPeers: this._knowledge.federation.peerContributions?.size || 0, lastFederation: lastFed, geoServers: this._knowledge.geoServers.size, restrictionsDetected: restrictionCount, natTypes: natTypesDetected.join(', ') || 'нет', blockedHours: [...this._core.blockedHours].join(', ') || 'нет', preferTurn: this._preferTurnServers ? 'Да' : 'Нет', tcpTransport: this._tryTcpIceTransport ? 'Да' : 'Нет' }; },
+    updateUI() { const indicator = document.getElementById('ai-indicator'); if (!indicator) return; const stats = this.getStats(); indicator.style.display = 'inline'; indicator.textContent = '🧠 ' + stats.currentLoad; const restrictions = stats.restrictionsDetected > 0 ? ` | 🚫${stats.restrictionsDetected}` : ''; indicator.title = `Пиры: ${stats.peersTracked} | Паттерны: ${stats.patternsLearned} | Граф: ${stats.graphNodes} узлов${restrictions}`; }
 };
 
-// ========== PP4 + DHT + GZIP + RATCHET ==========
 const PP4={_peerId:null,_beacons:{},_channels:{},_ws:null,_wsUrl:'wss://robincall.stephanclaps-491.workers.dev/ws',_wsReconnectDelay:1000,_maxReconnectDelay:30000};
 const DHT={_nodeId:null,_buckets:[],_storage:{},_k:20,_alpha:3,_peers:new Map(),_signalSend:null};
 if(!window.crypto?.subtle)throw new Error('Требуется HTTPS');
@@ -609,7 +309,7 @@ async function verifyHMAC(data,signature,secret){try{const hmacKey=await crypto.
 async function advanceRatchet(ch){const oldKey=ch.ratchetKey||ch.secret;const salt=(ch.ratchetIndex||0).toString(16).padStart(16,'0');const newKey=await SHA(oldKey+salt);ch.ratchetKey=newKey;ch.ratchetIndex=(ch.ratchetIndex||0)+1;if(!ch.oldKeys)ch.oldKeys=[];ch.oldKeys.push({index:ch.ratchetIndex-1,key:oldKey});if(ch.oldKeys.length>50)ch.oldKeys.shift();updateRatchetIndicator();return newKey;}
 async function packBlob(jsonString,ch){const compressed=await compressData(jsonString);const padSize=Math.floor(Math.random()*50)+20;const randomPad=btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(padSize))));const data=JSON.stringify({z:compressed,t:Date.now(),n:RND(),pad:randomPad,ri:ch.ratchetIndex||0});const currentKey=ch.ratchetKey||ch.secret;const hmac=await computeHMAC(data,currentKey);const packed=hmac+'|'+data;let padded=packed;if(padded.length<4096){const pad=crypto.getRandomValues(new Uint8Array(4096-padded.length));padded+=String.fromCharCode(...pad);}else padded=padded.substring(0,4096);await advanceRatchet(ch);return await encryptAES(padded,ch.secret);}
 async function tryDecryptWithKey(decrypted,key){const separatorIndex=decrypted.indexOf('|');if(separatorIndex===-1)return null;const hmac=decrypted.substring(0,separatorIndex);const data=decrypted.substring(separatorIndex+1).trim().replace(/\x00+$/,'');const valid=await verifyHMAC(data,hmac,key);if(!valid)return null;try{const parsed=JSON.parse(data);if(parsed.z){const decompressed=await decompressData(parsed.z);const inner=JSON.parse(decompressed);inner._t=parsed.t;inner._ri=parsed.ri;return inner;}delete parsed.pad;delete parsed.ri;return parsed;}catch(e){logError('tryDecryptWithKey/JSON',e);return null;}}
-async function unpackBlob(blob,ch){const dec=await decryptAES(blob,ch.secret);if(!dec)return null;let result=await tryDecryptWithKey(dec,ch.ratchetKey||ch.secret);if(result)return result;if(ch.oldKeys){for(let i=ch.oldKeys.length-1;i>=0;i--){result=await tryDecryptWithKey(dec,ch.oldKeys[i].key);if(result)return result;}}return null;}
+async function unpackBlob(blob,ch){const dec=await decryptAES(blob,ch.secret);if(!dec)return null;let result=await tryDecryptWithKey(dec,ch.ratchetKey||ch.secret);if(result)return result;if(ch.oldKeys){for(let i=ch.oldKeys.length-1;i>=0;i--){result=await tryDecryptWithKey(dec,ch.oldKeys[i].key);if(result)return result;}}logWarn('unpackBlob','Все ключи перебраны, запрос ресинхронизации');requestRatchetResync(ch);return null;}
 async function requestRatchetResync(ch){const chId=Object.keys(PP4._channels).find(id=>PP4._channels[id]===ch);if(!chId)return;const resyncData=JSON.stringify({type:'ratchet-resync',secret:ch.secret,peerId:PP4._peerId});const packed=await encryptAES(resyncData,ch.secret);broadcastBlob(packed,chId);rMsg('🔄 Ресинхронизация ratchet...',3000);}
 function saveChannels(){const d=Object.entries(PP4._channels).map(([id,ch])=>({id,peerId:ch.peerId,type:ch.type,expires:ch.expires,createdAt:ch.createdAt}));try{localStorage.setItem('pp4_channels',JSON.stringify(d));}catch(e){logError('saveChannels',e);}}
 function loadChannels(){try{const r=localStorage.getItem('pp4_channels');if(!r)return;JSON.parse(r).forEach(ch=>{if(Date.now()<ch.expires)PP4._channels[ch.id]={...ch,blobs:[],secret:null,reconnect:true};});}catch(e){logError('loadChannels',e);}}
@@ -620,19 +320,11 @@ function initBuckets(){DHT._buckets=Array.from({length:256},()=>[]);}
 function addPeer(peerId,conn){const dist=xorDistance(DHT._nodeId,peerId);const idx=Math.min(getBucketIndex(dist),255);const bucket=DHT._buckets[idx];const existing=bucket.findIndex(p=>p.id===peerId);if(existing>=0)bucket.splice(existing,1);bucket.unshift({id:peerId,conn,lastSeen:Date.now()});if(bucket.length>DHT._k)bucket.pop();DHT._peers.set(peerId,{conn,lastSeen:Date.now()});PitupiAI.ratePeer(peerId,'connected');}
 function getClosestPeers(targetId,count=DHT._k){const all=[];for(const bucket of DHT._buckets)for(const peer of bucket)all.push({...peer,distance:xorDistance(targetId,peer.id)});all.sort((a,b)=>(a.distance<b.distance?-1:a.distance>b.distance?1:0));return all.slice(0,count);}
 const pendingDHTRequests=new Map();
-function setupDataChannel(dc,peerId){dc.onopen=()=>{addPeer(peerId,dc);updateUI();};dc.onclose=()=>{DHT._peers.delete(peerId);for(const bucket of DHT._buckets){const idx=bucket.findIndex(p=>p.id===peerId);if(idx>=0)bucket.splice(idx,1);}PitupiAI.ratePeer(peerId,'disconnected',{code:dc.readyState});updateUI();};dc.onmessage=(e)=>{let msg;try{msg=JSON.parse(e.data);}catch(er){logError('setupDataChannel/onmessage',er);return;}const peer=DHT._peers.get(peerId);if(peer)peer.lastSeen=Date.now();
-    if(msg.type==='pitupi-federate'&&msg.weights){PitupiAI.receiveFederatedWeights(msg.weights,peerId);return;}
-    if(msg.type==='pitupi-federate-response'&&msg.weights){const resolve=pendingDHTRequests.get(msg.requestId);if(resolve){pendingDHTRequests.delete(msg.requestId);resolve(msg);}return;}
-    if(msg.type==='dht-ping'){try{dc.send(JSON.stringify({type:'dht-pong'}));}catch(er){logError('dht-pong/send',er);}return;}
-    if(msg.type==='dht-pong')return;
-    if(msg.type==='dht-store'){DHT._storage[msg.key]={value:msg.value,publisher:msg.publisher,timestamp:msg.timestamp};return;}
-    if(msg.type==='dht-find'){const found=DHT._storage[msg.key];try{dc.send(JSON.stringify(found?{type:'dht-find-response',requestId:msg.requestId,found:true,value:found.value,publisher:found.publisher}:{type:'dht-find-response',requestId:msg.requestId,found:false,peers:getClosestPeers(msg.key,DHT._k).map(p=>({id:p.id}))}));}catch(er){logError('dht-find/send',er);}return;}
-    if(msg.type==='dht-find-response'){const resolve=pendingDHTRequests.get(msg.requestId);if(resolve){pendingDHTRequests.delete(msg.requestId);resolve(msg);}return;}
-    if(msg.type==='blob'){handleIncomingBlob(msg.blob,msg.channelId);PitupiAI.ratePeer(peerId,'message_received');return;}};}
+function setupDataChannel(dc,peerId){dc.onopen=()=>{addPeer(peerId,dc);updateUI();};dc.onclose=()=>{DHT._peers.delete(peerId);for(const bucket of DHT._buckets){const idx=bucket.findIndex(p=>p.id===peerId);if(idx>=0)bucket.splice(idx,1);}PitupiAI.ratePeer(peerId,'disconnected',{code:dc.readyState});updateUI();};dc.onmessage=(e)=>{let msg;try{msg=JSON.parse(e.data);}catch(er){handleIncomingBlob(e.data,null);return;}const peer=DHT._peers.get(peerId);if(peer)peer.lastSeen=Date.now();if(msg.type==='pitupi-federate'&&msg.weights){PitupiAI.receiveFederatedWeights(msg.weights,peerId);return;}if(msg.type==='pitupi-federate-response'&&msg.weights){const resolve=pendingDHTRequests.get(msg.requestId);if(resolve){pendingDHTRequests.delete(msg.requestId);resolve(msg);}return;}if(msg.type==='dht-ping'){try{dc.send(JSON.stringify({type:'dht-pong'}));}catch(er){logError('dht-pong/send',er);}return;}if(msg.type==='dht-pong')return;if(msg.type==='dht-store'){DHT._storage[msg.key]={value:msg.value,publisher:msg.publisher,timestamp:msg.timestamp};return;}if(msg.type==='dht-find'){const found=DHT._storage[msg.key];try{dc.send(JSON.stringify(found?{type:'dht-find-response',requestId:msg.requestId,found:true,value:found.value,publisher:found.publisher}:{type:'dht-find-response',requestId:msg.requestId,found:false,peers:getClosestPeers(msg.key,DHT._k).map(p=>({id:p.id}))}));}catch(er){logError('dht-find/send',er);}return;}if(msg.type==='dht-find-response'){const resolve=pendingDHTRequests.get(msg.requestId);if(resolve){pendingDHTRequests.delete(msg.requestId);resolve(msg);}return;}if(msg.type==='blob'){handleIncomingBlob(msg.blob,msg.channelId);PitupiAI.ratePeer(peerId,'message_received');return;}};}
 async function sendToPeer(peerId,message){const peer=DHT._peers.get(peerId);if(!peer?.conn||peer.conn.readyState!=='open')return;try{peer.conn.send(JSON.stringify(message));}catch(e){logError('sendToPeer',e);}}
 async function handleSignal(fromPeerId,signal){let pc;try{pc=new RTCPeerConnection({iceServers:PitupiAI.getBestICEServers()});}catch(e){logError('handleSignal/RTCPeerConnection',e);return;}pc.ondatachannel=(e)=>{setupDataChannel(e.channel,fromPeerId);};pc.onicecandidate=(e)=>{if(!e.candidate&&pc.localDescription&&DHT._signalSend)DHT._signalSend(fromPeerId,{type:'dht-signal',sdp:JSON.stringify(pc.localDescription)});};try{await pc.setRemoteDescription(new RTCSessionDescription(JSON.parse(signal.sdp)));const answer=await pc.createAnswer();await pc.setLocalDescription(answer);}catch(e){logError('handleSignal/SDP',e);}return pc;}
 async function connectToPeerDHT(peerId){let pc,dc;try{pc=new RTCPeerConnection({iceServers:PitupiAI.getBestICEServers()});}catch(e){logError('connectToPeerDHT/RTCPeerConnection',e);return{};}dc=pc.createDataChannel('dht');setupDataChannel(dc,peerId);pc.onicecandidate=(e)=>{if(!e.candidate&&pc.localDescription&&DHT._signalSend)DHT._signalSend(peerId,{type:'dht-signal',sdp:JSON.stringify(pc.localDescription)});};try{const offer=await pc.createOffer();await pc.setLocalDescription(offer);}catch(e){logError('connectToPeerDHT/SDP',e);}return{pc,dc};}
-function connectWS(){if(PP4._ws&&PP4._ws.readyState===WebSocket.OPEN)return;try{PP4._ws=new WebSocket(PP4._wsUrl);}catch(e){logError('connectWS',e);rMsg('❌ Ошибка подключения к сети',5000);setTimeout(connectWS,PP4._wsReconnectDelay);PP4._wsReconnectDelay=Math.min(PP4._wsReconnectDelay*2,PP4._maxReconnectDelay);return;}PP4._ws.onopen=()=>{PP4._wsReconnectDelay=1000;setConnectionStatus('online');try{PP4._ws.send(JSON.stringify({action:'subscribe',peerId:PP4._peerId}));}catch(e){logError('connectWS/subscribe',e);}};PP4._ws.onmessage=async e=>{let m;try{m=JSON.parse(e.data);}catch(er){logError('WS/onmessage',er);return;}if(m.type==='dht-signal'&&m.from!==DHT._nodeId){await handleSignal(m.from,m.data);return;}if(m.type==='blob'){handleIncomingBlob(m.blob,m.channelId);return;}};PP4._ws.onclose=()=>{setConnectionStatus('offline');PitupiAI.ratePeer('ws_signal','ws_disconnected',{code:1006});setTimeout(connectWS,PP4._wsReconnectDelay);PP4._wsReconnectDelay=Math.min(PP4._wsReconnectDelay*2,PP4._maxReconnectDelay);};}
+function connectWS(){if(PP4._ws&&PP4._ws.readyState===WebSocket.OPEN)return;try{PP4._ws=new WebSocket(PP4._wsUrl);}catch(e){logError('connectWS',e);rMsg('❌ Ошибка подключения к сети',5000);setTimeout(connectWS,PP4._wsReconnectDelay);PP4._wsReconnectDelay=Math.min(PP4._wsReconnectDelay*2,PP4._maxReconnectDelay);return;}PP4._ws.onopen=()=>{PP4._wsReconnectDelay=1000;setConnectionStatus('online');try{PP4._ws.send(JSON.stringify({action:'subscribe',peerId:PP4._peerId}));}catch(e){logError('connectWS/subscribe',e);}};PP4._ws.onmessage=async e=>{let m;try{m=JSON.parse(e.data);}catch(er){handleIncomingBlob(e.data,null);return;}if(m.type==='dht-signal'&&m.from!==DHT._nodeId){await handleSignal(m.from,m.data);return;}if(m.type==='blob'){handleIncomingBlob(m.blob,m.channelId);return;}};PP4._ws.onclose=()=>{setConnectionStatus('offline');PitupiAI.ratePeer('ws_signal','ws_disconnected',{code:1006});setTimeout(connectWS,PP4._wsReconnectDelay);PP4._wsReconnectDelay=Math.min(PP4._wsReconnectDelay*2,PP4._maxReconnectDelay);};}
 DHT._signalSend=(targetPeerId,data)=>{if(PP4._ws?.readyState===WebSocket.OPEN){try{PP4._ws.send(JSON.stringify({action:'dht-signal',targetPeerId,from:DHT._nodeId,data}));}catch(e){logError('DHT._signalSend',e);}}};
 
 const BLOB_NS='00000000000000000000000000000000';
@@ -643,7 +335,16 @@ async function createBeacon(){const targetId=document.getElementById('peer-id-in
 function ponkNotify(){const btn=document.getElementById('btn-requests');if(!btn)return;if(incomingBeacons.length>0){btn.classList.add('blink');}else{btn.classList.remove('blink');}}
 function ponkConfirm(){if(incomingBeacons.length===0)return;incomingBeacons.shift();ponkNotify();rMsg('✅ Колчан подтвержден!',3000);}
 function showChatForChannel(channelId){activeChannelId=channelId;const ct=contacts.find(c=>c.channelId===channelId);if(ct){activePeerId=ct.peerId;document.getElementById('robin-bar-sender').textContent=ct.name||'Лучник';}const box=document.getElementById('chat-box');box.innerHTML='<div class="typing-indicator" id="typing-indicator"></div>';const ch=PP4._channels[channelId];if(ch&&ch.blobs){ch.blobs.forEach(b=>{const im=b.from==='me';const ct2=contacts.find(c=>c.channelId===channelId);appendMessage(im?'Вы':(ct2?.name||'Друг'),b.d||b.text||'',im?selectedAvatar:(ct2?.avatar||'001'));});}updateCupIndicator();updateRatchetIndicator();}
-async function handleIncomingBlob(blobData,channelId){let data;try{data=JSON.parse(blobData);}catch(e){logError('handleIncomingBlob/JSON',e);return;}if(data.type==='beacon'&&data.pubKey&&data.inner){if(data.targetPeerId&&data.targetPeerId!==PP4._peerId)return;const remotePubKey=await importPublicKey(data.pubKey);const kp=await generateKeyPair();const myPubKey=await exportPublicKey(kp);const ss=await deriveSecret(kp,remotePubKey);const chId=RND();PP4._channels[chId]={secret:ss,ratchetKey:ss,ratchetIndex:0,oldKeys:[],peerId:data.peerId,type:'cup',blobs:[],expires:Date.now()+600000,createdAt:Date.now()};broadcastBlob(JSON.stringify({type:'beacon-response',pubKey:myPubKey,peerId:PP4._peerId,inner:data.inner,nick:getMyNick(),avatar:getMyAvatar()}),BLOB_NS);saveChannels();addContact({peerId:data.peerId,name:data.nick||'Лучник',channelId:chId,verified:false,avatar:data.avatar||'001'});PitupiAI.addGraphEdge(PP4._peerId,data.peerId,0.7);PitupiAI._knowledge.channels.set(chId,{stability:0.5,errors:0,createdAt:Date.now()});updateUI();showChatForChannel(chId);playQuiverAnimation();incomingBeacons.push({data,time:Date.now()});ponkNotify();rMsg('✅ Колчан открыт!Тетива натянута!',3000);return;}if(data.type==='beacon-response'&&data.pubKey&&data.inner){for(const[bid,b]of Object.entries(PP4._beacons)){if(!b.beaconKey)continue;const dec=await decryptAES(data.inner,b.beaconKey);if(!dec)continue;let payload;try{payload=JSON.parse(dec);}catch(e){logError('beacon-response/JSON',e);continue;}if(payload.nonce!==b.nonce)continue;const remotePubKey=await importPublicKey(data.pubKey);const ss=await deriveSecret(b.keyPair,remotePubKey);const chId=RND();PP4._channels[chId]={secret:ss,ratchetKey:ss,ratchetIndex:0,oldKeys:[],peerId:data.peerId,type:'cup',blobs:[],expires:Date.now()+600000,createdAt:Date.now()};delete PP4._beacons[bid];saveChannels();addContact({peerId:data.peerId,name:data.nick||'Лучник',channelId:chId,verified:false,avatar:data.avatar||'001'});PitupiAI.addGraphEdge(PP4._peerId,data.peerId,0.7);PitupiAI._knowledge.channels.set(chId,{stability:0.5,errors:0,createdAt:Date.now()});updateUI();showChatForChannel(chId);playQuiverAnimation();rMsg('✅ Колчан открыт!Тетива натянута!',3000);return;}}if(data.type==='ratchet-resync'&&data.secret){const chId=Object.keys(PP4._channels).find(id=>PP4._channels[id].peerId===data.peerId);if(chId){const ch=PP4._channels[chId];ch.ratchetKey=data.secret;ch.ratchetIndex=0;ch.oldKeys=[];rMsg('✅ Ratchet перезапущен',3000);updateRatchetIndicator();}return;}for(const[id,ch]of Object.entries(PP4._channels)){if(!ch.ratchetKey)continue;const u=await unpackBlob(blobData,ch);if(!u)continue;if(u._pad)delete u._pad;if(!activeChannelId||activeChannelId!==id)showChatForChannel(id);if(u.webrtc){await handleWebRTC(u,id);return;}if(u.voice){const ct=contacts.find(c=>c.channelId===id);const senderName=ct?.name||'Друг';const senderAvatar=ct?.avatar||'001';appendMessage(senderName,'🎤 Голосовое',senderAvatar,u.data,'audio/webm');if(id!==activeChannelId)rMsg('🎤 Голосовое от '+senderName,3000);updateCupIndicator();return;}ch.blobs.push({...u,from:'them'});ch.expires=Date.now()+600000;saveChannels();const ct=contacts.find(c=>c.channelId===id);const sn=ct?.name||'Лучник';const sa=ct?.avatar||'001';appendMessage(sn,u.d||u.text||'',sa);if(id!==activeChannelId)rMsg('Новое от '+sn,3000);updateCupIndicator();playSound('arrow_hit.wav');return;}}
+
+async function handleIncomingBlob(blobData,channelId){
+    let data=null;
+    try{data=JSON.parse(blobData);}catch(e){}
+    if(data&&data.type==='beacon'&&data.pubKey&&data.inner){if(data.targetPeerId&&data.targetPeerId!==PP4._peerId)return;const remotePubKey=await importPublicKey(data.pubKey);const kp=await generateKeyPair();const myPubKey=await exportPublicKey(kp);const ss=await deriveSecret(kp,remotePubKey);const chId=RND();PP4._channels[chId]={secret:ss,ratchetKey:ss,ratchetIndex:0,oldKeys:[],peerId:data.peerId,type:'cup',blobs:[],expires:Date.now()+600000,createdAt:Date.now()};broadcastBlob(JSON.stringify({type:'beacon-response',pubKey:myPubKey,peerId:PP4._peerId,inner:data.inner,nick:getMyNick(),avatar:getMyAvatar()}),BLOB_NS);saveChannels();addContact({peerId:data.peerId,name:data.nick||'Лучник',channelId:chId,verified:false,avatar:data.avatar||'001'});PitupiAI.addGraphEdge(PP4._peerId,data.peerId,0.7);PitupiAI._knowledge.channels.set(chId,{stability:0.5,errors:0,createdAt:Date.now()});updateUI();showChatForChannel(chId);playQuiverAnimation();incomingBeacons.push({data,time:Date.now()});ponkNotify();rMsg('✅ Колчан открыт! Тетива натянута!',3000);return;}
+    if(data&&data.type==='beacon-response'&&data.pubKey&&data.inner){for(const[bid,b]of Object.entries(PP4._beacons)){if(!b.beaconKey)continue;const dec=await decryptAES(data.inner,b.beaconKey);if(!dec)continue;let payload;try{payload=JSON.parse(dec);}catch(e){logError('beacon-response/JSON',e);continue;}if(payload.nonce!==b.nonce)continue;const remotePubKey=await importPublicKey(data.pubKey);const ss=await deriveSecret(b.keyPair,remotePubKey);const chId=RND();PP4._channels[chId]={secret:ss,ratchetKey:ss,ratchetIndex:0,oldKeys:[],peerId:data.peerId,type:'cup',blobs:[],expires:Date.now()+600000,createdAt:Date.now()};delete PP4._beacons[bid];saveChannels();addContact({peerId:data.peerId,name:data.nick||'Лучник',channelId:chId,verified:false,avatar:data.avatar||'001'});PitupiAI.addGraphEdge(PP4._peerId,data.peerId,0.7);PitupiAI._knowledge.channels.set(chId,{stability:0.5,errors:0,createdAt:Date.now()});updateUI();showChatForChannel(chId);playQuiverAnimation();rMsg('✅ Колчан открыт! Тетива натянута!',3000);return;}}
+    if(data&&data.type==='ratchet-resync'&&data.secret){const chId=Object.keys(PP4._channels).find(id=>PP4._channels[id].peerId===data.peerId);if(chId){const ch=PP4._channels[chId];ch.ratchetKey=data.secret;ch.ratchetIndex=0;ch.oldKeys=[];rMsg('✅ Ratchet перезапущен',3000);updateRatchetIndicator();}return;}
+    for(const[id,ch]of Object.entries(PP4._channels)){if(!ch.ratchetKey)continue;const u=await unpackBlob(blobData,ch);if(!u)continue;if(u._pad)delete u._pad;if(!activeChannelId||activeChannelId!==id)showChatForChannel(id);if(u.webrtc){await handleWebRTC(u,id);return;}if(u.voice){const ct=contacts.find(c=>c.channelId===id);const senderName=ct?.name||'Друг';const senderAvatar=ct?.avatar||'001';appendMessage(senderName,'🎤 Голосовое',senderAvatar,u.data,'audio/webm');if(id!==activeChannelId)rMsg('🎤 Голосовое от '+senderName,3000);updateCupIndicator();return;}ch.blobs.push({...u,from:'them'});ch.expires=Date.now()+600000;saveChannels();const ct=contacts.find(c=>c.channelId===id);const sn=ct?.name||'Лучник';const sa=ct?.avatar||'001';appendMessage(sn,u.d||u.text||'',sa);if(id!==activeChannelId)rMsg('Новое от '+sn,3000);updateCupIndicator();playSound('arrow_hit.wav');return;}
+}
+
 function broadcastBlob(packed,channelId){const dhtPeers=getClosestPeers(channelId||BLOB_NS,3).filter(p=>p.conn?.readyState==='open');if(dhtPeers.length>0){for(const p of dhtPeers)sendToPeer(p.id,{type:'blob',channelId:channelId||BLOB_NS,blob:packed});return;}if(PP4._ws){try{PP4._ws.send(JSON.stringify({type:'blob',channelId:channelId||BLOB_NS,blob:packed,peerId:PP4._peerId}));}catch(e){logError('broadcastBlob/WS',e);}}}
 async function sendBlobToChannel(channelId,data){const ch=PP4._channels[channelId];if(!ch||!ch.ratchetKey)return false;const packed=await packBlob(data,ch);broadcastBlob(packed,channelId);return true;}
 function updateRatchetIndicator(){const chId=activeChannelId||Object.keys(PP4._channels)[0];const ch=chId?PP4._channels[chId]:null;const indicator=document.getElementById('ratchet-indicator');if(!indicator)return;if(!ch||!ch.ratchetKey){indicator.style.display='none';return;}indicator.style.display='inline';const ri=ch.ratchetIndex||0;let color,icon;if(ri===0){color='var(--danger)';icon='⚠️';}else if(ri<10){color='orange';icon='🔄';}else if(ri<50){color='var(--accent)';icon='🔒';}else{color='var(--seeding-color)';icon='🔐';}indicator.style.color=color;indicator.style.background='rgba(0,0,0,0.3)';indicator.textContent=icon+' '+ri;indicator.title='Ratchet: '+ri+' оборотов';}
@@ -675,7 +376,27 @@ function playArcherAnimation(){const rt=document.getElementById('robin-text');if
 function playBowAnimation(){const bc=document.getElementById('bow-above-send');if(!bc)return;if(bowAnim){bowAnim.destroy();bowAnim=null}bc.style.display='block';if(typeof lottie!=='undefined'){try{bowAnim=lottie.loadAnimation({container:bc,renderer:'canvas',loop:false,autoplay:true,path:'assets/bow.json'});bowAnim.addEventListener('complete',()=>{bc.style.display='none';bowAnim=null});}catch(e){logError('playBowAnimation',e);bc.textContent='🏹';setTimeout(()=>{bc.style.display='none';bc.textContent=''},800);}}else{bc.textContent='🏹';setTimeout(()=>{bc.style.display='none';bc.textContent=''},800)}const sb=document.getElementById('send-btn');if(sb){sb.classList.add('shooting');setTimeout(()=>sb.classList.remove('shooting'),400)}}
 function playQuiverAnimation(){const rt=document.getElementById('robin-text');if(!rt)return;if(currentArrowContainer?.parentNode)currentArrowContainer.remove();if(quiverAnim){quiverAnim.destroy();quiverAnim=null}const wrapper=document.createElement('span');wrapper.className='robin-arrow-container';wrapper.style.cssText='width:80px;height:40px;display:inline-block;vertical-align:middle;';currentArrowContainer=wrapper;rt.textContent='✅ ';rt.appendChild(wrapper);if(typeof lottie!=='undefined'){try{quiverAnim=lottie.loadAnimation({container:wrapper,renderer:'canvas',loop:false,autoplay:true,path:'assets/docking/animation.json'});quiverAnim.addEventListener('complete',()=>{if(wrapper.parentNode)wrapper.remove();currentArrowContainer=null;quiverAnim=null;rt.textContent=robinDefaultText});}catch(e){logError('playQuiverAnimation',e);wrapper.textContent='✓';setTimeout(()=>{if(wrapper.parentNode)wrapper.remove();currentArrowContainer=null;rt.textContent=robinDefaultText},2000);}}else{wrapper.textContent='✓';setTimeout(()=>{if(wrapper.parentNode)wrapper.remove();currentArrowContainer=null;rt.textContent=robinDefaultText},2000)}}
 function showCallWave(show){const cw=document.getElementById('call-wave');if(!cw)return;if(show){cw.innerHTML='';cw.style.display='flex';for(let i=0;i<8;i++){const bar=document.createElement('div');bar.className='voice-wave-bar';cw.appendChild(bar)}}else{cw.style.display='none';cw.innerHTML=''}}
-function showVoiceWave(show){const btn=document.getElementById('btn-voice-input');if(!btn)return;const old=document.getElementById('voice-wave-anim');if(old)old.remove();if(!show)return;const div=document.createElement('div');div.id='voice-wave-anim';div.className='voice-wave-anim';for(let i=0;i<8;i++){const bar=document.createElement('div');bar.className='voice-wave-bar';div.appendChild(bar)}btn.parentNode.insertBefore(div,btn)}
+
+function showVoiceRecordingUI(show){
+    const old=document.getElementById('voice-recording-indicator');
+    if(old)old.remove();
+    if(!show)return;
+    const btn=document.getElementById('btn-voice-input');
+    if(!btn)return;
+    const container=document.createElement('div');
+    container.id='voice-recording-indicator';
+    container.className='voice-recording-indicator';
+    const timer=document.createElement('span');
+    timer.className='voice-timer-text';
+    timer.id='voice-timer-text';
+    timer.textContent='🎤 0:00';
+    const wave=document.createElement('div');
+    wave.style.cssText='display:flex;align-items:flex-end;gap:2px;height:18px;';
+    for(let i=0;i<6;i++){const bar=document.createElement('div');bar.className='voice-wave-bar';bar.style.cssText=`width:3px;animation-delay:${i*0.08}s;height:${6+i*3}px;`;wave.appendChild(bar);}
+    container.appendChild(timer);container.appendChild(wave);
+    btn.parentNode.insertBefore(container,btn);
+}
+
 function showIncomingControls(show){const ic=document.getElementById('incoming-call-controls');if(ic)ic.style.display=show?'flex':'none'}
 function showActiveControls(show){const ac=document.getElementById('active-call-controls');if(ac)ac.style.display=show?'flex':'none'}
 
@@ -683,8 +404,10 @@ const themes=[{id:'forest',name:'Лес'},{id:'sunset',name:'Закат'},{id:'o
 function applyTheme(id){document.documentElement.setAttribute('data-theme',id);try{localStorage.setItem('robinhood_theme',id);}catch(e){logError('applyTheme',e);}const t=themes.find(t=>t.id===id)||themes[0];const tn=document.getElementById('theme-name');if(tn)tn.textContent=t.name}
 function generateRandomTheme(){const hue=Math.floor(Math.random()*360),sat=40+Math.floor(Math.random()*50),bgLight=5+Math.floor(Math.random()*15),bgDark=2+Math.floor(Math.random()*8),id='random_'+Date.now();const s=`[data-theme="${id}"]{--bg-primary:hsl(${hue},${sat}%,${bgLight}%);--bg-secondary:hsl(${hue},${sat-10}%,${bgDark}%);--accent:hsl(${(hue+30)%360},${sat+10}%,50%);--accent-light:hsl(${(hue+30)%360},${sat+20}%,70%);--text:hsl(${hue},20%,85%);--text-bright:hsl(${hue},25%,92%);--text-dim:hsl(${hue},15%,60%);--border:hsl(${(hue+30)%360},${sat+10}%,50%);--btn-bg:hsla(${(hue+30)%360},${sat+10}%,50%,0.1);--btn-border:hsla(${(hue+30)%360},${sat+10}%,50%,0.3);--btn-hover:hsla(${(hue+30)%360},${sat+10}%,50%,0.25);--sheet-bg:linear-gradient(145deg,hsl(${hue},${sat}%,${bgLight}%)0%,hsl(${hue},${sat-10}%,${bgDark}%)100%);--input-bg:hsla(${hue},${sat-10}%,${bgLight+2}%,0.9);--msg-bg:hsla(${hue},${sat-5}%,${bgLight+3}%,0.85);--msg-accent:hsl(${(hue+30)%360},${sat+10}%,50%);--robin-bg:hsla(${hue},${sat}%,${bgLight+8}%,0.9);--robin-accent:hsl(${(hue+30)%360},${sat+20}%,65%);--overlay-bg:rgba(0,0,0,0.6);--call-bg:linear-gradient(180deg,hsl(${hue},${sat}%,${bgLight}%)0%,hsl(${hue},${sat-10}%,${bgDark}%)100%);--call-btn-bg:hsla(${(hue+30)%360},${sat+10}%,50%,0.1);--call-btn-border:hsla(${(hue+30)%360},${sat+10}%,50%,0.3);--input-text:hsl(${hue},20%,85%)}`;let el=document.getElementById('gen-theme');if(!el){el=document.createElement('style');el.id='gen-theme';document.head.appendChild(el);}el.textContent=s;document.documentElement.setAttribute('data-theme',id);const tn=document.getElementById('theme-name');if(tn)tn.textContent='Авто';try{localStorage.setItem('robinhood_theme',id);}catch(e){logError('generateRandomTheme',e);}}
 function loadAvatars(){const list=document.getElementById('avatar-list');if(!list)return;list.innerHTML='';avatars.forEach(src=>{const img=document.createElement('img');img.src=src;img.className='avatar-option';img.onerror=()=>img.src='assets/avatar/001ava.png';img.onclick=()=>{const pas=document.getElementById('profile-avatar-small');if(pas)pas.src=src;document.getElementById('robin-avatar').src=src;try{localStorage.setItem('robinhood_avatar',src);}catch(e){logError('loadAvatars/setItem',e);}closeSheets();rMsg('🖼 Аватар обновлён');};list.appendChild(img);})}
-async function saveBgToDB(dataUrl){try{const db=await new Promise(r=>{const req=indexedDB.open('PP',1);req.onsuccess=()=>r(req.result);req.onerror=()=>r(null);});if(!db)return;db.transaction('bg','readwrite').objectStore('bg').put({k:'custom_bg',v:dataUrl});}catch(e){logError('saveBgToDB',e);}}
-async function getBgFromDB(){try{const db=await new Promise(r=>{const req=indexedDB.open('PP',1);req.onsuccess=()=>r(req.result);req.onerror=()=>r(null);});if(!db)return null;return await new Promise(res=>{const q=db.transaction('bg','readonly').objectStore('bg').get('custom_bg');q.onsuccess=()=>res(q.result?.v||null);q.onerror=()=>res(null);});}catch(e){logError('getBgFromDB',e);return null;}}
+
+function openPPDatabase(){return new Promise((resolve)=>{const req=indexedDB.open('PP',1);req.onupgradeneeded=(e)=>{const db=e.target.result;if(!db.objectStoreNames.contains('bg'))db.createObjectStore('bg',{keyPath:'k'});};req.onsuccess=()=>resolve(req.result);req.onerror=()=>resolve(null);});}
+async function saveBgToDB(dataUrl){try{const db=await openPPDatabase();if(!db)return;if(!db.objectStoreNames.contains('bg'))return;db.transaction('bg','readwrite').objectStore('bg').put({k:'custom_bg',v:dataUrl});}catch(e){logError('saveBgToDB',e);}}
+async function getBgFromDB(){try{const db=await openPPDatabase();if(!db)return null;if(!db.objectStoreNames.contains('bg'))return null;return await new Promise(res=>{const q=db.transaction('bg','readonly').objectStore('bg').get('custom_bg');q.onsuccess=()=>res(q.result?.v||null);q.onerror=()=>res(null);});}catch(e){logError('getBgFromDB',e);return null;}}
 async function applyCustomBg(dataUrl){if(dataUrl){document.body.style.setProperty('--custom-bg',`url(${dataUrl})`);document.body.classList.add('custom-bg');const bs=document.getElementById('bg-status');if(bs)bs.textContent='Задан'}else{document.body.classList.remove('custom-bg');document.body.style.removeProperty('--custom-bg');const bs=document.getElementById('bg-status');if(bs)bs.textContent='Не задан'}}
 function addContact(c){if(!contacts.find(x=>x.peerId===c.peerId)){contacts.push(c);saveContacts();}else{const existing=contacts.find(x=>x.peerId===c.peerId);if(c.name&&c.name!=='Лучник')existing.name=c.name;if(c.avatar&&c.avatar!=='001')existing.avatar=c.avatar;if(c.channelId)existing.channelId=c.channelId;saveContacts();}renderContacts();}
 function saveContacts(){try{localStorage.setItem('rh_contacts',JSON.stringify(contacts));}catch(e){logError('saveContacts',e);}}
@@ -693,7 +416,10 @@ function renderContacts(){const l=document.getElementById('contacts-list-inner')
 function openChat(peerId){document.getElementById('contacts-sheet').classList.remove('open');document.getElementById('overlay').classList.remove('show');const ct=contacts.find(c=>c.peerId===peerId);if(!ct||!ct.channelId)return;showChatForChannel(ct.channelId);}
 function updateCupIndicator(){const chId=activeChannelId||Object.keys(PP4._channels)[0];const ch=chId?PP4._channels[chId]:null;const ind=document.getElementById('cup-indicator');if(!ch||!ind){if(ind)ind.style.display='none';return;}ind.style.display='inline-flex';const bc=ch.blobs?ch.blobs.length:0;const be=document.getElementById('cup-blobs');if(be){be.textContent=bc+'/10';be.className=bc>=10?'full':bc>=7?'ok':'';}const totalSec=Math.max(0,Math.round((ch.expires-Date.now())/1000));const min=Math.floor(totalSec/60);const sec=totalSec%60;const te=document.getElementById('cup-timer');if(te){te.textContent=min+':'+sec.toString().padStart(2,'0');te.className=min<=2?'low':min<=5?'ok':'';}}
 function updateUI(){const rt=document.getElementById('robin-text');if(rt)rt.textContent=`Каналов: ${Object.keys(PP4._channels).length} | DHT: ${DHT._peers.size} | 🧠 ${PitupiAI._knowledge.patterns.length} паттернов`;}
-function appendMessage(sender,text,avatarSrc,audioData,audioMime){const box=document.getElementById('chat-box');const row=document.createElement('div');row.className='message-row';const time=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});const av=avatarSrc&&avatarSrc!=='001'?'assets/avatar/'+avatarSrc+'ava.png':'assets/avatar/001ava.png';if(audioData&&audioMime&&audioMime.startsWith('audio/')){const player=createAudioPlayer(audioData,audioMime);row.innerHTML=`<img src="${av}" class="avatar" onerror="this.src='assets/avatar/001ava.png'"><div class="msg-body"><div class="msg-sender">${safeHtml(sender)}</div></div>`;row.querySelector('.msg-body').appendChild(player);const ts=document.createElement('div');ts.className='msg-status';ts.textContent=time;row.querySelector('.msg-body').appendChild(ts);}else{row.innerHTML=`<img src="${av}" class="avatar" onerror="this.src='assets/avatar/001ava.png'"><div class="msg-body"><div class="msg-sender">${safeHtml(sender)}</div><div>${safeHtml(text)}</div><div class="msg-status">${time}</div></div>`}const msgId='msg_'+Date.now()+Math.random();row.dataset.msgId=msgId;box.insertBefore(row,document.getElementById('typing-indicator'));box.scrollTop=box.scrollHeight;if(selfDestructMode){setTimeout(()=>{const el=document.querySelector(`[data-msg-id="${msgId}"]`);if(el){el.style.transition='opacity 0.5s';el.style.opacity='0';setTimeout(()=>{if(el.parentNode)el.remove()},500)}},30000)}}
+
+function getAvatarUrl(avatarSrc){if(!avatarSrc||avatarSrc==='001')return'assets/avatar/001ava.png';if(avatarSrc.startsWith('assets/'))return avatarSrc.endsWith('.png')?avatarSrc:avatarSrc+'ava.png';if(avatarSrc.includes('/'))return avatarSrc.endsWith('.png')?avatarSrc:avatarSrc+'ava.png';return'avatar/'+avatarSrc+'ava.png';}
+
+function appendMessage(sender,text,avatarSrc,audioData,audioMime){const box=document.getElementById('chat-box');const row=document.createElement('div');row.className='message-row';const time=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});const av=getAvatarUrl(avatarSrc);if(audioData&&audioMime&&audioMime.startsWith('audio/')){const player=createAudioPlayer(audioData,audioMime);row.innerHTML=`<img src="${av}" class="avatar" onerror="this.src='assets/avatar/001ava.png'"><div class="msg-body"><div class="msg-sender">${safeHtml(sender)}</div></div>`;row.querySelector('.msg-body').appendChild(player);const ts=document.createElement('div');ts.className='msg-status';ts.textContent=time;row.querySelector('.msg-body').appendChild(ts);}else{row.innerHTML=`<img src="${av}" class="avatar" onerror="this.src='assets/avatar/001ava.png'"><div class="msg-body"><div class="msg-sender">${safeHtml(sender)}</div><div>${safeHtml(text)}</div><div class="msg-status">${time}</div></div>`}const msgId='msg_'+Date.now()+Math.random();row.dataset.msgId=msgId;box.insertBefore(row,document.getElementById('typing-indicator'));box.scrollTop=box.scrollHeight;if(selfDestructMode){setTimeout(()=>{const el=document.querySelector(`[data-msg-id="${msgId}"]`);if(el){el.style.transition='opacity 0.5s';el.style.opacity='0';setTimeout(()=>{if(el.parentNode)el.remove()},500)}},30000)}}
 function createAudioPlayer(audioData,audioMime){const container=document.createElement('div');container.className='audio-player audio-paused';const audio=new Audio('data:'+audioMime+';base64,'+audioData);let isPlaying=false;const playBtn=document.createElement('button');playBtn.className='audio-play-btn';playBtn.textContent='▶';const waveDiv=document.createElement('div');waveDiv.className='audio-wave';for(let i=0;i<8;i++){const bar=document.createElement('div');bar.className='audio-wave-bar';waveDiv.appendChild(bar)}const timeSpan=document.createElement('span');timeSpan.className='audio-time';timeSpan.textContent='0:00';playBtn.addEventListener('click',()=>{if(isPlaying){audio.pause();container.classList.remove('audio-playing');container.classList.add('audio-paused');playBtn.textContent='▶'}else{audio.play();container.classList.remove('audio-paused');container.classList.add('audio-playing');playBtn.textContent='⏸'}isPlaying=!isPlaying});audio.addEventListener('timeupdate',()=>{const m=Math.floor(audio.currentTime/60);const s=Math.floor(audio.currentTime%60).toString().padStart(2,'0');timeSpan.textContent=m+':'+s});audio.addEventListener('ended',()=>{container.classList.remove('audio-playing');container.classList.add('audio-paused');playBtn.textContent='▶';isPlaying=false});container.appendChild(playBtn);container.appendChild(waveDiv);container.appendChild(timeSpan);return container;}
 
 async function getMediaStream(video=false,facingMode='user'){try{return await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:!0,noiseSuppression:!0},video:video?{width:{ideal:320},height:{ideal:240},facingMode}:false});}catch(e){logError('getMediaStream',e);return null;}}
@@ -707,20 +433,21 @@ async function startCall(){if(callActive||!activeChannelId){rMsg('❌ Нет к�
 async function acceptCall(){if(!incomingOffer||!activeChannelId)return;stopRingtone();stopRingback();const s=await getMediaStream(false);if(!s)return;localStream=s;createPC();const cp=document.getElementById('call-panel');if(cp)cp.style.display='flex';const ct=contacts.find(c=>c.channelId===activeChannelId);document.getElementById('call-avatar').src='assets/avatar/'+(ct?.avatar||selectedAvatar)+'ava.png';document.getElementById('call-contact-name').textContent=ct?.name||document.getElementById('nick-label')?.textContent||'Лучник';document.getElementById('call-status').textContent='✅ Разговор';showIncomingControls(false);showActiveControls(true);showCallWave(true);playSound('open.mp3');try{await pc.setRemoteDescription(new RTCSessionDescription(incomingOffer));iceBuffer.forEach(c=>pc.addIceCandidate(new RTCIceCandidate(c)).catch(er=>{logError('acceptCall/ICE',er);}));iceBuffer=[];const a=await pc.createAnswer();await pc.setLocalDescription(a);sendWebRTCMsg('webrtc-answer',JSON.stringify(a));incomingOffer=null;callActive=!0;}catch(e){logError('acceptCall/SDP',e);hang(!1);}}
 function hang(sig=!0){callActive=!1;stopRingtone();stopRingback();if(sig&&activeChannelId)sendWebRTCMsg('webrtc-hangup','');if(pc){pc.close();pc=null;}if(localStream){localStream.getTracks().forEach(t=>t.stop());localStream=null;}incomingOffer=null;iceBuffer=[];if(iceFlushTimer)clearTimeout(iceFlushTimer);const cp=document.getElementById('call-panel');if(cp)cp.style.display='none';showIncomingControls(false);showActiveControls(false);showCallWave(false);playSound('exet.mp3');}
 async function handleWebRTC(u,channelId){if(!activeChannelId||activeChannelId!==channelId){activeChannelId=channelId;const ct=contacts.find(c=>c.channelId===channelId);if(ct){activePeerId=ct.peerId;}}if(u.webrtc==='webrtc-offer'){if(callActive||pc){sendWebRTCMsg('webrtc-hangup','');return;}iceBuffer=[];try{incomingOffer=JSON.parse(u.sdp);}catch(e){logError('handleWebRTC/offer-parse',e);return;}const cp=document.getElementById('call-panel');if(cp)cp.style.display='flex';const ct=contacts.find(c=>c.channelId===channelId);document.getElementById('call-avatar').src='assets/avatar/'+(ct?.avatar||'001')+'ava.png';document.getElementById('call-contact-name').textContent=ct?.name||'Лучник';document.getElementById('call-status').textContent='📞 Входящий...';showActiveControls(false);showIncomingControls(true);showCallWave(false);playRingtone();}if(u.webrtc==='webrtc-answer'&&pc){stopRingback();try{await pc.setRemoteDescription(new RTCSessionDescription(JSON.parse(u.sdp)));iceBuffer.forEach(c=>pc.addIceCandidate(new RTCIceCandidate(c)).catch(er=>{logError('handleWebRTC/answer-ICE',er);}));iceBuffer=[];callActive=!0;document.getElementById('call-status').textContent='✅ Разговор';showIncomingControls(false);showActiveControls(true);showCallWave(true);playSound('open.mp3');}catch(e){logError('handleWebRTC/answer',e);}}if(u.webrtc==='webrtc-ice'&&pc){try{const c=JSON.parse(u.sdp);if(pc.remoteDescription)pc.addIceCandidate(new RTCIceCandidate(c)).catch(er=>{logError('handleWebRTC/ICE-add',er);});else iceBuffer.push(c);}catch(e){logError('handleWebRTC/ICE-parse',e);}}if(u.webrtc==='webrtc-hangup'){if(callActive||pc){rMsg('📞 Собеседник завершил',3000);hang(!1);}}}
-function startVoiceTimer(){voiceSeconds=0;const vt=document.getElementById('voice-timer-overlay');if(vt){vt.style.display='block';vt.textContent='🎤 0:00';}voiceTimerInterval=setInterval(()=>{voiceSeconds++;const m=Math.floor(voiceSeconds/60),s=(voiceSeconds%60).toString().padStart(2,'0');const vt=document.getElementById('voice-timer-overlay');if(vt)vt.textContent='🎤 '+m+':'+s;},1000);}
-function stopVoiceTimer(){if(voiceTimerInterval)clearInterval(voiceTimerInterval);const vt=document.getElementById('voice-timer-overlay');if(vt)vt.style.display='none';}
+
+function startVoiceTimer(){voiceSeconds=0;const vt=document.getElementById('voice-timer-text');if(vt){vt.textContent='🎤 0:00';}voiceTimerInterval=setInterval(()=>{voiceSeconds++;const m=Math.floor(voiceSeconds/60),s=(voiceSeconds%60).toString().padStart(2,'0');const vt=document.getElementById('voice-timer-text');if(vt)vt.textContent='🎤 '+m+':'+s;},1000);}
+function stopVoiceTimer(){if(voiceTimerInterval)clearInterval(voiceTimerInterval);}
 function toggleVoiceRecording(){voiceRecording?stopVoiceRecording():startVoiceRecording();}
-function startVoiceRecording(){if(voiceRecorder?.state==='recording')return;navigator.mediaDevices.getUserMedia({audio:true}).then(st=>{voiceStream=st;voiceRecorder=new MediaRecorder(st,{mimeType:'audio/webm; codecs=opus',audioBitsPerSecond:16000});voiceChunks=[];voiceRecorder.ondataavailable=e=>voiceChunks.push(e.data);voiceRecorder.onstop=()=>{const blob=new Blob(voiceChunks,{type:'audio/webm'});if(blob.size>100&&blob.size<300000&&activeChannelId){const reader=new FileReader();reader.onload=async()=>{const b64=reader.result.split(',')[1];await sendBlobToChannel(activeChannelId,JSON.stringify({voice:true,data:b64}));appendMessage('Вы','🎤 Голосовое','assets/avatar/'+selectedAvatar+'ava.png',b64,'audio/webm');};reader.readAsDataURL(blob);}if(voiceStream){voiceStream.getTracks().forEach(t=>t.stop());voiceStream=null;}voiceRecorder=null;voiceRecording=!1;stopVoiceTimer();document.getElementById('btn-voice-input').style.background='';showVoiceWave(false);};voiceRecorder.start();voiceRecording=!0;startVoiceTimer();document.getElementById('btn-voice-input').style.background='#f44336';showVoiceWave(true);}).catch(e=>{logError('startVoiceRecording',e);rMsg('❌ Микрофон недоступен или занят',3000);});}
+function startVoiceRecording(){if(voiceRecorder?.state==='recording')return;navigator.mediaDevices.getUserMedia({audio:true}).then(st=>{voiceStream=st;voiceRecorder=new MediaRecorder(st,{mimeType:'audio/webm; codecs=opus',audioBitsPerSecond:16000});voiceChunks=[];voiceRecorder.ondataavailable=e=>voiceChunks.push(e.data);voiceRecorder.onstop=()=>{const blob=new Blob(voiceChunks,{type:'audio/webm'});if(blob.size>100&&blob.size<300000&&activeChannelId){const reader=new FileReader();reader.onload=async()=>{const b64=reader.result.split(',')[1];await sendBlobToChannel(activeChannelId,JSON.stringify({voice:true,data:b64}));appendMessage('Вы','🎤 Голосовое',selectedAvatar,b64,'audio/webm');};reader.readAsDataURL(blob);}if(voiceStream){voiceStream.getTracks().forEach(t=>t.stop());voiceStream=null;}voiceRecorder=null;voiceRecording=!1;stopVoiceTimer();document.getElementById('btn-voice-input').style.background='';showVoiceRecordingUI(false);};voiceRecorder.start();voiceRecording=!0;startVoiceTimer();document.getElementById('btn-voice-input').style.background='#f44336';showVoiceRecordingUI(true);}).catch(e=>{logError('startVoiceRecording',e);rMsg('❌ Микрофон недоступен или занят',3000);});}
 function stopVoiceRecording(){if(voiceRecorder?.state==='recording')voiceRecorder.stop();}
 function playVoiceBlob(b64){const a=new Audio('data:audio/webm;base64,'+b64);a.play().catch(e=>{logError('playVoiceBlob',e);});}
 async function reconnectChannel(id){const ch=PP4._channels[id];if(!ch||ch.reconnecting)return;ch.reconnecting=true;const kp=await generateKeyPair();const pk=await exportPublicKey(kp);const rid=RND();pendingDH[rid]={keyPair:kp};if(PP4._ws){try{PP4._ws.send(JSON.stringify({action:'reconnect',channelId:id,targetPeerId:ch.peerId,pubKey:pk,requestId:rid,fromPeerId:PP4._peerId}));}catch(e){logError('reconnectChannel',e);}}}
-async function destroySession(){if(!confirm('⚠ ПОЛНЫЙ СБРОС!'))return;hang(!1);['PP','RobinHoodContacts'].forEach(n=>{try{indexedDB.deleteDatabase(n);}catch(e){logError('destroySession/indexedDB',e);}});try{localStorage.clear();}catch(e){logError('destroySession/localStorage',e);}const box=document.getElementById('chat-box');if(box)box.querySelectorAll('.message-row').forEach(m=>m.remove());playSmokeAnimation();playSound('clear cache.mp3');rMsg('🔥 Всё скурили!',5000);setConnectionStatus('offline');applyTheme('paper');const pas=document.getElementById('profile-avatar-small');if(pas)pas.src='assets/avatar/001ava.png';document.getElementById('robin-avatar').src='assets/avatar/001ava.png';const nl=document.getElementById('nick-label');if(nl)nl.textContent='Твой ник';const ls=document.getElementById('lock-status');if(ls)ls.textContent='Не задан';document.body.classList.remove('custom-bg');document.body.style.removeProperty('--custom-bg');const bs=document.getElementById('bg-status');if(bs)bs.textContent='Не задан';contacts=[];saveContacts();renderContacts();}
+async function destroySession(){if(!confirm('⚠ ПОЛНЫЙ СБРОС!'))return;hang(!1);['PP','RobinHoodContacts'].forEach(n=>{try{indexedDB.deleteDatabase(n);}catch(e){logError('destroySession/indexedDB',e);}});try{localStorage.clear();}catch(e){logError('destroySession/localStorage',e);}const box=document.getElementById('chat-box');if(box)box.querySelectorAll('.message-row').forEach(m=>m.remove());playSmokeAnimation();playSound('clear cache.mp3');rMsg('🔥 Всё скурили!',5000);setConnectionStatus('offline');applyTheme('emerald');const pas=document.getElementById('profile-avatar-small');if(pas)pas.src='assets/avatar/001ava.png';document.getElementById('robin-avatar').src='assets/avatar/001ava.png';const nl=document.getElementById('nick-label');if(nl)nl.textContent='Твой ник';const ls=document.getElementById('lock-status');if(ls)ls.textContent='Не задан';document.body.classList.remove('custom-bg');document.body.style.removeProperty('--custom-bg');const bs=document.getElementById('bg-status');if(bs)bs.textContent='Не задан';contacts=[];saveContacts();renderContacts();}
 
 function showAIStats(){
-    const stats = PitupiAI.getStats();
-    const panel = document.getElementById('ai-stats-panel');
+    const stats=PitupiAI.getStats();
+    const panel=document.getElementById('ai-stats-panel');
     if(!panel)return;
-    panel.innerHTML = `
+    panel.innerHTML=`
         <div class="ai-stat-row"><span class="ai-stat-label">Пиров отслежено</span><span class="ai-stat-value">${stats.peersTracked}</span></div>
         <div class="ai-stat-row"><span class="ai-stat-label">Каналов под мониторингом</span><span class="ai-stat-value">${stats.channelsMonitored}</span></div>
         <div class="ai-stat-row"><span class="ai-stat-label">Паттернов изучено</span><span class="ai-stat-value">${stats.patternsLearned}</span></div>
@@ -743,8 +470,7 @@ function showAIStats(){
 }
 
 async function initApp(){
-    PitupiAI.init();
-    initLeaves();applyTheme(localStorage.getItem('robinhood_theme')||'paper');
+    PitupiAI.init();initLeaves();applyTheme(localStorage.getItem('robinhood_theme')||'emerald');
     const savedAvatar=localStorage.getItem('robinhood_avatar');if(savedAvatar){selectedAvatar=savedAvatar.includes('/')?savedAvatar.split('/').pop()?.replace('ava.png','')||'001':savedAvatar;const pas=document.getElementById('profile-avatar-small');if(pas)pas.src='assets/avatar/'+selectedAvatar+'ava.png';document.getElementById('robin-avatar').src='assets/avatar/'+selectedAvatar+'ava.png'}
     const savedNick=localStorage.getItem('robinhood_nick');const nl=document.getElementById('nick-label');if(savedNick&&nl)nl.textContent=savedNick.substring(0,12);
     toggleSoundState=localStorage.getItem('robinhood_sound')!=='false';const ts=document.getElementById('toggle-sound');if(ts)ts.checked=toggleSoundState;
@@ -760,21 +486,20 @@ async function initApp(){
     document.getElementById('close-arrow-modal')?.addEventListener('click',()=>{document.getElementById('arrow-modal')?.classList.remove('active');});
     document.getElementById('arrow-modal')?.addEventListener('click',function(e){if(e.target===this)this.classList.remove('active');});
     document.getElementById('btn-requests')?.addEventListener('click',()=>{ponkConfirm();});
-    document.getElementById('btn-ai-stats')?.addEventListener('click',()=>{showAIStats();});
-    document.getElementById('ai-stats-close')?.addEventListener('click',closeSheets);
-    document.getElementById('setting-ai-stats')?.addEventListener('click',()=>{document.getElementById('settings-sheet')?.classList.remove('open');showAIStats();});
     document.getElementById('btn-clear')?.addEventListener('click',()=>{const box=document.getElementById('chat-box');if(box)box.querySelectorAll('.message-row').forEach(m=>m.remove());playSmokeAnimation();playSound('clear cache.mp3');rMsg('RobinHood пустил все письма на самокрутки!🚬',7000);});
     document.getElementById('btn-settings')?.addEventListener('click',()=>{closeSheets();document.getElementById('settings-sheet')?.classList.add('open');document.getElementById('overlay')?.classList.add('show');});
     document.getElementById('settings-close')?.addEventListener('click',closeSheets);
     document.getElementById('contacts-close')?.addEventListener('click',closeSheets);
+    document.getElementById('ai-stats-close')?.addEventListener('click',closeSheets);
     document.getElementById('setting-contacts')?.addEventListener('click',()=>{document.getElementById('settings-sheet')?.classList.remove('open');renderContacts();document.getElementById('contacts-sheet')?.classList.add('open');document.getElementById('overlay')?.classList.add('show');});
+    document.getElementById('setting-ai-stats')?.addEventListener('click',()=>{document.getElementById('settings-sheet')?.classList.remove('open');showAIStats();});
     document.getElementById('setting-peer-id')?.addEventListener('click',()=>{const pid=PP4._peerId;if(pid){navigator.clipboard.writeText(pid).then(()=>rMsg('⎘ ID скопирован!')).catch(()=>{});rMsg('🆔 '+pid,5000);}});
     document.getElementById('overlay')?.addEventListener('click',closeSheets);
     document.getElementById('btn-avatar')?.addEventListener('click',()=>{closeSheets();loadAvatars();document.getElementById('avatar-selector')?.classList.add('show');document.getElementById('overlay')?.classList.add('show');});
     document.getElementById('nick-label')?.addEventListener('click',()=>{const modal=document.getElementById('nick-modal');const input=document.getElementById('nick-input');if(modal&&input){input.value=document.getElementById('nick-label')?.textContent||'';modal.classList.add('active');}});
     document.getElementById('btn-save-nick')?.addEventListener('click',()=>{const n=document.getElementById('nick-input')?.value.trim();if(n){const nl=document.getElementById('nick-label');if(nl)nl.textContent=n.substring(0,12);try{localStorage.setItem('robinhood_nick',n.substring(0,12));}catch(e){logError('save-nick',e);}}document.getElementById('nick-modal')?.classList.remove('active');});
     document.getElementById('close-nick-modal')?.addEventListener('click',()=>{document.getElementById('nick-modal')?.classList.remove('active');});
-    document.getElementById('setting-theme')?.addEventListener('click',()=>{const ct=localStorage.getItem('robinhood_theme')||'paper';const idx=themes.findIndex(t=>t.id===ct);applyTheme(themes[(idx+1)%themes.length].id);});
+    document.getElementById('setting-theme')?.addEventListener('click',()=>{const ct=localStorage.getItem('robinhood_theme')||'emerald';const idx=themes.findIndex(t=>t.id===ct);applyTheme(themes[(idx+1)%themes.length].id);});
     document.getElementById('setting-theme-random')?.addEventListener('click',generateRandomTheme);
     document.getElementById('setting-destroy')?.addEventListener('click',()=>{closeSheets();destroySession();});
     document.getElementById('setting-tunnel')?.addEventListener('click',()=>{refreshTunnelList();document.getElementById('tunnel-config-modal')?.classList.add('active');});
@@ -803,7 +528,7 @@ async function initApp(){
     const eg=document.getElementById('emoji-grid');if(eg)emojis.forEach(e=>{const span=document.createElement('span');span.textContent=e;span.addEventListener('click',()=>{const mi=document.getElementById('msg-input');if(mi){mi.value+=e;mi.focus();}});eg.appendChild(span);});
     const be=document.getElementById('btn-emoji');if(be)be.addEventListener('click',()=>{const ep=document.getElementById('emoji-panel');if(ep)ep.style.display=ep.style.display==='block'?'none':'block';});
     document.addEventListener('click',e=>{const ep=document.getElementById('emoji-panel');if(ep&&!ep.contains(e.target)&&e.target!==be)ep.style.display='none';});
-    document.getElementById('send-btn')?.addEventListener('click',async()=>{const mi=document.getElementById('msg-input');const t=mi?.value.trim();if(t){if(!activeChannelId){const chIds=Object.keys(PP4._channels);if(!chIds.length)return;activeChannelId=chIds[0];}const ch=PP4._channels[activeChannelId];if(!ch||!ch.ratchetKey)return;await sendBlobToChannel(activeChannelId,JSON.stringify({d:t}));ch.blobs.push({d:t,t:Date.now(),n:RND(),from:'me'});ch.expires=Date.now()+600000;saveChannels();appendMessage('Вы',t);updateCupIndicator();updateRatchetIndicator();if(mi)mi.value='';playArcherAnimation();playBowAnimation();if(toggleSoundState)playSound('shot.mp3');}});
+    document.getElementById('send-btn')?.addEventListener('click',async()=>{const mi=document.getElementById('msg-input');const t=mi?.value.trim();if(t){if(!activeChannelId){const chIds=Object.keys(PP4._channels);if(!chIds.length)return;activeChannelId=chIds[0];}const ch=PP4._channels[activeChannelId];if(!ch||!ch.ratchetKey)return;await sendBlobToChannel(activeChannelId,JSON.stringify({d:t}));ch.blobs.push({d:t,t:Date.now(),n:RND(),from:'me'});ch.expires=Date.now()+600000;saveChannels();appendMessage('Вы',t,selectedAvatar);updateCupIndicator();updateRatchetIndicator();if(mi)mi.value='';playArcherAnimation();playBowAnimation();if(toggleSoundState)playSound('shot.mp3');}});
     document.getElementById('msg-input')?.addEventListener('keypress',e=>{if(e.key=='Enter')document.getElementById('send-btn')?.click();});
     setConnectionStatus('checking');rMsg('🧠 P2PPongAi Blind hive готов',0);
 }
