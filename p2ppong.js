@@ -8,9 +8,9 @@ const P2PPong = {
     _channels: {},
     _ws: null,
     _signalServers: [
-        { type: 'websocket', url: 'wss://robincall.stephanclaps-491.workers.dev/ws', name: 'Cloudflare' },
-        { type: 'http', url: 'https://p2ppong.onrender.com', name: 'Render' }
-    ],
+    { type: 'http', url: 'https://robincall.stephanclaps-491.workers.dev', name: 'Cloudflare' },
+    { type: 'http', url: 'https://p2ppong-v2.onrender.com', name: 'Render' }
+],
     _currentSignalIndex: 0,
     _wsReconnectDelay: 1000,
     _maxReconnectDelay: 30000,
@@ -156,13 +156,8 @@ const P2PPong = {
     },
 
     // ==================== СИГНАЛЬНЫЙ СЕРВЕР ====================
-    _connectSignal() {
-        const server = this._signalServers[this._currentSignalIndex];
-        if (server.type === 'websocket') {
-            this._connectWebSocket(server.url);
-        } else if (server.type === 'http') {
-            this._connectHttpPolling();
-        }
+        _connectSignal() {
+        this._connectHttpPolling();
     },
 
     _connectWebSocket(url) {
