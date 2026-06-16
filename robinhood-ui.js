@@ -1151,14 +1151,24 @@ function resetInactivityTimer() {
     document.getElementById('leaves-container')?.classList.remove('sleeping');
     inactivityTimer = setTimeout(() => {
         document.getElementById('leaves-container')?.classList.add('sleeping');
-    }, 30000);
+    }, 90000);
 }
 let inactivityTimer;
 document.addEventListener('pointermove', resetInactivityTimer);
 document.addEventListener('pointerdown', resetInactivityTimer);
 document.addEventListener('keypress', resetInactivityTimer);
-window.addEventListener('blur', () => document.getElementById('leaves-container')?.classList.add('sleeping'));
-window.addEventListener('focus', () => { document.getElementById('leaves-container')?.classList.remove('sleeping'); resetInactivityTimer(); });
+window.addEventListener('blur', () => {
+    // Не засыпаем мгновенно, даём 90 секунд
+    clearTimeout(inactivityTimer);
+    inactivityTimer = setTimeout(() => {
+        document.getElementById('leaves-container')?.classList.add('sleeping');
+    }, 90000);
+});
+window.addEventListener('focus', () => { 
+    clearTimeout(inactivityTimer);
+    document.getElementById('leaves-container')?.classList.remove('sleeping'); 
+    resetInactivityTimer(); 
+});
 
 function initLeaves() {
     const c = document.getElementById('leaves-container');
