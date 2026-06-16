@@ -192,3 +192,13 @@ ECDH на кривой P-256. Каждая сторона генерирует e
 ## Лицензия
 
 MIT
+---
+
+## Связанные проекты
+
+| Проект | Репозиторий | Описание |
+|--------|-------------|----------|
+| **P2PPong Core** | [github.com/stepweather-prog/P2PPong](https://github.com/stepweather-prog/P2PPong) | Ядро платформы: криптография, DHT, транспорт |
+| **Cloudflare Worker** | `worker.js` в [P2PPong](https://github.com/stepweather-prog/P2PPong/blob/main/worker.js) | Сигнальный сервер WebSocket |
+| **Render Server** | `server.js` в [P2PPong](https://github.com/stepweather-prog/P2PPong/blob/main/server.js) | Резервный сигнальный сервер HTTP |
+| **Спецификация протокола** | [PROTOCOL.md](PROTOCOL.md) | Криптография, рукопожатие, формат блобов |
