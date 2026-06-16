@@ -170,7 +170,7 @@
 <div id="app-container" style="display:none;flex-direction:column;height:100%;">
 <div class="leaves-container" id="leaves-container"></div>
 <div class="header">
-    <div class="header-row-1"><span class="header-title-text">ROBINHOOD P2P</span><span class="header-shield">🏹</span><span class="header-datetime"><span id="header-date"></span> <span id="header-time"></span></span><span class="version-text">Улей v3.2</span></div>
+    <div class="header-row-1"><span class="header-title-text">ROBINHOOD P2P</span><span class="header-shield">🏹</span><span class="header-datetime"><span id="header-date"></span> <span id="header-time"></span></span><span class="version-text">Улей v3.3</span></div>
     <div class="header-row-2">
         <div class="header-btn" id="btn-avatar"><img src="assets/avatar/001ava.png" class="header-avatar" id="profile-avatar-small" alt="avatar"></div>
         <div class="header-btn" id="btn-arrow"><img src="assets/icons/08icon.png" alt="arrow"></div>
@@ -229,7 +229,7 @@
 <div id="bow-above-send"></div>
 </div>
 <script>
-// ==================== PP4 + DHT + GZIP + RATCHET v3.2 ====================
+// ==================== PP4 + DHT + GZIP + RATCHET v3.3 ====================
 const PP4={_peerId:null,_beacons:{},_channels:{},_ws:null,_wsUrl:'wss://robincall.stephanclaps-491.workers.dev/ws',_wsReconnectDelay:1000,_maxReconnectDelay:30000};
 const DHT={_nodeId:null,_buckets:[],_storage:{},_k:20,_alpha:3,_peers:new Map(),_signalSend:null};
 if(!window.crypto?.subtle)throw new Error('Требуется HTTPS');
@@ -270,91 +270,87 @@ DHT._signalSend=(targetPeerId,data)=>{if(PP4._ws?.readyState===WebSocket.OPEN)PP
 const BLOB_NS='00000000000000000000000000000000';
 let incomingBeacons=[];
 
+// Получение текущего ника и аватара
+function getMyNick(){return document.getElementById('nick-label')?.textContent||'Лучник';}
+function getMyAvatar(){return selectedAvatar||'001';}
+
 async function createBeacon(){
     const targetId=document.getElementById('peer-id-input').value.trim();
     if(!targetId){rMsg('Введи Peer ID друга',3000);return;}
     const kp=await generateKeyPair();const pk=await exportPublicKey(kp);const nonce=RND();const bid=RND();
     const beaconKey=await SHA(nonce+'beacon');
     const inner=await encryptAES(JSON.stringify({nonce:nonce,timestamp:Date.now(),peerId:PP4._peerId}),beaconKey);
-    const beacon={type:'beacon',pubKey:pk,peerId:PP4._peerId,inner:inner,targetPeerId:targetId};
+    const beacon={type:'beacon',pubKey:pk,peerId:PP4._peerId,inner:inner,targetPeerId:targetId,nick:getMyNick(),avatar:getMyAvatar()};
     PP4._beacons[bid]={keyPair:kp,pubKey:pk,nonce:nonce,beaconKey:beaconKey,expires:Date.now()+300000};
     broadcastBlob(JSON.stringify(beacon),BLOB_NS);
     rMsg('🏹 Тетива натянута...',3000);
     document.getElementById('arrow-modal')?.classList.remove('active');
 }
 
-function ponkNotify(){
-    const btn=document.getElementById('btn-requests');
-    if(!btn)return;
-    if(incomingBeacons.length>0){btn.classList.add('blink');}else{btn.classList.remove('blink');}
-}
+function ponkNotify(){const btn=document.getElementById('btn-requests');if(!btn)return;if(incomingBeacons.length>0){btn.classList.add('blink');}else{btn.classList.remove('blink');}}
+function ponkConfirm(){if(incomingBeacons.length===0)return;incomingBeacons.shift();ponkNotify();rMsg('✅ Подтверждено!',2000);}
 
-function ponkConfirm(){
-    if(incomingBeacons.length===0)return;
-    incomingBeacons.shift();
-    ponkNotify();
-    rMsg('✅ Подтверждено!',2000);
-}
-
-// Авто-установка активного канала при получении любого сообщения
-function ensureActiveChannel(channelId){
-    if(activeChannelId)return;
+function showChatForChannel(channelId){
     activeChannelId=channelId;
     const ct=contacts.find(c=>c.channelId===channelId);
-    if(ct){
-        activePeerId=ct.peerId;
-        document.getElementById('robin-bar-sender').textContent=ct.name||'Лучник';
-    }
-    updateRatchetIndicator();
+    if(ct){activePeerId=ct.peerId;document.getElementById('robin-bar-sender').textContent=ct.name||'Лучник';}
+    const box=document.getElementById('chat-box');
+    box.innerHTML='<div class="typing-indicator" id="typing-indicator"></div>';
+    const ch=PP4._channels[channelId];
+    if(ch&&ch.blobs){ch.blobs.forEach(b=>{const im=b.from==='me';const ct2=contacts.find(c=>c.channelId===channelId);appendMessage(im?'Вы':(ct2?.name||'Друг'),b.d||b.text||'',im?selectedAvatar:(ct2?.avatar||'001'));});}
+    updateCupIndicator();updateRatchetIndicator();
 }
 
 async function handleIncomingBlob(blobData,channelId){
     let data;try{data=JSON.parse(blobData);}catch(e){return;}
     
+    // Входящий маяк
     if(data.type==='beacon'&&data.pubKey&&data.inner){
         if(data.targetPeerId&&data.targetPeerId!==PP4._peerId)return;
         const remotePubKey=await importPublicKey(data.pubKey);const kp=await generateKeyPair();const myPubKey=await exportPublicKey(kp);
         const ss=await deriveSecret(kp,remotePubKey);const chId=RND();
         PP4._channels[chId]={secret:ss,ratchetKey:ss,ratchetIndex:0,oldKeys:[],peerId:data.peerId,type:'cup',blobs:[],expires:Date.now()+600000,createdAt:Date.now()};
-        broadcastBlob(JSON.stringify({type:'beacon-response',pubKey:myPubKey,peerId:PP4._peerId,inner:data.inner}),BLOB_NS);
-        saveChannels();addContact({peerId:data.peerId,name:'Лучник',channelId:chId,verified:false,avatar:'001'});
-        updateUI();setTimeout(()=>playQuiverAnimation(),300);
-        rMsg('✅ Канал открыт!',3000);
+        broadcastBlob(JSON.stringify({type:'beacon-response',pubKey:myPubKey,peerId:PP4._peerId,inner:data.inner,nick:getMyNick(),avatar:getMyAvatar()}),BLOB_NS);
+        saveChannels();
+        addContact({peerId:data.peerId,name:data.nick||'Лучник',channelId:chId,verified:false,avatar:data.avatar||'001'});
+        updateUI();
+        showChatForChannel(chId);
         incomingBeacons.push({data,time:Date.now()});ponkNotify();
+        rMsg('✅ Канал открыт!',3000);
         return;
     }
     
+    // Ответ на наш маяк
     if(data.type==='beacon-response'&&data.pubKey&&data.inner){
         for(const[bid,b]of Object.entries(PP4._beacons)){
             if(!b.beaconKey)continue;const dec=await decryptAES(data.inner,b.beaconKey);if(!dec)continue;
             let payload;try{payload=JSON.parse(dec);}catch(e){continue;}if(payload.nonce!==b.nonce)continue;
             const remotePubKey=await importPublicKey(data.pubKey);const ss=await deriveSecret(b.keyPair,remotePubKey);const chId=RND();
             PP4._channels[chId]={secret:ss,ratchetKey:ss,ratchetIndex:0,oldKeys:[],peerId:data.peerId,type:'cup',blobs:[],expires:Date.now()+600000,createdAt:Date.now()};
-            delete PP4._beacons[bid];saveChannels();addContact({peerId:data.peerId,name:'Лучник',channelId:chId,verified:false,avatar:'001'});
-            updateUI();setTimeout(()=>playQuiverAnimation(),300);
-            rMsg('✅ Канал открыт!',3000);return;
+            delete PP4._beacons[bid];saveChannels();
+            addContact({peerId:data.peerId,name:data.nick||'Лучник',channelId:chId,verified:false,avatar:data.avatar||'001'});
+            updateUI();
+            showChatForChannel(chId);
+            rMsg('✅ Канал открыт!',3000);
+            return;
         }
     }
     
-    if(data.type==='ratchet-resync'&&data.secret){
-        const chId=Object.keys(PP4._channels).find(id=>PP4._channels[id].peerId===data.peerId);
-        if(chId){const ch=PP4._channels[chId];ch.ratchetKey=data.secret;ch.ratchetIndex=0;ch.oldKeys=[];rMsg('✅ Ratchet перезапущен',3000);updateRatchetIndicator();}return;
-    }
+    // Ресинхронизация
+    if(data.type==='ratchet-resync'&&data.secret){const chId=Object.keys(PP4._channels).find(id=>PP4._channels[id].peerId===data.peerId);if(chId){const ch=PP4._channels[chId];ch.ratchetKey=data.secret;ch.ratchetIndex=0;ch.oldKeys=[];rMsg('✅ Ratchet перезапущен',3000);updateRatchetIndicator();}return;}
     
-    // Обычные сообщения, голосовые, звонки
+    // Обычные сообщения / голосовые / звонки
     for(const[id,ch]of Object.entries(PP4._channels)){
         if(!ch.ratchetKey)continue;
         const u=await unpackBlob(blobData,ch);
         if(!u)continue;
         if(u._pad)delete u._pad;
         
-        ensureActiveChannel(id);
+        // Авто-показ чата если канал не активен
+        if(!activeChannelId||activeChannelId!==id)showChatForChannel(id);
         
         // Звонок
-        if(u.webrtc){
-            await handleWebRTC(u,id);
-            return;
-        }
+        if(u.webrtc){await handleWebRTC(u,id);return;}
         
         // Голосовое — с плеером
         if(u.voice){
@@ -363,22 +359,17 @@ async function handleIncomingBlob(blobData,channelId){
             const senderAvatar=ct?.avatar||'001';
             appendMessage(senderName,'🎤 Голосовое',senderAvatar,u.data,'audio/webm');
             if(id!==activeChannelId)rMsg('🎤 Голосовое от '+senderName,3000);
-            playVoiceBlob(u.data);
             updateCupIndicator();
             return;
         }
         
-        // Текстовое сообщение
-        ch.blobs.push({...u,from:'them'});
-        ch.expires=Date.now()+600000;
-        saveChannels();
+        // Текст
+        ch.blobs.push({...u,from:'them'});ch.expires=Date.now()+600000;saveChannels();
         const ct=contacts.find(c=>c.channelId===id);
-        const sn=ct?.name||'Друг';
-        const sa=ct?.avatar||'001';
+        const sn=ct?.name||'Друг';const sa=ct?.avatar||'001';
         appendMessage(sn,u.d||u.text||'',sa);
         if(id!==activeChannelId)rMsg('Новое от '+sn,3000);
-        updateCupIndicator();
-        playSound('arrow_hit.wav');
+        updateCupIndicator();playSound('arrow_hit.wav');
         return;
     }
 }
@@ -388,11 +379,7 @@ function broadcastBlob(packed,channelId){
     if(dhtPeers.length>0){for(const p of dhtPeers)sendToPeer(p.id,{type:'blob',channelId:channelId||BLOB_NS,blob:packed});return;}
     if(PP4._ws)PP4._ws.send(JSON.stringify({type:'blob',channelId:channelId||BLOB_NS,blob:packed,peerId:PP4._peerId}));
 }
-
-async function sendBlobToChannel(channelId,data){
-    const ch=PP4._channels[channelId];if(!ch||!ch.ratchetKey)return false;
-    const packed=await packBlob(data,ch);broadcastBlob(packed,channelId);return true;
-}
+async function sendBlobToChannel(channelId,data){const ch=PP4._channels[channelId];if(!ch||!ch.ratchetKey)return false;const packed=await packBlob(data,ch);broadcastBlob(packed,channelId);return true;}
 
 function updateRatchetIndicator(){
     const chId=activeChannelId||Object.keys(PP4._channels)[0];const ch=chId?PP4._channels[chId]:null;const indicator=document.getElementById('ratchet-indicator');
@@ -408,9 +395,7 @@ let pc=null,localStream=null,callActive=!1,incomingOffer=null,ringtoneAudio=null
 let audioPool={},robinDefaultText='Слепой Улей. Сервер не знает ничего.',robinTimer=null;
 let voiceRecorder=null,voiceChunks=[],voiceStream=null,voiceRecording=!1,voiceSeconds=0,voiceTimerInterval=null;
 let archerAnimation,quiverAnim,bowAnim,currentArrowContainer;
-let savedConfigs=[],deferredPrompt=null;
-let speakerOn=!0,micOn=!0;
-let iceBuffer=[],iceFlushTimer=null;
+let savedConfigs=[],deferredPrompt=null,speakerOn=!0,micOn=!0,iceBuffer=[],iceFlushTimer=null;
 const avatars=[];for(let i=1;i<=168;i++)avatars.push('assets/avatar/'+String(i).padStart(3,'0')+'ava.png');
 try{savedConfigs=JSON.parse(localStorage.getItem('robinhood_tunnels')||'[]')}catch(e){}
 
@@ -429,7 +414,35 @@ window.addEventListener('focus',()=>{document.getElementById('leaves-container')
 function initLeaves(){const c=document.getElementById('leaves-container');if(!c||c.children.length>0)return;const emojis=['🍁','🍂','🌿','🍃','🪶','🍁','🍂','🌿','🍃','🪶','🍁','🌿'];for(let i=0;i<14;i++){const el=document.createElement('span');el.className=i%3==0?'feather':'leaf';el.textContent=emojis[i];el.style.left=Math.random()*100+'%';el.style.animationDelay=Math.random()*15+'s';el.style.animationDuration=(16+Math.random()*18)+'s';c.appendChild(el)}resetInactivityTimer()}
 function playArcherAnimation(){const rt=document.getElementById('robin-text');if(!rt)return;if(currentArrowContainer?.parentNode)currentArrowContainer.remove();if(archerAnimation){archerAnimation.destroy();archerAnimation=null}const wrapper=document.createElement('span');wrapper.className='robin-arrow-container';wrapper.style.cssText='width:80px;height:40px;display:inline-block;vertical-align:middle;';currentArrowContainer=wrapper;rt.textContent='';rt.appendChild(wrapper);if(typeof lottie!=='undefined'){archerAnimation=lottie.loadAnimation({container:wrapper,renderer:'canvas',loop:false,autoplay:true,path:'assets/Archer.json'});archerAnimation.addEventListener('complete',()=>{wrapper.remove();currentArrowContainer=null;archerAnimation=null;rt.textContent=robinDefaultText})}else{wrapper.textContent='🏹';setTimeout(()=>{if(wrapper.parentNode)wrapper.remove();currentArrowContainer=null;rt.textContent=robinDefaultText},1500)}}
 function playBowAnimation(){const bc=document.getElementById('bow-above-send');if(!bc)return;if(bowAnim){bowAnim.destroy();bowAnim=null}bc.style.display='block';if(typeof lottie!=='undefined'){bowAnim=lottie.loadAnimation({container:bc,renderer:'canvas',loop:false,autoplay:true,path:'assets/bow.json'});bowAnim.addEventListener('complete',()=>{bc.style.display='none';bowAnim=null})}else{bc.textContent='🏹';setTimeout(()=>{bc.style.display='none';bc.textContent=''},800)}const sb=document.getElementById('send-btn');if(sb){sb.classList.add('shooting');setTimeout(()=>sb.classList.remove('shooting'),400)}}
-function playQuiverAnimation(){const rt=document.getElementById('robin-text');if(!rt)return;if(currentArrowContainer?.parentNode)currentArrowContainer.remove();if(quiverAnim){quiverAnim.destroy();quiverAnim=null}const wrapper=document.createElement('span');wrapper.className='robin-arrow-container';wrapper.style.cssText='width:80px;height:40px;display:inline-block;vertical-align:middle;';currentArrowContainer=wrapper;rt.textContent='✅ ';rt.appendChild(wrapper);if(typeof lottie!=='undefined'){quiverAnim=lottie.loadAnimation({container:wrapper,renderer:'canvas',loop:false,autoplay:true,path:'assets/docking/animation.json'});quiverAnim.addEventListener('complete',()=>{if(wrapper.parentNode)wrapper.remove();currentArrowContainer=null;quiverAnim=null;rt.textContent=robinDefaultText})}else{wrapper.textContent='✓';setTimeout(()=>{if(wrapper.parentNode)wrapper.remove();currentArrowContainer=null;rt.textContent=robinDefaultText},2000)}}
+// Анимация колчана: воспроизводится всегда при создании канала
+function playQuiverAnimation(){
+    const rt=document.getElementById('robin-text');
+    if(!rt)return;
+    if(currentArrowContainer?.parentNode)currentArrowContainer.remove();
+    if(quiverAnim){quiverAnim.destroy();quiverAnim=null}
+    const wrapper=document.createElement('span');
+    wrapper.className='robin-arrow-container';
+    wrapper.style.cssText='width:80px;height:40px;display:inline-block;vertical-align:middle;';
+    currentArrowContainer=wrapper;
+    const oldText=rt.textContent;
+    rt.textContent='✅ ';
+    rt.appendChild(wrapper);
+    if(typeof lottie!=='undefined'){
+        quiverAnim=lottie.loadAnimation({
+            container:wrapper,renderer:'canvas',loop:false,autoplay:true,
+            path:'assets/docking/animation.json'
+        });
+        // Восстановить текст после анимации
+        quiverAnim.addEventListener('complete',()=>{
+            if(wrapper.parentNode)wrapper.remove();
+            currentArrowContainer=null;quiverAnim=null;
+            rt.textContent=robinDefaultText;
+        });
+    }else{
+        wrapper.textContent='✓';
+        setTimeout(()=>{if(wrapper.parentNode)wrapper.remove();currentArrowContainer=null;rt.textContent=robinDefaultText},2000);
+    }
+}
 function showCallWave(show){const cw=document.getElementById('call-wave');if(!cw)return;if(show){cw.innerHTML='';cw.style.display='flex';for(let i=0;i<8;i++){const bar=document.createElement('div');bar.className='call-wave-bar';cw.appendChild(bar)}}else{cw.style.display='none';cw.innerHTML=''}}
 function showVoiceWave(show){const btn=document.getElementById('btn-voice-input');if(!btn)return;const old=document.getElementById('voice-wave-anim');if(old)old.remove();if(!show)return;const div=document.createElement('div');div.id='voice-wave-anim';div.className='voice-wave-anim';for(let i=0;i<8;i++){const bar=document.createElement('div');bar.className='voice-wave-bar';div.appendChild(bar)}btn.parentNode.insertBefore(div,btn)}
 function showIncomingControls(show){const ic=document.getElementById('incoming-call-controls');if(ic)ic.style.display=show?'flex':'none'}
@@ -442,14 +455,14 @@ function loadAvatars(){const list=document.getElementById('avatar-list');if(!lis
 async function saveBgToDB(dataUrl){try{const db=await new Promise(r=>{const req=indexedDB.open('PP',1);req.onsuccess=()=>r(req.result)});db.transaction('bg','readwrite').objectStore('bg').put({k:'custom_bg',v:dataUrl})}catch(e){}}
 async function getBgFromDB(){try{const db=await new Promise(r=>{const req=indexedDB.open('PP',1);req.onsuccess=()=>r(req.result)});return await new Promise(res=>{const q=db.transaction('bg','readonly').objectStore('bg').get('custom_bg');q.onsuccess=()=>res(q.result?.v||null);q.onerror=()=>res(null)})}catch(e){return null}}
 async function applyCustomBg(dataUrl){if(dataUrl){document.body.style.setProperty('--custom-bg',`url(${dataUrl})`);document.body.classList.add('custom-bg');const bs=document.getElementById('bg-status');if(bs)bs.textContent='Задан'}else{document.body.classList.remove('custom-bg');document.body.style.removeProperty('--custom-bg');const bs=document.getElementById('bg-status');if(bs)bs.textContent='Не задан'}}
-function addContact(c){if(!contacts.find(x=>x.peerId===c.peerId)){contacts.push(c);saveContacts();}renderContacts();}
+function addContact(c){if(!contacts.find(x=>x.peerId===c.peerId)){contacts.push(c);saveContacts();}else{const existing=contacts.find(x=>x.peerId===c.peerId);if(c.name&&c.name!=='Лучник')existing.name=c.name;if(c.avatar&&c.avatar!=='001')existing.avatar=c.avatar;if(c.channelId)existing.channelId=c.channelId;saveContacts();}renderContacts();}
 function saveContacts(){localStorage.setItem('rh_contacts',JSON.stringify(contacts));}
 function loadContacts(){try{const r=localStorage.getItem('rh_contacts');if(r)contacts=JSON.parse(r);}catch(e){}}
 function renderContacts(){const l=document.getElementById('contacts-list-inner');if(!l)return;l.innerHTML=contacts.map(c=>{const av=c.avatar&&c.avatar!=='001'?'assets/avatar/'+c.avatar+'ava.png':'assets/avatar/001ava.png';return`<div class="contact-item" onclick="openChat('${c.peerId}')"><div class="contact-info"><img src="${av}" onerror="this.src='assets/avatar/001ava.png'" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid var(--border);"><span class="contact-name">${safeHtml(c.name)}</span></div>${c.channelId&&PP4._channels[c.channelId]?.reconnect?`<button onclick="event.stopPropagation();reconnectChannel('${c.channelId}')" style="font-size:0.6em;padding:4px 8px;">🔄</button>`:''}<button class="delete-contact" data-peerid="${c.peerId}">✖</button></div>`;}).join('')||'<div style="color:var(--text-dim);text-align:center;padding:20px;">🏹 Лучников нет</div>';l.querySelectorAll('.delete-contact').forEach(b=>b.addEventListener('click',async e=>{e.stopPropagation();const pid=b.dataset.peerid;if(confirm('Уволить?')){contacts=contacts.filter(c=>c.peerId!==pid);saveContacts();renderContacts();}}))}
-function openChat(peerId){document.getElementById('contacts-sheet').classList.remove('open');document.getElementById('overlay').classList.remove('show');const ct=contacts.find(c=>c.peerId===peerId);if(!ct||!ct.channelId)return;activePeerId=peerId;activeChannelId=ct.channelId;document.getElementById('robin-bar-sender').textContent=ct.name||'Лучник';const box=document.getElementById('chat-box');box.innerHTML='<div class="typing-indicator" id="typing-indicator"></div>';const ch=PP4._channels[ct.channelId];if(ch&&ch.blobs)ch.blobs.forEach(b=>{const im=b.from==='me';appendMessage(im?'Вы':(ct.name||'Друг'),b.d||b.text||'',im?selectedAvatar:ct.avatar);});updateCupIndicator();updateRatchetIndicator();}
+function openChat(peerId){document.getElementById('contacts-sheet').classList.remove('open');document.getElementById('overlay').classList.remove('show');const ct=contacts.find(c=>c.peerId===peerId);if(!ct||!ct.channelId)return;showChatForChannel(ct.channelId);}
 function updateCupIndicator(){const chId=activeChannelId||Object.keys(PP4._channels)[0];const ch=chId?PP4._channels[chId]:null;const ind=document.getElementById('cup-indicator');if(!ch||!ind){if(ind)ind.style.display='none';return;}ind.style.display='inline-flex';const bc=ch.blobs?ch.blobs.length:0;const be=document.getElementById('cup-blobs');if(be){be.textContent=bc+'/10';be.className=bc>=10?'full':bc>=7?'ok':'';}const totalSec=Math.max(0,Math.round((ch.expires-Date.now())/1000));const min=Math.floor(totalSec/60);const sec=totalSec%60;const te=document.getElementById('cup-timer');if(te){te.textContent=min+':'+sec.toString().padStart(2,'0');te.className=min<=2?'low':min<=5?'ok':'';}}
 function updateUI(){const rt=document.getElementById('robin-text');if(rt)rt.textContent=`Каналов: ${Object.keys(PP4._channels).length} | DHT: ${DHT._peers.size}`;}
-function appendMessage(sender,text,avatarSrc,audioData,audioMime){const box=document.getElementById('chat-box');const row=document.createElement('div');row.className='message-row';const time=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});const av=avatarSrc||'assets/avatar/'+selectedAvatar+'ava.png';if(audioData&&audioMime&&audioMime.startsWith('audio/')){const player=createAudioPlayer(audioData,audioMime);row.innerHTML=`<img src="${av}" class="avatar" onerror="this.src='assets/avatar/001ava.png'"><div class="msg-body"><div class="msg-sender">${safeHtml(sender)}</div></div>`;row.querySelector('.msg-body').appendChild(player);const ts=document.createElement('div');ts.className='msg-status';ts.textContent=time;row.querySelector('.msg-body').appendChild(ts);}else{row.innerHTML=`<img src="${av}" class="avatar" onerror="this.src='assets/avatar/001ava.png'"><div class="msg-body"><div class="msg-sender">${safeHtml(sender)}</div><div>${safeHtml(text)}</div><div class="msg-status">${time}</div></div>`}const msgId='msg_'+Date.now()+Math.random();row.dataset.msgId=msgId;box.insertBefore(row,document.getElementById('typing-indicator'));box.scrollTop=box.scrollHeight;if(selfDestructMode){setTimeout(()=>{const el=document.querySelector(`[data-msg-id="${msgId}"]`);if(el){el.style.transition='opacity 0.5s';el.style.opacity='0';setTimeout(()=>{if(el.parentNode)el.remove()},500)}},30000)}}
+function appendMessage(sender,text,avatarSrc,audioData,audioMime){const box=document.getElementById('chat-box');const row=document.createElement('div');row.className='message-row';const time=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});const av=avatarSrc&&avatarSrc!=='001'?'assets/avatar/'+avatarSrc+'ava.png':'assets/avatar/001ava.png';if(audioData&&audioMime&&audioMime.startsWith('audio/')){const player=createAudioPlayer(audioData,audioMime);row.innerHTML=`<img src="${av}" class="avatar" onerror="this.src='assets/avatar/001ava.png'"><div class="msg-body"><div class="msg-sender">${safeHtml(sender)}</div></div>`;row.querySelector('.msg-body').appendChild(player);const ts=document.createElement('div');ts.className='msg-status';ts.textContent=time;row.querySelector('.msg-body').appendChild(ts);}else{row.innerHTML=`<img src="${av}" class="avatar" onerror="this.src='assets/avatar/001ava.png'"><div class="msg-body"><div class="msg-sender">${safeHtml(sender)}</div><div>${safeHtml(text)}</div><div class="msg-status">${time}</div></div>`}const msgId='msg_'+Date.now()+Math.random();row.dataset.msgId=msgId;box.insertBefore(row,document.getElementById('typing-indicator'));box.scrollTop=box.scrollHeight;if(selfDestructMode){setTimeout(()=>{const el=document.querySelector(`[data-msg-id="${msgId}"]`);if(el){el.style.transition='opacity 0.5s';el.style.opacity='0';setTimeout(()=>{if(el.parentNode)el.remove()},500)}},30000)}}
 function createAudioPlayer(audioData,audioMime){const container=document.createElement('div');container.className='audio-player audio-paused';const audio=new Audio('data:'+audioMime+';base64,'+audioData);let isPlaying=false;const playBtn=document.createElement('button');playBtn.className='audio-play-btn';playBtn.textContent='▶';const waveDiv=document.createElement('div');waveDiv.className='audio-wave';for(let i=0;i<8;i++){const bar=document.createElement('div');bar.className='audio-wave-bar';waveDiv.appendChild(bar)}const timeSpan=document.createElement('span');timeSpan.className='audio-time';timeSpan.textContent='0:00';playBtn.addEventListener('click',()=>{if(isPlaying){audio.pause();container.classList.remove('audio-playing');container.classList.add('audio-paused');playBtn.textContent='▶'}else{audio.play();container.classList.remove('audio-paused');container.classList.add('audio-playing');playBtn.textContent='⏸'}isPlaying=!isPlaying});audio.addEventListener('timeupdate',()=>{const m=Math.floor(audio.currentTime/60);const s=Math.floor(audio.currentTime%60).toString().padStart(2,'0');timeSpan.textContent=m+':'+s});audio.addEventListener('ended',()=>{container.classList.remove('audio-playing');container.classList.add('audio-paused');playBtn.textContent='▶';isPlaying=false});container.appendChild(playBtn);container.appendChild(waveDiv);container.appendChild(timeSpan);return container;}
 async function getMediaStream(video=false,facingMode='user'){try{return await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:!0,noiseSuppression:!0},video:video?{width:{ideal:320},height:{ideal:240},facingMode}:false})}catch(e){return null}}
 function createPC(){if(pc){pc.close();pc=null}iceBuffer=[];if(iceFlushTimer)clearTimeout(iceFlushTimer);pc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'},{urls:'stun:stun2.l.google.com:19302'}]});if(localStream)localStream.getTracks().forEach(t=>pc.addTrack(t,localStream));pc.ontrack=e=>{if(e.streams[0]){const a=new Audio();a.srcObject=e.streams[0];a.play().catch(()=>{})}};pc.onicecandidate=e=>{if(e.candidate){iceBuffer.push(e.candidate);}else{iceFlushTimer=setTimeout(()=>{iceBuffer.forEach(c=>sendWebRTCMsg('webrtc-ice',JSON.stringify(c)));iceBuffer=[];},300);}};pc.onconnectionstatechange=()=>{if(pc.connectionState=='connected'){callActive=!0;stopRingback();stopRingtone();document.getElementById('call-status').textContent='✅ Разговор';showIncomingControls(false);showActiveControls(true);showCallWave(true);playSound('open.mp3')}if(pc.connectionState=='disconnected'||pc.connectionState=='failed')hang(!1)};return pc}
@@ -458,12 +471,12 @@ function playRingtone(){stopRingtone();ringtoneAudio=new Audio('assets/sounds/me
 function stopRingtone(){if(ringtoneAudio){ringtoneAudio.pause();ringtoneAudio.loop=false;ringtoneAudio=null}}
 function playRingback(){stopRingback();ringbackAudio=new Audio('assets/sounds/Welk.mp3');ringbackAudio.loop=true;ringbackAudio.volume=0.5;ringbackAudio.play().catch(()=>{})}
 function stopRingback(){if(ringbackAudio){ringbackAudio.pause();ringbackAudio.loop=false;ringbackAudio=null}}
-async function startCall(){if(callActive||!activeChannelId){rMsg('❌ Нет канала',3000);return}const s=await getMediaStream(false);if(!s){rMsg('❌ Нет микрофона',3000);return}localStream=s;createPC();const cp=document.getElementById('call-panel');if(cp)cp.style.display='flex';document.getElementById('call-avatar').src='assets/avatar/'+selectedAvatar+'ava.png';document.getElementById('call-contact-name').textContent=document.getElementById('nick-label')?.textContent||'Лучник';document.getElementById('call-status').textContent='📞 Вызов...';showIncomingControls(false);showActiveControls(true);showCallWave(false);playRingback();const o=await pc.createOffer();await pc.setLocalDescription(o);setTimeout(()=>{sendWebRTCMsg('webrtc-offer',JSON.stringify(o))},800)}
-async function acceptCall(){if(!incomingOffer||!activeChannelId)return;stopRingtone();stopRingback();const s=await getMediaStream(false);if(!s)return;localStream=s;createPC();const cp=document.getElementById('call-panel');if(cp)cp.style.display='flex';document.getElementById('call-avatar').src='assets/avatar/'+selectedAvatar+'ava.png';document.getElementById('call-contact-name').textContent=document.getElementById('nick-label')?.textContent||'Лучник';document.getElementById('call-status').textContent='✅ Разговор';showIncomingControls(false);showActiveControls(true);showCallWave(true);playSound('open.mp3');await pc.setRemoteDescription(new RTCSessionDescription(incomingOffer));iceBuffer.forEach(c=>pc.addIceCandidate(new RTCIceCandidate(c)).catch(()=>{}));iceBuffer=[];const a=await pc.createAnswer();await pc.setLocalDescription(a);sendWebRTCMsg('webrtc-answer',JSON.stringify(a));incomingOffer=null;callActive=!0}
+async function startCall(){if(callActive||!activeChannelId){rMsg('❌ Нет канала',3000);return}const s=await getMediaStream(false);if(!s){rMsg('❌ Нет микрофона',3000);return}localStream=s;createPC();const cp=document.getElementById('call-panel');if(cp)cp.style.display='flex';const ct=contacts.find(c=>c.channelId===activeChannelId);document.getElementById('call-avatar').src='assets/avatar/'+(ct?.avatar||selectedAvatar)+'ava.png';document.getElementById('call-contact-name').textContent=ct?.name||document.getElementById('nick-label')?.textContent||'Лучник';document.getElementById('call-status').textContent='📞 Вызов...';showIncomingControls(false);showActiveControls(true);showCallWave(false);playRingback();const o=await pc.createOffer();await pc.setLocalDescription(o);setTimeout(()=>{sendWebRTCMsg('webrtc-offer',JSON.stringify(o))},800)}
+async function acceptCall(){if(!incomingOffer||!activeChannelId)return;stopRingtone();stopRingback();const s=await getMediaStream(false);if(!s)return;localStream=s;createPC();const cp=document.getElementById('call-panel');if(cp)cp.style.display='flex';const ct=contacts.find(c=>c.channelId===activeChannelId);document.getElementById('call-avatar').src='assets/avatar/'+(ct?.avatar||selectedAvatar)+'ava.png';document.getElementById('call-contact-name').textContent=ct?.name||document.getElementById('nick-label')?.textContent||'Лучник';document.getElementById('call-status').textContent='✅ Разговор';showIncomingControls(false);showActiveControls(true);showCallWave(true);playSound('open.mp3');await pc.setRemoteDescription(new RTCSessionDescription(incomingOffer));iceBuffer.forEach(c=>pc.addIceCandidate(new RTCIceCandidate(c)).catch(()=>{}));iceBuffer=[];const a=await pc.createAnswer();await pc.setLocalDescription(a);sendWebRTCMsg('webrtc-answer',JSON.stringify(a));incomingOffer=null;callActive=!0}
 function hang(sig=!0){callActive=!1;stopRingtone();stopRingback();if(sig&&activeChannelId)sendWebRTCMsg('webrtc-hangup','');if(pc){pc.close();pc=null}if(localStream){localStream.getTracks().forEach(t=>t.stop());localStream=null}incomingOffer=null;iceBuffer=[];if(iceFlushTimer)clearTimeout(iceFlushTimer);const cp=document.getElementById('call-panel');if(cp)cp.style.display='none';showIncomingControls(false);showActiveControls(false);showCallWave(false);playSound('exet.mp3')}
 async function handleWebRTC(u,channelId){
-    ensureActiveChannel(channelId);
-    if(u.webrtc==='webrtc-offer'){if(callActive||pc){sendWebRTCMsg('webrtc-hangup','');return}iceBuffer=[];incomingOffer=JSON.parse(u.sdp);const cp=document.getElementById('call-panel');if(cp)cp.style.display='flex';document.getElementById('call-status').textContent='📞 Входящий...';showActiveControls(false);showIncomingControls(true);showCallWave(false);playRingtone()}
+    if(!activeChannelId||activeChannelId!==channelId){activeChannelId=channelId;const ct=contacts.find(c=>c.channelId===channelId);if(ct){activePeerId=ct.peerId;}}
+    if(u.webrtc==='webrtc-offer'){if(callActive||pc){sendWebRTCMsg('webrtc-hangup','');return}iceBuffer=[];incomingOffer=JSON.parse(u.sdp);const cp=document.getElementById('call-panel');if(cp)cp.style.display='flex';const ct=contacts.find(c=>c.channelId===channelId);document.getElementById('call-avatar').src='assets/avatar/'+(ct?.avatar||'001')+'ava.png';document.getElementById('call-contact-name').textContent=ct?.name||'Лучник';document.getElementById('call-status').textContent='📞 Входящий...';showActiveControls(false);showIncomingControls(true);showCallWave(false);playRingtone()}
     if(u.webrtc==='webrtc-answer'&&pc){stopRingback();try{await pc.setRemoteDescription(new RTCSessionDescription(JSON.parse(u.sdp)));iceBuffer.forEach(c=>pc.addIceCandidate(new RTCIceCandidate(c)).catch(()=>{}));iceBuffer=[];callActive=!0;document.getElementById('call-status').textContent='✅ Разговор';showIncomingControls(false);showActiveControls(true);showCallWave(true);playSound('open.mp3')}catch(e){}}
     if(u.webrtc==='webrtc-ice'&&pc){try{const c=JSON.parse(u.sdp);if(pc.remoteDescription)pc.addIceCandidate(new RTCIceCandidate(c)).catch(()=>{});else iceBuffer.push(c);}catch(e){}}
     if(u.webrtc==='webrtc-hangup'){if(callActive||pc){rMsg('📞 Собеседник завершил',3000);hang(!1)}}
