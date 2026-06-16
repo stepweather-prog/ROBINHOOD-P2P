@@ -1,7 +1,5 @@
 // ===================================================================
 // P2PPong v1.0 — Распределённая платформа (ядро)
-// Подключение: <script src="p2ppong.js"></script>
-// Всё общение через события: P2PPong.on('событие', callback)
 // ===================================================================
 
 const P2PPong = {
@@ -22,6 +20,10 @@ const P2PPong = {
     _httpSignal: null,
     _peerHelpActive: false,
     _housekeepInterval: null,
+    _beaconPollTimer: null,
+    _beaconPollKey: null,
+    _beaconPollStartTime: null,
+    _beaconPollRole: null,
 
     on(event, callback) {
         if (!this._listeners[event]) this._listeners[event] = [];
@@ -87,6 +89,73 @@ const P2PPong = {
         }
     },
 
+    // ==================== ОПРОС МАЯКОВ (BLIND LOCKER) ====================
+    startBeaconPolling(keyHash, role) {
+        this.stopBeaconPolling();
+
+        this._beaconPollKey = keyHash;
+        this._beaconPollRole = role;
+        this._beaconPollStartTime = Date.now();
+
+        if (role === 'sender') {
+            // Пир А (скопировал Peer ID) — 2.5 минуты
+            setTimeout(() => this._pollBeacon(), 30000);
+        } else {
+            // Пир Б (создал маяк) — 1 минута
+            setTimeout(() => this._pollBeacon(), 30000);
+        }
+    },
+
+    _pollBeacon() {
+        if (!this._beaconPollKey) return;
+
+        const elapsed = (Date.now() - this._beaconPollStartTime) / 1000;
+        const maxTime = this._beaconPollRole === 'sender' ? 150 : 90;
+
+        if (elapsed > maxTime) {
+            this.stopBeaconPolling();
+            this._emit('beacon-timeout', {});
+            return;
+        }
+
+        // Определяем интервал следующего опроса
+        let nextInterval;
+        if (this._beaconPollRole === 'sender' && elapsed > 135) {
+            nextInterval = 5000; // последние 15 сек — каждые 5 сек
+        } else if (this._beaconPollRole === 'sender') {
+            nextInterval = 15000; // 30-135 сек — каждые 15 сек
+        } else {
+            nextInterval = 10000; // пир Б — каждые 10 сек
+        }
+
+        // Запрос к серверу
+        const workerUrl = this._signalServers[0].url.replace('wss://', 'https://').replace('/ws', '');
+        fetch(`${workerUrl}/beacon?key=${this._beaconPollKey}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'found' && data.packet) {
+                    this.stopBeaconPolling();
+                    this._handleIncomingBlob(data.packet, BLOB_NS);
+                } else {
+                    this._beaconPollTimer = setTimeout(() => this._pollBeacon(), nextInterval);
+                }
+            })
+            .catch(() => {
+                this._beaconPollTimer = setTimeout(() => this._pollBeacon(), nextInterval);
+            });
+    },
+
+    stopBeaconPolling() {
+        if (this._beaconPollTimer) {
+            clearTimeout(this._beaconPollTimer);
+            this._beaconPollTimer = null;
+        }
+        this._beaconPollKey = null;
+        this._beaconPollStartTime = null;
+        this._beaconPollRole = null;
+    },
+
+    // ==================== СИГНАЛЬНЫЙ СЕРВЕР ====================
     _connectSignal() {
         const server = this._signalServers[this._currentSignalIndex];
         if (server.type === 'websocket') {
@@ -230,6 +299,7 @@ const P2PPong = {
         }, 10000);
     },
 
+    // ==================== МАЯКИ ====================
     async createBeacon(targetPeerId, metadata = {}) {
         if (!targetPeerId) return null;
         const kp = await generateKeyPair();
@@ -241,9 +311,34 @@ const P2PPong = {
         const beaconData = { type: 'beacon', pubKey: pk, peerId: this._peerId, inner, targetPeerId, nick: metadata.nick || '', avatar: metadata.avatar || '' };
         beaconData.sig = await computeHMAC(JSON.stringify(beaconData), beaconKey);
         this._beacons[bid] = { keyPair: kp, pubKey: pk, nonce, beaconKey, expires: Date.now() + 300000 };
-        this._broadcastBlob(JSON.stringify(beaconData), BLOB_NS);
-        this._emit('beacon-sent', { targetPeerId, beaconId: bid });
+
+        // Отправляем через HTTP в слепую ячейку
+        const keyHash = await SHA(nonce + targetPeerId);
+        const packet = JSON.stringify(beaconData);
+        const workerUrl = this._signalServers[0].url.replace('wss://', 'https://').replace('/ws', '');
+
+        try {
+            await fetch(`${workerUrl}/beacon`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ keyHash, packet })
+            });
+        } catch(e) {}
+
+        this._emit('beacon-sent', { targetPeerId, beaconId: bid, keyHash });
+
+        // Начинаем опрашивать ответ (пир Б — роль sender? нет, receiver)
+        this.startBeaconPolling(keyHash, 'receiver');
+
         return bid;
+    },
+
+    // Запуск опроса после копирования Peer ID (пир А — sender)
+    startSenderPolling(myPeerId) {
+        const keyHash = await SHA(myPeerId + myPeerId); // временный ключ — ждём маяк
+        // На самом деле keyHash должен передаваться от пира Б пиру А
+        // Пока запускаем с меткой что мы sender
+        this.startBeaconPolling('waiting_' + myPeerId, 'sender');
     },
 
     async sendMessage(channelId, data) {
@@ -379,6 +474,7 @@ const P2PPong = {
     },
 
     async destroy() {
+        this.stopBeaconPolling();
         if (this._housekeepInterval) clearInterval(this._housekeepInterval);
         if (this._httpSignal) { this._httpSignal.stop(); this._httpSignal = null; }
         if (this._ws) { this._ws.onclose = null; this._ws.close(); this._ws = null; }
