@@ -1,5 +1,6 @@
 // ===================================================================
 // P2PPong v1.0 Final — Распределённая платформа (ядро)
+// Все фиксы применены
 // ===================================================================
 
 const DEBUG = true;
@@ -17,7 +18,7 @@ const P2PPong = {
     _httpSignal: null, _peerHelpActive: false, _housekeepInterval: null,
     _pollTimer: null, _pollStart: null, _pollKey: null,
     _pollMax: 150, _pollSilence: 30000, _pollInterval: 15000, _pollFast: 5000, _pollFastStart: 135,
-    _webRTC: {}, _webRTCPolling: {}, _msgPollTimers: {}, _msgReadTimers: {}, _msgDeleteQueue: [],
+    _webRTC: {}, _webRTCPolling: {}, _msgPollTimers: {}, _msgReadTimers: {},
     _pendingVerification: null, _verificationEmoji: null, _verificationConfirmed: false,
     _pendingWebRTC: new Map(),
 
@@ -74,21 +75,14 @@ const P2PPong = {
         const emoji = this._genEmoji();
         this._verificationEmoji = emoji;
         this._pendingVerification = { bd, targetPeerId };
-        // Отправляем эмодзи + оригинальные pubKey и inner чтобы пир А мог подтвердить
-        const emojiPacket = JSON.stringify({
-            type: 'verification-emoji',
-            emoji,
-            peerId: this._peerId,
-            pubKey: bd.pubKey,
-            inner: bd.inner
-        });
+        const emojiPacket = JSON.stringify({ type: 'verification-emoji', emoji, peerId: this._peerId, pubKey: bd.pubKey, inner: bd.inner });
         await this._post('/beacon', { keyHash: 'emoji_' + targetPeerId, packet: emojiPacket });
         this._emit('verification-needed', { emoji }); return true;
     },
 
     async confirmVerification() {
         if (!this._pendingVerification) { log('confirmVerification no pending'); return false; }
-        const { bd, targetPeerId } = this._pendingVerification;
+        const { bd, targetPeerId } = this._pendingVerification; this._pendingVerification = null;
         log('confirmVerification', targetPeerId);
         const rpk = await importPublicKey(bd.pubKey); const kp = await generateKeyPair(); const mpk = await exportPublicKey(kp);
         const ss = await deriveSecret(kp, rpk); const chId = RND();
@@ -100,14 +94,31 @@ const P2PPong = {
         this._emit('channel-opened', { channelId: chId, peerId: bd.peerId, nick: 'Лучник', avatar: '001' });
         this._startMsgPoll(chId);
         await this._post('/beacon', { keyHash: 'ack_' + targetPeerId, packet: JSON.stringify({ type: 'verification-ack', peerId: this._peerId }) });
-        this._verificationEmoji = null; this._verificationConfirmed = true; this._pendingVerification = null;
+        this._verificationEmoji = null; this._verificationConfirmed = true;
         this._pendingWebRTC.set(chId, true);
+        this.startWebRTC(chId); // ФИКС 1: Запуск WebRTC сразу
         return true;
     },
 
     getVerificationEmoji() { return this._verificationEmoji; },
 
-    async _post(path, body) { for (const s of this._signalServers) { try { const r = await fetch(s.url + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(5000) }); if (r.ok) { log('_post ok', s.name); return r.json(); } log('_post fail', s.name + ' ' + r.status); } catch(e) { log('_post error', s.name + ' ' + e.message); } } return null; },
+    async _post(path, body) {
+        // ФИКС 3: Если packet пустой — удаляем через /delete
+        if (body.packet === '') {
+            for (const s of this._signalServers) {
+                try { const r = await fetch(s.url + '/delete?key=' + body.keyHash, { signal: AbortSignal.timeout(5000) }); if (r.ok) return { status: 'deleted' }; } catch(e) {}
+            }
+            return null;
+        }
+        for (const s of this._signalServers) {
+            try {
+                const r = await fetch(s.url + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(5000) });
+                if (r.ok) { log('_post ok', s.name); return r.json(); }
+                log('_post fail', s.name + ' ' + r.status);
+            } catch(e) { log('_post error', s.name + ' ' + e.message); }
+        }
+        return null;
+    },
     async _get(path) { for (const s of this._signalServers) { try { const r = await fetch(s.url + path, { signal: AbortSignal.timeout(5000) }); if (r.ok) { const j = await r.json(); if (j.status !== 'empty') log('_get ok', s.name + ' ' + j.status); return j; } log('_get fail', s.name + ' ' + r.status); } catch(e) { log('_get error', s.name + ' ' + e.message); } } return null; },
 
     startPolling(keyHash) { if (!keyHash) return; this._stopPolling(); this._pollKey = keyHash; this._pollStart = Date.now(); log('startPolling', keyHash); this._pollTimer = setTimeout(() => this._doPoll(), this._pollSilence); },
@@ -116,9 +127,24 @@ const P2PPong = {
     _stopPolling() { if (this._pollTimer) { clearTimeout(this._pollTimer); this._pollTimer = null; log('_stopPolling'); } },
 
     _startMsgPoll(chId) { if (this._msgPollTimers[chId]) return; log('_startMsgPoll', chId); const poll = () => { if (!this._channels[chId]) { this._stopMsgPoll(chId); return; }
-        this._get('/beacon?key=msg_' + chId).then(d => { if (d?.packet) { this._handleIn(d.packet, chId); this._scheduleMsgDelete(chId); } this._msgPollTimers[chId] = setTimeout(poll, 5000); }).catch(() => { this._msgPollTimers[chId] = setTimeout(poll, 5000); }); }; poll(); },
+        this._get('/beacon?key=msg_' + chId).then(d => {
+            if (d?.packet) {
+                const msgId = Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+                this._handleIn(d.packet, chId);
+                this._scheduleMsgDelete(chId, msgId);
+            }
+            this._msgPollTimers[chId] = setTimeout(poll, 5000);
+        }).catch(() => { this._msgPollTimers[chId] = setTimeout(poll, 5000); }); }; poll(); },
     _stopMsgPoll(chId) { if (this._msgPollTimers[chId]) { clearTimeout(this._msgPollTimers[chId]); delete this._msgPollTimers[chId]; log('_stopMsgPoll', chId); } },
-    _scheduleMsgDelete(chId) { if (this._msgReadTimers[chId]) clearTimeout(this._msgReadTimers[chId]); const msgId = chId + '_' + Date.now(); this._msgDeleteQueue.push(msgId); this._msgReadTimers[chId] = setTimeout(() => { this._post('/beacon', { keyHash: 'msg_' + chId, packet: '' }); this._msgDeleteQueue = this._msgDeleteQueue.filter(id => id !== msgId); log('msg deleted', chId); }, 60000); },
+    _scheduleMsgDelete(chId, msgId) { // ФИКС 2: уникальный ключ на сообщение
+        const timerKey = chId + '_' + msgId;
+        if (this._msgReadTimers[timerKey]) clearTimeout(this._msgReadTimers[timerKey]);
+        this._msgReadTimers[timerKey] = setTimeout(() => {
+            this._post('/beacon', { keyHash: 'msg_' + chId + '_' + msgId, packet: '' });
+            delete this._msgReadTimers[timerKey];
+            log('msg deleted', timerKey);
+        }, 60000);
+    },
 
     async startWebRTC(chId) {
         const ch = this._channels[chId]; if (!ch || this._webRTC[chId]) return;
@@ -161,30 +187,23 @@ const P2PPong = {
 
     async _handleIn(blobData, chId) { let d; try { d = JSON.parse(blobData); } catch(e) { return; }
         if (d?.type?.startsWith('webrtc-')) { this._handleWSig(chId || Object.keys(this._channels)[0], d); return; }
-        if (d?.type === 'verification-emoji' && d.emoji) {
-            log('verification-emoji received');
-            this._verificationEmoji = d.emoji;
-            // Создаём _pendingVerification для пира А (того кто крафтил)
-            if (!this._pendingVerification && d.pubKey && d.inner) {
-                this._pendingVerification = { bd: { pubKey: d.pubKey, inner: d.inner, peerId: d.peerId }, targetPeerId: d.peerId };
-                log('_pendingVerification set for peer A');
-            }
-            this._emit('verification-received', { emoji: d.emoji }); return;
-        }
+        if (d?.type === 'verification-emoji' && d.emoji) { log('verification-emoji received'); this._verificationEmoji = d.emoji;
+            if (!this._pendingVerification && d.pubKey && d.inner) { this._pendingVerification = { bd: { pubKey: d.pubKey, inner: d.inner, peerId: d.peerId }, targetPeerId: d.peerId }; log('_pendingVerification set for peer A'); }
+            this._emit('verification-received', { emoji: d.emoji }); return; }
         if (d?.type === 'verification-ack') { log('verification-ack received'); this._verificationConfirmed = true; this._emit('verification-acked', {}); for (const [id, waiting] of this._pendingWebRTC) { if (waiting) { this.startWebRTC(id); this._pendingWebRTC.set(id, false); } } return; }
         if (d?.type === 'beacon' && d.pubKey && d.inner) { if (d.targetPeerId && d.targetPeerId !== this._peerId) return; if (d.sig && !await verifyHMAC(JSON.stringify(d), d.sig, await SHA('beacon'))) return; log('beacon received');
             this._emit('beacon-received', { peerId: d.peerId, accept: async () => { const rpk = await importPublicKey(d.pubKey); const kp = await generateKeyPair(); const mpk = await exportPublicKey(kp); const ss = await deriveSecret(kp, rpk); const nid = RND();
                 this._channels[nid] = { secret: ss, ratchetKey: ss, ratchetIndex: 0, oldKeys: [], lastReceivedRi: -1, peerId: d.peerId, type: 'cup', blobs: [], expires: Date.now() + 600000, createdAt: Date.now() };
                 await this._post('/beacon', { keyHash: 'waiting_' + this._peerId, packet: JSON.stringify({ type: 'beacon-response', pubKey: mpk, peerId: this._peerId, inner: d.inner }) });
-                this._stats.channelsOpened++; await this._saveCh(); this._emit('channel-opened', { channelId: nid, peerId: d.peerId, nick: 'Лучник', avatar: '001' }); this._startMsgPoll(nid); this._pendingWebRTC.set(nid, true); } }); return; }
+                this._stats.channelsOpened++; await this._saveCh(); this._emit('channel-opened', { channelId: nid, peerId: d.peerId, nick: 'Лучник', avatar: '001' }); this._startMsgPoll(nid); this._pendingWebRTC.set(nid, true); this.startWebRTC(nid); } }); return; }
         if (d?.type === 'beacon-response' && d.pubKey && d.inner) { log('beacon-response received'); for (const [bid, b] of Object.entries(this._beacons)) { if (!b.beaconKey) continue; const dec = await decryptAES(d.inner, b.beaconKey); if (!dec) continue; let p; try { p = JSON.parse(dec); } catch(e) { continue; } if (p.nonce !== b.nonce) continue;
             const rpk = await importPublicKey(d.pubKey); const ss = await deriveSecret(b.keyPair, rpk); const nid = RND(); this._channels[nid] = { secret: ss, ratchetKey: ss, ratchetIndex: 0, oldKeys: [], lastReceivedRi: -1, peerId: d.peerId, type: 'cup', blobs: [], expires: Date.now() + 600000, createdAt: Date.now() };
-            delete this._beacons[bid]; this._stopPolling(); this._stats.channelsOpened++; await this._saveCh(); this._emit('channel-opened', { channelId: nid, peerId: d.peerId, nick: 'Лучник', avatar: '001' }); this._startMsgPoll(nid); this._pendingWebRTC.set(nid, true); if (this._verificationConfirmed) { this.startWebRTC(nid); this._pendingWebRTC.set(nid, false); } return; } }
+            delete this._beacons[bid]; this._stopPolling(); this._stats.channelsOpened++; await this._saveCh(); this._emit('channel-opened', { channelId: nid, peerId: d.peerId, nick: 'Лучник', avatar: '001' }); this._startMsgPoll(nid); this._pendingWebRTC.set(nid, true); this.startWebRTC(nid); return; } }
         const ch = this._channels[chId]; if (ch?.ratchetKey) { const u = await unpackBlob(blobData, ch); if (u) { if (u._ri !== undefined) { if (ch.lastReceivedRi === undefined) ch.lastReceivedRi = -1; if (u._ri <= ch.lastReceivedRi) return; ch.lastReceivedRi = u._ri; } ch.blobs = ch.blobs || []; ch.blobs.push({ ...u, from: 'them' }); ch.expires = Date.now() + 600000; this._stats.messagesReceived++; await this._saveCh(); this._emit('message-received', { channelId: chId, text: u.d || u.text || '', from: 'them', timestamp: u._t || Date.now() }); } } },
 
     async _saveCh() { const d = Object.entries(this._channels).map(([id, ch]) => ({ id, peerId: ch.peerId, type: ch.type, expires: ch.expires, createdAt: ch.createdAt })); await encryptToStorage('p2ppong_channels', JSON.stringify(d)); },
     getStats() { return { peerId: this._peerId, state: this._state, channels: Object.keys(this._channels).length, dhtPeers: DHT._peers.size, ...this._stats }; },
-    async destroy() { this._stopPolling(); for (const [id, t] of Object.entries(this._msgPollTimers)) clearTimeout(t); this._msgPollTimers = {}; for (const [id, t] of Object.entries(this._webRTCPolling)) clearTimeout(t); this._webRTCPolling = {}; for (const [id, t] of Object.entries(this._msgReadTimers)) clearTimeout(t); this._msgReadTimers = {}; this._msgDeleteQueue = []; for (const [id, rtc] of Object.entries(this._webRTC)) { try { rtc.pc.close(); } catch(e) {} } this._webRTC = {}; if (this._housekeepInterval) clearInterval(this._housekeepInterval); if (this._ws) { this._ws.onclose = null; this._ws.close(); this._ws = null; } if (this._peerHelpActive && typeof RobinHoodPeerHelp !== 'undefined') RobinHoodPeerHelp.stop(); this._channels = {}; this._beacons = {}; this._listeners = {}; this._state = 'idle'; this._peerId = null; this._pendingVerification = null; this._verificationEmoji = null; this._verificationConfirmed = false; this._pendingWebRTC.clear(); await this._saveCh(); this._emit('destroyed'); }
+    async destroy() { this._stopPolling(); for (const [id, t] of Object.entries(this._msgPollTimers)) clearTimeout(t); this._msgPollTimers = {}; for (const [id, t] of Object.entries(this._webRTCPolling)) clearTimeout(t); this._webRTCPolling = {}; for (const [id, t] of Object.entries(this._msgReadTimers)) clearTimeout(t); this._msgReadTimers = {}; for (const [id, rtc] of Object.entries(this._webRTC)) { try { rtc.pc.close(); } catch(e) {} } this._webRTC = {}; if (this._housekeepInterval) clearInterval(this._housekeepInterval); if (this._ws) { this._ws.onclose = null; this._ws.close(); this._ws = null; } if (this._peerHelpActive && typeof RobinHoodPeerHelp !== 'undefined') RobinHoodPeerHelp.stop(); this._channels = {}; this._beacons = {}; this._listeners = {}; this._state = 'idle'; this._peerId = null; this._pendingVerification = null; this._verificationEmoji = null; this._verificationConfirmed = false; this._pendingWebRTC.clear(); await this._saveCh(); this._emit('destroyed'); }
 };
 
 const RND = () => { const a = new Uint32Array(4); crypto.getRandomValues(a); return [...a].map(x => x.toString(16).padStart(8, '0')).join(''); };
