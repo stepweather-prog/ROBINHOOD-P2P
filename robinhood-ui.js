@@ -1189,7 +1189,7 @@ function initApp() {
         const pid = P2PPong._peerId;
         if (pid) {
             navigator.clipboard.writeText(pid).then(() => rMsg('⎘ ID скопирован!')).catch(() => {});
-            P2PPong.startCopyPolling();
+            
         }
     });
     document.getElementById('close-craft-modal')?.addEventListener('click', () => {
