@@ -8,9 +8,9 @@ const P2PPong = {
     _channels: {},
     _ws: null,
     _signalServers: [
-    { type: 'http', url: 'https://robincall.stephanclaps-491.workers.dev', name: 'Cloudflare' },
-    { type: 'http', url: 'https://p2ppong-v2.onrender.com', name: 'Render' }
-],
+        { type: 'http', url: 'https://robincall.stephanclaps-491.workers.dev', name: 'Cloudflare' },
+        { type: 'http', url: 'https://p2ppong-v2.onrender.com', name: 'Render' }
+    ],
     _currentSignalIndex: 0,
     _wsReconnectDelay: 1000,
     _maxReconnectDelay: 30000,
@@ -67,13 +67,6 @@ const P2PPong = {
             }
 
             this._connectSignal();
-
-            document.addEventListener('visibilitychange', () => {
-                if (document.visibilityState === 'visible') {
-                    if (!this._ws || this._ws.readyState > 1) this._connectSignal();
-                }
-            });
-
             this._startHousekeeping();
 
             this._state = 'online';
@@ -98,10 +91,8 @@ const P2PPong = {
         this._beaconPollStartTime = Date.now();
 
         if (role === 'sender') {
-            // Пир А (скопировал Peer ID) — 2.5 минуты
             setTimeout(() => this._pollBeacon(), 30000);
         } else {
-            // Пир Б (создал маяк) — 1 минута
             setTimeout(() => this._pollBeacon(), 30000);
         }
     },
@@ -118,18 +109,16 @@ const P2PPong = {
             return;
         }
 
-        // Определяем интервал следующего опроса
         let nextInterval;
         if (this._beaconPollRole === 'sender' && elapsed > 135) {
-            nextInterval = 5000; // последние 15 сек — каждые 5 сек
+            nextInterval = 5000;
         } else if (this._beaconPollRole === 'sender') {
-            nextInterval = 15000; // 30-135 сек — каждые 15 сек
+            nextInterval = 15000;
         } else {
-            nextInterval = 10000; // пир Б — каждые 10 сек
+            nextInterval = 10000;
         }
 
-        // Запрос к серверу
-        const workerUrl = this._signalServers[0].url.replace('wss://', 'https://').replace('/ws', '');
+        const workerUrl = 'https://robincall.stephanclaps-491.workers.dev';
         fetch(`${workerUrl}/beacon?key=${this._beaconPollKey}`)
             .then(res => res.json())
             .then(data => {
@@ -156,7 +145,7 @@ const P2PPong = {
     },
 
     // ==================== СИГНАЛЬНЫЙ СЕРВЕР ====================
-        _connectSignal() {
+    _connectSignal() {
         this._connectHttpPolling();
     },
 
@@ -198,71 +187,12 @@ const P2PPong = {
     },
 
     _connectHttpPolling() {
-        this._httpSignal = {
-            _baseUrl: this._signalServers.find(s => s.type === 'http').url,
-            _sessionId: null,
-            _lastSince: 0,
-            _pollTimer: null,
-
-            async createBeacon(tempKeyHash, publicId) {
-                const res = await fetch(`${this._baseUrl}/beacon`, {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ tempKeyHash, publicId })
-                });
-                const data = await res.json();
-                if (data.sessionId) { this._sessionId = data.sessionId; this._startPoll(); }
-                return data;
-            },
-
-            async findBeacon(tempKeyHash, publicId) {
-                const res = await fetch(`${this._baseUrl}/find`, {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ tempKeyHash, publicId })
-                });
-                const data = await res.json();
-                if (data.status === 'matched' && data.sessionId) { this._sessionId = data.sessionId; this._startPoll(); }
-                return data;
-            },
-
-            async sendMessage(packet) {
-                if (!this._sessionId) return false;
-                const res = await fetch(`${this._baseUrl}/message`, {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ sessionId: this._sessionId, packet })
-                });
-                return res.ok;
-            },
-
-            _startPoll() {
-                if (this._pollTimer) return;
-                const self = this;
-                this._pollTimer = setInterval(async () => {
-                    if (!self._sessionId) return;
-                    try {
-                        const res = await fetch(`${self._baseUrl}/message?id=${self._sessionId}&since=${self._lastSince}`);
-                        const data = await res.json();
-                        if (data.messages) {
-                            for (const msg of data.messages) {
-                                self._lastSince = Math.max(self._lastSince, msg.time);
-                                P2PPong._handleIncomingBlob(msg.packet, null);
-                            }
-                        }
-                    } catch(e) {}
-                }, 2000);
-            },
-
-            stop() {
-                if (this._pollTimer) { clearInterval(this._pollTimer); this._pollTimer = null; }
-            }
-        };
-
         this._state = 'online';
         this._emit('state-change', { state: 'online' });
-        this._emit('signal-connected', { server: 'Render HTTP', type: 'polling' });
+        this._emit('signal-connected', { server: 'Cloudflare HTTP' });
     },
 
     _switchSignalServer() {
-        if (this._httpSignal) { this._httpSignal.stop(); this._httpSignal = null; }
         this._currentSignalIndex = (this._currentSignalIndex + 1) % this._signalServers.length;
         const delay = Math.min(this._wsReconnectDelay * 2, this._maxReconnectDelay);
         this._wsReconnectDelay = delay;
@@ -307,10 +237,9 @@ const P2PPong = {
         beaconData.sig = await computeHMAC(JSON.stringify(beaconData), beaconKey);
         this._beacons[bid] = { keyPair: kp, pubKey: pk, nonce, beaconKey, expires: Date.now() + 300000 };
 
-        // Отправляем через HTTP в слепую ячейку
         const keyHash = await SHA(nonce + targetPeerId);
         const packet = JSON.stringify(beaconData);
-        const workerUrl = this._signalServers[0].url.replace('wss://', 'https://').replace('/ws', '');
+        const workerUrl = 'https://robincall.stephanclaps-491.workers.dev';
 
         try {
             await fetch(`${workerUrl}/beacon`, {
@@ -321,18 +250,12 @@ const P2PPong = {
         } catch(e) {}
 
         this._emit('beacon-sent', { targetPeerId, beaconId: bid, keyHash });
-
-        // Начинаем опрашивать ответ (пир Б — роль sender? нет, receiver)
         this.startBeaconPolling(keyHash, 'receiver');
-
         return bid;
     },
 
-    // Запуск опроса после копирования Peer ID (пир А — sender)
     async startSenderPolling(myPeerId) {
-    const keyHash = await SHA(myPeerId + myPeerId); // временный ключ — ждём маяк
-        // На самом деле keyHash должен передаваться от пира Б пиру А
-        // Пока запускаем с меткой что мы sender
+        const keyHash = await SHA(myPeerId + myPeerId);
         this.startBeaconPolling('waiting_' + myPeerId, 'sender');
     },
 
@@ -451,12 +374,6 @@ const P2PPong = {
         if (dhtPeers.length > 0) {
             for (const p of dhtPeers) sendToPeer(p.id, { type: 'blob', channelId: targetId, blob: packed });
         }
-        if (this._ws && this._ws.readyState === WebSocket.OPEN) {
-            try { this._ws.send(JSON.stringify({ type: 'blob', channelId: targetId, blob: packed })); } catch(e) {}
-        }
-        if (this._httpSignal && this._httpSignal._sessionId) {
-            this._httpSignal.sendMessage(packed);
-        }
     },
 
     async _saveChannels() {
@@ -471,7 +388,6 @@ const P2PPong = {
     async destroy() {
         this.stopBeaconPolling();
         if (this._housekeepInterval) clearInterval(this._housekeepInterval);
-        if (this._httpSignal) { this._httpSignal.stop(); this._httpSignal = null; }
         if (this._ws) { this._ws.onclose = null; this._ws.close(); this._ws = null; }
         if (this._peerHelpActive && typeof RobinHoodPeerHelp !== 'undefined') { RobinHoodPeerHelp.stop(); }
         this._channels = {}; this._beacons = {}; this._listeners = {}; this._state = 'idle';
