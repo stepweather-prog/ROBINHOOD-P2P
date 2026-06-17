@@ -95,14 +95,14 @@ const P2PPong = {
 
     startPolling(keyHash) { if (!keyHash) return; this._stopPolling(); this._pollKey = keyHash; this._pollStart = Date.now(); this._pollTimer = setTimeout(() => this._doPoll(), this._pollSilence); },
 
-    _doPoll() {
+        _doPoll() {
         if (!this._pollKey) return;
         const elapsed = (Date.now() - this._pollStart) / 1000;
         if (elapsed > this._pollMax) { this._stopPolling(); this._emit('beacon-timeout'); return; }
         let next = this._pollInterval;
         if (this._pollFast && this._pollFastStart && elapsed > this._pollFastStart) next = this._pollFast;
         fetch('https://robincall.stephanclaps-491.workers.dev/beacon?key=' + this._pollKey)
-            .then(r => r.json()).then(d => { if (d.status === 'found' && d.packet) { this._stopPolling(); this._handleIncomingBlob(d.packet, BLOB_NS); } else { this._pollTimer = setTimeout(() => this._doPoll(), next); } })
+            .then(r => r.json()).then(d => { if (d.status === 'found' && d.packet) { this._stopPolling(); this._handleIncomingBlob(d.packet, BLOB_NS); } else if (d.status === 'taken') { this._pollTimer = setTimeout(() => this._doPoll(), next); } else { this._pollTimer = setTimeout(() => this._doPoll(), next); } })
             .catch(() => { this._pollTimer = setTimeout(() => this._doPoll(), next); });
     },
 
