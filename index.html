@@ -6,7 +6,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>RobinHood P2P v5.4.2</title>
+    <title>RobinHood P2P v5.4.3</title>
     <link rel="manifest" href="manifest.json">
     <link rel="icon" type="image/png" href="assets/icons/01icon.png">
     <script src="lottie.min.js"></script>
@@ -181,16 +181,16 @@
 <div id="app-container" style="display:none;flex-direction:column;height:100%;">
 <div class="leaves-container" id="leaves-container"></div>
 <div class="header">
-    <div class="header-row-1"><span class="header-title-text">RobinHood P2P</span><span class="header-shield">🏹</span><span class="header-datetime"><span id="header-date"></span> <span id="header-time"></span></span><span class="version-text">v5.4.2</span></div>
+    <div class="header-row-1"><span class="header-title-text">RobinHood P2P</span><span class="header-shield">🏹</span><span class="header-datetime"><span id="header-date"></span> <span id="header-time"></span></span><span class="version-text">v5.4.3</span></div>
     <div class="header-row-2">
         <div class="header-btn" id="btn-avatar"><img src="assets/avatar/001ava.png" class="header-avatar" id="profile-avatar-small" alt="avatar"></div>
-        <div class="header-btn" id="btn-arrow"><img src="assets/icons/08icon.png" alt="arrow"></div>
+        <div class="header-btn" id="btn-craft"><img src="assets/icons/08icon.png" alt="craft"></div>
+        <div class="header-btn" id="btn-arrow"><img src="assets/icons/10icon.png" alt="open-quiver"></div>
         <div class="header-btn" id="btn-call"><img src="assets/icons/16icon.png" alt="call"></div>
-        <div class="header-btn" id="btn-requests"><img src="assets/icons/14icon.png" alt="requests"></div>
         <div class="header-btn" id="btn-clear"><img src="assets/icons/18icon.png" alt="clear"></div>
         <div class="header-btn" id="btn-settings"><img src="assets/icons/11icon.png" alt="settings"></div>
     </div>
-    <div class="header-row-3"><span class="header-label" id="nick-label">Твой ник</span><span class="header-label">Крафт стрел</span><span class="header-label">Звонок</span><span class="header-label">Открытый колчан</span><span class="header-label">Скурить</span><span class="header-label">Опции</span></div>
+    <div class="header-row-3"><span class="header-label" id="nick-label">Твой ник</span><span class="header-label">Крафт стрел</span><span class="header-label">Открыть колчан</span><span class="header-label">Звонок</span><span class="header-label">Скурить</span><span class="header-label">Опции</span></div>
     <div class="robin-bar"><img src="assets/avatar/001ava.png" class="robin-bar-avatar" id="robin-avatar"><div class="robin-bar-text"><div class="robin-bar-sender" id="robin-bar-sender">RobinHood P2P</div><div class="robin-bar-msg" id="robin-text">Слепой Улей. Сервер не знает ничего.</div></div><div class="robin-bar-status"><span class="ratchet-indicator" id="ratchet-indicator" style="display:none;">🔄 0</span><span class="ai-indicator" id="ai-indicator" style="display:none;" title="Pong: статистика сети">🛡️ 0%</span><img src="assets/icons/05icon.png" id="connection-icon" alt="status"><span class="cup-indicator" id="cup-indicator" style="display:none;">&nbsp;🍺<span id="cup-blobs">0/10</span>&nbsp;⏱<span id="cup-timer">10:00</span></span></div></div>
 </div>
 <div class="chat-area" id="chat-box"><div class="typing-indicator" id="typing-indicator"></div></div>
@@ -219,30 +219,27 @@
 </div>
 <div class="overlay" id="overlay"></div>
 <div class="avatar-selector" id="avatar-selector"><p>🏹 Выбери лучника 🏹</p><div id="avatar-list"></div></div>
-<div class="bottom-sheet" id="contacts-sheet"><div class="bottom-sheet-header"><span>🏹 Лучники Шервуда</span><button class="bottom-sheet-close" id="contacts-close">✕</button></div><div class="bottom-sheet-list" id="contacts-list-inner"></div></div>
 <div class="bottom-sheet" id="ai-stats-sheet"><div class="bottom-sheet-header"><span>🛡️ P2PPong: Статистика</span><button class="bottom-sheet-close" id="ai-stats-close">✕</button></div><div class="ai-stats-panel" id="ai-stats-panel"><div style="color:var(--text-dim);text-align:center;padding:20px;">Загрузка...</div></div></div>
 <div class="bottom-sheet" id="settings-sheet"><div class="bottom-sheet-header"><span>⚙️ Опции Шервуда</span><button class="bottom-sheet-close" id="settings-close">✕</button></div><div class="bottom-sheet-list">
-    <div class="contact-item" id="setting-contacts"><div class="contact-info"><img src="assets/icons/10icon.png"><span class="contact-name">Лучники</span></div><span>→</span></div>
     <div class="contact-item" id="setting-ai-stats"><div class="contact-info"><span style="font-size:24px;">🛡️</span><span class="contact-name">P2PPong: Статистика</span></div><span>→</span></div>
     <div class="contact-item" id="setting-immunity-mode"><div class="contact-info"><span style="font-size:24px;">⚙️</span><span class="contact-name">Режим сети</span></div><span id="immunity-mode-label">Авто</span></div>
     <div class="contact-item" id="setting-sound"><div class="contact-info"><img src="assets/icons/15icon.png"><span class="contact-name">Звук</span></div><label class="toggle-switch"><input type="checkbox" id="toggle-sound" checked><span class="toggle-slider"></span></label></div>
     <div class="contact-item" id="setting-theme"><div class="contact-info"><img src="assets/icons/12icon.png"><span class="contact-name">Тема</span></div><span id="theme-name">Сланец</span></div>
     <div class="contact-item" id="setting-theme-random"><div class="contact-info"><span style="font-size:24px;">🎲</span><span class="contact-name">Авто-тема</span></div><span>🎨</span></div>
     <div class="contact-item" id="setting-bg"><div class="contact-info"><img src="assets/icons/13icon.png"><span class="contact-name">Свой фон</span></div><span id="bg-status">Не задан</span></div>
-    <div class="contact-item" id="setting-self-destruct"><div class="contact-info"><img src="assets/icons/09icon.png"><span class="contact-name">Курить всегда</span></div><label class="toggle-switch"><input type="checkbox" id="toggle-selfdestruct"><span class="toggle-slider"></span></label></div>
+    <div class="contact-item" id="setting-self-destruct"><div class="contact-info"><span style="font-size:24px;">🍁</span><span class="contact-name">Листопад</span></div><label class="toggle-switch"><input type="checkbox" id="toggle-selfdestruct"><span class="toggle-slider"></span></label></div>
     <div class="contact-item" id="setting-lock"><div class="contact-info"><span style="font-size:24px;">🔐</span><span class="contact-name">Блокировка</span></div><span id="lock-status">Не задан</span></div>
-    <div class="contact-item" id="setting-destroy"><div class="contact-info"><img src="assets/icons/18icon.png"><span class="contact-name">Скурить всё</span></div><span>⚠</span></div>
-    <div class="contact-item" id="setting-peer-id"><div class="contact-info"><span style="font-size:24px;">🆔</span><span class="contact-name">Peer ID</span></div><span style="font-size:24px;cursor:pointer;">⎘</span></div>
     <div class="contact-item" id="setting-terms"><div class="contact-info"><span style="font-size:24px;">⚜</span><span class="contact-name">Условия использования</span></div><span>→</span></div>
     <div class="contact-item setting-install-btn hidden" id="setting-install"><div class="contact-info"><img src="assets/avatar/001ava.png" style="width:28px;height:28px;border-radius:6px;"><div><div class="contact-name">RobinHood P2P</div><div style="font-size:0.6em;color:var(--text-dim);">Установить приложение</div></div></div><span>📲</span></div>
 </div></div>
-<div class="modal-overlay" id="arrow-modal"><div class="modal-dialog"><h3>🏹 Колчан</h3><div style="color:var(--text-dim);margin-bottom:12px;">Вставь Peer ID друга:</div><input type="text" id="peer-id-input" placeholder="Peer ID..." style="width:100%;margin:8px 0;padding:8px;background:var(--input-bg);border:1px solid var(--border);color:var(--input-text);border-radius:8px;font-size:0.75em;font-family:monospace;"><button class="btn-primary" id="btn-create-beacon">🏹 Создать колчан</button><button class="btn-dark" id="close-arrow-modal">Закрыть</button></div></div>
+<div class="modal-overlay" id="craft-modal"><div class="modal-dialog"><h3>🏹 Крафт стрел</h3><div style="color:var(--text-dim);margin-bottom:6px;">Твой Peer ID:</div><div class="code-display" id="craft-peer-id-display"></div><button class="btn-primary" id="btn-copy-peer-id">📋 Скопировать</button><button class="btn-dark" id="close-craft-modal">Закрыть</button></div></div>
+<div class="modal-overlay" id="arrow-modal"><div class="modal-dialog"><h3>🏹 Открыть колчан</h3><div style="color:var(--text-dim);margin-bottom:6px;">Peer ID друга:</div><input type="text" id="peer-id-input" placeholder="Peer ID..." style="width:100%;margin:8px 0;padding:8px;background:var(--input-bg);border:1px solid var(--border);color:var(--input-text);border-radius:8px;font-size:0.75em;font-family:monospace;"><button class="btn-primary" id="btn-create-beacon">🏹 Натянуть тетиву</button><button class="btn-dark" id="close-arrow-modal">Закрыть</button></div></div>
 <div class="modal-overlay" id="nick-modal"><div class="modal-dialog"><h3>🏷 Придумай ник</h3><input type="text" id="nick-input" placeholder="Введи ник (макс 12 символов)..." style="width:100%;margin:8px 0;padding:8px;background:var(--input-bg);border:1px solid var(--border);color:var(--input-text);border-radius:8px;font-size:0.9em;font-family:monospace;"><button class="btn-primary" id="btn-save-nick">💾 Сохранить</button><button class="btn-dark" id="close-nick-modal">Закрыть</button></div></div>
 <div id="bow-above-send"></div>
 </div>
 
 <script src="peer-help.js?v=1.0.2"></script>
 <script src="p2ppong.js"></script>
-<script src="robinhood-ui.js?v=2"></script>
+<script src="robinhood-ui.js?v=3"></script>
 </body>
 </html>
