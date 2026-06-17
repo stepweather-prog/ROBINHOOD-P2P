@@ -123,8 +123,8 @@ const P2PPong = {
 
     // ==================== ПОДКЛЮЧЕНИЕ К ЧУЖОМУ МАЯКУ ====================
     async joinBeacon(targetPeerId) {
-        if (!targetPeerId || !this._peerId) return false;
-
+    if (!targetPeerId) return false;
+    if (!this._peerId) this._peerId = await generateHardwarePeerId();
         const kp = await generateKeyPair();
         const pk = await exportPublicKey(kp);
         const nonce = RND();
