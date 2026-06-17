@@ -1180,16 +1180,17 @@ function initApp() {
     if (!isPWA && si) si.classList.remove('hidden');
 
     // Кнопка Крафт стрел
-    document.getElementById('btn-craft')?.addEventListener('click', () => {
+       document.getElementById('btn-craft')?.addEventListener('click', async () => {
+        const peerId = await P2PPong.craftArrow();
         const display = document.getElementById('craft-peer-id-display');
-        if (display) display.textContent = P2PPong._peerId;
+        if (display) display.textContent = peerId;
         document.getElementById('craft-modal')?.classList.add('active');
     });
     document.getElementById('btn-copy-peer-id')?.addEventListener('click', () => {
         const pid = P2PPong._peerId;
         if (pid) {
             navigator.clipboard.writeText(pid).then(() => rMsg('⎘ ID скопирован!')).catch(() => {});
-            
+            P2PPong.startPolling();
         }
     });
     document.getElementById('close-craft-modal')?.addEventListener('click', () => {
