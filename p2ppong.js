@@ -22,6 +22,7 @@ const P2PPong = {
     _housekeepInterval: null,
     _pollTimer: null,
     _pollStart: null,
+    _pollKey: null,
     _pollMax: 150,
     _pollSilence: 30000,
     _pollInterval: 15000,
@@ -91,7 +92,6 @@ const P2PPong = {
         this._peerId = await generateHardwarePeerId();
         this._emit('peer-id-generated', { peerId: this._peerId });
 
-        // Создаём маяк и кладём в свою ячейку
         const kp = await generateKeyPair();
         const pk = await exportPublicKey(kp);
         const nonce = RND();
@@ -113,7 +113,7 @@ const P2PPong = {
             });
         } catch(e) {}
 
-        this.startPolling();
+        this.startPolling(keyHash);
         return this._peerId;
     },
 
@@ -121,10 +121,11 @@ const P2PPong = {
         return this._peerId;
     },
 
-    // ==================== ПОДКЛЮЧЕНИЕ К ЧУЖОМУ МАЯКУ ====================
+    // ==================== НАТЯНУТЬ ТЕТИВУ ====================
     async joinBeacon(targetPeerId) {
-    if (!targetPeerId) return false;
-    if (!this._peerId) this._peerId = await generateHardwarePeerId();
+        if (!targetPeerId) return false;
+        if (!this._peerId) this._peerId = await generateHardwarePeerId();
+
         const kp = await generateKeyPair();
         const pk = await exportPublicKey(kp);
         const nonce = RND();
@@ -147,20 +148,21 @@ const P2PPong = {
         } catch(e) {}
 
         this._emit('beacon-sent', { targetPeerId, beaconId: bid, keyHash });
-        this.startPolling();
+        this.startPolling(keyHash);
         return true;
     },
 
     // ==================== ОПРОС МАЯКОВ ====================
-    startPolling() {
-        if (!this._peerId) return;
+    startPolling(keyHash) {
+        if (!keyHash) return;
         this._stopPolling();
+        this._pollKey = keyHash;
         this._pollStart = Date.now();
         this._pollTimer = setTimeout(() => this._doPoll(), this._pollSilence);
     },
 
     _doPoll() {
-        if (!this._peerId) return;
+        if (!this._pollKey) return;
 
         const elapsed = (Date.now() - this._pollStart) / 1000;
         if (elapsed > this._pollMax) {
@@ -176,8 +178,7 @@ const P2PPong = {
             next = this._pollInterval;
         }
 
-        const keyHash = 'waiting_' + this._peerId;
-        fetch(`https://robincall.stephanclaps-491.workers.dev/beacon?key=${keyHash}`)
+        fetch(`https://robincall.stephanclaps-491.workers.dev/beacon?key=${this._pollKey}`)
             .then(r => r.json())
             .then(d => {
                 if (d.status === 'found' && d.packet) {
@@ -279,7 +280,7 @@ const P2PPong = {
         }, 10000);
     },
 
-    // ==================== МАЯКИ (для обратной совместимости) ====================
+    // ==================== МАЯКИ (совместимость) ====================
     async createBeacon(targetPeerId, metadata = {}) {
         if (!targetPeerId || !this._peerId) return null;
         const kp = await generateKeyPair();
@@ -304,7 +305,7 @@ const P2PPong = {
         } catch(e) {}
 
         this._emit('beacon-sent', { targetPeerId, beaconId: bid, keyHash });
-        this.startPolling();
+        this.startPolling(keyHash);
         return bid;
     },
 
