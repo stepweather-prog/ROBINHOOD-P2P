@@ -202,18 +202,7 @@ const P2PPong = {
             }
         };
 
-        pc.onnegotiationneeded = async () => {
-            const rtc = this._webRTC[channelId];
-            if (!rtc || rtc.makingOffer || rtc.offerSent) return;
-            try {
-                rtc.makingOffer = true;
-                rtc.offerSent = true;
-                await pc.setLocalDescription();
-                this._sendWebRTCSignal(channelId, { type: 'webrtc-offer', sdp: JSON.stringify(pc.localDescription) });
-            } catch(e) {} finally {
-                rtc.makingOffer = false;
-            }
-        };
+                // onnegotiationneeded отключён — вызывает ошибки m-lines
 
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
