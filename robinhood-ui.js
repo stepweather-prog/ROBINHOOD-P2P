@@ -1,5 +1,5 @@
-// ==================== RobinHood UI v5.4.2 ====================
-// Чистый интерфейс. Ядро: P2PPong. Все пути синхронизированы с index.html
+// ==================== RobinHood UI v5.4.3 ====================
+// Чистый интерфейс. Ядро: P2PPong.
 
 let contacts = [],
     activeChannelId = null,
@@ -32,7 +32,6 @@ let deferredPrompt = null,
     iceRestartTimer = null,
     iceRestartInProgress = false;
 let hangInProgress = false;
-let incomingBeacons = [];
 
 const avatars = [];
 for (let i = 1; i <= 168; i++) avatars.push('assets/avatar/' + String(i).padStart(3, '0') + 'ava.png');
@@ -71,10 +70,15 @@ function playSound(f) {
 
 function closeSheets() {
     document.getElementById('avatar-selector')?.classList.remove('show');
-    document.getElementById('contacts-sheet')?.classList.remove('open');
     document.getElementById('settings-sheet')?.classList.remove('open');
     document.getElementById('ai-stats-sheet')?.classList.remove('open');
     document.getElementById('overlay')?.classList.remove('show');
+}
+
+function closeModals() {
+    document.getElementById('craft-modal')?.classList.remove('active');
+    document.getElementById('arrow-modal')?.classList.remove('active');
+    document.getElementById('nick-modal')?.classList.remove('active');
 }
 
 // ==================== АНИМАЦИИ ====================
@@ -497,7 +501,6 @@ function addContact(c) {
         if (c.channelId) existing.channelId = c.channelId;
         saveContacts();
     }
-    renderContacts();
 }
 
 function saveContacts() {
@@ -509,32 +512,6 @@ function loadContacts() {
         const r = localStorage.getItem('rh_contacts');
         if (r) contacts = JSON.parse(r);
     } catch (e) {}
-}
-
-function renderContacts() {
-    const l = document.getElementById('contacts-list-inner');
-    if (!l) return;
-    l.innerHTML = contacts.map(c => {
-        const av = getAvatarUrl(c.avatar || '001');
-        return `<div class="contact-item" onclick="openChat('${c.peerId}')"><div class="contact-info"><img src="${av}" onerror="this.src='assets/avatar/001ava.png'" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid var(--border);"><span class="contact-name">${safeHtml(c.name)}</span></div>${c.channelId && P2PPong._channels[c.channelId]?.reconnect ? `<button onclick="event.stopPropagation();reconnectChannel('${c.channelId}')" style="font-size:0.6em;padding:4px 8px;">🔄</button>` : ''}<button class="delete-contact" data-peerid="${c.peerId}">✖</button></div>`;
-    }).join('') || '<div style="color:var(--text-dim);text-align:center;padding:20px;">🏹 Лучников нет</div>';
-    l.querySelectorAll('.delete-contact').forEach(b => b.addEventListener('click', async e => {
-        e.stopPropagation();
-        const pid = b.dataset.peerid;
-        if (confirm('Уволить?')) {
-            contacts = contacts.filter(c => c.peerId !== pid);
-            saveContacts();
-            renderContacts();
-        }
-    }));
-}
-
-function openChat(peerId) {
-    document.getElementById('contacts-sheet').classList.remove('open');
-    document.getElementById('overlay').classList.remove('show');
-    const ct = contacts.find(c => c.peerId === peerId);
-    if (!ct || !ct.channelId) return;
-    showChatForChannel(ct.channelId);
 }
 
 // ==================== ИНДИКАТОРЫ ====================
@@ -807,21 +784,6 @@ function unlockApp() {
     P2PPong.init();
 }
 
-// ==================== УВЕДОМЛЕНИЯ О МАЯКАХ ====================
-function ponkNotify() {
-    const btn = document.getElementById('btn-requests');
-    if (!btn) return;
-    if (incomingBeacons.length > 0) { btn.classList.add('blink'); } else { btn.classList.remove('blink'); }
-}
-
-function ponkConfirm() {
-    if (incomingBeacons.length === 0) return;
-    const beacon = incomingBeacons.shift();
-    if (beacon && beacon.accept) beacon.accept();
-    ponkNotify();
-    rMsg('✅ Колчан подтвержден!', 3000);
-}
-
 // ==================== WEBRTC ЗВОНКИ ====================
 async function getMediaStream(video = false) {
     try {
@@ -977,7 +939,6 @@ function initUI() {
         setConnectionStatus('online');
         rMsg('🏹 Слепой Улей готов', 0);
         loadContacts();
-        renderContacts();
         updateAIStats();
     });
 
@@ -1022,9 +983,8 @@ function initUI() {
     });
 
     P2PPong.on('beacon-received', (data) => {
-        incomingBeacons.push(data);
-        ponkNotify();
         rMsg('📡 Входящий маяк от ' + data.nick, 3000);
+        if (data.accept) data.accept();
     });
 
     P2PPong.on('beacon-sent', (data) => {
@@ -1158,7 +1118,6 @@ document.addEventListener('pointermove', resetInactivityTimer);
 document.addEventListener('pointerdown', resetInactivityTimer);
 document.addEventListener('keypress', resetInactivityTimer);
 window.addEventListener('blur', () => {
-    // Не засыпаем мгновенно, даём 90 секунд
     clearTimeout(inactivityTimer);
     inactivityTimer = setTimeout(() => {
         document.getElementById('leaves-container')?.classList.add('sleeping');
@@ -1184,28 +1143,6 @@ function initLeaves() {
         c.appendChild(el);
     }
     resetInactivityTimer();
-}
-
-async function reconnectChannel(id) {
-    const ch = P2PPong._channels[id];
-    if (!ch || ch.reconnecting) return;
-    ch.reconnecting = true;
-    if (P2PPong._ws && P2PPong._ws.readyState === WebSocket.OPEN) {
-        const kp = await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveBits']);
-        const pk = await crypto.subtle.exportKey('raw', kp.publicKey);
-        const pkB64 = btoa(String.fromCharCode(...new Uint8Array(pk)));
-        const rid = Array.from(crypto.getRandomValues(new Uint32Array(4))).map(x => x.toString(16).padStart(8, '0')).join('');
-        try {
-            P2PPong._ws.send(JSON.stringify({
-                action: 'reconnect',
-                channelId: id,
-                targetPeerId: ch.peerId,
-                pubKey: pkB64,
-                requestId: rid,
-                fromPeerId: P2PPong._peerId
-            }));
-        } catch (e) {}
-    }
 }
 
 // ==================== ИНИЦИАЛИЗАЦИЯ UI ====================
@@ -1242,7 +1179,27 @@ function initApp() {
     const si = document.getElementById('setting-install');
     if (!isPWA && si) si.classList.remove('hidden');
 
-    // Кнопки
+    // Кнопка Крафт стрел
+    document.getElementById('btn-craft')?.addEventListener('click', () => {
+        const display = document.getElementById('craft-peer-id-display');
+        if (display) display.textContent = P2PPong._peerId;
+        document.getElementById('craft-modal')?.classList.add('active');
+    });
+    document.getElementById('btn-copy-peer-id')?.addEventListener('click', () => {
+        const pid = P2PPong._peerId;
+        if (pid) {
+            navigator.clipboard.writeText(pid).then(() => rMsg('⎘ ID скопирован!')).catch(() => {});
+            P2PPong.startCopyPolling();
+        }
+    });
+    document.getElementById('close-craft-modal')?.addEventListener('click', () => {
+        document.getElementById('craft-modal')?.classList.remove('active');
+    });
+    document.getElementById('craft-modal')?.addEventListener('click', function(e) {
+        if (e.target === this) this.classList.remove('active');
+    });
+
+    // Кнопка Открыть колчан
     document.getElementById('btn-arrow')?.addEventListener('click', () => {
         document.getElementById('arrow-modal')?.classList.add('active');
     });
@@ -1257,31 +1214,30 @@ function initApp() {
         if (e.target === this) this.classList.remove('active');
     });
 
-    document.getElementById('btn-requests')?.addEventListener('click', ponkConfirm);
+    // Скурить
     document.getElementById('btn-clear')?.addEventListener('click', () => {
         const box = document.getElementById('chat-box');
         if (box) box.querySelectorAll('.message-row').forEach(m => m.remove());
         playSmokeAnimation();
         playSound('clear cache.mp3');
-        rMsg('RobinHood пустил все письма на самокрутки!🚬', 7000);
+        rMsg('🔥 Скурили!', 5000);
+        contacts = [];
+        saveContacts();
+        P2PPong.destroy().then(() => {
+            localStorage.clear();
+            setTimeout(() => P2PPong.init(), 500);
+        });
     });
 
+    // Опции
     document.getElementById('btn-settings')?.addEventListener('click', () => {
         closeSheets();
         document.getElementById('settings-sheet')?.classList.add('open');
         document.getElementById('overlay')?.classList.add('show');
     });
     document.getElementById('settings-close')?.addEventListener('click', closeSheets);
-    document.getElementById('contacts-close')?.addEventListener('click', closeSheets);
     document.getElementById('ai-stats-close')?.addEventListener('click', closeSheets);
     document.getElementById('overlay')?.addEventListener('click', closeSheets);
-
-    document.getElementById('setting-contacts')?.addEventListener('click', () => {
-        document.getElementById('settings-sheet')?.classList.remove('open');
-        renderContacts();
-        document.getElementById('contacts-sheet')?.classList.add('open');
-        document.getElementById('overlay')?.classList.add('show');
-    });
 
     document.getElementById('setting-ai-stats')?.addEventListener('click', () => {
         document.getElementById('settings-sheet')?.classList.remove('open');
@@ -1290,15 +1246,6 @@ function initApp() {
 
     document.getElementById('setting-immunity-mode')?.addEventListener('click', () => {
         rMsg('🛡️ Режим сети: P2PPong', 3000);
-    });
-
-        document.getElementById('setting-peer-id')?.addEventListener('click', () => {
-        const pid = P2PPong._peerId;
-        if (pid) {
-            navigator.clipboard.writeText(pid).then(() => rMsg('⎘ ID скопирован!')).catch(() => {});
-            rMsg('🆔 ' + pid, 5000);
-            P2PPong.startCopyPolling();
-        }
     });
 
     document.getElementById('btn-avatar')?.addEventListener('click', () => {
@@ -1335,37 +1282,6 @@ function initApp() {
         applyTheme(themes[(idx + 1) % themes.length].id);
     });
     document.getElementById('setting-theme-random')?.addEventListener('click', generateRandomTheme);
-
-    document.getElementById('setting-destroy')?.addEventListener('click', () => {
-        closeSheets();
-        if (confirm('⚠ ПОЛНЫЙ СБРОС!')) {
-            hang(false);
-            ['PP', 'RobinHoodContacts'].forEach(n => { try { indexedDB.deleteDatabase(n); } catch (e) {} });
-            try { localStorage.clear(); } catch (e) {}
-            const box2 = document.getElementById('chat-box');
-            if (box2) box2.querySelectorAll('.message-row').forEach(m => m.remove());
-            playSmokeAnimation();
-            playSound('clear cache.mp3');
-            rMsg('🔥 Всё скурили!', 5000);
-            setConnectionStatus('offline');
-            applyTheme('slate');
-            const pas2 = document.getElementById('profile-avatar-small');
-            if (pas2) pas2.src = 'assets/avatar/001ava.png';
-            document.getElementById('robin-avatar').src = 'assets/avatar/001ava.png';
-            const nl3 = document.getElementById('nick-label');
-            if (nl3) nl3.textContent = 'Твой ник';
-            const ls2 = document.getElementById('lock-status');
-            if (ls2) ls2.textContent = 'Не задан';
-            document.body.classList.remove('custom-bg');
-            document.body.style.removeProperty('--custom-bg');
-            const bs2 = document.getElementById('bg-status');
-            if (bs2) bs2.textContent = 'Не задан';
-            contacts = [];
-            saveContacts();
-            renderContacts();
-            P2PPong.destroy();
-        }
-    });
 
     document.getElementById('setting-terms')?.addEventListener('click', () => {
         window.open('https://github.com/stepweather-prog/ROBINHOOD-P2P/blob/main/README.md', '_blank');
@@ -1414,7 +1330,7 @@ function initApp() {
         try { localStorage.setItem('robinhood_selfdestruct', selfDestructMode); } catch (e) {}
         if (selfDestructMode && activeChannelId) {
             P2PPong.sendMessage(activeChannelId, JSON.stringify({ d: '__SMOKE__' }));
-            rMsg('Сообщения будут исчезать странным образом:)) 🚬 ', 3000);
+            rMsg('🍁 Листопад включён. Сообщения будут исчезать.', 3000);
         }
     });
 
