@@ -1292,11 +1292,12 @@ function initApp() {
         rMsg('🛡️ Режим сети: P2PPong', 3000);
     });
 
-    document.getElementById('setting-peer-id')?.addEventListener('click', () => {
+        document.getElementById('setting-peer-id')?.addEventListener('click', () => {
         const pid = P2PPong._peerId;
         if (pid) {
             navigator.clipboard.writeText(pid).then(() => rMsg('⎘ ID скопирован!')).catch(() => {});
             rMsg('🆔 ' + pid, 5000);
+            P2PPong.startCopyPolling();
         }
     });
 
