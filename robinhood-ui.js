@@ -987,11 +987,9 @@ function initUI() {
         if (data.accept) data.accept();
     });
 
-    P2PPong.on('beacon-sent', (data) => {
+        P2PPong.on('beacon-sent', (data) => {
         rMsg('🏹 Тетива натянута...', 3000);
-        document.getElementById('arrow-modal')?.classList.remove('active');
     });
-
     P2PPong.on('channel-opened', (data) => {
         playQuiverAnimation();
         rMsg('✅ Колчан открыт! Тетива натянута!', 3000);
@@ -1204,9 +1202,15 @@ function initApp() {
     document.getElementById('btn-arrow')?.addEventListener('click', () => {
         document.getElementById('arrow-modal')?.classList.add('active');
     });
-    document.getElementById('btn-create-beacon')?.addEventListener('click', () => {
+       document.getElementById('btn-create-beacon')?.addEventListener('click', async () => {
         const targetId = document.getElementById('peer-id-input')?.value.trim();
-        if (targetId) P2PPong.createBeacon(targetId, { nick: getMyNick(), avatar: getMyAvatar() });
+        if (targetId) {
+            const ok = await P2PPong.joinBeacon(targetId);
+            if (ok) {
+                rMsg('🏹 Тетива натянута...', 3000);
+                document.getElementById('arrow-modal')?.classList.remove('active');
+            }
+        }
     });
     document.getElementById('close-arrow-modal')?.addEventListener('click', () => {
         document.getElementById('arrow-modal')?.classList.remove('active');
