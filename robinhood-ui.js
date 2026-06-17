@@ -750,6 +750,27 @@ function initApp() {
     document.getElementById('craft-modal')?.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('active'); });
 
     // Открыть колчан
+        // Верификация
+    P2PPong.on('verification-needed', (data) => {
+        document.getElementById('verify-emoji-display').textContent = data.emoji.join('');
+        document.getElementById('verify-modal')?.classList.add('active');
+        rMsg('📞 Назови эти эмодзи пиру А', 0);
+    });
+    document.getElementById('btn-verify-confirm')?.addEventListener('click', async () => {
+        const input = document.getElementById('verify-emoji-input')?.value.trim();
+        const expected = P2PPong.getVerificationEmoji()?.join('');
+        if (input === expected) {
+            await P2PPong.confirmVerification();
+            document.getElementById('verify-modal')?.classList.remove('active');
+            rMsg('✅ Подтверждено!', 3000);
+        } else {
+            rMsg('❌ Не совпадают', 3000);
+        }
+    });
+    document.getElementById('close-verify-modal')?.addEventListener('click', () => {
+        document.getElementById('verify-modal')?.classList.remove('active');
+    });
+    document.getElementById('verify-modal')?.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('active'); });
     document.getElementById('btn-arrow')?.addEventListener('click', () => { document.getElementById('arrow-modal')?.classList.add('active'); });
     document.getElementById('btn-create-beacon')?.addEventListener('click', async () => {
         const targetId = document.getElementById('peer-id-input')?.value.trim();
