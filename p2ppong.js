@@ -1,6 +1,5 @@
 // ===================================================================
 // P2PPong v1.0 Final — Распределённая платформа (ядро)
-// Все фиксы WebRTC применены
 // ===================================================================
 
 const DEBUG = true;
@@ -127,7 +126,7 @@ const P2PPong = {
         log('startWebRTC', chId);
         const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
         const dc = pc.createDataChannel('chat');
-        this._webRTC[chId] = { pc, dc, iceBuffer: [], connected: false, offerSent: false, awaitingAnswer: false, offerReceived: false };
+        this._webRTC[chId] = { pc, dc, iceBuffer: [], connected: false, offerSent: false, awaitingAnswer: false, offerReceived: false, answerReceived: false, localDescription: null };
         dc.onopen = () => { this._webRTC[chId].connected = true; this._stats.peersConnected++; this._emit('peer-connected', { channelId: chId }); this._stopWebRTCPoll(chId); log('WebRTC connected', chId); };
         dc.onmessage = (e) => { let m; try { m = JSON.parse(e.data); } catch(er) { return; } if (m.type === 'message') { ch.blobs = ch.blobs || []; ch.blobs.push({ d: m.text, t: m.time, n: m.nonce, from: 'them' }); ch.expires = Date.now() + 600000; this._stats.messagesReceived++; this._saveCh(); this._emit('message-received', { channelId: chId, text: m.text, from: 'them', timestamp: m.time }); } };
         pc.onicecandidate = (e) => { if (e.candidate) this._webRTC[chId].iceBuffer.push(e.candidate); else this._flushICE(chId); };
@@ -135,6 +134,7 @@ const P2PPong = {
         const offer = await pc.createOffer(); await pc.setLocalDescription(offer);
         this._webRTC[chId].offerSent = true;
         this._webRTC[chId].awaitingAnswer = true;
+        this._webRTC[chId].localDescription = offer;
         this._sendWSig(chId, { type: 'webrtc-offer', sdp: JSON.stringify(pc.localDescription) });
         this._startWebRTCPoll(chId);
     },
@@ -148,10 +148,28 @@ const P2PPong = {
         const { pc } = rtc; log('_handleWSig', sig.type);
         try {
             if (sig.type === 'webrtc-ice') { const c = JSON.parse(sig.sdp); if (pc.remoteDescription) await pc.addIceCandidate(new RTCIceCandidate(c)); else rtc.iceBuffer.push(c); return; }
-            if (sig.type === 'webrtc-offer') { if (rtc.offerReceived) { log('_handleWSig: offer уже получен, игнорируем'); return; } rtc.offerReceived = true;
-                await pc.setRemoteDescription(new RTCSessionDescription(JSON.parse(sig.sdp))); rtc.iceBuffer.forEach(c => pc.addIceCandidate(new RTCIceCandidate(c)).catch(()=>{})); rtc.iceBuffer = []; const a = await pc.createAnswer(); await pc.setLocalDescription(a); this._sendWSig(chId, { type: 'webrtc-answer', sdp: JSON.stringify(pc.localDescription) }); return; }
-            if (sig.type === 'webrtc-answer') { if (!rtc.awaitingAnswer) { log('_handleWSig: не ожидаем answer, игнорируем'); return; } if (pc.signalingState !== 'have-local-offer') { log('_handleWSig: неправильное состояние для answer:', pc.signalingState); return; } rtc.awaitingAnswer = false;
-                await pc.setRemoteDescription(new RTCSessionDescription(JSON.parse(sig.sdp))); rtc.iceBuffer.forEach(c => pc.addIceCandidate(new RTCIceCandidate(c)).catch(()=>{})); rtc.iceBuffer = []; }
+            if (sig.type === 'webrtc-offer') {
+                if (rtc.offerReceived) { log('_handleWSig: offer уже получен, игнорируем'); return; }
+                rtc.offerReceived = true;
+                await pc.setRemoteDescription(new RTCSessionDescription(JSON.parse(sig.sdp)));
+                rtc.iceBuffer.forEach(c => pc.addIceCandidate(new RTCIceCandidate(c)).catch(()=>{})); rtc.iceBuffer = [];
+                const a = await pc.createAnswer(); await pc.setLocalDescription(a);
+                this._sendWSig(chId, { type: 'webrtc-answer', sdp: JSON.stringify(pc.localDescription) });
+                return;
+            }
+            if (sig.type === 'webrtc-answer') {
+                if (rtc.answerReceived) { log('_handleWSig: answer уже получен, игнорируем'); return; }
+                if (pc.signalingState === 'stable' && rtc.awaitingAnswer) { log('_handleWSig: уже stable, но ожидаем answer — дубликат'); rtc.awaitingAnswer = false; rtc.answerReceived = true; return; }
+                if (!rtc.awaitingAnswer) { log('_handleWSig: не ожидаем answer, игнорируем'); return; }
+                if (pc.signalingState !== 'have-local-offer') {
+                    log('_handleWSig: неправильное состояние:', pc.signalingState);
+                    if (pc.signalingState === 'stable' && rtc.localDescription) { log('_handleWSig: восстанавливаем localDescription'); await pc.setLocalDescription(rtc.localDescription); }
+                    else return;
+                }
+                rtc.awaitingAnswer = false; rtc.answerReceived = true;
+                await pc.setRemoteDescription(new RTCSessionDescription(JSON.parse(sig.sdp)));
+                rtc.iceBuffer.forEach(c => pc.addIceCandidate(new RTCIceCandidate(c)).catch(()=>{})); rtc.iceBuffer = [];
+            }
         } catch(e) { log('_handleWSig error', e.message); }
     },
     _sendWSig(chId, data) { this._post('/beacon', { keyHash: 'webrtc_' + chId, packet: JSON.stringify(data) }); },
