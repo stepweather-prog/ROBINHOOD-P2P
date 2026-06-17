@@ -1,6 +1,6 @@
 // ===================================================================
 // P2PPong v1.0 Final — Распределённая платформа (ядро)
-// Все фиксы применены
+// Все фиксы WebRTC применены
 // ===================================================================
 
 const DEBUG = true;
@@ -96,27 +96,18 @@ const P2PPong = {
         await this._post('/beacon', { keyHash: 'ack_' + targetPeerId, packet: JSON.stringify({ type: 'verification-ack', peerId: this._peerId }) });
         this._verificationEmoji = null; this._verificationConfirmed = true;
         this._pendingWebRTC.set(chId, true);
-        this.startWebRTC(chId); // ФИКС 1: Запуск WebRTC сразу
+        this.startWebRTC(chId);
         return true;
     },
 
     getVerificationEmoji() { return this._verificationEmoji; },
 
     async _post(path, body) {
-        // ФИКС 3: Если packet пустой — удаляем через /delete
         if (body.packet === '') {
-            for (const s of this._signalServers) {
-                try { const r = await fetch(s.url + '/delete?key=' + body.keyHash, { signal: AbortSignal.timeout(5000) }); if (r.ok) return { status: 'deleted' }; } catch(e) {}
-            }
+            for (const s of this._signalServers) { try { const r = await fetch(s.url + '/delete?key=' + body.keyHash, { signal: AbortSignal.timeout(5000) }); if (r.ok) return { status: 'deleted' }; } catch(e) {} }
             return null;
         }
-        for (const s of this._signalServers) {
-            try {
-                const r = await fetch(s.url + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(5000) });
-                if (r.ok) { log('_post ok', s.name); return r.json(); }
-                log('_post fail', s.name + ' ' + r.status);
-            } catch(e) { log('_post error', s.name + ' ' + e.message); }
-        }
+        for (const s of this._signalServers) { try { const r = await fetch(s.url + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(5000) }); if (r.ok) { log('_post ok', s.name); return r.json(); } log('_post fail', s.name + ' ' + r.status); } catch(e) { log('_post error', s.name + ' ' + e.message); } }
         return null;
     },
     async _get(path) { for (const s of this._signalServers) { try { const r = await fetch(s.url + path, { signal: AbortSignal.timeout(5000) }); if (r.ok) { const j = await r.json(); if (j.status !== 'empty') log('_get ok', s.name + ' ' + j.status); return j; } log('_get fail', s.name + ' ' + r.status); } catch(e) { log('_get error', s.name + ' ' + e.message); } } return null; },
@@ -127,37 +118,23 @@ const P2PPong = {
     _stopPolling() { if (this._pollTimer) { clearTimeout(this._pollTimer); this._pollTimer = null; log('_stopPolling'); } },
 
     _startMsgPoll(chId) { if (this._msgPollTimers[chId]) return; log('_startMsgPoll', chId); const poll = () => { if (!this._channels[chId]) { this._stopMsgPoll(chId); return; }
-        this._get('/beacon?key=msg_' + chId).then(d => {
-            if (d?.packet) {
-                const msgId = Date.now() + '_' + Math.random().toString(36).substr(2, 6);
-                this._handleIn(d.packet, chId);
-                this._scheduleMsgDelete(chId, msgId);
-            }
-            this._msgPollTimers[chId] = setTimeout(poll, 5000);
-        }).catch(() => { this._msgPollTimers[chId] = setTimeout(poll, 5000); }); }; poll(); },
+        this._get('/beacon?key=msg_' + chId).then(d => { if (d?.packet) { const msgId = Date.now() + '_' + Math.random().toString(36).substr(2, 6); this._handleIn(d.packet, chId); this._scheduleMsgDelete(chId, msgId); } this._msgPollTimers[chId] = setTimeout(poll, 5000); }).catch(() => { this._msgPollTimers[chId] = setTimeout(poll, 5000); }); }; poll(); },
     _stopMsgPoll(chId) { if (this._msgPollTimers[chId]) { clearTimeout(this._msgPollTimers[chId]); delete this._msgPollTimers[chId]; log('_stopMsgPoll', chId); } },
-    _scheduleMsgDelete(chId, msgId) { // ФИКС 2: уникальный ключ на сообщение
-        const timerKey = chId + '_' + msgId;
-        if (this._msgReadTimers[timerKey]) clearTimeout(this._msgReadTimers[timerKey]);
-        this._msgReadTimers[timerKey] = setTimeout(() => {
-            this._post('/beacon', { keyHash: 'msg_' + chId + '_' + msgId, packet: '' });
-            delete this._msgReadTimers[timerKey];
-            log('msg deleted', timerKey);
-        }, 60000);
-    },
+    _scheduleMsgDelete(chId, msgId) { const timerKey = chId + '_' + msgId; if (this._msgReadTimers[timerKey]) clearTimeout(this._msgReadTimers[timerKey]); this._msgReadTimers[timerKey] = setTimeout(() => { this._post('/beacon', { keyHash: 'msg_' + chId + '_' + msgId, packet: '' }); delete this._msgReadTimers[timerKey]; log('msg deleted', timerKey); }, 60000); },
 
     async startWebRTC(chId) {
         const ch = this._channels[chId]; if (!ch || this._webRTC[chId]) return;
         log('startWebRTC', chId);
         const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
         const dc = pc.createDataChannel('chat');
-        this._webRTC[chId] = { pc, dc, iceBuffer: [], connected: false, offerSent: false };
+        this._webRTC[chId] = { pc, dc, iceBuffer: [], connected: false, offerSent: false, awaitingAnswer: false, offerReceived: false };
         dc.onopen = () => { this._webRTC[chId].connected = true; this._stats.peersConnected++; this._emit('peer-connected', { channelId: chId }); this._stopWebRTCPoll(chId); log('WebRTC connected', chId); };
         dc.onmessage = (e) => { let m; try { m = JSON.parse(e.data); } catch(er) { return; } if (m.type === 'message') { ch.blobs = ch.blobs || []; ch.blobs.push({ d: m.text, t: m.time, n: m.nonce, from: 'them' }); ch.expires = Date.now() + 600000; this._stats.messagesReceived++; this._saveCh(); this._emit('message-received', { channelId: chId, text: m.text, from: 'them', timestamp: m.time }); } };
         pc.onicecandidate = (e) => { if (e.candidate) this._webRTC[chId].iceBuffer.push(e.candidate); else this._flushICE(chId); };
         if (this._webRTC[chId].offerSent) { log('startWebRTC offer already sent, skipping'); return; }
         const offer = await pc.createOffer(); await pc.setLocalDescription(offer);
         this._webRTC[chId].offerSent = true;
+        this._webRTC[chId].awaitingAnswer = true;
         this._sendWSig(chId, { type: 'webrtc-offer', sdp: JSON.stringify(pc.localDescription) });
         this._startWebRTCPoll(chId);
     },
@@ -166,8 +143,17 @@ const P2PPong = {
         this._get('/beacon?key=webrtc_' + chId).then(d => { if (d?.packet) this._handleWSig(chId, JSON.parse(d.packet)); this._webRTCPolling[chId] = setTimeout(poll, 3000); }).catch(() => { this._webRTCPolling[chId] = setTimeout(poll, 3000); }); }; poll(); },
     _stopWebRTCPoll(chId) { if (this._webRTCPolling[chId]) { clearTimeout(this._webRTCPolling[chId]); delete this._webRTCPolling[chId]; log('_stopWebRTCPoll', chId); } },
 
-    async _handleWSig(chId, sig) { const rtc = this._webRTC[chId]; if (!rtc?.pc || rtc.connected) return; const { pc } = rtc; log('_handleWSig', sig.type);
-        try { if (sig.type === 'webrtc-ice') { const c = JSON.parse(sig.sdp); if (pc.remoteDescription) await pc.addIceCandidate(new RTCIceCandidate(c)); else rtc.iceBuffer.push(c); return; } if (sig.type === 'webrtc-offer') { await pc.setRemoteDescription(new RTCSessionDescription(JSON.parse(sig.sdp))); rtc.iceBuffer.forEach(c => pc.addIceCandidate(new RTCIceCandidate(c)).catch(()=>{})); rtc.iceBuffer = []; const a = await pc.createAnswer(); await pc.setLocalDescription(a); this._sendWSig(chId, { type: 'webrtc-answer', sdp: JSON.stringify(pc.localDescription) }); } else if (sig.type === 'webrtc-answer') { await pc.setRemoteDescription(new RTCSessionDescription(JSON.parse(sig.sdp))); rtc.iceBuffer.forEach(c => pc.addIceCandidate(new RTCIceCandidate(c)).catch(()=>{})); rtc.iceBuffer = []; } } catch(e) { log('_handleWSig error', e.message); } },
+    async _handleWSig(chId, sig) {
+        const rtc = this._webRTC[chId]; if (!rtc?.pc || rtc.connected) return;
+        const { pc } = rtc; log('_handleWSig', sig.type);
+        try {
+            if (sig.type === 'webrtc-ice') { const c = JSON.parse(sig.sdp); if (pc.remoteDescription) await pc.addIceCandidate(new RTCIceCandidate(c)); else rtc.iceBuffer.push(c); return; }
+            if (sig.type === 'webrtc-offer') { if (rtc.offerReceived) { log('_handleWSig: offer уже получен, игнорируем'); return; } rtc.offerReceived = true;
+                await pc.setRemoteDescription(new RTCSessionDescription(JSON.parse(sig.sdp))); rtc.iceBuffer.forEach(c => pc.addIceCandidate(new RTCIceCandidate(c)).catch(()=>{})); rtc.iceBuffer = []; const a = await pc.createAnswer(); await pc.setLocalDescription(a); this._sendWSig(chId, { type: 'webrtc-answer', sdp: JSON.stringify(pc.localDescription) }); return; }
+            if (sig.type === 'webrtc-answer') { if (!rtc.awaitingAnswer) { log('_handleWSig: не ожидаем answer, игнорируем'); return; } if (pc.signalingState !== 'have-local-offer') { log('_handleWSig: неправильное состояние для answer:', pc.signalingState); return; } rtc.awaitingAnswer = false;
+                await pc.setRemoteDescription(new RTCSessionDescription(JSON.parse(sig.sdp))); rtc.iceBuffer.forEach(c => pc.addIceCandidate(new RTCIceCandidate(c)).catch(()=>{})); rtc.iceBuffer = []; }
+        } catch(e) { log('_handleWSig error', e.message); }
+    },
     _sendWSig(chId, data) { this._post('/beacon', { keyHash: 'webrtc_' + chId, packet: JSON.stringify(data) }); },
     _flushICE(chId) { const rtc = this._webRTC[chId]; if (!rtc) return; rtc.iceBuffer.forEach(c => this._sendWSig(chId, { type: 'webrtc-ice', sdp: JSON.stringify(c) })); rtc.iceBuffer = []; },
 
