@@ -1508,7 +1508,7 @@ function initApp() {
         if (e.key == 'Enter') document.getElementById('send-btn')?.click();
     });
 
-    setConnectionStatus('checking');
+    setConnectionStatus('online');
     updateDateTime();
     setInterval(updateDateTime, 1000);
     updateAIStats();
