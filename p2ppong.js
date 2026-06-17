@@ -23,11 +23,11 @@ const P2PPong = {
     _beaconPollKey: null,
     _pollTimer: null,
     _pollStart: null,
-    _pollMax: null,
-    _pollSilence: null,
-    _pollInterval: null,
-    _pollFast: null,
-    _pollFastStart: null,
+    _pollMax: 150,
+    _pollSilence: 30000,
+    _pollInterval: 15000,
+    _pollFast: 5000,
+    _pollFastStart: 135,
 
     on(event, callback) {
         if (!this._listeners[event]) this._listeners[event] = [];
@@ -87,27 +87,10 @@ const P2PPong = {
     },
 
     // ==================== ОПРОС МАЯКОВ ====================
-    startCopyPolling() {
-        this._stopPolling();
-        this._pollStart = Date.now();
-        this._pollMax = 150;
-        this._pollSilence = 30000;
-        this._pollInterval = 15000;
-        this._pollFast = 5000;
-        this._pollFastStart = 135;
-        this._beaconPollKey = 'waiting_' + this._peerId;
-        this._pollTimer = setTimeout(() => this._doPoll(), this._pollSilence);
-    },
-
-    startCreatePolling(keyHash) {
+    startPolling(keyHash) {
         this._stopPolling();
         this._beaconPollKey = keyHash;
         this._pollStart = Date.now();
-        this._pollMax = 90;
-        this._pollSilence = 30000;
-        this._pollInterval = 10000;
-        this._pollFast = null;
-        this._pollFastStart = null;
         this._pollTimer = setTimeout(() => this._doPoll(), this._pollSilence);
     },
 
@@ -255,7 +238,7 @@ const P2PPong = {
         } catch(e) {}
 
         this._emit('beacon-sent', { targetPeerId, beaconId: bid, keyHash });
-        this.startCreatePolling(keyHash);
+        this.startPolling(keyHash);
         return bid;
     },
 
