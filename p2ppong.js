@@ -226,7 +226,9 @@ const P2PPong = {
         beaconData.sig = await computeHMAC(JSON.stringify(beaconData), beaconKey);
         this._beacons[bid] = { keyPair: kp, pubKey: pk, nonce, beaconKey, expires: Date.now() + 300000 };
 
-        const keyHash = await SHA(nonce + targetPeerId);
+       const a = this._peerId < targetPeerId ? this._peerId : targetPeerId;
+const b = this._peerId < targetPeerId ? targetPeerId : this._peerId;
+const keyHash = await SHA(a + b);
         const packet = JSON.stringify(beaconData);
 
         try {
