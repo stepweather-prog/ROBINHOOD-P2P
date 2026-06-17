@@ -20,7 +20,6 @@ const P2PPong = {
     _httpSignal: null,
     _peerHelpActive: false,
     _housekeepInterval: null,
-    _beaconPollKey: null,
     _pollTimer: null,
     _pollStart: null,
     _pollMax: 150,
@@ -50,8 +49,7 @@ const P2PPong = {
         this._emit('state-change', { state: 'connecting' });
 
         try {
-            this._peerId = await generateHardwarePeerId();
-            DHT._nodeId = this._peerId;
+            DHT._nodeId = this._peerId || RND();
             initBuckets();
 
             const channelsRaw = await decryptFromStorage('p2ppong_channels');
@@ -86,16 +84,28 @@ const P2PPong = {
         }
     },
 
+    // ==================== КРАФТ СТРЕЛ ====================
+    async craftArrow() {
+        if (this._peerId) return this._peerId;
+        this._peerId = await generateHardwarePeerId();
+        this._emit('peer-id-generated', { peerId: this._peerId });
+        return this._peerId;
+    },
+
+    getPeerId() {
+        return this._peerId;
+    },
+
     // ==================== ОПРОС МАЯКОВ ====================
-    startPolling(keyHash) {
+    startPolling() {
+        if (!this._peerId) return;
         this._stopPolling();
-        this._beaconPollKey = keyHash;
         this._pollStart = Date.now();
         this._pollTimer = setTimeout(() => this._doPoll(), this._pollSilence);
     },
 
     _doPoll() {
-        if (!this._beaconPollKey) return;
+        if (!this._peerId) return;
 
         const elapsed = (Date.now() - this._pollStart) / 1000;
         if (elapsed > this._pollMax) {
@@ -111,7 +121,8 @@ const P2PPong = {
             next = this._pollInterval;
         }
 
-        fetch(`https://robincall.stephanclaps-491.workers.dev/beacon?key=${this._beaconPollKey}`)
+        const keyHash = 'waiting_' + this._peerId;
+        fetch(`https://robincall.stephanclaps-491.workers.dev/beacon?key=${keyHash}`)
             .then(r => r.json())
             .then(d => {
                 if (d.status === 'found' && d.packet) {
@@ -215,7 +226,7 @@ const P2PPong = {
 
     // ==================== МАЯКИ ====================
     async createBeacon(targetPeerId, metadata = {}) {
-        if (!targetPeerId) return null;
+        if (!targetPeerId || !this._peerId) return null;
         const kp = await generateKeyPair();
         const pk = await exportPublicKey(kp);
         const nonce = RND();
@@ -226,9 +237,7 @@ const P2PPong = {
         beaconData.sig = await computeHMAC(JSON.stringify(beaconData), beaconKey);
         this._beacons[bid] = { keyPair: kp, pubKey: pk, nonce, beaconKey, expires: Date.now() + 300000 };
 
-       const a = this._peerId < targetPeerId ? this._peerId : targetPeerId;
-const b = this._peerId < targetPeerId ? targetPeerId : this._peerId;
-const keyHash = await SHA(a + b);
+        const keyHash = 'waiting_' + targetPeerId;
         const packet = JSON.stringify(beaconData);
 
         try {
@@ -240,7 +249,7 @@ const keyHash = await SHA(a + b);
         } catch(e) {}
 
         this._emit('beacon-sent', { targetPeerId, beaconId: bid, keyHash });
-        this.startPolling(keyHash);
+        this.startPolling();
         return bid;
     },
 
@@ -376,6 +385,7 @@ const keyHash = await SHA(a + b);
         if (this._ws) { this._ws.onclose = null; this._ws.close(); this._ws = null; }
         if (this._peerHelpActive && typeof RobinHoodPeerHelp !== 'undefined') { RobinHoodPeerHelp.stop(); }
         this._channels = {}; this._beacons = {}; this._listeners = {}; this._state = 'idle';
+        this._peerId = null;
         await this._saveChannels();
         this._emit('destroyed');
     }
