@@ -771,7 +771,19 @@ function initApp() {
         document.getElementById('verify-modal')?.classList.remove('active');
     });
     document.getElementById('verify-modal')?.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('active'); });
-    document.getElementById('btn-arrow')?.addEventListener('click', () => { document.getElementById('arrow-modal')?.classList.add('active'); });
+    document.getElementById('btn-arrow')?.addEventListener('click', () => {
+    if (P2PPong._peerId) {
+        // Пир А — крафт уже сделан, показываем поле для эмодзи
+        const emoji = P2PPong.getVerificationEmoji();
+        if (emoji) {
+            document.getElementById('verify-emoji-display').textContent = emoji.join('');
+        }
+        document.getElementById('verify-modal')?.classList.add('active');
+    } else {
+        // Пир Б — нужно вставить Peer ID
+        document.getElementById('arrow-modal')?.classList.add('active');
+    }
+});
     document.getElementById('btn-create-beacon')?.addEventListener('click', async () => {
         const targetId = document.getElementById('peer-id-input')?.value.trim();
         if (targetId) { const ok = await P2PPong.joinBeacon(targetId); if (ok) { rMsg('🏹 Тетива натянута...', 3000); document.getElementById('arrow-modal')?.classList.remove('active'); } }
