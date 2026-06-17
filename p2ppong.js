@@ -87,13 +87,68 @@ const P2PPong = {
     // ==================== КРАФТ СТРЕЛ ====================
     async craftArrow() {
         if (this._peerId) return this._peerId;
+
         this._peerId = await generateHardwarePeerId();
         this._emit('peer-id-generated', { peerId: this._peerId });
+
+        // Создаём маяк и кладём в свою ячейку
+        const kp = await generateKeyPair();
+        const pk = await exportPublicKey(kp);
+        const nonce = RND();
+        const bid = RND();
+        const beaconKey = await SHA(nonce + 'beacon');
+        const inner = await encryptAES(JSON.stringify({ nonce, timestamp: Date.now(), peerId: this._peerId }), beaconKey);
+        const beaconData = { type: 'beacon', pubKey: pk, peerId: this._peerId, inner, targetPeerId: this._peerId, nick: '', avatar: '' };
+        beaconData.sig = await computeHMAC(JSON.stringify(beaconData), beaconKey);
+        this._beacons[bid] = { keyPair: kp, pubKey: pk, nonce, beaconKey, expires: Date.now() + 300000 };
+
+        const keyHash = 'waiting_' + this._peerId;
+        const packet = JSON.stringify(beaconData);
+
+        try {
+            await fetch('https://robincall.stephanclaps-491.workers.dev/beacon', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ keyHash, packet })
+            });
+        } catch(e) {}
+
+        this.startPolling();
         return this._peerId;
     },
 
     getPeerId() {
         return this._peerId;
+    },
+
+    // ==================== ПОДКЛЮЧЕНИЕ К ЧУЖОМУ МАЯКУ ====================
+    async joinBeacon(targetPeerId) {
+        if (!targetPeerId || !this._peerId) return false;
+
+        const kp = await generateKeyPair();
+        const pk = await exportPublicKey(kp);
+        const nonce = RND();
+        const bid = RND();
+        const beaconKey = await SHA(nonce + 'beacon');
+        const inner = await encryptAES(JSON.stringify({ nonce, timestamp: Date.now(), peerId: this._peerId }), beaconKey);
+        const beaconData = { type: 'beacon', pubKey: pk, peerId: this._peerId, inner, targetPeerId, nick: '', avatar: '' };
+        beaconData.sig = await computeHMAC(JSON.stringify(beaconData), beaconKey);
+        this._beacons[bid] = { keyPair: kp, pubKey: pk, nonce, beaconKey, expires: Date.now() + 300000 };
+
+        const keyHash = 'waiting_' + targetPeerId;
+        const packet = JSON.stringify(beaconData);
+
+        try {
+            await fetch('https://robincall.stephanclaps-491.workers.dev/beacon', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ keyHash, packet })
+            });
+        } catch(e) {}
+
+        this._emit('beacon-sent', { targetPeerId, beaconId: bid, keyHash });
+        this.startPolling();
+        return true;
     },
 
     // ==================== ОПРОС МАЯКОВ ====================
@@ -224,7 +279,7 @@ const P2PPong = {
         }, 10000);
     },
 
-    // ==================== МАЯКИ ====================
+    // ==================== МАЯКИ (для обратной совместимости) ====================
     async createBeacon(targetPeerId, metadata = {}) {
         if (!targetPeerId || !this._peerId) return null;
         const kp = await generateKeyPair();
