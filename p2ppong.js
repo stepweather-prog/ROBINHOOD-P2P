@@ -74,13 +74,22 @@ const P2PPong = {
         const emoji = this._genEmoji();
         this._verificationEmoji = emoji;
         this._pendingVerification = { bd, targetPeerId };
-        await this._post('/beacon', { keyHash: 'emoji_' + targetPeerId, packet: JSON.stringify({ type: 'verification-emoji', emoji, peerId: this._peerId }) });
+        // Отправляем эмодзи + оригинальные pubKey и inner чтобы пир А мог подтвердить
+        const emojiPacket = JSON.stringify({
+            type: 'verification-emoji',
+            emoji,
+            peerId: this._peerId,
+            pubKey: bd.pubKey,
+            inner: bd.inner
+        });
+        await this._post('/beacon', { keyHash: 'emoji_' + targetPeerId, packet: emojiPacket });
         this._emit('verification-needed', { emoji }); return true;
     },
 
     async confirmVerification() {
-        if (!this._pendingVerification) return false;
-        const { bd, targetPeerId } = this._pendingVerification; this._pendingVerification = null; log('confirmVerification', targetPeerId);
+        if (!this._pendingVerification) { log('confirmVerification no pending'); return false; }
+        const { bd, targetPeerId } = this._pendingVerification;
+        log('confirmVerification', targetPeerId);
         const rpk = await importPublicKey(bd.pubKey); const kp = await generateKeyPair(); const mpk = await exportPublicKey(kp);
         const ss = await deriveSecret(kp, rpk); const chId = RND();
         this._channels[chId] = { secret: ss, ratchetKey: ss, ratchetIndex: 0, oldKeys: [], lastReceivedRi: -1, peerId: bd.peerId, type: 'cup', blobs: [], expires: Date.now() + 600000, createdAt: Date.now() };
@@ -91,7 +100,7 @@ const P2PPong = {
         this._emit('channel-opened', { channelId: chId, peerId: bd.peerId, nick: 'Лучник', avatar: '001' });
         this._startMsgPoll(chId);
         await this._post('/beacon', { keyHash: 'ack_' + targetPeerId, packet: JSON.stringify({ type: 'verification-ack', peerId: this._peerId }) });
-        this._verificationEmoji = null; this._verificationConfirmed = true;
+        this._verificationEmoji = null; this._verificationConfirmed = true; this._pendingVerification = null;
         this._pendingWebRTC.set(chId, true);
         return true;
     },
@@ -152,7 +161,16 @@ const P2PPong = {
 
     async _handleIn(blobData, chId) { let d; try { d = JSON.parse(blobData); } catch(e) { return; }
         if (d?.type?.startsWith('webrtc-')) { this._handleWSig(chId || Object.keys(this._channels)[0], d); return; }
-        if (d?.type === 'verification-emoji' && d.emoji) { log('verification-emoji received'); this._verificationEmoji = d.emoji; this._emit('verification-received', { emoji: d.emoji }); return; }
+        if (d?.type === 'verification-emoji' && d.emoji) {
+            log('verification-emoji received');
+            this._verificationEmoji = d.emoji;
+            // Создаём _pendingVerification для пира А (того кто крафтил)
+            if (!this._pendingVerification && d.pubKey && d.inner) {
+                this._pendingVerification = { bd: { pubKey: d.pubKey, inner: d.inner, peerId: d.peerId }, targetPeerId: d.peerId };
+                log('_pendingVerification set for peer A');
+            }
+            this._emit('verification-received', { emoji: d.emoji }); return;
+        }
         if (d?.type === 'verification-ack') { log('verification-ack received'); this._verificationConfirmed = true; this._emit('verification-acked', {}); for (const [id, waiting] of this._pendingWebRTC) { if (waiting) { this.startWebRTC(id); this._pendingWebRTC.set(id, false); } } return; }
         if (d?.type === 'beacon' && d.pubKey && d.inner) { if (d.targetPeerId && d.targetPeerId !== this._peerId) return; if (d.sig && !await verifyHMAC(JSON.stringify(d), d.sig, await SHA('beacon'))) return; log('beacon received');
             this._emit('beacon-received', { peerId: d.peerId, accept: async () => { const rpk = await importPublicKey(d.pubKey); const kp = await generateKeyPair(); const mpk = await exportPublicKey(kp); const ss = await deriveSecret(kp, rpk); const nid = RND();
