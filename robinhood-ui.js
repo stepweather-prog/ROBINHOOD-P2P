@@ -456,11 +456,70 @@ async function loadLockSettings() {
     else { lockScreen.style.display = 'flex'; appContainer.style.display = 'none'; setupLockUI(); }
 }
 
-function setupLockUI() { /* без изменений */ }
-function drawNumpad() { /* без изменений */ }
-function addPinDigit(d) { /* без изменений */ }
-function updatePinDots() { /* без изменений */ }
-async function verifyPin() { /* без изменений */ }
+function setupLockUI() {
+    const pinSection = document.getElementById('lock-pin-section');
+    const subtitle = document.getElementById('lock-subtitle');
+    const error = document.getElementById('lock-error');
+    if (pinSection) pinSection.style.display = '';
+    if (subtitle) subtitle.textContent = isSettingLock ? 'Задайте пин-код (5 цифр)' : 'Введите пин-код';
+    if (error) error.textContent = '';
+    pinInput = '';
+    drawNumpad();
+    updatePinDots();
+}
+
+function drawNumpad() {
+    const np = document.getElementById('lock-numpad');
+    if (!np) return;
+    np.innerHTML = '';
+    for (let i = 1; i <= 9; i++) {
+        const btn = document.createElement('button');
+        btn.className = 'lock-num'; btn.textContent = i;
+        btn.onclick = () => addPinDigit(i.toString());
+        np.appendChild(btn);
+    }
+    const btn0 = document.createElement('button');
+    btn0.className = 'lock-num zero'; btn0.textContent = '0';
+    btn0.onclick = () => addPinDigit('0');
+    np.appendChild(btn0);
+    const btnDel = document.createElement('button');
+    btnDel.className = 'lock-num'; btnDel.textContent = '⌫';
+    btnDel.onclick = () => { pinInput = pinInput.slice(0, -1); updatePinDots(); };
+    np.appendChild(btnDel);
+}
+
+function addPinDigit(d) { if (pinInput.length >= 5) return; pinInput += d; updatePinDots(); if (pinInput.length === 5) setTimeout(() => verifyPin(), 200); }
+function updatePinDots() { const dots = document.querySelectorAll('.lock-pin-dot'); dots.forEach((d, i) => d.classList.toggle('filled', i < pinInput.length)); }
+
+async function verifyPin() {
+    if (isSettingLock) {
+        if (!lockPinHash) { lockPinHash = pinInput; pinInput = ''; updatePinDots(); if (document.getElementById('lock-subtitle')) document.getElementById('lock-subtitle').textContent = 'Повторите пин-код'; return; }
+        if (pinInput === lockPinHash) {
+            const hash = await pbkdf2Hash(pinInput, 'robinhood_lock_salt');
+            try { localStorage.setItem(LOCK_KEY, JSON.stringify({ type: 'pin', pinHash: hash })); } catch (e) {}
+            lockType = 'pin'; lockPinHash = hash; isSettingLock = false; pinInput = ''; updatePinDots();
+            const ls = document.getElementById('lock-status'); if (ls) ls.textContent = 'Пин-код';
+            unlockApp();
+        } else {
+            const err = document.getElementById('lock-error'); if (err) err.textContent = 'Не совпадают. Попробуйте снова.';
+            lockPinHash = ''; pinInput = ''; updatePinDots();
+            const sub = document.getElementById('lock-subtitle'); if (sub) sub.textContent = 'Задайте пин-код (5 цифр)';
+        }
+    } else {
+        const hash = await pbkdf2Hash(pinInput, 'robinhood_lock_salt');
+        if (hash === lockPinHash) { failedAttempts = 0; unlockApp(); }
+        else {
+            failedAttempts++; pinInput = ''; updatePinDots();
+            if (failedAttempts >= 3) {
+                document.querySelectorAll('.lock-num').forEach(b => b.disabled = true);
+                const err = document.getElementById('lock-error'); if (err) err.textContent = 'Заблокировано. Обновите страницу.';
+            } else {
+                const err = document.getElementById('lock-error'); if (err) err.textContent = 'Неверно. Осталось попыток: ' + (3 - failedAttempts);
+            }
+        }
+    }
+}
+
 function unlockApp() { lockScreen.style.display = 'none'; appContainer.style.display = 'flex'; P2PPong.init(); }
 
 // ==================== WEBRTC ЗВОНКИ ====================
@@ -468,17 +527,97 @@ async function getMediaStream(video = false) {
     try { return await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true }, video: video ? { width: { ideal: 320 }, height: { ideal: 240 }, facingMode: 'user' } : false }); } catch (e) { return null; }
 }
 
-function createPC() { /* без изменений */ }
-async function restartICE() { /* без изменений */ }
+function createPC() {
+    if (pc) { pc.onconnectionstatechange = null; pc.ontrack = null; pc.onicecandidate = null; pc.close(); pc = null; }
+    iceBuffer = [];
+    if (iceFlushTimer) clearTimeout(iceFlushTimer);
+    try { pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }); } catch (e) { return; }
+    if (localStream) localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+    pc.ontrack = e => { if (e.streams[0]) { const a = new Audio(); a.srcObject = e.streams[0]; a.play().catch(er => {}); } };
+    pc.onicecandidate = e => {
+        if (e.candidate) { iceBuffer.push(e.candidate); } else {
+            iceFlushTimer = setTimeout(() => { iceBuffer.forEach(c => sendWebRTCMsg('webrtc-ice', JSON.stringify(c))); iceBuffer = []; }, 300);
+        }
+    };
+    pc.onconnectionstatechange = () => {
+        if (pc.connectionState == 'connected') {
+            callActive = true; stopRingback(); stopRingtone();
+            document.getElementById('call-status').textContent = '✅ Разговор';
+            showIncomingControls(false); showActiveControls(true); showCallWave(true);
+            playSound('open.mp3'); updateCallButtonState();
+            if (iceRestartTimer) clearTimeout(iceRestartTimer);
+            iceRestartInProgress = false;
+        }
+        if (pc.connectionState == 'disconnected' && callActive && !iceRestartInProgress) {
+            if (iceRestartTimer) clearTimeout(iceRestartTimer);
+            iceRestartInProgress = true;
+            iceRestartTimer = setTimeout(async () => { if (pc && pc.connectionState === 'disconnected') { try { await restartICE(); } catch (e) { hang(false); } finally { iceRestartInProgress = false; } } }, 3000);
+        }
+        if (pc.connectionState == 'failed') { if (iceRestartTimer) clearTimeout(iceRestartTimer); iceRestartInProgress = false; hang(false); }
+    };
+    return pc;
+}
+
+async function restartICE() { if (!pc || pc.connectionState === 'closed') return; const offer = await pc.createOffer({ iceRestart: true }); await pc.setLocalDescription(offer); sendWebRTCMsg('webrtc-offer', JSON.stringify(pc.localDescription)); }
 async function sendWebRTCMsg(type, sdp) { if (!activeChannelId) return; await P2PPong.sendMessage(activeChannelId, JSON.stringify({ webrtc: type, sdp })); }
-async function startCall() { /* без изменений */ }
-async function acceptCall() { /* без изменений */ }
-function hang(sig = true) { /* без изменений */ }
+
+async function startCall() {
+    if (callActive || !activeChannelId) { rMsg('❌ Нет канала', 3000); return; }
+    const s = await getMediaStream(false); if (!s) { rMsg('❌ Нет микрофона', 3000); return; }
+    localStream = s; createPC();
+    const cp = document.getElementById('call-panel'); if (cp) cp.style.display = 'flex';
+    const ct = contacts.find(c => c.channelId === activeChannelId);
+    document.getElementById('call-avatar').src = 'assets/avatar/' + (ct?.avatar || selectedAvatar) + 'ava.png';
+    document.getElementById('call-contact-name').textContent = ct?.name || document.getElementById('nick-label')?.textContent || 'Лучник';
+    document.getElementById('call-status').textContent = '📞 Вызов...';
+    showIncomingControls(false); showActiveControls(true); showCallWave(false); playRingback();
+    try { const o = await pc.createOffer(); await pc.setLocalDescription(o); setTimeout(() => { sendWebRTCMsg('webrtc-offer', JSON.stringify(o)); }, 800); } catch (e) { hang(false); }
+    updateCallButtonState();
+}
+
+async function acceptCall() {
+    if (!incomingOffer || !activeChannelId) return;
+    stopRingtone(); stopRingback();
+    const s = await getMediaStream(false); if (!s) return;
+    localStream = s; createPC();
+    const cp = document.getElementById('call-panel'); if (cp) cp.style.display = 'flex';
+    const ct = contacts.find(c => c.channelId === activeChannelId);
+    document.getElementById('call-avatar').src = 'assets/avatar/' + (ct?.avatar || selectedAvatar) + 'ava.png';
+    document.getElementById('call-contact-name').textContent = ct?.name || document.getElementById('nick-label')?.textContent || 'Лучник';
+    document.getElementById('call-status').textContent = '✅ Разговор';
+    showIncomingControls(false); showActiveControls(true); showCallWave(true); playSound('open.mp3');
+    try {
+        await pc.setRemoteDescription(new RTCSessionDescription(incomingOffer));
+        iceBuffer.forEach(c => pc.addIceCandidate(new RTCIceCandidate(c)).catch(er => {}));
+        iceBuffer = [];
+        const a = await pc.createAnswer(); await pc.setLocalDescription(a);
+        sendWebRTCMsg('webrtc-answer', JSON.stringify(a));
+        incomingOffer = null; callActive = true;
+    } catch (e) { hang(false); }
+    updateCallButtonState();
+}
+
+function hang(sig = true) {
+    if (hangInProgress) return;
+    hangInProgress = true; callActive = false; stopRingtone(); stopRingback();
+    if (sig && activeChannelId) sendWebRTCMsg('webrtc-hangup', '');
+    if (pc) { pc.onconnectionstatechange = null; pc.ontrack = null; pc.onicecandidate = null; pc.close(); pc = null; }
+    if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
+    incomingOffer = null; iceBuffer = [];
+    if (iceFlushTimer) clearTimeout(iceFlushTimer);
+    if (iceRestartTimer) clearTimeout(iceRestartTimer);
+    iceRestartInProgress = false;
+    const cp = document.getElementById('call-panel'); if (cp) cp.style.display = 'none';
+    showIncomingControls(false); showActiveControls(false); showCallWave(false);
+    playSound('exet.mp3'); updateCallButtonState();
+    hangInProgress = false;
+}
 
 // ==================== ОБРАБОТЧИКИ ЯДРА ====================
 function initUI() {
     P2PPong.on('ready', (data) => { setConnectionStatus('online'); rMsg('🏹 Слепой Улей готов', 0); loadContacts(); updateAIStats(); });
     P2PPong.on('state-change', (data) => { if (data.state === 'online') setConnectionStatus('online'); else if (data.state === 'offline') setConnectionStatus('offline'); });
+    P2PPong.on('peer-connected', (data) => { rMsg('🔗 Прямой канал установлен', 3000); updateAIStats(); });
     P2PPong.on('message-received', (data) => {
         const ct = contacts.find(c => c.channelId === data.channelId); const nick = ct?.name || 'Лучник'; const avatar = ct?.avatar || '001';
         if (data.channelId === activeChannelId) { appendMessage(nick, data.text, avatar); } else { rMsg('Новое от ' + nick, 3000); }
@@ -492,27 +631,94 @@ function initUI() {
     });
     P2PPong.on('beacon-received', (data) => { rMsg('📡 Входящий маяк от ' + data.nick, 3000); if (data.accept) data.accept(); });
     P2PPong.on('beacon-sent', (data) => { rMsg('🏹 Тетива натянута...', 3000); });
+    P2PPong.on('beacon-taken', (data) => { rMsg('👀 Маяк забрали...', 3000); });
     P2PPong.on('channel-opened', (data) => {
         playQuiverAnimation(); rMsg('✅ Колчан открыт! Тетива натянута!', 3000);
         addContact({ peerId: data.peerId, name: data.nick || 'Лучник', channelId: data.channelId, verified: false, avatar: data.avatar || '001' });
         updateCupIndicator(); updateRatchetIndicator(); updateAIStats();
     });
-    P2PPong.on('channel-expired', (data) => { /* без изменений */ });
+    P2PPong.on('channel-expired', (data) => {
+        if (data.channelId === activeChannelId) { activeChannelId = null; activePeerId = null; document.getElementById('robin-bar-sender').textContent = 'RobinHood P2P'; document.getElementById('chat-box').innerHTML = '<div class="typing-indicator" id="typing-indicator"></div>'; }
+        updateAIStats();
+    });
     P2PPong.on('ratchet-reset', (data) => { rMsg('🔄 Ratchet перезапущен', 3000); updateRatchetIndicator(); });
-    P2PPong.on('webrtc-signal', (data) => { /* без изменений */ });
+    P2PPong.on('webrtc-signal', (data) => {
+        if (data.data.webrtc === 'webrtc-offer') {
+            if (callActive || pc) { sendWebRTCMsg('webrtc-hangup', ''); return; }
+            iceBuffer = []; try { incomingOffer = JSON.parse(data.data.sdp); } catch (e) { return; }
+            activeChannelId = data.channelId;
+            const ct = contacts.find(c => c.channelId === data.channelId);
+            const cp = document.getElementById('call-panel'); if (cp) cp.style.display = 'flex';
+            document.getElementById('call-avatar').src = 'assets/avatar/' + (ct?.avatar || '001') + 'ava.png';
+            document.getElementById('call-contact-name').textContent = ct?.name || 'Лучник';
+            document.getElementById('call-status').textContent = '📞 Входящий...';
+            showActiveControls(false); showIncomingControls(true); showCallWave(false); playRingtone(); updateCallButtonState();
+        }
+        if (data.data.webrtc === 'webrtc-answer' && pc) {
+            stopRingback();
+            try {
+                pc.setRemoteDescription(new RTCSessionDescription(JSON.parse(data.data.sdp)));
+                iceBuffer.forEach(c => pc.addIceCandidate(new RTCIceCandidate(c)).catch(er => {}));
+                iceBuffer = []; callActive = true;
+                document.getElementById('call-status').textContent = '✅ Разговор';
+                showIncomingControls(false); showActiveControls(true); showCallWave(true); playSound('open.mp3');
+            } catch (e) {}
+            updateCallButtonState();
+        }
+        if (data.data.webrtc === 'webrtc-ice' && pc) {
+            try { const c = JSON.parse(data.data.sdp); if (pc.remoteDescription) pc.addIceCandidate(new RTCIceCandidate(c)).catch(er => {}); else iceBuffer.push(c); } catch (e) {}
+        }
+        if (data.data.webrtc === 'webrtc-hangup') {
+            if (callActive || pc) { rMsg('📞 Собеседник завершил', 3000); hang(false); updateCallButtonState(); }
+        }
+    });
     P2PPong.on('error', (data) => { rMsg('❌ ' + data.message, 5000); });
     P2PPong.on('destroyed', () => { document.getElementById('chat-box').innerHTML = '<div class="typing-indicator" id="typing-indicator"></div>'; setConnectionStatus('offline'); rMsg('🔥 Сессия завершена', 0); });
 }
 
-function updateAIStats() { /* без изменений */ }
-function showAIStats() { /* без изменений */ }
-function updateDateTime() { /* без изменений */ }
-function resetInactivityTimer() { /* без изменений */ }
+function updateAIStats() {
+    const stats = P2PPong.getStats();
+    const indicator = document.getElementById('ai-indicator');
+    if (indicator) { indicator.style.display = 'inline'; indicator.textContent = '🛡️ ' + stats.channels + ' кан.'; indicator.title = 'Каналов: ' + stats.channels + ' | DHT: ' + stats.dhtPeers + ' | Отправлено: ' + stats.messagesSent + ' | Получено: ' + stats.messagesReceived; }
+}
+
+function showAIStats() {
+    const stats = P2PPong.getStats();
+    const panel = document.getElementById('ai-stats-panel');
+    if (!panel) return;
+    panel.innerHTML = `<div class="ai-stat-row"><span class="ai-stat-label">Статус</span><span class="ai-stat-value">${stats.state}</span></div><div class="ai-stat-row"><span class="ai-stat-label">Каналов</span><span class="ai-stat-value">${stats.channels}</span></div><div class="ai-stat-row"><span class="ai-stat-label">DHT пиров</span><span class="ai-stat-value">${stats.dhtPeers}</span></div><div class="ai-stat-row"><span class="ai-stat-label">Отправлено</span><span class="ai-stat-value">${stats.messagesSent}</span></div><div class="ai-stat-row"><span class="ai-stat-label">Получено</span><span class="ai-stat-value">${stats.messagesReceived}</span></div><div class="ai-stat-row"><span class="ai-stat-label">Peer ID</span><span class="ai-stat-value" style="font-size:0.55em;">${stats.peerId?.substring(0,16)}...</span></div>`;
+    document.getElementById('ai-stats-sheet')?.classList.add('open'); document.getElementById('overlay')?.classList.add('show');
+}
+
+function updateDateTime() {
+    const now = new Date();
+    const de = document.getElementById('header-date'); const te = document.getElementById('header-time');
+    if (de) de.textContent = now.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    if (te) te.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function resetInactivityTimer() {
+    clearTimeout(inactivityTimer);
+    document.getElementById('leaves-container')?.classList.remove('sleeping');
+    inactivityTimer = setTimeout(() => { document.getElementById('leaves-container')?.classList.add('sleeping'); }, 90000);
+}
 let inactivityTimer;
 document.addEventListener('pointermove', resetInactivityTimer); document.addEventListener('pointerdown', resetInactivityTimer); document.addEventListener('keypress', resetInactivityTimer);
 window.addEventListener('blur', () => { clearTimeout(inactivityTimer); inactivityTimer = setTimeout(() => { document.getElementById('leaves-container')?.classList.add('sleeping'); }, 90000); });
 window.addEventListener('focus', () => { clearTimeout(inactivityTimer); document.getElementById('leaves-container')?.classList.remove('sleeping'); resetInactivityTimer(); });
-function initLeaves() { /* без изменений */ }
+
+function initLeaves() {
+    const c = document.getElementById('leaves-container');
+    if (!c || c.children.length > 0) return;
+    const emojis = ['🍁','🍂','🌿','🍃','🪶','🍁','🍂','🌿','🍃','🪶','🍁','🌿'];
+    for (let i = 0; i < 14; i++) {
+        const el = document.createElement('span');
+        el.className = i % 3 == 0 ? 'feather' : 'leaf'; el.textContent = emojis[i];
+        el.style.left = Math.random() * 100 + '%'; el.style.animationDelay = Math.random() * 15 + 's'; el.style.animationDuration = (16 + Math.random() * 18) + 's';
+        c.appendChild(el);
+    }
+    resetInactivityTimer();
+}
 
 // ==================== ИНИЦИАЛИЗАЦИЯ UI ====================
 function initApp() {
@@ -529,17 +735,16 @@ function initApp() {
 
     // Крафт стрел
     document.getElementById('btn-craft')?.addEventListener('click', async () => {
-        const peerId = await P2PPong.craftArrow();
-        const display = document.getElementById('craft-peer-id-display');
-        if (display) display.textContent = peerId;
-        document.getElementById('craft-modal')?.classList.add('active');
+        try {
+            const peerId = await P2PPong.craftArrow();
+            const display = document.getElementById('craft-peer-id-display');
+            if (display) display.textContent = peerId;
+            document.getElementById('craft-modal')?.classList.add('active');
+        } catch(e) { console.error('craftArrow error:', e); }
     });
     document.getElementById('btn-copy-peer-id')?.addEventListener('click', () => {
         const pid = P2PPong._peerId;
-        if (pid) {
-            navigator.clipboard.writeText(pid).then(() => rMsg('⎘ ID скопирован!')).catch(() => {});
-            document.getElementById('craft-modal')?.classList.remove('active');
-        }
+        if (pid) { navigator.clipboard.writeText(pid).then(() => rMsg('⎘ ID скопирован!')).catch(() => {}); document.getElementById('craft-modal')?.classList.remove('active'); }
     });
     document.getElementById('close-craft-modal')?.addEventListener('click', () => { document.getElementById('craft-modal')?.classList.remove('active'); });
     document.getElementById('craft-modal')?.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('active'); });
@@ -548,10 +753,7 @@ function initApp() {
     document.getElementById('btn-arrow')?.addEventListener('click', () => { document.getElementById('arrow-modal')?.classList.add('active'); });
     document.getElementById('btn-create-beacon')?.addEventListener('click', async () => {
         const targetId = document.getElementById('peer-id-input')?.value.trim();
-        if (targetId) {
-            const ok = await P2PPong.joinBeacon(targetId);
-            if (ok) { rMsg('🏹 Тетива натянута...', 3000); document.getElementById('arrow-modal')?.classList.remove('active'); }
-        }
+        if (targetId) { const ok = await P2PPong.joinBeacon(targetId); if (ok) { rMsg('🏹 Тетива натянута...', 3000); document.getElementById('arrow-modal')?.classList.remove('active'); } }
     });
     document.getElementById('close-arrow-modal')?.addEventListener('click', () => { document.getElementById('arrow-modal')?.classList.remove('active'); });
     document.getElementById('arrow-modal')?.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('active'); });
@@ -594,7 +796,10 @@ function initApp() {
 
     document.getElementById('btn-voice-input')?.addEventListener('click', toggleVoiceRecording);
     document.getElementById('setting-bg')?.addEventListener('click', () => { const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*'; inp.onchange = async ev => { const f = ev.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = async ev2 => { await saveBgToDB(ev2.target.result); await applyCustomBg(ev2.target.result); rMsg('🖼 Фон обновлён!', 3000); }; r.readAsDataURL(f); }; inp.click(); });
-    document.getElementById('setting-lock')?.addEventListener('click', () => { /* без изменений */ });
+    document.getElementById('setting-lock')?.addEventListener('click', () => {
+        if (lockType) { if (confirm('Сбросить блокировку?')) { try { localStorage.removeItem(LOCK_KEY); } catch (e) {} lockType = null; lockPinHash = ''; const ls3 = document.getElementById('lock-status'); if (ls3) ls3.textContent = 'Не задан'; } }
+        else { isSettingLock = true; lockPinHash = ''; pinInput = ''; lockScreen.style.display = 'flex'; appContainer.style.display = 'none'; setupLockUI(); }
+    });
 
     // Эмодзи
     const emojis = ['😀','😂','🤣','😍','😘','😜','😎','🤩','🥳','😢','😡','👍','👎','❤️','🔥','🎉','💀','🏹','🌲','🏰','🦊','🐺','✨','⚔️','🛡️','🍺','🍗','🏕️','🌙','☀️','🌟','💪','🤝','🙏','👑','💰','🎯','📞','💬','🔔','❌','✅','🎵','📜','⚜️'];
