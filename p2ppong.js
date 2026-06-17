@@ -20,10 +20,14 @@ const P2PPong = {
     _httpSignal: null,
     _peerHelpActive: false,
     _housekeepInterval: null,
-    _beaconPollTimer: null,
     _beaconPollKey: null,
-    _beaconPollStartTime: null,
-    _beaconPollRole: null,
+    _pollTimer: null,
+    _pollStart: null,
+    _pollMax: null,
+    _pollSilence: null,
+    _pollInterval: null,
+    _pollFast: null,
+    _pollFastStart: null,
 
     on(event, callback) {
         if (!this._listeners[event]) this._listeners[event] = [];
@@ -82,66 +86,68 @@ const P2PPong = {
         }
     },
 
-    // ==================== ОПРОС МАЯКОВ (BLIND LOCKER) ====================
-    startBeaconPolling(keyHash, role) {
-        this.stopBeaconPolling();
-
-        this._beaconPollKey = keyHash;
-        this._beaconPollRole = role;
-        this._beaconPollStartTime = Date.now();
-
-        if (role === 'sender') {
-            setTimeout(() => this._pollBeacon(), 30000);
-        } else {
-            setTimeout(() => this._pollBeacon(), 30000);
-        }
+    // ==================== ОПРОС МАЯКОВ ====================
+    startCopyPolling() {
+        this._stopPolling();
+        this._pollStart = Date.now();
+        this._pollMax = 150;
+        this._pollSilence = 30000;
+        this._pollInterval = 15000;
+        this._pollFast = 5000;
+        this._pollFastStart = 135;
+        this._beaconPollKey = 'waiting_' + this._peerId;
+        this._pollTimer = setTimeout(() => this._doPoll(), this._pollSilence);
     },
 
-    _pollBeacon() {
+    startCreatePolling(keyHash) {
+        this._stopPolling();
+        this._beaconPollKey = keyHash;
+        this._pollStart = Date.now();
+        this._pollMax = 90;
+        this._pollSilence = 30000;
+        this._pollInterval = 10000;
+        this._pollFast = null;
+        this._pollFastStart = null;
+        this._pollTimer = setTimeout(() => this._doPoll(), this._pollSilence);
+    },
+
+    _doPoll() {
         if (!this._beaconPollKey) return;
 
-        const elapsed = (Date.now() - this._beaconPollStartTime) / 1000;
-        const maxTime = this._beaconPollRole === 'sender' ? 150 : 90;
-
-        if (elapsed > maxTime) {
-            this.stopBeaconPolling();
-            this._emit('beacon-timeout', {});
+        const elapsed = (Date.now() - this._pollStart) / 1000;
+        if (elapsed > this._pollMax) {
+            this._stopPolling();
+            this._emit('beacon-timeout');
             return;
         }
 
-        let nextInterval;
-        if (this._beaconPollRole === 'sender' && elapsed > 135) {
-            nextInterval = 5000;
-        } else if (this._beaconPollRole === 'sender') {
-            nextInterval = 15000;
+        let next;
+        if (this._pollFast && this._pollFastStart && elapsed > this._pollFastStart) {
+            next = this._pollFast;
         } else {
-            nextInterval = 10000;
+            next = this._pollInterval;
         }
 
-        const workerUrl = 'https://robincall.stephanclaps-491.workers.dev';
-        fetch(`${workerUrl}/beacon?key=${this._beaconPollKey}`)
-            .then(res => res.json())
-            .then(data => {
-                if (data.status === 'found' && data.packet) {
-                    this.stopBeaconPolling();
-                    this._handleIncomingBlob(data.packet, BLOB_NS);
+        fetch(`https://robincall.stephanclaps-491.workers.dev/beacon?key=${this._beaconPollKey}`)
+            .then(r => r.json())
+            .then(d => {
+                if (d.status === 'found' && d.packet) {
+                    this._stopPolling();
+                    this._handleIncomingBlob(d.packet, BLOB_NS);
                 } else {
-                    this._beaconPollTimer = setTimeout(() => this._pollBeacon(), nextInterval);
+                    this._pollTimer = setTimeout(() => this._doPoll(), next);
                 }
             })
             .catch(() => {
-                this._beaconPollTimer = setTimeout(() => this._pollBeacon(), nextInterval);
+                this._pollTimer = setTimeout(() => this._doPoll(), next);
             });
     },
 
-    stopBeaconPolling() {
-        if (this._beaconPollTimer) {
-            clearTimeout(this._beaconPollTimer);
-            this._beaconPollTimer = null;
+    _stopPolling() {
+        if (this._pollTimer) {
+            clearTimeout(this._pollTimer);
+            this._pollTimer = null;
         }
-        this._beaconPollKey = null;
-        this._beaconPollStartTime = null;
-        this._beaconPollRole = null;
     },
 
     // ==================== СИГНАЛЬНЫЙ СЕРВЕР ====================
@@ -239,10 +245,9 @@ const P2PPong = {
 
         const keyHash = await SHA(nonce + targetPeerId);
         const packet = JSON.stringify(beaconData);
-        const workerUrl = 'https://robincall.stephanclaps-491.workers.dev';
 
         try {
-            await fetch(`${workerUrl}/beacon`, {
+            await fetch('https://robincall.stephanclaps-491.workers.dev/beacon', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ keyHash, packet })
@@ -250,13 +255,8 @@ const P2PPong = {
         } catch(e) {}
 
         this._emit('beacon-sent', { targetPeerId, beaconId: bid, keyHash });
-        this.startBeaconPolling(keyHash, 'receiver');
+        this.startCreatePolling(keyHash);
         return bid;
-    },
-
-    async startSenderPolling(myPeerId) {
-        const keyHash = await SHA(myPeerId + myPeerId);
-        this.startBeaconPolling('waiting_' + myPeerId, 'sender');
     },
 
     async sendMessage(channelId, data) {
@@ -386,7 +386,7 @@ const P2PPong = {
     },
 
     async destroy() {
-        this.stopBeaconPolling();
+        this._stopPolling();
         if (this._housekeepInterval) clearInterval(this._housekeepInterval);
         if (this._ws) { this._ws.onclose = null; this._ws.close(); this._ws = null; }
         if (this._peerHelpActive && typeof RobinHoodPeerHelp !== 'undefined') { RobinHoodPeerHelp.stop(); }
