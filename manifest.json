@@ -4,9 +4,14 @@
   "description": "Децентрализованный P2P-мессенджер с оконечным шифрованием на платформе P2PPong",
   "start_url": "/ROBINHOOD-P2P/",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#1a1a2a",
   "theme_color": "#6b7db3",
-  "version": "5.4.2",
+  "version": "5.5.4",
+  "categories": ["communication", "social"],
+  "lang": "ru",
+  "dir": "ltr",
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "assets/icons/01icon.png",
