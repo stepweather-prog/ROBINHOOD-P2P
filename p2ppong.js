@@ -85,7 +85,34 @@ const P2PPong = {
     },
     getPeerId() { return this._peerId; },
 
-    async joinBeacon(targetPeerId) { if (!targetPeerId) return false; const d = await this._get('/beacon?key=waiting_' + targetPeerId); if (!d?.packet) return false; const bd = JSON.parse(d.packet); if (!bd?.pubKey || !bd?.inner) return false; if (!this._peerId) this._peerId = await generateHardwarePeerId(); const emoji = this._genEmoji(); this._verificationEmoji = emoji; this._pendingVerification = { bd, targetPeerId, emoji }; this._pendingWebRTC.set('pending', { waiting: true }); const ep = JSON.stringify({ type: 'verification-emoji', emoji, peerId: this._peerId, pubKey: bd.pubKey, inner: bd.inner }); await this._post('/beacon', { keyHash: 'emoji_' + targetPeerId, packet: ep }); this._emit('verification-needed', { emoji }); this.saveState(); return true; },
+    async joinBeacon(targetPeerId) {
+    if (!targetPeerId) return false;
+    const d = await this._get('/beacon?key=waiting_' + targetPeerId);
+    if (!d?.packet) return false;
+    const bd = JSON.parse(d.packet);
+    if (!bd?.pubKey || !bd?.inner) return false;
+    if (!this._peerId) this._peerId = await generateHardwarePeerId();
+    const emoji = this._genEmoji();
+    this._verificationEmoji = emoji;
+    this._pendingVerification = { bd, targetPeerId, emoji };
+    this._pendingWebRTC.set('pending', { waiting: true });
+    
+    // ✅ Сохраняем pubKey для создания beacon
+    const bid = RND();
+    this._beacons[bid] = {
+        keyPair: await generateKeyPair(),
+        pubKey: bd.pubKey,
+        nonce: '',
+        beaconKey: await SHA('beacon'),
+        expires: Date.now() + 300000
+    };
+    
+    const ep = JSON.stringify({ type: 'verification-emoji', emoji, peerId: this._peerId, pubKey: bd.pubKey, inner: bd.inner });
+    await this._post('/beacon', { keyHash: 'emoji_' + targetPeerId, packet: ep });
+    this._emit('verification-needed', { emoji });
+    this.saveState();
+    return true;
+}
 
     async confirmVerification() {
         if (!this._pendingVerification) return false;
@@ -283,7 +310,7 @@ if (this._pollFast && this._pollFastStart && el > this._pollFastStart) next = th
         if (d?.type === 'beacon-response' && d.pubKey && d.inner) {
             for (const [bid, b] of Object.entries(this._beacons)) {
                 if (!b.beaconKey) continue;
-                const dec = await decryptAES(d.inner, b.beaconKey);
+                const dec = await decryptAES(d.inner, await SHA('beacon'));
                 if (!dec) continue;
                 let p; try { p = JSON.parse(dec); } catch(e) { continue; }
                 if (p.nonce !== b.nonce) continue;
