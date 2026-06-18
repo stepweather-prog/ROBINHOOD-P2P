@@ -1,6 +1,6 @@
-// ==================== RobinHood UI v5.5.3 — Исправленная версия ====================
+// ==================== RobinHood UI v5.5.4 — Все ошибки исправлены ====================
 // Чистый интерфейс. Ядро: P2PPong.
-// Изменения: только фильтрация входящих сообщений в message-received
+// Исправления: channelId в WebRTC, проверка signalingState, голосовые в фильтре
 
 let contacts = [],
     activeChannelId = null,
@@ -117,15 +117,29 @@ async function startCall() { if (callActive || !activeChannelId) { rMsg('❌ Н�
 async function acceptCall() { if (!incomingOffer || !activeChannelId) return; stopRingtone(); stopRingback(); const s = await getMediaStream(false); if (!s) return; localStream = s; createPC(); const cp = document.getElementById('call-panel'); if (cp) cp.style.display = 'flex'; const ct = contacts.find(c => c.channelId === activeChannelId); document.getElementById('call-avatar').src = 'assets/avatar/' + (ct?.avatar || selectedAvatar) + 'ava.png'; document.getElementById('call-contact-name').textContent = ct?.name || document.getElementById('nick-label')?.textContent || 'Лучник'; document.getElementById('call-status').textContent = '✅ Разговор'; showIncomingControls(false); showActiveControls(true); showCallWave(true); playSound('open.mp3'); try { await pc.setRemoteDescription(new RTCSessionDescription(incomingOffer)); iceBuffer.forEach(c => pc.addIceCandidate(new RTCIceCandidate(c)).catch(er => {})); iceBuffer = []; const a = await pc.createAnswer(); await pc.setLocalDescription(a); sendWebRTCMsg('webrtc-answer', JSON.stringify(a)); incomingOffer = null; callActive = true; } catch (e) { incomingOffer = null; hang(false); } updateCallButtonState(); }
 function hang(sig = true) { if (hangInProgress) return; hangInProgress = true; callActive = false; stopRingtone(); stopRingback(); if (sig && activeChannelId) sendWebRTCMsg('webrtc-hangup', ''); if (pc) { pc.onconnectionstatechange = null; pc.ontrack = null; pc.onicecandidate = null; pc.close(); pc = null; } if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; } incomingOffer = null; iceBuffer = []; if (iceFlushTimer) clearTimeout(iceFlushTimer); if (iceRestartTimer) clearTimeout(iceRestartTimer); iceRestartInProgress = false; const cp = document.getElementById('call-panel'); if (cp) cp.style.display = 'none'; showIncomingControls(false); showActiveControls(false); showCallWave(false); playSound('exet.mp3'); updateCallButtonState(); hangInProgress = false; }
 
-// ==================== НОВЫЙ ФИЛЬТР ВХОДЯЩИХ СООБЩЕНИЙ ====================
+// ==================== ФИЛЬТР ВХОДЯЩИХ СООБЩЕНИЙ (ИСПРАВЛЕНО) ====================
 function filterIncomingMessage(data) {
     if (!data || !data.text) return false;
     try {
         const parsed = JSON.parse(data.text);
+
+        // WebRTC-сигналы — передаём channelId
         if (parsed.webrtc) {
-            handleWebRTCSignal(parsed.webrtc, parsed.sdp);
+            handleWebRTCSignal(parsed.webrtc, parsed.sdp, data.channelId);
             return true;
         }
+
+        // Голосовые сообщения — эмулируем voice-message
+        if (parsed.voice) {
+            P2PPong._emit('voice-message', {
+                channelId: data.channelId,
+                data: parsed.data,
+                from: 'them'
+            });
+            return true;
+        }
+
+        // Самоуничтожение
         if (parsed.d === '__SMOKE__') {
             selfDestructMode = true;
             const sd = document.getElementById('toggle-selfdestruct');
@@ -138,11 +152,25 @@ function filterIncomingMessage(data) {
     return false;
 }
 
-function handleWebRTCSignal(type, sdp) {
+// ==================== ОБРАБОТЧИК WEBRTC СИГНАЛОВ (ИСПРАВЛЕНО) ====================
+function handleWebRTCSignal(type, sdp, channelId) {
+    // Проверка канала
+    if (channelId && activeChannelId && channelId !== activeChannelId) {
+        return;
+    }
+
+    // Создаём PC если его нет и пришёл offer
+    if (!pc && type === 'webrtc-offer') {
+        createPC();
+        if (!pc) return;
+    }
+
     if (!pc) return;
+
     try {
         if (type === 'webrtc-offer') {
             if (!callActive) {
+                // sdp уже объект от JSON.parse в filterIncomingMessage
                 incomingOffer = sdp;
                 playRingtone();
                 const cp = document.getElementById('call-panel');
@@ -157,8 +185,18 @@ function handleWebRTCSignal(type, sdp) {
                 updateCallButtonState();
             }
         } else if (type === 'webrtc-answer') {
-            if (pc.signalingState !== 'stable') {
-                pc.setRemoteDescription(new RTCSessionDescription(sdp)).catch(e => {});
+            // Проверяем состояние: должны быть в have-local-offer
+            if (pc.signalingState === 'have-local-offer') {
+                pc.setRemoteDescription(new RTCSessionDescription(sdp))
+                    .then(() => {
+                        callActive = true;
+                        document.getElementById('call-status').textContent = '✅ Разговор';
+                        showIncomingControls(false);
+                        showActiveControls(true);
+                        showCallWave(true);
+                        updateCallButtonState();
+                    })
+                    .catch(e => {});
             }
         } else if (type === 'webrtc-ice') {
             if (pc.remoteDescription) {
