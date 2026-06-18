@@ -1,6 +1,5 @@
-// ==================== RobinHood UI v5.5.4 — Все ошибки исправлены ====================
+// ==================== RobinHood UI — Исправленный ====================
 // Чистый интерфейс. Ядро: P2PPong.
-// Исправления: channelId в WebRTC, проверка signalingState, голосовые в фильтре
 
 let contacts = [],
     activeChannelId = null,
@@ -42,7 +41,7 @@ function safeHtml(s) { if (!s) return ''; const d = document.createElement('div'
 function rMsg(t, d = 4000) { const rt = document.getElementById('robin-text'); if (!rt) return; clearTimeout(robinTimer); rt.textContent = t; if (d > 0) robinTimer = setTimeout(() => { rt.textContent = robinDefaultText; }, d); }
 function setConnectionStatus(s) { const ic = document.getElementById('connection-icon'); if (ic) ic.src = s === 'online' ? 'assets/icons/06icon.png' : 'assets/icons/05icon.png'; }
 function playSound(f) { if (!toggleSoundState) return; if (!audioPool[f]) { audioPool[f] = new Audio('assets/sounds/' + f); audioPool[f].volume = 0.5; audioPool[f].load(); } const a = audioPool[f]; a.currentTime = 0; a.play().catch(e => {}); }
-function closeSheets() { document.getElementById('avatar-selector')?.classList.remove('show'); document.getElementById('settings-sheet')?.classList.remove('open'); document.getElementById('ai-stats-sheet')?.classList.remove('open'); document.getElementById('overlay')?.classList.remove('show'); }
+function closeSheets() { document.getElementById('avatar-selector')?.classList.remove('show'); document.getElementById('settings-sheet')?.classList.remove('open'); document.getElementById('overlay')?.classList.remove('show'); }
 
 // ==================== АНИМАЦИИ ====================
 function playSmokeAnimation() { const smoke = document.createElement('div'); smoke.className = 'smoke-anim'; document.body.appendChild(smoke); if (typeof lottie !== 'undefined') { try { lottie.loadAnimation({ container: smoke, renderer: 'canvas', loop: false, autoplay: true, path: 'assets/smoke.json' }); } catch (e) {} } setTimeout(() => { if (smoke.parentNode) smoke.remove(); }, 5000); }
@@ -90,12 +89,6 @@ function applyTheme(id) { document.documentElement.setAttribute('data-theme', id
 function generateRandomTheme() { const hue = Math.floor(Math.random() * 360), sat = 40 + Math.floor(Math.random() * 50), bgLight = 5 + Math.floor(Math.random() * 15), bgDark = 2 + Math.floor(Math.random() * 8), id = 'random_' + Date.now(); const s = `[data-theme="${id}"]{--bg-primary:hsl(${hue},${sat}%,${bgLight}%);--bg-secondary:hsl(${hue},${sat-10}%,${bgDark}%);--accent:hsl(${(hue+30)%360},${sat+10}%,50%);--accent-light:hsl(${(hue+30)%360},${sat+20}%,70%);--text:hsl(${hue},20%,85%);--text-bright:hsl(${hue},25%,92%);--text-dim:hsl(${hue},15%,60%);--border:hsl(${(hue+30)%360},${sat+10}%,50%);--btn-bg:hsla(${(hue+30)%360},${sat+10}%,50%,0.1);--btn-border:hsla(${(hue+30)%360},${sat+10}%,50%,0.3);--btn-hover:hsla(${(hue+30)%360},${sat+10}%,50%,0.25);--sheet-bg:linear-gradient(145deg,hsl(${hue},${sat}%,${bgLight}%)0%,hsl(${hue},${sat-10}%,${bgDark}%)100%);--input-bg:hsla(${hue},${sat-10}%,${bgLight+2}%,0.9);--msg-bg:hsla(${hue},${sat-5}%,${bgLight+3}%,0.85);--msg-accent:hsl(${(hue+30)%360},${sat+10}%,50%);--robin-bg:hsla(${hue},${sat}%,${bgLight+8}%,0.9);--robin-accent:hsl(${(hue+30)%360},${sat+20}%,65%);--overlay-bg:rgba(0,0,0,0.6);--call-bg:linear-gradient(180deg,hsl(${hue},${sat}%,${bgLight}%)0%,hsl(${hue},${sat-10}%,${bgDark}%)100%);--call-btn-bg:hsla(${(hue+30)%360},${sat+10}%,50%,0.1);--call-btn-border:hsla(${(hue+30)%360},${sat+10}%,50%,0.3);--input-text:hsl(${hue},20%,85%)}`; let el = document.getElementById('gen-theme'); if (!el) { el = document.createElement('style'); el.id = 'gen-theme'; document.head.appendChild(el); } el.textContent = s; document.documentElement.setAttribute('data-theme', id); const tn = document.getElementById('theme-name'); if (tn) tn.textContent = 'Авто'; try { localStorage.setItem('robinhood_theme', id); } catch (e) {} }
 function loadAvatars() { const list = document.getElementById('avatar-list'); if (!list) return; list.innerHTML = ''; avatars.forEach(src => { const img = document.createElement('img'); img.src = src; img.className = 'avatar-option'; img.onerror = () => img.src = 'assets/avatar/001ava.png'; img.onclick = () => { const pas = document.getElementById('profile-avatar-small'); if (pas) pas.src = src; document.getElementById('robin-avatar').src = src; try { localStorage.setItem('robinhood_avatar', src); } catch (e) {} closeSheets(); rMsg('🖼 Аватар обновлён'); }; list.appendChild(img); }); }
 
-// ==================== ПОЛЬЗОВАТЕЛЬСКИЙ ФОН ====================
-function openPPDatabase() { return new Promise((resolve) => { const req = indexedDB.open('PP', 1); req.onupgradeneeded = (e) => { const db = e.target.result; if (!db.objectStoreNames.contains('bg')) db.createObjectStore('bg', { keyPath: 'k' }); }; req.onsuccess = () => resolve(req.result); req.onerror = () => resolve(null); }); }
-async function saveBgToDB(dataUrl) { try { const db = await openPPDatabase(); if (!db || !db.objectStoreNames.contains('bg')) return; db.transaction('bg', 'readwrite').objectStore('bg').put({ k: 'custom_bg', v: dataUrl }); } catch (e) {} }
-async function getBgFromDB() { try { const db = await openPPDatabase(); if (!db || !db.objectStoreNames.contains('bg')) return null; return await new Promise(res => { const q = db.transaction('bg', 'readonly').objectStore('bg').get('custom_bg'); q.onsuccess = () => res(q.result?.v || null); q.onerror = () => res(null); }); } catch (e) { return null; } }
-async function applyCustomBg(dataUrl) { if (dataUrl) { document.body.style.setProperty('--custom-bg', `url(${dataUrl})`); document.body.classList.add('custom-bg'); const bs = document.getElementById('bg-status'); if (bs) bs.textContent = 'Задан'; } else { document.body.classList.remove('custom-bg'); document.body.style.removeProperty('--custom-bg'); const bs = document.getElementById('bg-status'); if (bs) bs.textContent = 'Не задан'; } }
-
 // ==================== БЛОКИРОВКА ====================
 const LOCK_KEY = 'robinhood_lock_v2'; let lockType = null, lockPinHash = '', pinInput = '', isSettingLock = false, failedAttempts = 0;
 const lockScreen = document.getElementById('lock-screen'), appContainer = document.getElementById('app-container');
@@ -117,132 +110,54 @@ async function startCall() { if (callActive || !activeChannelId) { rMsg('❌ Н�
 async function acceptCall() { if (!incomingOffer || !activeChannelId) return; stopRingtone(); stopRingback(); const s = await getMediaStream(false); if (!s) return; localStream = s; createPC(); const cp = document.getElementById('call-panel'); if (cp) cp.style.display = 'flex'; const ct = contacts.find(c => c.channelId === activeChannelId); document.getElementById('call-avatar').src = 'assets/avatar/' + (ct?.avatar || selectedAvatar) + 'ava.png'; document.getElementById('call-contact-name').textContent = ct?.name || document.getElementById('nick-label')?.textContent || 'Лучник'; document.getElementById('call-status').textContent = '✅ Разговор'; showIncomingControls(false); showActiveControls(true); showCallWave(true); playSound('open.mp3'); try { await pc.setRemoteDescription(new RTCSessionDescription(incomingOffer)); iceBuffer.forEach(c => pc.addIceCandidate(new RTCIceCandidate(c)).catch(er => {})); iceBuffer = []; const a = await pc.createAnswer(); await pc.setLocalDescription(a); sendWebRTCMsg('webrtc-answer', JSON.stringify(a)); incomingOffer = null; callActive = true; } catch (e) { incomingOffer = null; hang(false); } updateCallButtonState(); }
 function hang(sig = true) { if (hangInProgress) return; hangInProgress = true; callActive = false; stopRingtone(); stopRingback(); if (sig && activeChannelId) sendWebRTCMsg('webrtc-hangup', ''); if (pc) { pc.onconnectionstatechange = null; pc.ontrack = null; pc.onicecandidate = null; pc.close(); pc = null; } if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; } incomingOffer = null; iceBuffer = []; if (iceFlushTimer) clearTimeout(iceFlushTimer); if (iceRestartTimer) clearTimeout(iceRestartTimer); iceRestartInProgress = false; const cp = document.getElementById('call-panel'); if (cp) cp.style.display = 'none'; showIncomingControls(false); showActiveControls(false); showCallWave(false); playSound('exet.mp3'); updateCallButtonState(); hangInProgress = false; }
 
-// ==================== ФИЛЬТР ВХОДЯЩИХ СООБЩЕНИЙ (ИСПРАВЛЕНО) ====================
-function filterIncomingMessage(data) {
-    if (!data || !data.text) return false;
-    try {
-        const parsed = JSON.parse(data.text);
-
-        // WebRTC-сигналы — передаём channelId
-        if (parsed.webrtc) {
-            handleWebRTCSignal(parsed.webrtc, parsed.sdp, data.channelId);
-            return true;
-        }
-
-        // Голосовые сообщения — эмулируем voice-message
-        if (parsed.voice) {
-            P2PPong._emit('voice-message', {
-                channelId: data.channelId,
-                data: parsed.data,
-                from: 'them'
-            });
-            return true;
-        }
-
-        // Самоуничтожение
-        if (parsed.d === '__SMOKE__') {
-            selfDestructMode = true;
-            const sd = document.getElementById('toggle-selfdestruct');
-            if (sd) sd.checked = true;
-            try { localStorage.setItem('robinhood_selfdestruct', 'true'); } catch (e) {}
-            rMsg('🍁 Собеседник включил режим самоуничтожения', 3000);
-            return true;
-        }
-    } catch (e) {}
-    return false;
-}
-
-// ==================== ОБРАБОТЧИК WEBRTC СИГНАЛОВ (ИСПРАВЛЕНО) ====================
-function handleWebRTCSignal(type, sdp, channelId) {
-    // Проверка канала
-    if (channelId && activeChannelId && channelId !== activeChannelId) {
-        return;
-    }
-
-    // Создаём PC если его нет и пришёл offer
-    if (!pc && type === 'webrtc-offer') {
-        createPC();
-        if (!pc) return;
-    }
-
-    if (!pc) return;
-
-    try {
-        if (type === 'webrtc-offer') {
-            if (!callActive) {
-                // sdp уже объект от JSON.parse в filterIncomingMessage
-                incomingOffer = sdp;
-                playRingtone();
-                const cp = document.getElementById('call-panel');
-                if (cp) cp.style.display = 'flex';
-                const ct = contacts.find(c => c.channelId === activeChannelId);
-                document.getElementById('call-avatar').src = 'assets/avatar/' + (ct?.avatar || selectedAvatar) + 'ava.png';
-                document.getElementById('call-contact-name').textContent = ct?.name || document.getElementById('nick-label')?.textContent || 'Лучник';
-                document.getElementById('call-status').textContent = '📞 Входящий...';
-                showIncomingControls(true);
-                showActiveControls(false);
-                showCallWave(false);
-                updateCallButtonState();
-            }
-        } else if (type === 'webrtc-answer') {
-            // Проверяем состояние: должны быть в have-local-offer
-            if (pc.signalingState === 'have-local-offer') {
-                pc.setRemoteDescription(new RTCSessionDescription(sdp))
-                    .then(() => {
-                        callActive = true;
-                        document.getElementById('call-status').textContent = '✅ Разговор';
-                        showIncomingControls(false);
-                        showActiveControls(true);
-                        showCallWave(true);
-                        updateCallButtonState();
-                    })
-                    .catch(e => {});
-            }
-        } else if (type === 'webrtc-ice') {
-            if (pc.remoteDescription) {
-                pc.addIceCandidate(new RTCIceCandidate(sdp)).catch(e => {});
-            }
-        } else if (type === 'webrtc-hangup') {
-            hang(false);
-        }
-    } catch (e) {}
-}
-
 // ==================== ОБРАБОТЧИКИ ЯДРА ====================
 function initUI() {
     P2PPong.on('ready', (data) => { setConnectionStatus('online'); rMsg('🏹 Слепой Улей готов', 0); loadContacts(); updateAIStats(); });
     P2PPong.on('state-change', (data) => { if (data.state === 'online') setConnectionStatus('online'); else if (data.state === 'offline') setConnectionStatus('offline'); });
-    P2PPong.on('peer-connected', (data) => { rMsg('🔗 Прямой канал установлен', 3000); updateAIStats(); });
-    P2PPong.on('message-received', (data) => {
-        if (filterIncomingMessage(data)) return;
-        const ct = contacts.find(c => c.channelId === data.channelId);
-        const nick = ct?.name || 'Лучник';
-        const avatar = ct?.avatar || '001';
-        if (data.channelId === activeChannelId) {
-            appendMessage(nick, data.text, avatar);
-        } else {
-            rMsg('Новое от ' + nick, 3000);
-        }
-        updateCupIndicator();
-        updateRatchetIndicator();
-        updateAIStats();
-        playSound('arrow_hit.wav');
-    });
-    P2PPong.on('message-sent', (data) => { updateCupIndicator(); updateRatchetIndicator(); updateAIStats(); });
-    P2PPong.on('voice-message', (data) => { const ct = contacts.find(c => c.channelId === data.channelId); const nick = ct?.name || 'Друг'; const avatar = ct?.avatar || '001'; if (data.channelId === activeChannelId) { appendMessage(nick, '🎤 Голосовое', avatar, data.data, 'audio/webm'); } else { rMsg('🎤 Голосовое от ' + nick, 3000); playVoiceBlob(data.data); } updateCupIndicator(); updateAIStats(); });
+    P2PPong.on('peer-connected', (data) => { rMsg('🔗 Прямой канал установлен', 3000); });
+    P2PPong.on('message-received', (data) => { handleIncomingMessage(data); });
+    P2PPong.on('message-sent', (data) => { updateCupIndicator(); updateRatchetIndicator(); });
+    P2PPong.on('voice-message', (data) => { const ct = contacts.find(c => c.channelId === data.channelId); const nick = ct?.name || 'Друг'; const avatar = ct?.avatar || '001'; if (data.channelId === activeChannelId) { appendMessage(nick, '🎤 Голосовое', avatar, data.data, 'audio/webm'); } else { rMsg('🎤 Голосовое от ' + nick, 3000); playVoiceBlob(data.data); } updateCupIndicator(); });
     P2PPong.on('beacon-received', (data) => { rMsg('📡 Входящий маяк от ' + data.nick, 3000); if (data.accept) data.accept(); });
     P2PPong.on('beacon-sent', (data) => { rMsg('🏹 Тетива натянута...', 3000); });
     P2PPong.on('beacon-taken', (data) => { rMsg('👀 Маяк забрали...', 3000); });
     P2PPong.on('verification-needed', (data) => { document.getElementById('verify-instruction').textContent = 'Назови эти эмодзи пиру А:'; document.getElementById('verify-emoji-display').textContent = data.emoji.join(''); document.getElementById('verify-emoji-input').style.display = 'none'; document.getElementById('btn-verify-confirm').style.display = 'none'; document.getElementById('verify-error').style.display = 'none'; document.getElementById('verify-modal')?.classList.add('active'); rMsg('📞 Назови эти эмодзи пиру А', 0); });
-    P2PPong.on('channel-opened', (data) => { playQuiverAnimation(); rMsg('✅ Колчан открыт! Тетива натянута!', 3000); addContact({ peerId: data.peerId, name: data.nick || 'Лучник', channelId: data.channelId, verified: false, avatar: data.avatar || '001' }); updateCupIndicator(); updateRatchetIndicator(); updateAIStats(); });
-    P2PPong.on('channel-expired', (data) => { if (data.channelId === activeChannelId) { activeChannelId = null; activePeerId = null; document.getElementById('robin-bar-sender').textContent = 'RobinHood P2P'; document.getElementById('chat-box').innerHTML = '<div class="typing-indicator" id="typing-indicator"></div>'; } updateAIStats(); });
+    P2PPong.on('channel-opened', (data) => { playQuiverAnimation(); rMsg('✅ Колчан открыт! Тетива натянута!', 3000); addContact({ peerId: data.peerId, name: data.nick || 'Лучник', channelId: data.channelId, verified: false, avatar: data.avatar || '001' }); updateCupIndicator(); updateRatchetIndicator(); });
+    P2PPong.on('channel-expired', (data) => { if (data.channelId === activeChannelId) { activeChannelId = null; activePeerId = null; document.getElementById('robin-bar-sender').textContent = 'RobinHood P2P'; document.getElementById('chat-box').innerHTML = '<div class="typing-indicator" id="typing-indicator"></div>'; } });
     P2PPong.on('ratchet-reset', (data) => { rMsg('🔄 Ratchet перезапущен', 3000); updateRatchetIndicator(); });
-    P2PPong.on('webrtc-signal', (data) => { /* без изменений */ });
+    P2PPong.on('webrtc-signal', (data) => { });
     P2PPong.on('error', (data) => { rMsg('❌ ' + data.message, 5000); });
     P2PPong.on('destroyed', () => { document.getElementById('chat-box').innerHTML = '<div class="typing-indicator" id="typing-indicator"></div>'; setConnectionStatus('offline'); rMsg('🔥 Сессия завершена', 0); if (lockScreen) lockScreen.style.display = 'none'; if (appContainer) appContainer.style.display = 'flex'; });
 }
-function updateAIStats() { const stats = P2PPong.getStats(); const indicator = document.getElementById('ai-indicator'); if (indicator) { indicator.style.display = 'inline'; indicator.textContent = '🛡️ ' + stats.channels + ' кан.'; indicator.title = 'Каналов: ' + stats.channels + ' | DHT: ' + stats.dhtPeers + ' | Отправлено: ' + stats.messagesSent + ' | Получено: ' + stats.messagesReceived; } }
-function showAIStats() { const stats = P2PPong.getStats(); const panel = document.getElementById('ai-stats-panel'); if (!panel) return; panel.innerHTML = `<div class="ai-stat-row"><span class="ai-stat-label">Статус</span><span class="ai-stat-value">${stats.state}</span></div><div class="ai-stat-row"><span class="ai-stat-label">Каналов</span><span class="ai-stat-value">${stats.channels}</span></div><div class="ai-stat-row"><span class="ai-stat-label">DHT пиров</span><span class="ai-stat-value">${stats.dhtPeers}</span></div><div class="ai-stat-row"><span class="ai-stat-label">Отправлено</span><span class="ai-stat-value">${stats.messagesSent}</span></div><div class="ai-stat-row"><span class="ai-stat-label">Получено</span><span class="ai-stat-value">${stats.messagesReceived}</span></div><div class="ai-stat-row"><span class="ai-stat-label">Peer ID</span><span class="ai-stat-value" style="font-size:0.55em;">${stats.peerId?.substring(0,16)}...</span></div>`; document.getElementById('ai-stats-sheet')?.classList.add('open'); document.getElementById('overlay')?.classList.add('show'); }
+
+function handleIncomingMessage(data) {
+    if (!data || !data.text) return;
+    try {
+        const parsed = JSON.parse(data.text);
+        if (parsed.webrtc) { handleWebRTCSignal(parsed.webrtc, parsed.sdp, data.channelId); return; }
+        if (parsed.voice) { P2PPong._emit('voice-message', { channelId: data.channelId, data: parsed.data, from: 'them' }); return; }
+        if (parsed.d === '__SMOKE__') { selfDestructMode = true; const sd = document.getElementById('toggle-selfdestruct'); if (sd) sd.checked = true; try { localStorage.setItem('robinhood_selfdestruct', 'true'); } catch (e) {} rMsg('🍁 Собеседник включил режим самоуничтожения', 3000); return; }
+    } catch (e) {}
+    const ct = contacts.find(c => c.channelId === data.channelId);
+    const nick = ct?.name || 'Лучник';
+    const avatar = ct?.avatar || '001';
+    if (data.channelId === activeChannelId) { appendMessage(nick, data.text, avatar); } else { rMsg('Новое от ' + nick, 3000); }
+    updateCupIndicator(); updateRatchetIndicator(); playSound('arrow_hit.wav');
+}
+
+function handleWebRTCSignal(type, sdp, channelId) {
+    if (channelId && activeChannelId && channelId !== activeChannelId) return;
+    if (!pc) return;
+    try {
+        if (type === 'webrtc-offer' && !callActive) { incomingOffer = sdp; playRingtone(); const cp = document.getElementById('call-panel'); if (cp) cp.style.display = 'flex'; const ct = contacts.find(c => c.channelId === activeChannelId); document.getElementById('call-avatar').src = 'assets/avatar/' + (ct?.avatar || selectedAvatar) + 'ava.png'; document.getElementById('call-contact-name').textContent = ct?.name || document.getElementById('nick-label')?.textContent || 'Лучник'; document.getElementById('call-status').textContent = '📞 Входящий...'; showIncomingControls(true); showActiveControls(false); updateCallButtonState(); }
+        else if (type === 'webrtc-answer') { if (pc.signalingState === 'have-local-offer') { pc.setRemoteDescription(new RTCSessionDescription(sdp)).then(() => { callActive = true; document.getElementById('call-status').textContent = '✅ Разговор'; showIncomingControls(false); showActiveControls(true); showCallWave(true); updateCallButtonState(); }).catch(e => {}); } }
+        else if (type === 'webrtc-ice') { if (pc.remoteDescription) { pc.addIceCandidate(new RTCIceCandidate(sdp)).catch(e => {}); } }
+        else if (type === 'webrtc-hangup') { hang(false); }
+    } catch (e) {}
+}
+
+function updateAIStats() { }
+function showAIStats() { }
 function updateDateTime() { const now = new Date(); const de = document.getElementById('header-date'); const te = document.getElementById('header-time'); if (de) de.textContent = now.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' }); if (te) te.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }
 function resetInactivityTimer() { clearTimeout(inactivityTimer); document.getElementById('leaves-container')?.classList.remove('sleeping'); inactivityTimer = setTimeout(() => { document.getElementById('leaves-container')?.classList.add('sleeping'); }, 90000); }
 let inactivityTimer;
@@ -259,33 +174,28 @@ function initApp() {
     const savedNick = localStorage.getItem('robinhood_nick'); const nl = document.getElementById('nick-label'); if (savedNick && nl) nl.textContent = savedNick.substring(0, 12);
     toggleSoundState = localStorage.getItem('robinhood_sound') !== 'false'; const ts = document.getElementById('toggle-sound'); if (ts) ts.checked = toggleSoundState;
     selfDestructMode = localStorage.getItem('robinhood_selfdestruct') === 'true'; const sd = document.getElementById('toggle-selfdestruct'); if (sd) sd.checked = selfDestructMode;
-    getBgFromDB().then(bg => { if (bg) applyCustomBg(bg); });
     const ls = document.getElementById('lock-status'); if (ls) ls.textContent = lockType === 'pin' ? 'Пин-код' : 'Не задан';
     const isPWA = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone || false;
     const si = document.getElementById('setting-install'); if (!isPWA && si) si.classList.remove('hidden');
 
-    document.getElementById('btn-craft')?.addEventListener('click', async () => { try { const peerId = await P2PPong.craftArrow(); const display = document.getElementById('craft-peer-id-display'); if (display) display.textContent = peerId; document.getElementById('craft-modal')?.classList.add('active'); } catch(e) {} });
-    document.getElementById('btn-copy-peer-id')?.addEventListener('click', () => { const pid = P2PPong._peerId; if (pid) { navigator.clipboard.writeText(pid).then(() => rMsg('⎘ ID скопирован!')).catch(() => {}); document.getElementById('craft-modal')?.classList.remove('active'); } });
+    document.getElementById('btn-craft')?.addEventListener('click', async () => {
+        try { const peerId = await P2PPong.craftArrow(); const display = document.getElementById('craft-peer-id-display'); if (display) display.textContent = peerId; document.getElementById('craft-modal')?.classList.add('active'); } catch(e) {}
+    });
+    document.getElementById('btn-copy-peer-id')?.addEventListener('click', () => { const pid = P2PPong._peerId; if (pid) { navigator.clipboard.writeText(pid).then(() => rMsg('⎘ ID скопирован!')).catch(() => {}); } });
     document.getElementById('close-craft-modal')?.addEventListener('click', () => { document.getElementById('craft-modal')?.classList.remove('active'); });
     document.getElementById('craft-modal')?.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('active'); });
+
+    document.getElementById('btn-create-beacon')?.addEventListener('click', async () => { const targetId = document.getElementById('peer-id-input')?.value.trim(); if (targetId) { const ok = await P2PPong.joinBeacon(targetId); if (ok) { rMsg('🏹 Тетива натянута...', 3000); document.getElementById('craft-modal')?.classList.remove('active'); } } });
 
     document.getElementById('btn-verify-confirm')?.addEventListener('click', async () => { const input = document.getElementById('verify-emoji-input')?.value.trim(); const expected = P2PPong.getVerificationEmoji()?.join(''); const errEl = document.getElementById('verify-error'); if (input === expected) { if (errEl) errEl.style.display = 'none'; await P2PPong.confirmVerification(); document.getElementById('verify-modal')?.classList.remove('active'); rMsg('✅ Подтверждено!', 3000); } else { if (errEl) { errEl.textContent = '❌ Не совпадают. Попробуй снова.'; errEl.style.display = 'block'; } } });
     document.getElementById('close-verify-modal')?.addEventListener('click', () => { document.getElementById('verify-modal')?.classList.remove('active'); });
     document.getElementById('verify-modal')?.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('active'); });
 
-    document.getElementById('btn-arrow')?.addEventListener('click', () => { if (P2PPong._peerId) { document.getElementById('verify-instruction').textContent = 'Введи эмодзи которые назвал пир Б:'; document.getElementById('verify-emoji-display').textContent = ''; document.getElementById('verify-emoji-input').style.display = ''; document.getElementById('verify-emoji-input').value = ''; document.getElementById('btn-verify-confirm').style.display = ''; document.getElementById('verify-error').style.display = 'none'; document.getElementById('verify-modal')?.classList.add('active'); } else { document.getElementById('arrow-modal')?.classList.add('active'); } });
-    document.getElementById('btn-create-beacon')?.addEventListener('click', async () => { const targetId = document.getElementById('peer-id-input')?.value.trim(); if (targetId) { const ok = await P2PPong.joinBeacon(targetId); if (ok) { rMsg('🏹 Тетива натянута...', 3000); document.getElementById('arrow-modal')?.classList.remove('active'); } } });
-    document.getElementById('close-arrow-modal')?.addEventListener('click', () => { document.getElementById('arrow-modal')?.classList.remove('active'); });
-    document.getElementById('arrow-modal')?.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('active'); });
-
     document.getElementById('btn-clear')?.addEventListener('click', () => { const box = document.getElementById('chat-box'); if (box) box.querySelectorAll('.message-row').forEach(m => m.remove()); playSmokeAnimation(); playSound('clear cache.mp3'); rMsg('🔥 Скурили!', 5000); contacts = []; saveContacts(); P2PPong.destroy().then(() => { localStorage.clear(); setTimeout(() => P2PPong.init(), 500); }); });
 
     document.getElementById('btn-settings')?.addEventListener('click', () => { closeSheets(); document.getElementById('settings-sheet')?.classList.add('open'); document.getElementById('overlay')?.classList.add('show'); });
     document.getElementById('settings-close')?.addEventListener('click', closeSheets);
-    document.getElementById('ai-stats-close')?.addEventListener('click', closeSheets);
     document.getElementById('overlay')?.addEventListener('click', closeSheets);
-    document.getElementById('setting-ai-stats')?.addEventListener('click', () => { document.getElementById('settings-sheet')?.classList.remove('open'); showAIStats(); });
-    document.getElementById('setting-immunity-mode')?.addEventListener('click', () => { rMsg('🛡️ Режим сети: P2PPong', 3000); });
     document.getElementById('btn-avatar')?.addEventListener('click', () => { closeSheets(); loadAvatars(); document.getElementById('avatar-selector')?.classList.add('show'); document.getElementById('overlay')?.classList.add('show'); });
     document.getElementById('nick-label')?.addEventListener('click', () => { const modal = document.getElementById('nick-modal'); const input = document.getElementById('nick-input'); if (modal && input) { input.value = document.getElementById('nick-label')?.textContent || ''; modal.classList.add('active'); } });
     document.getElementById('btn-save-nick')?.addEventListener('click', () => { const n = document.getElementById('nick-input')?.value.trim(); if (n) { const nl2 = document.getElementById('nick-label'); if (nl2) nl2.textContent = n.substring(0, 12); try { localStorage.setItem('robinhood_nick', n.substring(0, 12)); } catch (e) {} } document.getElementById('nick-modal')?.classList.remove('active'); });
@@ -304,15 +214,14 @@ function initApp() {
     if (ts) ts.addEventListener('change', function() { toggleSoundState = this.checked; try { localStorage.setItem('robinhood_sound', toggleSoundState); } catch (e) {} });
     if (sd) sd.addEventListener('change', function() { selfDestructMode = this.checked; try { localStorage.setItem('robinhood_selfdestruct', selfDestructMode); } catch (e) {} if (selfDestructMode && activeChannelId) { P2PPong.sendMessage(activeChannelId, JSON.stringify({ d: '__SMOKE__' })); rMsg('🍁 Листопад включён. Сообщения будут исчезать.', 3000); } });
     document.getElementById('btn-voice-input')?.addEventListener('click', toggleVoiceRecording);
-    document.getElementById('setting-bg')?.addEventListener('click', () => { const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*'; inp.onchange = async ev => { const f = ev.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = async ev2 => { await saveBgToDB(ev2.target.result); await applyCustomBg(ev2.target.result); rMsg('🖼 Фон обновлён!', 3000); }; r.readAsDataURL(f); }; inp.click(); });
     document.getElementById('setting-lock')?.addEventListener('click', () => { if (lockType) { if (confirm('Сбросить блокировку?')) { try { localStorage.removeItem(LOCK_KEY); } catch (e) {} lockType = null; lockPinHash = ''; const ls3 = document.getElementById('lock-status'); if (ls3) ls3.textContent = 'Не задан'; } } else { isSettingLock = true; lockPinHash = ''; pinInput = ''; lockScreen.style.display = 'flex'; appContainer.style.display = 'none'; setupLockUI(); } });
     const emojis = ['😀','😂','🤣','😍','😘','😜','😎','🤩','🥳','😢','😡','👍','👎','❤️','🔥','🎉','💀','🏹','🌲','🏰','🦊','🐺','✨','⚔️','🛡️','🍺','🍗','🏕️','🌙','☀️','🌟','💪','🤝','🙏','👑','💰','🎯','📞','💬','🔔','❌','✅','🎵','📜','⚜️'];
     const eg = document.getElementById('emoji-grid'); if (eg) emojis.forEach(e => { const span = document.createElement('span'); span.textContent = e; span.addEventListener('click', () => { const mi = document.getElementById('msg-input'); if (mi) { mi.value += e; mi.focus(); } }); eg.appendChild(span); });
     const be = document.getElementById('btn-emoji'); if (be) be.addEventListener('click', () => { const ep = document.getElementById('emoji-panel'); if (ep) ep.style.display = ep.style.display === 'block' ? 'none' : 'block'; });
     document.addEventListener('click', e => { const ep = document.getElementById('emoji-panel'); if (ep && !ep.contains(e.target) && e.target !== be) ep.style.display = 'none'; });
-    document.getElementById('send-btn')?.addEventListener('click', async () => { const mi = document.getElementById('msg-input'); const t = mi?.value.trim(); if (t) { if (!activeChannelId) { const chIds = Object.keys(P2PPong._channels); if (!chIds.length) return; activeChannelId = chIds[0]; } const sent = await P2PPong.sendMessage(activeChannelId, t); if (sent) { appendMessage('Вы', t, selectedAvatar); updateCupIndicator(); updateRatchetIndicator(); updateAIStats(); if (mi) mi.value = ''; playArcherAnimation(); playBowAnimation(); if (toggleSoundState) playSound('shot.mp3'); } } });
+    document.getElementById('send-btn')?.addEventListener('click', async () => { const mi = document.getElementById('msg-input'); const t = mi?.value.trim(); if (t) { if (!activeChannelId) { const chIds = Object.keys(P2PPong._channels); if (!chIds.length) return; activeChannelId = chIds[0]; } const sent = await P2PPong.sendMessage(activeChannelId, t); if (sent) { appendMessage('Вы', t, selectedAvatar); updateCupIndicator(); updateRatchetIndicator(); if (mi) mi.value = ''; playArcherAnimation(); playBowAnimation(); if (toggleSoundState) playSound('shot.mp3'); } } });
     document.getElementById('msg-input')?.addEventListener('keypress', e => { if (e.key == 'Enter') document.getElementById('send-btn')?.click(); });
-    setConnectionStatus('online'); updateDateTime(); setInterval(updateDateTime, 1000); updateAIStats(); setInterval(updateAIStats, 10000);
+    setConnectionStatus('online'); updateDateTime(); setInterval(updateDateTime, 1000);
 }
 function getMyNick() { return document.getElementById('nick-label')?.textContent || 'Лучник'; }
 function getMyAvatar() { return selectedAvatar || '001'; }
