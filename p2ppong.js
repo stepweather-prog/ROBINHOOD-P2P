@@ -264,7 +264,7 @@ if (this._pollFast && this._pollFastStart && el > this._pollFastStart) next = th
         }
 
         if (d?.type === 'beacon' && d.pubKey && d.inner) {
-            if (d.targetPeerId && d.targetPeerId !== this._peerId) return;
+            if (d.peerId === this._peerId) return;
             if (d.sig && !await verifyHMAC(JSON.stringify(d), d.sig, await SHA('beacon'))) return;
             this._emit('beacon-received', { peerId: d.peerId, accept: async () => {
                 const rpk = await importPublicKey(d.pubKey); const kp = await generateKeyPair(); const mpk = await exportPublicKey(kp);
