@@ -1,5 +1,5 @@
 // peer-help.js — Гуманная P2P помощь сети для RobinHood P2P
-// Версия 1.0.4
+// Версия 1.0.4 — Тихий режим
 (function(){
 'use strict';
 if(!window.RTCPeerConnection&&!window.webkitRTCPeerConnection)return;
@@ -18,7 +18,7 @@ function generateInfoHash(pid){return sha1(pid+'robinhood-peer-help-v1')}
 
 function hexToUint8Array(hex){var bytes=new Uint8Array(hex.length/2);for(var i=0;i<hex.length;i+=2)bytes[i/2]=parseInt(hex.substr(i,2),16);return bytes}
 
-async function announceToTracker(pid){if(isAnnouncing)return;isAnnouncing=true;var startTime=Date.now();try{var infoHash=generateInfoHash(pid);var params='info_hash='+encodeURIComponent(String.fromCharCode.apply(null,hexToUint8Array(infoHash)))+'&peer_id=-RH04-'+pid.substring(0,12).padEnd(12,'0')+'&port=6881&uploaded='+totalUploaded+'&downloaded='+totalDownloaded+'&left=0&compact=1&event=started';var url=TRACKER_URL+'?'+params;var resp=await fetch(url,{method:'GET',signal:AbortSignal.timeout(5000)});if(resp.ok){var data=await resp.json();if(data&&data.status==='ok'){totalUploaded+=Math.round((Date.now()-startTime)/10);if(data.peers){data.peers.forEach(function(p){if(!knownPeers.has(p.peerId)||Date.now()-knownPeers.get(p.peerId).lastSeen>PEER_EXPIRY){knownPeers.set(p.peerId,{lastSeen:Date.now(),info:{}});totalDownloaded+=Math.round(50+Math.random()*20)}})}}}}catch(e){if(e.name==='AbortError'){console.debug('[PeerHelp] Таймаут анонса')}else if(e.name==='TypeError'){console.debug('[PeerHelp] Сеть недоступна')}}isAnnouncing=false}
+async function announceToTracker(pid){if(isAnnouncing)return;isAnnouncing=true;var startTime=Date.now();try{var infoHash=generateInfoHash(pid);var params='info_hash='+encodeURIComponent(String.fromCharCode.apply(null,hexToUint8Array(infoHash)))+'&peer_id=-RH04-'+pid.substring(0,12).padEnd(12,'0')+'&port=6881&uploaded='+totalUploaded+'&downloaded='+totalDownloaded+'&left=0&compact=1&event=started';var url=TRACKER_URL+'?'+params;var resp=await fetch(url,{method:'GET',signal:AbortSignal.timeout(5000)});if(resp.ok){var data=await resp.json();if(data&&data.status==='ok'){totalUploaded+=Math.round((Date.now()-startTime)/10);if(data.peers){data.peers.forEach(function(p){if(!knownPeers.has(p.peerId)||Date.now()-knownPeers.get(p.peerId).lastSeen>PEER_EXPIRY){knownPeers.set(p.peerId,{lastSeen:Date.now(),info:{}});totalDownloaded+=Math.round(50+Math.random()*20)}})}}}}catch(e){}isAnnouncing=false}
 
 function cleanupPeers(){var now=Date.now();var removed=0;knownPeers.forEach(function(peer,id){if(now-peer.lastSeen>PEER_EXPIRY){knownPeers.delete(id);removed++}});if(removed>0){totalUploaded+=removed*5}}
 
@@ -60,6 +60,4 @@ window.RobinHoodPeerHelp={
         totalDownloaded+=50
     }
 };
-
-try{var wasActive=localStorage.getItem('robinhood_peer_help_active')==='true';if(wasActive)console.log('[PeerHelp] Ожидает peerId')}catch(e){}
 })();
