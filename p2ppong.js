@@ -83,6 +83,8 @@ const P2PPong = {
         this._pendingVerification = { bd, targetPeerId, emoji: correctEmoji };
         const bid = RND();
         this._beacons[bid] = { keyPair: await generateKeyPair(), pubKey: bd.pubKey, nonce: innerData.nonce || '', beaconKey: await SHA('beacon'), expires: Date.now() + 300000 };
+        const ep = JSON.stringify({ type: 'verification-emoji', emoji: correctEmoji, peerId: this._peerId, pubKey: bd.pubKey, inner: bd.inner });
+        await this._post('/beacon', { keyHash: 'emoji_' + bd.peerId, packet: ep });
         this._emit('verification-needed', { emoji: correctEmoji });
         return true;
     },
