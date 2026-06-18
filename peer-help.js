@@ -1,5 +1,5 @@
 // peer-help.js — Гуманная P2P помощь сети для RobinHood P2P
-// Версия 1.0.4 — Идеальная
+// Версия 1.0.4
 (function(){
 'use strict';
 if(!window.RTCPeerConnection&&!window.webkitRTCPeerConnection)return;
@@ -32,7 +32,6 @@ window.RobinHoodPeerHelp={
         if(!pid)return;
         peerId=pid;active=true;
         loadStats();
-        console.log('[PeerHelp] v'+PEER_HELP_VERSION+' запущен. Трафик: ~2-5 КБ/час');
         announceToTracker(peerId);
         announceTimer=setInterval(function(){if(document.hidden)return;announceToTracker(peerId)},ANNOUNCE_INTERVAL);
         cleanupTimer=setInterval(cleanupPeers,CLEANUP_INTERVAL);
@@ -48,7 +47,6 @@ window.RobinHoodPeerHelp={
         saveStats();
         knownPeers.clear();
         try{localStorage.setItem('robinhood_peer_help_active','false')}catch(e){}
-        console.log('[PeerHelp] Остановлен. Передано: '+(totalUploaded/1024).toFixed(1)+' КБ | Пиров: '+knownPeers.size)
     },
     isActive:function(){return active},
     getStats:function(){return{active:active,peersCount:knownPeers.size,uploaded:totalUploaded,downloaded:totalDownloaded,version:PEER_HELP_VERSION,peerId:peerId}},
@@ -64,5 +62,4 @@ window.RobinHoodPeerHelp={
 };
 
 try{var wasActive=localStorage.getItem('robinhood_peer_help_active')==='true';if(wasActive)console.log('[PeerHelp] Ожидает peerId')}catch(e){}
-console.log('[PeerHelp] v'+PEER_HELP_VERSION+' загружен');
 })();
