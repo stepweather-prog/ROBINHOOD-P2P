@@ -1,5 +1,5 @@
 // ===================================================================
-// P2PPong v1.0 — Рабочий
+// P2PPong — Рабочий. Peer ID = RND()
 // ===================================================================
 
 const DEBUG = true;
@@ -64,7 +64,7 @@ const P2PPong = {
         if (this._peerId) return this._peerId;
         this._crafting = true;
         try {
-            this._peerId = await generateHardwarePeerId();
+            this._peerId = RND();
             this._emit('peer-id-generated', { peerId: this._peerId });
             const kp = await generateKeyPair(); const pk = await exportPublicKey(kp); const nonce = RND(); const bid = RND();
             const correctEmoji = this._genEmoji();
@@ -92,7 +92,7 @@ const P2PPong = {
         if (!d?.packet) return false;
         const bd = JSON.parse(d.packet);
         if (!bd?.pubKey || !bd?.inner) return false;
-        if (!this._peerId) this._peerId = await generateHardwarePeerId();
+        if (!this._peerId) this._peerId = RND();
         
         const decrypted = await decryptAES(bd.inner, await SHA('beacon'));
         if (!decrypted) return false;
@@ -339,7 +339,6 @@ async function sendToPeer(peerId, message) { var peer = DHT._peers.get(peerId); 
 async function deriveStorageKey() { try { var salt = localStorage.getItem('pp4_hw_salt') || RND(); if (!localStorage.getItem('pp4_hw_salt')) localStorage.setItem('pp4_hw_salt', salt); var k = await crypto.subtle.importKey('raw', new TextEncoder().encode(salt), { name: 'PBKDF2' }, false, ['deriveKey']); return await crypto.subtle.deriveKey({ name: 'PBKDF2', salt: new TextEncoder().encode('p2ppong_storage'), iterations: 100000, hash: 'SHA-256' }, k, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']); } catch(e) { return null; } }
 async function encryptToStorage(key, value) { try { var k = await deriveStorageKey(); if (!k) { localStorage.setItem(key, value); return; } var iv = crypto.getRandomValues(new Uint8Array(12)); var ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, k, new TextEncoder().encode(value)); var c = new Uint8Array(iv.length + new Uint8Array(ct).length); c.set(iv); c.set(new Uint8Array(ct), iv.length); localStorage.setItem(key, btoa(String.fromCharCode.apply(null, c))); } catch(e) { localStorage.setItem(key, value); } }
 async function decryptFromStorage(key) { try { var raw = localStorage.getItem(key); if (!raw) return null; if (raw.startsWith('{') || raw.startsWith('[')) return raw; var k = await deriveStorageKey(); if (!k) return raw; var bytes = Uint8Array.from(atob(raw), function(c) { return c.charCodeAt(0); }); var iv = bytes.slice(0, 12); var ct = bytes.slice(12); var decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: iv }, k, ct); return new TextDecoder().decode(decrypted); } catch(e) { return localStorage.getItem(key); } }
-async function generateHardwarePeerId() { var p = []; try { var c = document.createElement('canvas'); var gl = c.getContext('webgl'); var ext = gl.getExtension('WEBGL_debug_renderer_info'); if (ext) { p.push(gl.getParameter(ext.UNMASKED_VENDOR_WEBGL)); p.push(gl.getParameter(ext.UNMASKED_RENDERER_WEBGL)); } } catch(e) {} try { var ctx = new AudioContext(); p.push(ctx.sampleRate.toString()); p.push(ctx.destination.maxChannelCount.toString()); ctx.close(); } catch(e) {} p.push(screen.width + 'x' + screen.height, screen.colorDepth.toString(), navigator.hardwareConcurrency || '', navigator.deviceMemory || ''); var s = localStorage.getItem('pp4_hw_salt'); if (!s) { s = RND(); localStorage.setItem('pp4_hw_salt', s); } p.push(s); var h = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(p.join('|'))); return Array.from(new Uint8Array(h)).map(function(b) { return b.toString(16).padStart(2, '0'); }).join('').substring(0, 32); }
 async function generateKeyPair() { return await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveBits']); }
 async function exportPublicKey(kp) { var r = await crypto.subtle.exportKey('raw', kp.publicKey); return btoa(String.fromCharCode.apply(null, new Uint8Array(r))); }
 async function importPublicKey(b64) { var r = Uint8Array.from(atob(b64), function(c) { return c.charCodeAt(0); }); return await crypto.subtle.importKey('raw', r, { name: 'ECDH', namedCurve: 'P-256' }, false, []); }
