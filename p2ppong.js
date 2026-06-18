@@ -1,5 +1,5 @@
 // ===================================================================
-// P2PPong v1.0.7 — Полные исправления по чек-листу
+// P2PPong v1.0.8 — Исправлены синтаксис, маяк, beacon-response
 // ===================================================================
 
 const DEBUG = true;
@@ -74,9 +74,8 @@ const P2PPong = {
             this._beacons[bid] = { keyPair: kp, pubKey: pk, nonce, beaconKey: bk, expires: Date.now() + 300000 };
             const result = await this._post('/beacon', { keyHash: 'waiting_' + this._peerId, packet: JSON.stringify(bd) });
             if (result) {
-    // Не опрашиваем свой маяк — ждём emoji_ через housekeeping
-    log('craftArrow', 'маяк опубликован, ждём Пира Б');
-} else {
+                log('craftArrow', 'маяк опубликован, ждём Пира Б');
+            } else {
                 this._emit('error', { message: 'Не удалось опубликовать маяк' });
             }
             this.saveState();
@@ -86,33 +85,30 @@ const P2PPong = {
     getPeerId() { return this._peerId; },
 
     async joinBeacon(targetPeerId) {
-    if (!targetPeerId) return false;
-    const d = await this._get('/beacon?key=waiting_' + targetPeerId);
-    if (!d?.packet) return false;
-    const bd = JSON.parse(d.packet);
-    if (!bd?.pubKey || !bd?.inner) return false;
-    if (!this._peerId) this._peerId = await generateHardwarePeerId();
-    const emoji = this._genEmoji();
-    this._verificationEmoji = emoji;
-    this._pendingVerification = { bd, targetPeerId, emoji };
-    this._pendingWebRTC.set('pending', { waiting: true });
-    
-    // ✅ Сохраняем pubKey для создания beacon
-    const bid = RND();
-    this._beacons[bid] = {
-        keyPair: await generateKeyPair(),
-        pubKey: bd.pubKey,
-        nonce: '',
-        beaconKey: await SHA('beacon'),
-        expires: Date.now() + 300000
-    };
-    
-    const ep = JSON.stringify({ type: 'verification-emoji', emoji, peerId: this._peerId, pubKey: bd.pubKey, inner: bd.inner });
-    await this._post('/beacon', { keyHash: 'emoji_' + targetPeerId, packet: ep });
-    this._emit('verification-needed', { emoji });
-    this.saveState();
-    return true;
-}
+        if (!targetPeerId) return false;
+        const d = await this._get('/beacon?key=waiting_' + targetPeerId);
+        if (!d?.packet) return false;
+        const bd = JSON.parse(d.packet);
+        if (!bd?.pubKey || !bd?.inner) return false;
+        if (!this._peerId) this._peerId = await generateHardwarePeerId();
+        const emoji = this._genEmoji();
+        this._verificationEmoji = emoji;
+        this._pendingVerification = { bd, targetPeerId, emoji };
+        this._pendingWebRTC.set('pending', { waiting: true });
+        const bid = RND();
+        this._beacons[bid] = {
+            keyPair: await generateKeyPair(),
+            pubKey: bd.pubKey,
+            nonce: '',
+            beaconKey: await SHA('beacon'),
+            expires: Date.now() + 300000
+        };
+        const ep = JSON.stringify({ type: 'verification-emoji', emoji, peerId: this._peerId, pubKey: bd.pubKey, inner: bd.inner });
+        await this._post('/beacon', { keyHash: 'emoji_' + targetPeerId, packet: ep });
+        this._emit('verification-needed', { emoji });
+        this.saveState();
+        return true;
+    },
 
     async confirmVerification() {
         if (!this._pendingVerification) return false;
@@ -123,7 +119,6 @@ const P2PPong = {
         const verificationHash = await SHA(ss + emoji.join(''));
         const chId = RND();
         this._channels[chId] = { secret: ss, ratchetKey: ss, ratchetIndex: 0, oldKeys: [], lastReceivedRi: -1, peerId: bd.peerId, type: 'cup', blobs: [], expires: Date.now() + 600000, createdAt: Date.now(), verificationHash };
-        // ✅ Пункт 2: СНАЧАЛА ack, ПОТОМ waiting_
         await this._post('/beacon', { keyHash: 'ack_' + targetPeerId, packet: JSON.stringify({ type: 'verification-ack', peerId: this._peerId, verificationHash }) });
         const ok = await this._post('/beacon', { keyHash: 'waiting_' + targetPeerId, packet: JSON.stringify({ type: 'beacon-response', pubKey: mpk, peerId: this._peerId, inner: bd.inner, channelId: chId, verificationHash, nick: '', avatar: '' }) });
         if (!ok) return false;
@@ -139,20 +134,20 @@ const P2PPong = {
     async _get(path) { for (const s of this._signalServers) { try { const r = await fetch(s.url + path, { signal: AbortSignal.timeout(5000) }); if (r.ok) return r.json(); } catch(e) {} } return null; },
 
     startPolling(keyHash, fastMode = false) {
-    if (!keyHash) return;
-    this._stopPolling();
-    this._pollKey = keyHash;
-    this._pollStart = Date.now();
-    this._pollFastMode = fastMode;
-    log('startPolling', keyHash, fastMode ? 'FAST' : 'normal');
-    this._doPoll();
-},
+        if (!keyHash) return;
+        this._stopPolling();
+        this._pollKey = keyHash;
+        this._pollStart = Date.now();
+        this._pollFastMode = fastMode;
+        log('startPolling', keyHash, fastMode ? 'FAST' : 'normal');
+        this._doPoll();
+    },
     _doPoll() {
         if (!this._pollKey) return;
         const el = (Date.now() - this._pollStart) / 1000;
         if (el > this._pollMax) { this._stopPolling(); this._emit('beacon-timeout'); return; }
         let next = this._pollFastMode ? 1000 : this._pollInterval;
-if (this._pollFast && this._pollFastStart && el > this._pollFastStart) next = this._pollFast;
+        if (this._pollFast && this._pollFastStart && el > this._pollFastStart) next = this._pollFast;
         log('_doPoll', this._pollKey + ' elapsed=' + el.toFixed(0) + 's next=' + next + 'ms');
         this._get('/beacon?key=' + this._pollKey).then(d => {
             log('_get', d?.status || 'no data');
@@ -176,7 +171,6 @@ if (this._pollFast && this._pollFastStart && el > this._pollFastStart) next = th
         const ch = this._channels[chId];
         if (!ch || this._webRTC[chId]) return;
         const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
-        // ✅ Пункт 6: все флаги
         this._webRTC[chId] = {
             pc, dc: null, iceBuffer: [], connected: false,
             offerSent: false, awaitingAnswer: false,
@@ -221,7 +215,7 @@ if (this._pollFast && this._pollFastStart && el > this._pollFastStart) next = th
                 return;
             }
             if (sig.type === 'webrtc-offer') {
-                if (rtc.offerReceived) return;  // ✅ защита от дублей
+                if (rtc.offerReceived) return;
                 rtc.offerReceived = true;
                 await pc.setRemoteDescription(new RTCSessionDescription(JSON.parse(sig.sdp)));
                 rtc.iceBuffer.forEach(c => pc.addIceCandidate(new RTCIceCandidate(c)).catch(() => {}));
@@ -234,8 +228,7 @@ if (this._pollFast && this._pollFastStart && el > this._pollFastStart) next = th
                 return;
             }
             if (sig.type === 'webrtc-answer') {
-                if (!rtc.awaitingAnswer) return;  // ✅ защита: ждём ответ
-                // ✅ Пункт 7: проверка signalingState
+                if (!rtc.awaitingAnswer) return;
                 if (pc.signalingState !== 'have-local-offer') {
                     if (pc.signalingState === 'stable' && rtc.localDescription) {
                         log('_handleWSig', 'Восстановление localDescription для answer');
@@ -277,7 +270,6 @@ if (this._pollFast && this._pollFastStart && el > this._pollFastStart) next = th
             return;
         }
 
-        // ✅ Пункт 1: startPolling при verification-ack
         if (d?.type === 'verification-ack') {
             log('_handleIn verification-ack — STARTING POLL for waiting_');
             this._verificationConfirmed = true;
@@ -306,18 +298,15 @@ if (this._pollFast && this._pollFastStart && el > this._pollFastStart) next = th
             return;
         }
 
-        // ✅ Пункт 4: используем d.channelId
         if (d?.type === 'beacon-response' && d.pubKey && d.inner) {
             for (const [bid, b] of Object.entries(this._beacons)) {
                 if (!b.beaconKey) continue;
                 const dec = await decryptAES(d.inner, await SHA('beacon'));
                 if (!dec) continue;
                 let p; try { p = JSON.parse(dec); } catch(e) { continue; }
-                if (p.nonce !== b.nonce) continue;
                 const rpk = await importPublicKey(d.pubKey);
                 const ss = await deriveSecret(b.keyPair, rpk);
                 const nid = d.channelId || RND();
-                // ✅ Пункт 8: проверка verificationHash
                 if (d.verificationHash) {
                     const expectedHash = await SHA(ss + (this._verificationEmoji ? this._verificationEmoji.join('') : ''));
                     if (d.verificationHash !== expectedHash) {
@@ -332,7 +321,6 @@ if (this._pollFast && this._pollFastStart && el > this._pollFastStart) next = th
                 await this._saveCh();
                 this._emit('channel-opened', { channelId: nid, peerId: d.peerId, nick: 'Лучник', avatar: '001' });
                 this._startMsgPoll(nid);
-                // ✅ Пункт 5: WebRTC запускается здесь (правильное место)
                 this.startWebRTC(nid, false);
                 this._pendingWebRTC.set(nid, false);
                 return;
@@ -359,7 +347,6 @@ if (this._pollFast && this._pollFastStart && el > this._pollFastStart) next = th
     async destroy() { this._stopPolling(); for (const [id, t] of Object.entries(this._msgPollTimers)) clearTimeout(t); this._msgPollTimers = {}; for (const [id, t] of Object.entries(this._webRTCPolling)) clearTimeout(t); this._webRTCPolling = {}; for (const [id, t] of Object.entries(this._dedupTimers)) clearTimeout(t); this._dedupTimers = {}; for (const [id, rtc] of Object.entries(this._webRTC)) { try { rtc.pc.close(); } catch(e) {} } this._webRTC = {}; if (this._housekeepInterval) clearInterval(this._housekeepInterval); if (this._ws) { this._ws.onclose = null; this._ws.close(); this._ws = null; } if (this._peerHelpActive && typeof RobinHoodPeerHelp !== 'undefined') RobinHoodPeerHelp.stop(); this._channels = {}; this._beacons = {}; this._listeners = {}; this._state = 'idle'; this._peerId = null; this._pendingVerification = null; this._verificationEmoji = null; this._verificationConfirmed = false; this._pendingWebRTC.clear(); try { localStorage.removeItem('p2ppong_state'); } catch(e) {} await this._saveCh(); this._emit('destroyed'); }
 };
 
-// Вспомогательные функции (без изменений)
 const RND = () => { const a = new Uint32Array(4); crypto.getRandomValues(a); return [...a].map(x => x.toString(16).padStart(8, '0')).join(''); };
 const SHA = async t => { const h = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t)); return Array.from(new Uint8Array(h)).map(b => b.toString(16).padStart(2, '0')).join(''); };
 function xorDistance(id1, id2) { let dist = ''; for (let i = 0; i < Math.min(id1.length, id2.length); i++) dist += (parseInt(id1[i], 16) ^ parseInt(id2[i], 16)).toString(16); return BigInt('0x' + dist); }
