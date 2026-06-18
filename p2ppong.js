@@ -1,5 +1,5 @@
 // ===================================================================
-// P2PPong —  Nonce, ECDH, верификация.
+// Платформа P2PPong — распределённого P2P-ядра
 // ===================================================================
 
 const DEBUG = true;
@@ -122,10 +122,20 @@ const P2PPong = {
     async _get(path) { for (const s of this._signalServers) { try { const r = await fetch(s.url + path, { signal: AbortSignal.timeout(5000) }); if (r.ok) return r.json(); } catch(e) {} } return null; },
 
     startPolling(keyHash) { if (!keyHash) return; this._stopPolling(); this._pollKey = keyHash; this._pollStart = Date.now(); this._doPoll(); },
-    _doPoll() { if (!this._pollKey) return; var me = this; var el = (Date.now() - me._pollStart) / 1000; if (el > me._pollMax) { me._stopPolling(); me._emit('beacon-timeout'); return; } me._get('/beacon?key=' + me._pollKey).then(function(d) { if (d && d.status === 'found' && d.packet) { me._stopPolling(); me._handleIn(d.packet, BLOB_NS); } else { me._pollTimer = setTimeout(function() { me._doPoll(); }, 1000); } }).catch(function() { me._pollTimer = setTimeout(function() { me._doPoll(); }, 1000); }); },
+    _doPoll() {
+        if (!this._pollKey) return;
+        var me = this;
+        var el = (Date.now() - me._pollStart) / 1000;
+        if (el > me._pollMax) { me._stopPolling(); me._emit('beacon-timeout'); return; }
+        me._get('/beacon?key=' + me._pollKey).then(function(d) {
+            if (d && d.status === 'found' && d.packet) { me._stopPolling(); me._handleIn(d.packet, BLOB_NS); }
+            else if (d && d.status === 'taken') { me._stopPolling(); me._emit('beacon-taken'); }
+            else { me._pollTimer = setTimeout(function() { me._doPoll(); }, 1000); }
+        }).catch(function() { me._pollTimer = setTimeout(function() { me._doPoll(); }, 1000); });
+    },
     _stopPolling() { if (this._pollTimer) { clearTimeout(this._pollTimer); this._pollTimer = null; } },
 
-    _startMsgPoll(chId) { if (this._msgPollTimers[chId]) return; var me = this; function poll() { if (!me._channels[chId]) { me._stopMsgPoll(chId); return; } me._get('/beacon?key=msg_' + chId).then(function(d) { if (d && d.packet) { me._handleIn(d.packet, chId); } me._msgPollTimers[chId] = setTimeout(poll, 5000); }).catch(function() { me._msgPollTimers[chId] = setTimeout(poll, 5000); }); } poll(); },
+    _startMsgPoll(chId) { if (this._msgPollTimers[chId]) return; var me = this; function poll() { if (!me._channels[chId]) { me._stopMsgPoll(chId); return; } me._get('/beacon?key=msg_' + chId).then(function(d) { if (d && d.packet) { me._handleIn(d.packet, chId); } me._msgPollTimers[chId] = setTimeout(poll, 2000); }).catch(function() { me._msgPollTimers[chId] = setTimeout(poll, 2000); }); } poll(); },
     _stopMsgPoll(chId) { if (this._msgPollTimers[chId]) { clearTimeout(this._msgPollTimers[chId]); delete this._msgPollTimers[chId]; } },
 
     async startWebRTC(chId, asInitiator) { var ch = this._channels[chId]; if (!ch || this._webRTC[chId]) return; var pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }); this._webRTC[chId] = { pc: pc, dc: null, iceBuffer: [], connected: false, initiator: asInitiator, seenMessages: new Set() }; var me = this; if (asInitiator) { var dc = pc.createDataChannel('chat'); me._webRTC[chId].dc = dc; dc.onopen = function() { me._webRTC[chId].connected = true; me._stats.peersConnected++; me._emit('peer-connected', { channelId: chId }); me._stopWebRTCPoll(chId); }; dc.onmessage = function(e) { var m; try { m = JSON.parse(e.data); } catch(er) { return; } if (m.type === 'message' && !me._webRTC[chId].seenMessages.has(m.nonce)) { me._webRTC[chId].seenMessages.add(m.nonce); ch.blobs.push({ d: m.text, t: m.time, n: m.nonce, from: 'them' }); ch.expires = Date.now() + 600000; me._stats.messagesReceived++; me._emit('message-received', { channelId: chId, text: m.text, from: 'them', timestamp: m.time }); } }; } else { pc.ondatachannel = function(e) { var dc = e.channel; me._webRTC[chId].dc = dc; dc.onopen = function() { me._webRTC[chId].connected = true; me._stats.peersConnected++; me._emit('peer-connected', { channelId: chId }); me._stopWebRTCPoll(chId); }; dc.onmessage = function(ev) { var m; try { m = JSON.parse(ev.data); } catch(er) { return; } if (m.type === 'message' && !me._webRTC[chId].seenMessages.has(m.nonce)) { me._webRTC[chId].seenMessages.add(m.nonce); ch.blobs.push({ d: m.text, t: m.time, n: m.nonce, from: 'them' }); ch.expires = Date.now() + 600000; me._stats.messagesReceived++; me._emit('message-received', { channelId: chId, text: m.text, from: 'them', timestamp: m.time }); } }; }; } pc.onicecandidate = function(e) { if (e.candidate) me._webRTC[chId].iceBuffer.push(e.candidate); else me._flushICE(chId); }; if (asInitiator && !me._webRTC[chId].offerSent) { var offer = await pc.createOffer(); await pc.setLocalDescription(offer); me._webRTC[chId].offerSent = true; me._sendWSig(chId, { type: 'webrtc-offer', sdp: JSON.stringify(pc.localDescription) }); } this._startWebRTCPoll(chId); },
