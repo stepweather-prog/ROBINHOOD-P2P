@@ -110,20 +110,21 @@ const P2PPong = {
     async _post(path, body) { if (body.packet === '') { for (const s of this._signalServers) { try { const r = await fetch(s.url + '/delete?key=' + body.keyHash, { signal: AbortSignal.timeout(5000) }); if (r.ok) return { status: 'deleted' }; } catch(e) {} } return null; } for (const s of this._signalServers) { try { const r = await fetch(s.url + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(5000) }); if (r.ok) return r.json(); } catch(e) {} } return null; },
     async _get(path) { for (const s of this._signalServers) { try { const r = await fetch(s.url + path, { signal: AbortSignal.timeout(5000) }); if (r.ok) return r.json(); } catch(e) {} } return null; },
 
-    startPolling(keyHash) {
-        if (!keyHash) return;
-        this._stopPolling();
-        this._pollKey = keyHash;
-        this._pollStart = Date.now();
-        log('startPolling', keyHash);
-        this._pollTimer = setTimeout(() => this._doPoll(), 500);
-    },
+    startPolling(keyHash, fastMode = false) {
+    if (!keyHash) return;
+    this._stopPolling();
+    this._pollKey = keyHash;
+    this._pollStart = Date.now();
+    this._pollFastMode = fastMode;
+    log('startPolling', keyHash, fastMode ? 'FAST' : 'normal');
+    this._doPoll();
+},
     _doPoll() {
         if (!this._pollKey) return;
         const el = (Date.now() - this._pollStart) / 1000;
         if (el > this._pollMax) { this._stopPolling(); this._emit('beacon-timeout'); return; }
-        let next = this._pollInterval;
-        if (this._pollFast && this._pollFastStart && el > this._pollFastStart) next = this._pollFast;
+        let next = this._pollFastMode ? 1000 : this._pollInterval;
+if (this._pollFast && this._pollFastStart && el > this._pollFastStart) next = this._pollFast;
         log('_doPoll', this._pollKey + ' elapsed=' + el.toFixed(0) + 's next=' + next + 'ms');
         this._get('/beacon?key=' + this._pollKey).then(d => {
             log('_get', d?.status || 'no data');
@@ -253,7 +254,7 @@ const P2PPong = {
             log('_handleIn verification-ack — STARTING POLL for waiting_');
             this._verificationConfirmed = true;
             this._emit('verification-acked', {});
-            this.startPolling('waiting_' + this._peerId);
+            this.startPolling('waiting_' + this._peerId, true);
             for (const [id, entry] of this._pendingWebRTC) {
                 if (entry?.waiting) {
                     this._pendingWebRTC.set(id, { waiting: true, ackReceived: true });
