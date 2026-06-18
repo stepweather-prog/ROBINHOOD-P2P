@@ -1,7 +1,7 @@
 {
   "name": "RobinHood P2P",
   "short_name": "RobinHood",
-  "description": "Децентрализованный P2P-мессенджер с оконечным шифрованием на платформе P2PPong",
+  "description": "Децентрализованный P2P-мессенджер с оконечным шифрованием",
   "start_url": "/ROBINHOOD-P2P/",
   "display": "standalone",
   "orientation": "portrait",
