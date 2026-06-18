@@ -1,5 +1,5 @@
 // ===================================================================
-// P2PPong v1.0.8 — Исправлены синтаксис, маяк, beacon-response
+// P2PPong v1.0.9 — Правильная верификация по смайлам
 // ===================================================================
 
 const DEBUG = true;
@@ -67,14 +67,16 @@ const P2PPong = {
             this._peerId = await generateHardwarePeerId();
             this._emit('peer-id-generated', { peerId: this._peerId });
             const kp = await generateKeyPair(); const pk = await exportPublicKey(kp); const nonce = RND(); const bid = RND();
-            const bk = await SHA(nonce + 'beacon');
-            const inner = await encryptAES(JSON.stringify({ nonce, timestamp: Date.now(), peerId: this._peerId }), bk);
+            const correctEmoji = this._genEmoji();
+            this._verificationEmoji = correctEmoji;
+            const bk = await SHA('beacon');
+            const inner = await encryptAES(JSON.stringify({ nonce, timestamp: Date.now(), peerId: this._peerId, emoji: correctEmoji }), bk);
             const bd = { type: 'beacon', pubKey: pk, peerId: this._peerId, inner, targetPeerId: this._peerId, nick: '', avatar: '' };
             bd.sig = await computeHMAC(JSON.stringify(bd), bk);
             this._beacons[bid] = { keyPair: kp, pubKey: pk, nonce, beaconKey: bk, expires: Date.now() + 300000 };
             const result = await this._post('/beacon', { keyHash: 'waiting_' + this._peerId, packet: JSON.stringify(bd) });
             if (result) {
-                log('craftArrow', 'маяк опубликован, ждём Пира Б');
+                log('craftArrow', 'Маяк опубликован. Смайлы для верификации: ' + correctEmoji.join(' '));
             } else {
                 this._emit('error', { message: 'Не удалось опубликовать маяк' });
             }
@@ -91,21 +93,54 @@ const P2PPong = {
         const bd = JSON.parse(d.packet);
         if (!bd?.pubKey || !bd?.inner) return false;
         if (!this._peerId) this._peerId = await generateHardwarePeerId();
-        const emoji = this._genEmoji();
-        this._verificationEmoji = emoji;
-        this._pendingVerification = { bd, targetPeerId, emoji };
-        this._pendingWebRTC.set('pending', { waiting: true });
+        
+        const decrypted = await decryptAES(bd.inner, await SHA('beacon'));
+        if (!decrypted) return false;
+        let innerData;
+        try { innerData = JSON.parse(decrypted); } catch(e) { return false; }
+        
+        const correctEmoji = innerData.emoji || [];
+        this._verificationEmoji = correctEmoji;
+        this._pendingVerification = { bd, targetPeerId, emoji: correctEmoji };
+        
         const bid = RND();
         this._beacons[bid] = {
             keyPair: await generateKeyPair(),
             pubKey: bd.pubKey,
-            nonce: '',
+            nonce: innerData.nonce || '',
             beaconKey: await SHA('beacon'),
             expires: Date.now() + 300000
         };
-        const ep = JSON.stringify({ type: 'verification-emoji', emoji, peerId: this._peerId, pubKey: bd.pubKey, inner: bd.inner });
-        await this._post('/beacon', { keyHash: 'emoji_' + targetPeerId, packet: ep });
-        this._emit('verification-needed', { emoji });
+        
+        this._emit('beacon-received', {
+            peerId: bd.peerId,
+            correctEmoji: correctEmoji,
+            accept: async (userEmojiInput) => {
+                if (JSON.stringify(userEmojiInput) !== JSON.stringify(correctEmoji)) {
+                    this._emit('error', { message: 'Неверный порядок смайлов' });
+                    return;
+                }
+                const rpk = await importPublicKey(bd.pubKey);
+                const kp = this._beacons[bid].keyPair;
+                const mpk = await exportPublicKey(kp);
+                const ss = await deriveSecret(kp, rpk);
+                const nid = RND();
+                const verificationHash = await SHA(ss + userEmojiInput.join(''));
+                this._channels[nid] = { secret: ss, ratchetKey: ss, ratchetIndex: 0, oldKeys: [], lastReceivedRi: -1, peerId: bd.peerId, type: 'cup', blobs: [], expires: Date.now() + 600000, createdAt: Date.now(), verificationHash };
+                
+                const ep = JSON.stringify({ type: 'verification-emoji', emoji: userEmojiInput, peerId: this._peerId, pubKey: bd.pubKey, inner: bd.inner });
+                await this._post('/beacon', { keyHash: 'emoji_' + bd.peerId, packet: ep });
+                
+                await this._post('/beacon', { keyHash: 'ack_' + bd.peerId, packet: JSON.stringify({ type: 'verification-ack', peerId: this._peerId, verificationHash }) });
+                await this._post('/beacon', { keyHash: 'waiting_' + this._peerId, packet: JSON.stringify({ type: 'beacon-response', pubKey: mpk, peerId: this._peerId, inner: bd.inner, channelId: nid, verificationHash }) });
+                
+                this._stats.channelsOpened++; await this._saveCh();
+                this._emit('channel-opened', { channelId: nid, peerId: bd.peerId, nick: 'Лучник', avatar: '001' });
+                this._startMsgPoll(nid); this.startWebRTC(nid, true);
+            }
+        });
+        
+        this._emit('verification-needed', { emoji: correctEmoji });
         this.saveState();
         return true;
     },
@@ -231,10 +266,8 @@ const P2PPong = {
                 if (!rtc.awaitingAnswer) return;
                 if (pc.signalingState !== 'have-local-offer') {
                     if (pc.signalingState === 'stable' && rtc.localDescription) {
-                        log('_handleWSig', 'Восстановление localDescription для answer');
                         await pc.setLocalDescription(rtc.localDescription);
                     } else {
-                        log('_handleWSig', 'Неверное состояние для answer: ' + pc.signalingState);
                         return;
                     }
                 }
@@ -271,30 +304,44 @@ const P2PPong = {
         }
 
         if (d?.type === 'verification-ack') {
-            log('_handleIn verification-ack — STARTING POLL for waiting_');
             this._verificationConfirmed = true;
             this._emit('verification-acked', {});
             this.startPolling('waiting_' + this._peerId, true);
-            for (const [id, entry] of this._pendingWebRTC) {
-                if (entry?.waiting) {
-                    this._pendingWebRTC.set(id, { waiting: true, ackReceived: true });
-                }
-            }
             return;
         }
 
         if (d?.type === 'beacon' && d.pubKey && d.inner) {
             if (d.peerId === this._peerId) return;
-            if (d.sig && !await verifyHMAC(JSON.stringify(d), d.sig, await SHA('beacon'))) return;
-            this._emit('beacon-received', { peerId: d.peerId, accept: async () => {
-                const rpk = await importPublicKey(d.pubKey); const kp = await generateKeyPair(); const mpk = await exportPublicKey(kp);
-                const ss = await deriveSecret(kp, rpk); const nid = RND(); const vh = await SHA(ss + '');
-                this._channels[nid] = { secret: ss, ratchetKey: ss, ratchetIndex: 0, oldKeys: [], lastReceivedRi: -1, peerId: d.peerId, type: 'cup', blobs: [], expires: Date.now() + 600000, createdAt: Date.now(), verificationHash: vh };
-                await this._post('/beacon', { keyHash: 'waiting_' + this._peerId, packet: JSON.stringify({ type: 'beacon-response', pubKey: mpk, peerId: this._peerId, inner: d.inner, channelId: nid, verificationHash: vh }) });
-                this._stats.channelsOpened++; await this._saveCh();
-                this._emit('channel-opened', { channelId: nid, peerId: d.peerId, nick: 'Лучник', avatar: '001' });
-                this._startMsgPoll(nid); this.startWebRTC(nid, true);
-            }});
+            const decrypted = await decryptAES(d.inner, await SHA('beacon'));
+            if (!decrypted) return;
+            let innerData;
+            try { innerData = JSON.parse(decrypted); } catch(e) { return; }
+            const correctEmoji = innerData.emoji || [];
+            this._verificationEmoji = correctEmoji;
+            this._emit('beacon-received', {
+                peerId: d.peerId,
+                correctEmoji: correctEmoji,
+                accept: async (userEmojiInput) => {
+                    if (JSON.stringify(userEmojiInput) !== JSON.stringify(correctEmoji)) {
+                        this._emit('error', { message: 'Неверный порядок смайлов' });
+                        return;
+                    }
+                    const rpk = await importPublicKey(d.pubKey);
+                    const kp = await generateKeyPair();
+                    const mpk = await exportPublicKey(kp);
+                    const ss = await deriveSecret(kp, rpk);
+                    const nid = RND();
+                    const verificationHash = await SHA(ss + userEmojiInput.join(''));
+                    this._channels[nid] = { secret: ss, ratchetKey: ss, ratchetIndex: 0, oldKeys: [], lastReceivedRi: -1, peerId: d.peerId, type: 'cup', blobs: [], expires: Date.now() + 600000, createdAt: Date.now(), verificationHash };
+                    const ep = JSON.stringify({ type: 'verification-emoji', emoji: userEmojiInput, peerId: this._peerId, pubKey: d.pubKey, inner: d.inner });
+                    await this._post('/beacon', { keyHash: 'emoji_' + d.peerId, packet: ep });
+                    await this._post('/beacon', { keyHash: 'ack_' + d.peerId, packet: JSON.stringify({ type: 'verification-ack', peerId: this._peerId, verificationHash }) });
+                    await this._post('/beacon', { keyHash: 'waiting_' + this._peerId, packet: JSON.stringify({ type: 'beacon-response', pubKey: mpk, peerId: this._peerId, inner: d.inner, channelId: nid, verificationHash }) });
+                    this._stats.channelsOpened++; await this._saveCh();
+                    this._emit('channel-opened', { channelId: nid, peerId: d.peerId, nick: 'Лучник', avatar: '001' });
+                    this._startMsgPoll(nid); this.startWebRTC(nid, true);
+                }
+            });
             return;
         }
 
@@ -310,7 +357,7 @@ const P2PPong = {
                 if (d.verificationHash) {
                     const expectedHash = await SHA(ss + (this._verificationEmoji ? this._verificationEmoji.join('') : ''));
                     if (d.verificationHash !== expectedHash) {
-                        log('_handleIn', 'VERIFICATION HASH MISMATCH — возможная MitM-атака!');
+                        log('_handleIn', 'VERIFICATION HASH MISMATCH');
                         return;
                     }
                 }
@@ -322,7 +369,6 @@ const P2PPong = {
                 this._emit('channel-opened', { channelId: nid, peerId: d.peerId, nick: 'Лучник', avatar: '001' });
                 this._startMsgPoll(nid);
                 this.startWebRTC(nid, false);
-                this._pendingWebRTC.set(nid, false);
                 return;
             }
         }
