@@ -74,8 +74,9 @@ const P2PPong = {
             this._beacons[bid] = { keyPair: kp, pubKey: pk, nonce, beaconKey: bk, expires: Date.now() + 300000 };
             const result = await this._post('/beacon', { keyHash: 'waiting_' + this._peerId, packet: JSON.stringify(bd) });
             if (result) {
-                this.startPolling('waiting_' + this._peerId);
-            } else {
+    // Не опрашиваем свой маяк — ждём emoji_ через housekeeping
+    log('craftArrow', 'маяк опубликован, ждём Пира Б');
+} else {
                 this._emit('error', { message: 'Не удалось опубликовать маяк' });
             }
             this.saveState();
