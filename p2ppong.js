@@ -1,5 +1,5 @@
 // ===================================================================
-// P2PPong vFinal — Crypto Worker, HSTS, метрики, авто-ratchet
+// P2PPong  — Crypto Worker, HSTS, метрики, авто-ratchet
 // ===================================================================
 
 const DEBUG = true;
@@ -251,7 +251,16 @@ const P2PPong = {
         const el = (Date.now() - me._pollStart) / 1000;
         if (el > CONFIG.POLL_MAX) { me._stopPolling(); me._emit('beacon-timeout'); return; }
         me._get('/beacon?key=' + me._pollKey).then(function(d) {
-            if (d && d.status === 'found' && d.packet) { me._stopPolling(); me._handleIn(d.packet, BLOB_NS); }
+            if (d && d.status === 'found' && d.packet) {
+    try {
+        const p = JSON.parse(d.packet);
+        if (p.type === 'beacon' && p.peerId === me._peerId) {
+            me._pollTimer = setTimeout(function() { me._doPoll(); }, 1000);
+            return;
+        }
+    } catch(e) {}
+    me._stopPolling(); me._handleIn(d.packet, BLOB_NS);
+}
             else if (d && d.status === 'taken') { me._stopPolling(); me._emit('beacon-taken'); }
             else { me._pollTimer = setTimeout(function() { me._doPoll(); }, 1000); }
         }).catch(function(e) { log('_doPoll error', e.message); me._pollTimer = setTimeout(function() { me._doPoll(); }, 1000); });
