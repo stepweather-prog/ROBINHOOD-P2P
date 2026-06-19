@@ -246,6 +246,7 @@ const P2PPong = {
             try {
                 const r = await fetch(s.url + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(5000) });
                 if (r.ok) return r.json();
+                if (r.status === 429) { await new Promise(resolve => setTimeout(resolve, 5000)); }
             } catch(e) { log('_post error', s.name, e.message); }
         }
         return null;
@@ -255,6 +256,7 @@ const P2PPong = {
             try {
                 const r = await fetch(s.url + path, { signal: AbortSignal.timeout(5000) });
                 if (r.ok) return r.json();
+                if (r.status === 429) { await new Promise(resolve => setTimeout(resolve, 5000)); }
             } catch(e) { log('_get error', s.name, e.message); }
         }
         return null;
