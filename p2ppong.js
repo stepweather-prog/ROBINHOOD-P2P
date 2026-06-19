@@ -183,12 +183,7 @@ const P2PPong = {
             await this._post('/beacon', { keyHash: 'ack_' + targetPeerId, packet: JSON.stringify({ type: 'verification-ack', peerId: this._peerId, verificationHash }) });
             const ok = await this._post('/beacon', { keyHash: 'waiting_' + targetPeerId, packet: JSON.stringify({ type: 'beacon-response', pubKey: mpk, peerId: this._peerId, inner: bd.inner, channelId: chId, verificationHash, nick: '', avatar: '' }) });
             if (!ok) { this._emit('error', { message: 'Не удалось отправить ответ' }); return false; }
-            this._stopPolling();
-            this._cleanupBeaconKeys(targetPeerId);
-            this._stats.channelsOpened++;
-            this._emit('channel-opened', { channelId: chId, peerId: bd.peerId, nick: 'Лучник', avatar: '001' });
-            this._startMsgPoll(chId); this._verificationEmoji = null;
-            this.startWebRTC(chId, true);
+            this._verificationEmoji = null;
             return true;
         } catch(e) {
             this._emit('error', { message: 'Ошибка подтверждения: ' + e.message });
@@ -292,6 +287,7 @@ const P2PPong = {
         const me = this;
         function poll() {
             if (!me._channels[chId]) { me._stopMsgPoll(chId); return; }
+            if (me._webRTC[chId] && me._webRTC[chId].connected) { me._stopMsgPoll(chId); return; }
             me._get('/beacon?key=msg_' + chId).then(function(d) {
                 if (d && d.packet) me._handleIn(d.packet, chId);
                 me._msgPollTimers[chId] = setTimeout(poll, CONFIG.MSG_POLL_INTERVAL);
@@ -308,9 +304,15 @@ const P2PPong = {
             this._webRTC[chId] = { pc, dc: null, iceBuffer: [], connected: false, initiator: asInitiator, seenMessages: new Set(), offerSent: false };
             const me = this;
             pc.onicecandidate = function(e) { if (e.candidate) me._webRTC[chId].iceBuffer.push(e.candidate); else me._flushICE(chId); };
+            pc.onconnectionstatechange = function() {
+                if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed' || pc.connectionState === 'closed') {
+                    me._webRTC[chId].connected = false;
+                    me._startMsgPoll(chId);
+                }
+            };
             if (asInitiator) {
                 const dc = pc.createDataChannel('chat'); me._webRTC[chId].dc = dc;
-                dc.onopen = function() { me._webRTC[chId].connected = true; me._stats.peersConnected++; me._emit('peer-connected', { channelId: chId }); me._stopWebRTCPoll(chId); };
+                dc.onopen = function() { me._webRTC[chId].connected = true; me._stats.peersConnected++; me._emit('peer-connected', { channelId: chId }); me._stopWebRTCPoll(chId); me._stopMsgPoll(chId); };
                 dc.onmessage = function(e) { me._handleDCMessage(chId, ch, e); };
                 const offer = await pc.createOffer(); await pc.setLocalDescription(offer);
                 me._webRTC[chId].offerSent = true;
@@ -318,7 +320,7 @@ const P2PPong = {
             } else {
                 pc.ondatachannel = function(e) {
                     const dc = e.channel; me._webRTC[chId].dc = dc;
-                    dc.onopen = function() { me._webRTC[chId].connected = true; me._stats.peersConnected++; me._emit('peer-connected', { channelId: chId }); me._stopWebRTCPoll(chId); };
+                    dc.onopen = function() { me._webRTC[chId].connected = true; me._stats.peersConnected++; me._emit('peer-connected', { channelId: chId }); me._stopWebRTCPoll(chId); me._stopMsgPoll(chId); };
                     dc.onmessage = function(ev) { me._handleDCMessage(chId, ch, ev); };
                 };
             }
@@ -435,7 +437,6 @@ const P2PPong = {
             this._emit('verification-acked', {}); this.startPolling('waiting_' + this._peerId); return;
         }
         if (d.type === 'beacon-ack' && d.channelId) {
-            if (Object.keys(this._channels).length > 0) return;
             const ch = this._channels[d.channelId];
             if (ch) {
                 this._stopPolling();
