@@ -1,5 +1,5 @@
 // ===================================================================
-// P2PPong vFinal — Nonce сложность, лимит голосовых, ratchet авто
+// P2PPong vFinal — Crypto Worker, HSTS, метрики, авто-ratchet
 // ===================================================================
 
 const DEBUG = true;
@@ -21,13 +21,41 @@ const CONFIG = {
     RATCHET_RESYNC_INTERVAL: 60000
 };
 
-const SIGNAL_PINS = [
-    'robincall.stephanclaps-491.workers.dev',
-    'p2ppong-v2.onrender.com'
-];
-
 const DHT = { _nodeId: null, _buckets: [], _storage: {}, _k: 20, _alpha: 3, _peers: new Map(), _signalSend: null };
 const BLOB_NS = '00000000000000000000000000000000';
+
+const cryptoWorker = new Worker('crypto-worker.js');
+const cryptoCallbacks = {};
+let cryptoMsgId = 0;
+
+function cryptoCall(action, payload) {
+    return new Promise((resolve, reject) => {
+        const id = ++cryptoMsgId;
+        cryptoCallbacks[id] = { resolve, reject };
+        cryptoWorker.postMessage({ id, action, payload });
+    });
+}
+
+cryptoWorker.onmessage = function(e) {
+    const { id, result, error } = e.data;
+    if (cryptoCallbacks[id]) {
+        if (error) cryptoCallbacks[id].reject(new Error(error));
+        else cryptoCallbacks[id].resolve(result);
+        delete cryptoCallbacks[id];
+    }
+};
+
+const SHA = (t) => cryptoCall('SHA', t);
+const workerGenerateKeyPair = () => cryptoCall('generateKeyPair');
+const workerExportPublicKey = (kp) => cryptoCall('exportPublicKey', kp);
+const workerImportPublicKey = (b64) => cryptoCall('importPublicKey', b64);
+const workerDeriveSecret = (kp, remotePubKey) => cryptoCall('deriveSecret', { kp, remotePubKey });
+const workerEncryptAES = (text, secret) => cryptoCall('encryptAES', { text, secret });
+const workerDecryptAES = (enc, secret) => cryptoCall('decryptAES', { enc, secret });
+const workerComputeHMAC = (data, secret) => cryptoCall('computeHMAC', { data, secret });
+const workerVerifyHMAC = (data, sig, secret) => cryptoCall('verifyHMAC', { data, sig, secret });
+const workerPackBlob = (jsonString, ch) => cryptoCall('packBlob', { jsonString, ch });
+const workerUnpackBlob = (blob, ch) => cryptoCall('unpackBlob', { blob, ch });
 
 const P2PPong = {
     _peerId: null, _beacons: {}, _channels: {}, _ws: null,
@@ -63,12 +91,7 @@ const P2PPong = {
         }
     },
 
-    _genNonce() {
-        const a = new Uint32Array(CONFIG.NONCE_LENGTH / 8);
-        crypto.getRandomValues(a);
-        return Array.from(a).map(function(x) { return x.toString(16).padStart(8, '0'); }).join('');
-    },
-
+    _genNonce() { const a = new Uint32Array(CONFIG.NONCE_LENGTH / 8); crypto.getRandomValues(a); return Array.from(a).map(function(x) { return x.toString(16).padStart(8, '0'); }).join(''); },
     _genEmoji() { const p = ['😀','😂','🤣','😍','😘','😜','😎','🤩','🥳','😇','🤠','🫡','🤔','😏','😤','🥺','😱','💀','👽','🤖']; return [...Array(5)].map(() => p[Math.floor(Math.random()*p.length)]); },
 
     async craftArrow() {
@@ -77,14 +100,14 @@ const P2PPong = {
         try {
             this._peerId = RND();
             this._emit('peer-id-generated', { peerId: this._peerId });
-            const kp = await generateKeyPair(); const pk = await exportPublicKey(kp);
+            const kp = await workerGenerateKeyPair(); const pk = kp.publicKey;
             const beaconNonce = this._genNonce(); const bid = RND();
             const correctEmoji = this._genEmoji();
             this._verificationEmoji = correctEmoji;
             const bk = await SHA(beaconNonce + 'beacon');
-            const inner = await encryptAES(JSON.stringify({ timestamp: Date.now(), peerId: this._peerId, emoji: correctEmoji }), bk);
+            const inner = await workerEncryptAES(JSON.stringify({ timestamp: Date.now(), peerId: this._peerId, emoji: correctEmoji }), bk);
             const bd = { type: 'beacon', pubKey: pk, peerId: this._peerId, inner, nonce: beaconNonce, targetPeerId: this._peerId, nick: '', avatar: '' };
-            bd.sig = await computeHMAC(beaconNonce + bd.peerId, bk);
+            bd.sig = await workerComputeHMAC(beaconNonce + bd.peerId, bk);
             this._beacons[bid] = { keyPair: kp, pubKey: pk, nonce: beaconNonce, beaconKey: bk, expires: Date.now() + CONFIG.BEACON_TTL };
             await this._post('/beacon', { keyHash: 'waiting_' + this._peerId, packet: JSON.stringify(bd) });
             return this._peerId;
@@ -102,9 +125,9 @@ const P2PPong = {
         if (!beaconNonce || beaconNonce.length < CONFIG.NONCE_LENGTH) { this._emit('error', { message: 'Маяк с невалидным nonce' }); return false; }
         if (!this._peerId) this._peerId = RND();
         const bk = await SHA(beaconNonce + 'beacon');
-        const sigValid = await verifyHMAC(beaconNonce + bd.peerId, bd.sig, bk);
+        const sigValid = await workerVerifyHMAC(beaconNonce + bd.peerId, bd.sig, bk);
         if (!sigValid) { this._emit('error', { message: 'Подпись маяка недействительна' }); return false; }
-        const decrypted = await decryptAES(bd.inner, bk);
+        const decrypted = await workerDecryptAES(bd.inner, bk);
         if (!decrypted) { this._emit('error', { message: 'Не удалось расшифровать маяк' }); return false; }
         const innerData = JSON.parse(decrypted);
         const correctEmoji = innerData.emoji || [];
@@ -112,7 +135,7 @@ const P2PPong = {
         this._pendingVerification = { bd, targetPeerId, emoji: correctEmoji };
         this._emojiAttempts = 0;
         const bid = RND();
-        this._beacons[bid] = { keyPair: await generateKeyPair(), pubKey: bd.pubKey, nonce: beaconNonce, beaconKey: bk, expires: Date.now() + CONFIG.BEACON_TTL };
+        this._beacons[bid] = { keyPair: await workerGenerateKeyPair(), pubKey: bd.pubKey, nonce: beaconNonce, beaconKey: bk, expires: Date.now() + CONFIG.BEACON_TTL };
         const ep = JSON.stringify({ type: 'verification-emoji', emoji: correctEmoji, peerId: this._peerId, pubKey: bd.pubKey, inner: bd.inner });
         await this._post('/beacon', { keyHash: 'emoji_' + bd.peerId, packet: ep });
         this._emit('verification-needed', { emoji: correctEmoji });
@@ -130,8 +153,8 @@ const P2PPong = {
         const { bd, targetPeerId, emoji } = this._pendingVerification;
         this._pendingVerification = null;
         try {
-            const rpk = await importPublicKey(bd.pubKey); const kp = await generateKeyPair(); const mpk = await exportPublicKey(kp);
-            const ss = await deriveSecret(kp, rpk);
+            const rpk = await workerImportPublicKey(bd.pubKey); const kp = await workerGenerateKeyPair(); const mpk = kp.publicKey;
+            const ss = await workerDeriveSecret(kp, rpk);
             const verificationHash = await SHA(ss + emoji.join(''));
             const chId = RND();
             this._channels[chId] = { secret: ss, ratchetKey: ss, ratchetIndex: 0, oldKeys: [], lastReceivedRi: -1, peerId: bd.peerId, type: 'cup', blobs: [], expires: Date.now() + CONFIG.CHANNEL_TTL, createdAt: Date.now(), verificationHash };
@@ -284,8 +307,13 @@ const P2PPong = {
             this._emit('message-sent', { channelId: chId, data: text, status: 'sent' }); return true;
         }
         if (ch.ratchetKey) {
-            const packed = await packBlob(JSON.stringify({ d: text, t: Date.now(), n: nonce }), ch);
-            await this._post('/beacon', { keyHash: 'msg_' + chId, packet: packed });
+            const result = await workerPackBlob(JSON.stringify({ d: text, t: Date.now(), n: nonce }), ch);
+            ch.ratchetKey = result.newRatchetKey;
+            ch.ratchetIndex = result.newRatchetIndex;
+            if (!ch.oldKeys) ch.oldKeys = [];
+            ch.oldKeys.push({ index: ch.ratchetIndex - 1, key: ch.ratchetKey });
+            if (ch.oldKeys.length > CONFIG.MAX_OLD_KEYS) ch.oldKeys.shift();
+            await this._post('/beacon', { keyHash: 'msg_' + chId, packet: result.packed });
             ch.blobs.push({ d: text, t: Date.now(), n: nonce, from: 'me', status: 'sent' });
             ch.expires = Date.now() + CONFIG.CHANNEL_TTL; this._stats.messagesSent++;
             this._emit('message-sent', { channelId: chId, data: text, status: 'sent' }); return true;
@@ -297,23 +325,7 @@ const P2PPong = {
         const ch = this._channels[chId]; if (!ch) return false;
         if (audioData.length > CONFIG.MAX_VOICE_SIZE) { this._emit('error', { message: 'Голосовое сообщение слишком большое' }); return false; }
         if (duration > CONFIG.MAX_VOICE_DURATION) { this._emit('error', { message: 'Голосовое сообщение слишком длинное' }); return false; }
-        const nonce = RND();
-        const msg = JSON.stringify({ voice: true, data: audioData, duration });
-        const rtc = this._webRTC[chId];
-        if (rtc && rtc.dc && rtc.dc.readyState === 'open') {
-            rtc.dc.send(JSON.stringify({ type: 'message', text: msg, time: Date.now(), nonce }));
-            ch.blobs.push({ d: msg, t: Date.now(), n: nonce, from: 'me', status: 'sent' });
-            ch.expires = Date.now() + CONFIG.CHANNEL_TTL; this._stats.messagesSent++;
-            this._emit('message-sent', { channelId: chId, data: msg, status: 'sent' }); return true;
-        }
-        if (ch.ratchetKey) {
-            const packed = await packBlob(JSON.stringify({ d: msg, t: Date.now(), n: nonce }), ch);
-            await this._post('/beacon', { keyHash: 'msg_' + chId, packet: packed });
-            ch.blobs.push({ d: msg, t: Date.now(), n: nonce, from: 'me', status: 'sent' });
-            ch.expires = Date.now() + CONFIG.CHANNEL_TTL; this._stats.messagesSent++;
-            this._emit('message-sent', { channelId: chId, data: msg, status: 'sent' }); return true;
-        }
-        return false;
+        return this.sendMessage(chId, JSON.stringify({ voice: true, data: audioData, duration }));
     },
 
     async _handleIn(blobData, chId) {
@@ -327,7 +339,7 @@ const P2PPong = {
             const keys = Object.keys(this._beacons);
             for (let i = 0; i < keys.length; i++) { const b = this._beacons[keys[i]]; if (!b.keyPair) continue;
                 try {
-                    const rpk = await importPublicKey(d.pubKey); const ss = await deriveSecret(b.keyPair, rpk); const nid = d.channelId || RND();
+                    const rpk = await workerImportPublicKey(d.pubKey); const ss = await workerDeriveSecret(b.keyPair, rpk); const nid = d.channelId || RND();
                     if (d.verificationHash) { const expectedHash = await SHA(ss + (this._verificationEmoji ? this._verificationEmoji.join('') : '')); if (d.verificationHash !== expectedHash) { log('_handleIn', 'HASH MISMATCH'); return; } }
                     this._channels[nid] = { secret: ss, ratchetKey: ss, ratchetIndex: 0, oldKeys: [], lastReceivedRi: -1, peerId: d.peerId, type: 'cup', blobs: [], expires: Date.now() + CONFIG.CHANNEL_TTL, createdAt: Date.now(), verificationHash: d.verificationHash };
                     delete this._beacons[keys[i]]; this._stopPolling(); this._stats.channelsOpened++;
@@ -338,7 +350,7 @@ const P2PPong = {
         const ch = this._channels[chId];
         if (ch && ch.ratchetKey) {
             try {
-                const u = await unpackBlob(blobData, ch);
+                const u = await workerUnpackBlob(blobData, ch);
                 if (u) {
                     const dedupKey = chId + '_' + (u.n || u._t || '');
                     if (this._dedupTimers[dedupKey]) return;
@@ -359,28 +371,13 @@ const P2PPong = {
 };
 
 const RND = function() { const a = new Uint32Array(4); crypto.getRandomValues(a); return Array.from(a).map(function(x) { return x.toString(16).padStart(8, '0'); }).join(''); };
-const SHA = async function(t) { const h = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t)); return Array.from(new Uint8Array(h)).map(function(b) { return b.toString(16).padStart(2, '0'); }).join(''); };
 function xorDistance(id1, id2) { let dist = ''; for (let i = 0; i < Math.min(id1.length, id2.length); i++) dist += (parseInt(id1[i], 16) ^ parseInt(id2[i], 16)).toString(16); return BigInt('0x' + dist); }
 function getBucketIndex(dist) { if (dist === 0n) return 0; return dist.toString(2).length - 1; }
 function initBuckets() { DHT._buckets = Array.from({ length: 256 }, function() { return []; }); }
 function addPeer(peerId, conn) { const dist = xorDistance(DHT._nodeId, peerId); const idx = Math.min(getBucketIndex(dist), 255); const bucket = DHT._buckets[idx]; const existing = bucket.findIndex(function(p) { return p.id === peerId; }); if (existing >= 0) bucket.splice(existing, 1); bucket.unshift({ id: peerId, conn, lastSeen: Date.now() }); if (bucket.length > DHT._k) bucket.pop(); DHT._peers.set(peerId, { conn, lastSeen: Date.now() }); }
 function getClosestPeers(targetId, count) { count = count || DHT._k; const all = []; DHT._buckets.forEach(function(bucket) { bucket.forEach(function(peer) { all.push({ id: peer.id, conn: peer.conn, lastSeen: peer.lastSeen, distance: xorDistance(targetId, peer.id) }); }); }); all.sort(function(a, b) { return a.distance < b.distance ? -1 : 1; }); return all.slice(0, count); }
 async function sendToPeer(peerId, message) { const peer = DHT._peers.get(peerId); if (!peer || !peer.conn || peer.conn.readyState !== 'open') return; try { peer.conn.send(JSON.stringify(message)); } catch(e) {} }
-async function generateKeyPair() { return await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveBits']); }
-async function exportPublicKey(kp) { const r = await crypto.subtle.exportKey('raw', kp.publicKey); return btoa(String.fromCharCode.apply(null, new Uint8Array(r))); }
-async function importPublicKey(b64) { const r = Uint8Array.from(atob(b64), function(c) { return c.charCodeAt(0); }); return await crypto.subtle.importKey('raw', r, { name: 'ECDH', namedCurve: 'P-256' }, false, []); }
-async function deriveSecret(kp, remotePubKey) { const b = await crypto.subtle.deriveBits({ name: 'ECDH', public: remotePubKey }, kp.privateKey, 256); return Array.from(new Uint8Array(b)).map(function(b) { return b.toString(16).padStart(2, '0'); }).join(''); }
-async function encryptAES(text, secret) { const k = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret.substring(0, 32)), { name: 'AES-GCM' }, false, ['encrypt']); const iv = crypto.getRandomValues(new Uint8Array(12)); const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, k, new TextEncoder().encode(text)); const c = new Uint8Array(iv.length + new Uint8Array(ct).length); c.set(iv); c.set(new Uint8Array(ct), iv.length); return btoa(String.fromCharCode.apply(null, c)); }
-async function decryptAES(enc, secret) { try { const k = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret.substring(0, 32)), { name: 'AES-GCM' }, false, ['decrypt']); const c = Uint8Array.from(atob(enc), function(x) { return x.charCodeAt(0); }); return new TextDecoder().decode(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: c.slice(0, 12) }, k, c.slice(12))); } catch(e) { return null; } }
-async function computeHMAC(data, secret) { const k = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret.substring(0, 32)), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']); return btoa(String.fromCharCode.apply(null, new Uint8Array(await crypto.subtle.sign('HMAC', k, new TextEncoder().encode(data))))); }
-async function verifyHMAC(data, sig, secret) { try { const k = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret.substring(0, 32)), { name: 'HMAC', hash: 'SHA-256' }, false, ['verify']); return await crypto.subtle.verify('HMAC', k, Uint8Array.from(atob(sig), function(c) { return c.charCodeAt(0); }), new TextEncoder().encode(data)); } catch(e) { return false; } }
-async function advanceRatchet(ch) { const oldKey = ch.ratchetKey || ch.secret; const salt = (ch.ratchetIndex || 0).toString(16).padStart(16, '0'); const newKey = await SHA(oldKey + salt); ch.ratchetKey = newKey; ch.ratchetIndex = (ch.ratchetIndex || 0) + 1; if (!ch.oldKeys) ch.oldKeys = []; ch.oldKeys.push({ index: ch.ratchetIndex - 1, key: oldKey }); if (ch.oldKeys.length > CONFIG.MAX_OLD_KEYS) ch.oldKeys.shift(); return newKey; }
-async function packBlob(jsonString, ch) { const compressed = await compressData(jsonString); const padSize = Math.floor(Math.random() * 50) + 20; const randomPad = btoa(String.fromCharCode.apply(null, crypto.getRandomValues(new Uint8Array(padSize)))); const data = JSON.stringify({ z: compressed, t: Date.now(), n: RND(), pad: randomPad, ri: ch.ratchetIndex || 0 }); const currentKey = ch.ratchetKey || ch.secret; const hmac = await computeHMAC(data, currentKey); let padded = hmac + '|' + data; if (padded.length < CONFIG.BLOB_SIZE) { const pad = crypto.getRandomValues(new Uint8Array(CONFIG.BLOB_SIZE - padded.length)); padded += String.fromCharCode.apply(null, pad); } await advanceRatchet(ch); return await encryptAES(padded, ch.secret); }
-async function unpackBlob(blob, ch) { const dec = await decryptAES(blob, ch.secret); if (!dec) return null; let result = await tryDecryptWithKey(dec, ch.ratchetKey || ch.secret); if (result) return result; if (ch.oldKeys) { for (let i = ch.oldKeys.length - 1; i >= 0; i--) { result = await tryDecryptWithKey(dec, ch.oldKeys[i].key); if (result) return result; } } return null; }
-async function tryDecryptWithKey(decrypted, key) { const separatorIndex = decrypted.indexOf('|'); if (separatorIndex === -1) return null; const hmac = decrypted.substring(0, separatorIndex); const data = decrypted.substring(separatorIndex + 1).trim().replace(/\x00+$/, ''); if (!await verifyHMAC(data, hmac, key)) return null; try { const parsed = JSON.parse(data); if (parsed.z) { const inner = JSON.parse(await decompressData(parsed.z)); inner._t = parsed.t; inner._ri = parsed.ri; return inner; } delete parsed.pad; delete parsed.ri; return parsed; } catch(e) { return null; } }
-async function compressData(str) { try { const cs = new CompressionStream('gzip'); const writer = cs.writable.getWriter(); writer.write(new TextEncoder().encode(str)); writer.close(); const reader = cs.readable.getReader(); const chunks = []; while (true) { const r = await reader.read(); if (r.done) break; chunks.push(r.value); } const total = new Uint8Array(chunks.reduce(function(s, c) { return s + c.length; }, 0)); let offset = 0; chunks.forEach(function(chunk) { total.set(chunk, offset); offset += chunk.length; }); return btoa(String.fromCharCode.apply(null, total)); } catch(e) { return btoa(str); } }
-async function decompressData(b64) { try { const bytes = Uint8Array.from(atob(b64), function(c) { return c.charCodeAt(0); }); const ds = new DecompressionStream('gzip'); const writer = ds.writable.getWriter(); writer.write(bytes); writer.close(); const reader = ds.readable.getReader(); const chunks = []; while (true) { const r = await reader.read(); if (r.done) break; chunks.push(r.value); } const total = new Uint8Array(chunks.reduce(function(s, c) { return s + c.length; }, 0)); let offset = 0; chunks.forEach(function(chunk) { total.set(chunk, offset); offset += chunk.length; }); return new TextDecoder().decode(total); } catch(e) { return atob(b64); } }
 let lastResyncTime = {}, resyncInProgress = {};
-async function requestRatchetResync(ch) { const chId = Object.keys(P2PPong._channels).find(function(id) { return P2PPong._channels[id] === ch; }); if (!chId) return; const now = Date.now(); if (lastResyncTime[chId] && now - lastResyncTime[chId] < CONFIG.RATCHET_RESYNC_INTERVAL) return; if (resyncInProgress[chId]) return; resyncInProgress[chId] = true; lastResyncTime[chId] = now; log('ratchet-resync', 'Запрошен для ' + chId); try { const kp = await generateKeyPair(); P2PPong._post('/beacon', { keyHash: 'msg_' + chId, packet: await encryptAES(JSON.stringify({ type: 'ratchet-resync', pubKey: await exportPublicKey(kp), peerId: P2PPong._peerId }), ch.secret) }); } catch(e) {} finally { resyncInProgress[chId] = false; } }
+async function requestRatchetResync(ch) { const chId = Object.keys(P2PPong._channels).find(function(id) { return P2PPong._channels[id] === ch; }); if (!chId) return; const now = Date.now(); if (lastResyncTime[chId] && now - lastResyncTime[chId] < CONFIG.RATCHET_RESYNC_INTERVAL) return; if (resyncInProgress[chId]) return; resyncInProgress[chId] = true; lastResyncTime[chId] = now; log('ratchet-resync', 'Запрошен для ' + chId); try { const kp = await workerGenerateKeyPair(); P2PPong._post('/beacon', { keyHash: 'msg_' + chId, packet: await workerEncryptAES(JSON.stringify({ type: 'ratchet-resync', pubKey: kp.publicKey, peerId: P2PPong._peerId }), ch.secret) }); } catch(e) {} finally { resyncInProgress[chId] = false; } }
 
 if (typeof window !== 'undefined') { window.P2PPong = P2PPong; }
