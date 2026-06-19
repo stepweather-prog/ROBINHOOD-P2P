@@ -1,4 +1,4 @@
-// ==================== RobinHood UI — Финал ====================
+// ==================== RobinHood UI  ====================
 // Чистый интерфейс. Ядро: P2PPong.
 
 let contacts = [],
@@ -184,7 +184,7 @@ function initApp() {
     const si = document.getElementById('setting-install'); if (!isPWA && si) si.classList.remove('hidden');
 
     document.getElementById('btn-craft')?.addEventListener('click', () => { document.getElementById('craft-modal')?.classList.add('active'); const pid = P2PPong._peerId; const display = document.getElementById('craft-peer-id-display'); if (display) display.textContent = pid || 'Не создана'; });
-    document.getElementById('btn-craft-arrow')?.addEventListener('click', async () => { try { const peerId = await P2PPong.craftArrow(); const display = document.getElementById('craft-peer-id-display'); if (display) display.textContent = peerId; rMsg('🏹 Стрела изготовлена!', 3000); } catch(e) {} });
+    document.getElementById('btn-craft-arrow')?.addEventListener('click', async () => { try { const peerId = await P2PPong.craftArrow(); const display = document.getElementById('craft-peer-id-display'); if (display) display.textContent = peerId; const emoji = P2PPong.getVerificationEmoji(); if (emoji && emoji.length) { const emojiDisplay = document.getElementById('craft-emoji-display'); if (emojiDisplay) { emojiDisplay.textContent = emoji.join(' '); emojiDisplay.style.display = 'block'; } } rMsg('🏹 Стрела изготовлена!', 3000); } catch(e) {} });
     document.getElementById('btn-copy-peer-id')?.addEventListener('click', () => { const pid = P2PPong._peerId; if (pid) { navigator.clipboard.writeText(pid).then(() => rMsg('⎘ Стрела скопирована!')).catch(() => {}); } });
     document.getElementById('close-craft-modal')?.addEventListener('click', () => { document.getElementById('craft-modal')?.classList.remove('active'); });
     document.getElementById('craft-modal')?.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('active'); });
