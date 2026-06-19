@@ -108,6 +108,7 @@ function initUI() {
     P2PPong.on('message-received', (data) => { handleIncomingMessage(data); });
     P2PPong.on('message-sent', () => { updateCupIndicator(); updateRatchetIndicator(); });
     P2PPong.on('beacon-taken', () => { rMsg('👀 Маяк забрали...', 3000); });
+
     P2PPong.on('verification-needed', (data) => {
         if (verificationModalShown) return;
         verificationModalShown = true;
@@ -119,16 +120,18 @@ function initUI() {
         document.getElementById('verify-error').style.display = 'none';
         document.getElementById('verify-modal')?.classList.add('active');
     });
+
     P2PPong.on('verification-received', (data) => {
         if (verificationModalShown) return;
         verificationModalShown = true;
-        document.getElementById('verify-instruction').textContent = 'Назови эти эмодзи пиру А:';
+        document.getElementById('verify-instruction').textContent = 'Пир Б ввёл эти эмодзи. Подтверди:';
         document.getElementById('verify-emoji-display').textContent = Array.isArray(data.emoji) ? data.emoji.join('') : data.emoji;
         document.getElementById('verify-emoji-input').style.display = 'none';
-        document.getElementById('btn-verify-confirm').style.display = 'none';
+        document.getElementById('btn-verify-confirm').style.display = '';
         document.getElementById('verify-error').style.display = 'none';
         document.getElementById('verify-modal')?.classList.add('active');
     });
+
     P2PPong.on('channel-opened', (data) => { verificationModalShown = false; playQuiverAnimation(); rMsg('✅ Колчан открыт! Тетива натянута!', 3000); addContact({ peerId: data.peerId, name: data.nick || 'Лучник', channelId: data.channelId, verified: false, avatar: data.avatar || '001' }); showChatForChannel(data.channelId); });
     P2PPong.on('channel-expired', (data) => { if (data.channelId === activeChannelId) { activeChannelId = null; activePeerId = null; document.getElementById('robin-bar-sender').textContent = 'RobinHood P2P'; document.getElementById('chat-box').innerHTML = '<div class="typing-indicator" id="typing-indicator"></div>'; } });
     P2PPong.on('error', (data) => { rMsg('❌ ' + data.message, 5000); });
