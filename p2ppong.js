@@ -1,5 +1,5 @@
 // ===================================================================
-// P2PPong  — Crypto Worker, HSTS, метрики, авто-ratchet
+// P2PPong vFinal — Crypto Worker, HSTS, метрики, авто-ratchet
 // ===================================================================
 
 const DEBUG = true;
@@ -58,13 +58,23 @@ const SHA = (t) => cryptoCall('SHA', t);
 const workerGenerateKeyPair = () => cryptoCall('generateKeyPair');
 const workerExportPublicKey = (kp) => cryptoCall('exportPublicKey', kp);
 const workerImportPublicKey = (b64) => cryptoCall('importPublicKey', b64);
-const workerDeriveSecret = (kp, remotePubKey) => cryptoCall('deriveSecret', { kp, remotePubKey });
 const workerEncryptAES = (text, secret) => cryptoCall('encryptAES', { text, secret });
 const workerDecryptAES = (enc, secret) => cryptoCall('decryptAES', { enc, secret });
 const workerComputeHMAC = (data, secret) => cryptoCall('computeHMAC', { data, secret });
 const workerVerifyHMAC = (data, sig, secret) => cryptoCall('verifyHMAC', { data, sig, secret });
 const workerPackBlob = (jsonString, ch) => cryptoCall('packBlob', { jsonString, ch });
 const workerUnpackBlob = (blob, ch) => cryptoCall('unpackBlob', { blob, ch });
+
+async function deriveSecretLocal(myPrivateKeyB64, theirPublicKeyB64) {
+    const myPrivKey = await crypto.subtle.importKey('pkcs8',
+        Uint8Array.from(atob(myPrivateKeyB64), c => c.charCodeAt(0)),
+        { name: 'ECDH', namedCurve: 'P-256' }, false, ['deriveBits']);
+    const theirPubKey = await crypto.subtle.importKey('raw',
+        Uint8Array.from(atob(theirPublicKeyB64), c => c.charCodeAt(0)),
+        { name: 'ECDH', namedCurve: 'P-256' }, false, []);
+    const bits = await crypto.subtle.deriveBits({ name: 'ECDH', public: theirPubKey }, myPrivKey, 256);
+    return Array.from(new Uint8Array(bits)).map(x => x.toString(16).padStart(2, '0')).join('');
+}
 
 const P2PPong = {
     _peerId: null, _beacons: {}, _channels: {}, _ws: null,
@@ -119,7 +129,6 @@ const P2PPong = {
             bd.sig = await workerComputeHMAC(beaconNonce + bd.peerId, bk);
             this._beacons[bid] = { keyPair: kp, pubKey: pk, nonce: beaconNonce, beaconKey: bk, expires: Date.now() + CONFIG.BEACON_TTL };
             await this._post('/beacon', { keyHash: 'waiting_' + this._peerId, packet: JSON.stringify(bd) });
-            // Алиса начинает поллинг своей щели, ожидая ответа Боба
             this.startPolling('waiting_' + this._peerId);
             return this._peerId;
         } finally { this._crafting = false; }
@@ -149,7 +158,6 @@ const P2PPong = {
         this._beacons[bid] = { keyPair: await workerGenerateKeyPair(), pubKey: bd.pubKey, nonce: beaconNonce, beaconKey: bk, expires: Date.now() + CONFIG.BEACON_TTL };
         const ep = JSON.stringify({ type: 'verification-emoji', emoji: correctEmoji, peerId: this._peerId, pubKey: bd.pubKey, inner: bd.inner });
         await this._post('/beacon', { keyHash: 'emoji_' + bd.peerId, packet: ep });
-        // Боб начинает поллинг щели Алисы, ожидая подтверждения
         this.startPolling('waiting_' + bd.peerId);
         this._emit('verification-needed', { emoji: correctEmoji });
         return true;
@@ -166,8 +174,9 @@ const P2PPong = {
         const { bd, targetPeerId, emoji } = this._pendingVerification;
         this._pendingVerification = null;
         try {
-            const rpk = await workerImportPublicKey(bd.pubKey); const kp = await workerGenerateKeyPair(); const mpk = kp.publicKey;
-            const ss = await workerDeriveSecret(kp, rpk);
+            const kp = await workerGenerateKeyPair();
+            const mpk = kp.publicKey;
+            const ss = await deriveSecretLocal(kp.privateKey, bd.pubKey);
             const verificationHash = await SHA(ss + emoji.join(''));
             const chId = RND();
             this._channels[chId] = { secret: ss, ratchetKey: ss, ratchetIndex: 0, oldKeys: [], lastReceivedRi: -1, peerId: bd.peerId, type: 'cup', blobs: [], expires: Date.now() + CONFIG.CHANNEL_TTL, createdAt: Date.now(), verificationHash };
@@ -193,8 +202,7 @@ const P2PPong = {
             const b = this._beacons[keys[i]];
             if (!b.keyPair) continue;
             try {
-                const rpk = await workerImportPublicKey(d.pubKey);
-                const ss = await workerDeriveSecret(b.keyPair, rpk);
+                const ss = await deriveSecretLocal(b.keyPair.privateKey, d.pubKey);
                 const chId = RND();
                 this._channels[chId] = {
                     secret: ss,
@@ -214,7 +222,6 @@ const P2PPong = {
                 this._emit('channel-opened', { channelId: chId, peerId: d.peerId, nick: 'Лучник', avatar: '001' });
                 this._startMsgPoll(chId);
                 this.startWebRTC(chId, true);
-                // Отправить подтверждение Бобу в ту же щель
                 await this._post('/beacon', { keyHash: 'waiting_' + this._peerId, packet: JSON.stringify({
                     type: 'beacon-ack',
                     peerId: this._peerId,
@@ -252,15 +259,15 @@ const P2PPong = {
         if (el > CONFIG.POLL_MAX) { me._stopPolling(); me._emit('beacon-timeout'); return; }
         me._get('/beacon?key=' + me._pollKey).then(function(d) {
             if (d && d.status === 'found' && d.packet) {
-    try {
-        const p = JSON.parse(d.packet);
-        if (p.type === 'beacon' && p.peerId === me._peerId) {
-            me._pollTimer = setTimeout(function() { me._doPoll(); }, 1000);
-            return;
-        }
-    } catch(e) {}
-    me._stopPolling(); me._handleIn(d.packet, BLOB_NS);
-}
+                try {
+                    const p = JSON.parse(d.packet);
+                    if (p.type === 'beacon' && p.peerId === me._peerId) {
+                        me._pollTimer = setTimeout(function() { me._doPoll(); }, 1000);
+                        return;
+                    }
+                } catch(e) {}
+                me._stopPolling(); me._handleIn(d.packet, BLOB_NS);
+            }
             else if (d && d.status === 'taken') { me._stopPolling(); me._emit('beacon-taken'); }
             else { me._pollTimer = setTimeout(function() { me._doPoll(); }, 1000); }
         }).catch(function(e) { log('_doPoll error', e.message); me._pollTimer = setTimeout(function() { me._doPoll(); }, 1000); });
@@ -394,9 +401,7 @@ const P2PPong = {
         const me = this;
         if (d.type && d.type.startsWith('webrtc-')) { this._handleWSig(chId || Object.keys(this._channels)[0], d); return; }
         if (d.type === 'verification-emoji' && d.emoji) {
-            // Сравниваем с теми, что создатель маяка сгенерировал
             if (this._verificationEmoji && arraysEqual(d.emoji, this._verificationEmoji)) {
-                // Emoji совпали — автоматически завершаем рукопожатие
                 this._autoConfirmAsAlice(d);
                 return;
             }
@@ -423,7 +428,8 @@ const P2PPong = {
             const keys = Object.keys(this._beacons);
             for (let i = 0; i < keys.length; i++) { const b = this._beacons[keys[i]]; if (!b.keyPair) continue;
                 try {
-                    const rpk = await workerImportPublicKey(d.pubKey); const ss = await workerDeriveSecret(b.keyPair, rpk); const nid = d.channelId || RND();
+                    const ss = await deriveSecretLocal(b.keyPair.privateKey, d.pubKey);
+                    const nid = d.channelId || RND();
                     if (d.verificationHash) { const expectedHash = await SHA(ss + (this._verificationEmoji ? this._verificationEmoji.join('') : '')); if (d.verificationHash !== expectedHash) { log('_handleIn', 'HASH MISMATCH'); return; } }
                     this._channels[nid] = { secret: ss, ratchetKey: ss, ratchetIndex: 0, oldKeys: [], lastReceivedRi: -1, peerId: d.peerId, type: 'cup', blobs: [], expires: Date.now() + CONFIG.CHANNEL_TTL, createdAt: Date.now(), verificationHash: d.verificationHash };
                     delete this._beacons[keys[i]]; this._stopPolling(); this._stats.channelsOpened++;
