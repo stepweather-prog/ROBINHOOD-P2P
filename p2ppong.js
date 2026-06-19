@@ -21,6 +21,15 @@ const CONFIG = {
     RATCHET_RESYNC_INTERVAL: 60000
 };
 
+function arraysEqual(a, b) {
+    if (!a || !b) return false;
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) {
+        if (a[i] !== b[i]) return false;
+    }
+    return true;
+}
+
 const DHT = { _nodeId: null, _buckets: [], _storage: {}, _k: 20, _alpha: 3, _peers: new Map(), _signalSend: null };
 const BLOB_NS = '00000000000000000000000000000000';
 
@@ -110,6 +119,8 @@ const P2PPong = {
             bd.sig = await workerComputeHMAC(beaconNonce + bd.peerId, bk);
             this._beacons[bid] = { keyPair: kp, pubKey: pk, nonce: beaconNonce, beaconKey: bk, expires: Date.now() + CONFIG.BEACON_TTL };
             await this._post('/beacon', { keyHash: 'waiting_' + this._peerId, packet: JSON.stringify(bd) });
+            // Алиса начинает поллинг своей щели, ожидая ответа Боба
+            this.startPolling('waiting_' + this._peerId);
             return this._peerId;
         } finally { this._crafting = false; }
     },
@@ -138,6 +149,8 @@ const P2PPong = {
         this._beacons[bid] = { keyPair: await workerGenerateKeyPair(), pubKey: bd.pubKey, nonce: beaconNonce, beaconKey: bk, expires: Date.now() + CONFIG.BEACON_TTL };
         const ep = JSON.stringify({ type: 'verification-emoji', emoji: correctEmoji, peerId: this._peerId, pubKey: bd.pubKey, inner: bd.inner });
         await this._post('/beacon', { keyHash: 'emoji_' + bd.peerId, packet: ep });
+        // Боб начинает поллинг щели Алисы, ожидая подтверждения
+        this.startPolling('waiting_' + bd.peerId);
         this._emit('verification-needed', { emoji: correctEmoji });
         return true;
     },
@@ -173,6 +186,44 @@ const P2PPong = {
         }
     },
     getVerificationEmoji() { return this._verificationEmoji; },
+
+    async _autoConfirmAsAlice(d) {
+        const keys = Object.keys(this._beacons);
+        for (let i = 0; i < keys.length; i++) {
+            const b = this._beacons[keys[i]];
+            if (!b.keyPair) continue;
+            try {
+                const rpk = await workerImportPublicKey(d.pubKey);
+                const ss = await workerDeriveSecret(b.keyPair, rpk);
+                const chId = RND();
+                this._channels[chId] = {
+                    secret: ss,
+                    ratchetKey: ss,
+                    ratchetIndex: 0,
+                    oldKeys: [],
+                    lastReceivedRi: -1,
+                    peerId: d.peerId,
+                    type: 'cup',
+                    blobs: [],
+                    expires: Date.now() + CONFIG.CHANNEL_TTL,
+                    createdAt: Date.now()
+                };
+                delete this._beacons[keys[i]];
+                this._stopPolling();
+                this._stats.channelsOpened++;
+                this._emit('channel-opened', { channelId: chId, peerId: d.peerId, nick: 'Лучник', avatar: '001' });
+                this._startMsgPoll(chId);
+                this.startWebRTC(chId, true);
+                // Отправить подтверждение Бобу в ту же щель
+                await this._post('/beacon', { keyHash: 'waiting_' + this._peerId, packet: JSON.stringify({
+                    type: 'beacon-ack',
+                    peerId: this._peerId,
+                    channelId: chId
+                })});
+                return;
+            } catch(e) { log('_autoConfirmAsAlice error', e.message); }
+        }
+    },
 
     async _post(path, body) {
         for (const s of this._signalServers) {
@@ -333,8 +384,32 @@ const P2PPong = {
         log('_handleIn', d.type || 'unknown');
         const me = this;
         if (d.type && d.type.startsWith('webrtc-')) { this._handleWSig(chId || Object.keys(this._channels)[0], d); return; }
-        if (d.type === 'verification-emoji' && d.emoji) { this._verificationEmoji = d.emoji; if (!this._pendingVerification && d.pubKey && d.inner) { this._pendingVerification = { bd: { pubKey: d.pubKey, inner: d.inner, peerId: d.peerId }, targetPeerId: d.peerId, emoji: d.emoji }; } this._emit('verification-received', { emoji: d.emoji }); return; }
+        if (d.type === 'verification-emoji' && d.emoji) {
+            // Сравниваем с теми, что создатель маяка сгенерировал
+            if (this._verificationEmoji && arraysEqual(d.emoji, this._verificationEmoji)) {
+                // Emoji совпали — автоматически завершаем рукопожатие
+                this._autoConfirmAsAlice(d);
+                return;
+            }
+            this._verificationEmoji = d.emoji;
+            if (!this._pendingVerification && d.pubKey && d.inner) {
+                this._pendingVerification = { bd: { pubKey: d.pubKey, inner: d.inner, peerId: d.peerId }, targetPeerId: d.peerId, emoji: d.emoji };
+            }
+            this._emit('verification-received', { emoji: d.emoji });
+            return;
+        }
         if (d.type === 'verification-ack') { this._emit('verification-acked', {}); this.startPolling('waiting_' + this._peerId); return; }
+        if (d.type === 'beacon-ack' && d.channelId) {
+            const ch = this._channels[d.channelId];
+            if (ch) {
+                this._stopPolling();
+                this._stats.channelsOpened++;
+                this._emit('channel-opened', { channelId: d.channelId, peerId: d.peerId, nick: 'Лучник', avatar: '001' });
+                this._startMsgPoll(d.channelId);
+                this.startWebRTC(d.channelId, false);
+                return;
+            }
+        }
         if (d.type === 'beacon-response' && d.pubKey && d.inner) {
             const keys = Object.keys(this._beacons);
             for (let i = 0; i < keys.length; i++) { const b = this._beacons[keys[i]]; if (!b.keyPair) continue;
