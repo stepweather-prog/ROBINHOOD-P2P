@@ -183,6 +183,7 @@ const P2PPong = {
             await this._post('/beacon', { keyHash: 'ack_' + targetPeerId, packet: JSON.stringify({ type: 'verification-ack', peerId: this._peerId, verificationHash }) });
             const ok = await this._post('/beacon', { keyHash: 'waiting_' + targetPeerId, packet: JSON.stringify({ type: 'beacon-response', pubKey: mpk, peerId: this._peerId, inner: bd.inner, channelId: chId, verificationHash, nick: '', avatar: '' }) });
             if (!ok) { this._emit('error', { message: 'Не удалось отправить ответ' }); return false; }
+            // Ждём beacon-ack от Алисы. Не открываем канал здесь.
             this._verificationEmoji = null;
             return true;
         } catch(e) {
@@ -201,7 +202,7 @@ const P2PPong = {
             try {
                 const ss = await deriveSecretLocal(b.keyPair.privateKey, d.pubKey);
                 const chId = RND();
-                this._channels[chId] = {
+                const channel = {
                     secret: ss,
                     ratchetKey: ss,
                     ratchetIndex: 0,
@@ -213,6 +214,7 @@ const P2PPong = {
                     expires: Date.now() + CONFIG.CHANNEL_TTL,
                     createdAt: Date.now()
                 };
+                this._channels[chId] = channel;
                 delete this._beacons[keys[i]];
                 this._stopPolling();
                 this._cleanupBeaconKeys(this._peerId);
@@ -220,10 +222,12 @@ const P2PPong = {
                 this._emit('channel-opened', { channelId: chId, peerId: d.peerId, nick: 'Лучник', avatar: '001' });
                 this._startMsgPoll(chId);
                 this.startWebRTC(chId, true);
+                // Отправляем beacon-ack с ПРАВИЛЬНЫМ channelId
                 await this._post('/beacon', { keyHash: 'waiting_' + this._peerId, packet: JSON.stringify({
                     type: 'beacon-ack',
                     peerId: this._peerId,
-                    channelId: chId
+                    channelId: chId,
+                    pubKey: b.pubKey
                 })});
                 return;
             } catch(e) { log('_autoConfirmAsAlice error', e.message); }
@@ -437,6 +441,31 @@ const P2PPong = {
             this._emit('verification-acked', {}); this.startPolling('waiting_' + this._peerId); return;
         }
         if (d.type === 'beacon-ack' && d.channelId) {
+            // Если канал ещё не существует, создаём его
+            if (!this._channels[d.channelId]) {
+                const keys = Object.keys(this._beacons);
+                for (let i = 0; i < keys.length; i++) {
+                    const b = this._beacons[keys[i]];
+                    if (!b.keyPair) continue;
+                    try {
+                        const ss = await deriveSecretLocal(b.keyPair.privateKey, d.pubKey);
+                        this._channels[d.channelId] = {
+                            secret: ss,
+                            ratchetKey: ss,
+                            ratchetIndex: 0,
+                            oldKeys: [],
+                            lastReceivedRi: -1,
+                            peerId: d.peerId,
+                            type: 'cup',
+                            blobs: [],
+                            expires: Date.now() + CONFIG.CHANNEL_TTL,
+                            createdAt: Date.now()
+                        };
+                        delete this._beacons[keys[i]];
+                        break;
+                    } catch(e) { log('beacon-ack create channel error', e.message); }
+                }
+            }
             const ch = this._channels[d.channelId];
             if (ch) {
                 this._stopPolling();
