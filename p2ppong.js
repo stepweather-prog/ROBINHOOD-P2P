@@ -9,9 +9,9 @@ const CONFIG = {
     BEACON_TTL: 300000,
     CHANNEL_TTL: 600000,
     POLL_MAX: 150,
-    MSG_POLL_INTERVAL: 2000,
-    WEBRTC_POLL_INTERVAL: 3000,
-    HOUSEKEEP_INTERVAL: 5000,
+    MSG_POLL_INTERVAL: 10000,
+    WEBRTC_POLL_INTERVAL: 15000,
+    HOUSEKEEP_INTERVAL: 30000,
     MAX_OLD_KEYS: 50,
     BLOB_SIZE: 4096,
     MAX_EMOJI_ATTEMPTS: 5,
@@ -246,8 +246,9 @@ const P2PPong = {
             try {
                 const r = await fetch(s.url + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(5000) });
                 if (r.ok) return r.json();
-                if (r.status === 429) { await new Promise(resolve => setTimeout(resolve, 5000)); }
+                if (r.status === 429) { await new Promise(resolve => setTimeout(resolve, 10000)); }
             } catch(e) { log('_post error', s.name, e.message); }
+            if (s.name === 'Render') await new Promise(resolve => setTimeout(resolve, 2000));
         }
         return null;
     },
@@ -256,8 +257,9 @@ const P2PPong = {
             try {
                 const r = await fetch(s.url + path, { signal: AbortSignal.timeout(5000) });
                 if (r.ok) return r.json();
-                if (r.status === 429) { await new Promise(resolve => setTimeout(resolve, 5000)); }
+                if (r.status === 429) { await new Promise(resolve => setTimeout(resolve, 10000)); }
             } catch(e) { log('_get error', s.name, e.message); }
+            if (s.name === 'Render') await new Promise(resolve => setTimeout(resolve, 2000));
         }
         return null;
     },
@@ -320,7 +322,11 @@ const P2PPong = {
                     dc.onmessage = function(ev) { me._handleDCMessage(chId, ch, ev); };
                 };
             }
-            this._startWebRTCPoll(chId);
+            setTimeout(() => {
+                if (me._webRTC[chId] && !me._webRTC[chId].connected) {
+                    me._startWebRTCPoll(chId);
+                }
+            }, 15000);
         } catch(e) {
             log('startWebRTC error', e.message);
             this._emit('error', { message: 'Ошибка WebRTC: ' + e.message });
