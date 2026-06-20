@@ -154,11 +154,26 @@ const P2PPong = {
         this._verificationEmoji = correctEmoji;
         this._pendingVerification = { bd, targetPeerId, emoji: correctEmoji };
         this._emojiAttempts = 0;
+
+        // Генерируем свою ECDH пару и готовим beacon-response
+        const kp = await workerGenerateKeyPair();
+        const ss = await deriveSecretLocal(kp.privateKey, bd.pubKey);
+        const verificationHash = await SHA(ss + correctEmoji.join(''));
+        const chId = RND();
+
         const bid = RND();
-        this._beacons[bid] = { keyPair: await workerGenerateKeyPair(), pubKey: bd.pubKey, nonce: beaconNonce, beaconKey: bk, expires: Date.now() + CONFIG.BEACON_TTL };
-        const ep = JSON.stringify({ type: 'verification-emoji', emoji: correctEmoji, peerId: this._peerId, pubKey: bd.pubKey, inner: bd.inner });
+        this._beacons[bid] = { keyPair: kp, pubKey: bd.pubKey, nonce: beaconNonce, beaconKey: bk, expires: Date.now() + CONFIG.BEACON_TTL };
+        this._channels[chId] = { secret: ss, ratchetKey: ss, ratchetIndex: 0, oldKeys: [], lastReceivedRi: -1, peerId: bd.peerId, type: 'cup', blobs: [], expires: Date.now() + CONFIG.CHANNEL_TTL, createdAt: Date.now(), verificationHash };
+
+        // Отправляем emoji для ручного режима И beacon-response для автоматического
+        const ep = JSON.stringify({ type: 'verification-emoji', emoji: correctEmoji, peerId: this._peerId, pubKey: kp.publicKey, inner: bd.inner });
         await this._post('/beacon', { keyHash: 'emoji_' + bd.peerId, packet: ep });
-        this.startPolling('waiting_' + bd.peerId);
+
+        const br = JSON.stringify({ type: 'beacon-response', pubKey: kp.publicKey, peerId: this._peerId, inner: bd.inner, channelId: chId, verificationHash, nick: '', avatar: '' });
+        await this._post('/beacon', { keyHash: 'waiting_' + targetPeerId, packet: br });
+
+        // Ждём beacon-ack от Алисы
+        this.startPolling('waiting_' + targetPeerId);
         this._emit('verification-needed', { emoji: correctEmoji });
         return true;
     },
@@ -174,16 +189,7 @@ const P2PPong = {
         const { bd, targetPeerId, emoji } = this._pendingVerification;
         this._pendingVerification = null;
         try {
-            const kp = await workerGenerateKeyPair();
-            const mpk = kp.publicKey;
-            const ss = await deriveSecretLocal(kp.privateKey, bd.pubKey);
-            const verificationHash = await SHA(ss + emoji.join(''));
-            const chId = RND();
-            this._channels[chId] = { secret: ss, ratchetKey: ss, ratchetIndex: 0, oldKeys: [], lastReceivedRi: -1, peerId: bd.peerId, type: 'cup', blobs: [], expires: Date.now() + CONFIG.CHANNEL_TTL, createdAt: Date.now(), verificationHash };
-            await this._post('/beacon', { keyHash: 'ack_' + targetPeerId, packet: JSON.stringify({ type: 'verification-ack', peerId: this._peerId, verificationHash }) });
-            const ok = await this._post('/beacon', { keyHash: 'waiting_' + targetPeerId, packet: JSON.stringify({ type: 'beacon-response', pubKey: mpk, peerId: this._peerId, inner: bd.inner, channelId: chId, verificationHash, nick: '', avatar: '' }) });
-            if (!ok) { this._emit('error', { message: 'Не удалось отправить ответ' }); return false; }
-            // Ждём beacon-ack от Алисы. Не открываем канал здесь.
+            // Канал уже создан в joinBeacon, просто ждём beacon-ack
             this._verificationEmoji = null;
             return true;
         } catch(e) {
@@ -195,13 +201,14 @@ const P2PPong = {
     getVerificationEmoji() { return this._verificationEmoji; },
 
     async _autoConfirmAsAlice(d) {
+        // Алиса получила beacon-response от Боба
         const keys = Object.keys(this._beacons);
         for (let i = 0; i < keys.length; i++) {
             const b = this._beacons[keys[i]];
             if (!b.keyPair) continue;
             try {
                 const ss = await deriveSecretLocal(b.keyPair.privateKey, d.pubKey);
-                const chId = RND();
+                const chId = d.channelId || RND();
                 const channel = {
                     secret: ss,
                     ratchetKey: ss,
@@ -222,7 +229,7 @@ const P2PPong = {
                 this._emit('channel-opened', { channelId: chId, peerId: d.peerId, nick: 'Лучник', avatar: '001' });
                 this._startMsgPoll(chId);
                 this.startWebRTC(chId, true);
-                // Отправляем beacon-ack с ПРАВИЛЬНЫМ channelId
+                // Отправляем beacon-ack с правильным channelId
                 await this._post('/beacon', { keyHash: 'waiting_' + this._peerId, packet: JSON.stringify({
                     type: 'beacon-ack',
                     peerId: this._peerId,
@@ -274,6 +281,10 @@ const P2PPong = {
                 try {
                     const p = JSON.parse(d.packet);
                     if (p.type === 'beacon' && p.peerId === me._peerId) {
+                        me._pollTimer = setTimeout(function() { me._doPoll(); }, 1000);
+                        return;
+                    }
+                    if (p.type === 'beacon' && p.peerId !== me._peerId) {
                         me._pollTimer = setTimeout(function() { me._doPoll(); }, 1000);
                         return;
                     }
@@ -423,6 +434,19 @@ const P2PPong = {
         log('_handleIn', d.type || 'unknown');
         const me = this;
         if (d.type && d.type.startsWith('webrtc-')) { this._handleWSig(chId || Object.keys(this._channels)[0], d); return; }
+
+        // beacon-response от Боба → Алиса автоматически подтверждает
+        if (d.type === 'beacon-response' && d.pubKey && d.inner) {
+            if (Object.keys(this._channels).length > 0) return;
+            if (this._verificationEmoji) {
+                this._autoConfirmAsAlice(d);
+                return;
+            }
+            // Ручной режим: ждём emoji
+            return;
+        }
+
+        // verification-emoji (ручной режим)
         if (d.type === 'verification-emoji' && d.emoji) {
             if (Object.keys(this._channels).length > 0) return;
             if (this._verificationEmoji && arraysEqual(d.emoji, this._verificationEmoji)) {
@@ -436,36 +460,16 @@ const P2PPong = {
             this._emit('verification-received', { emoji: d.emoji });
             return;
         }
+
+        // verification-ack (ручной режим)
         if (d.type === 'verification-ack') {
             if (Object.keys(this._channels).length > 0) return;
-            this._emit('verification-acked', {}); this.startPolling('waiting_' + this._peerId); return;
+            this._emit('verification-acked', {});
+            return;
         }
+
+        // beacon-ack от Алисы → Боб открывает канал
         if (d.type === 'beacon-ack' && d.channelId) {
-            // Если канал ещё не существует, создаём его
-            if (!this._channels[d.channelId]) {
-                const keys = Object.keys(this._beacons);
-                for (let i = 0; i < keys.length; i++) {
-                    const b = this._beacons[keys[i]];
-                    if (!b.keyPair) continue;
-                    try {
-                        const ss = await deriveSecretLocal(b.keyPair.privateKey, d.pubKey);
-                        this._channels[d.channelId] = {
-                            secret: ss,
-                            ratchetKey: ss,
-                            ratchetIndex: 0,
-                            oldKeys: [],
-                            lastReceivedRi: -1,
-                            peerId: d.peerId,
-                            type: 'cup',
-                            blobs: [],
-                            expires: Date.now() + CONFIG.CHANNEL_TTL,
-                            createdAt: Date.now()
-                        };
-                        delete this._beacons[keys[i]];
-                        break;
-                    } catch(e) { log('beacon-ack create channel error', e.message); }
-                }
-            }
             const ch = this._channels[d.channelId];
             if (ch) {
                 this._stopPolling();
@@ -477,20 +481,7 @@ const P2PPong = {
                 return;
             }
         }
-        if (d.type === 'beacon-response' && d.pubKey && d.inner) {
-            if (Object.keys(this._channels).length > 0) return;
-            const keys = Object.keys(this._beacons);
-            for (let i = 0; i < keys.length; i++) { const b = this._beacons[keys[i]]; if (!b.keyPair) continue;
-                try {
-                    const ss = await deriveSecretLocal(b.keyPair.privateKey, d.pubKey);
-                    const nid = d.channelId || RND();
-                    if (d.verificationHash) { const expectedHash = await SHA(ss + (this._verificationEmoji ? this._verificationEmoji.join('') : '')); if (d.verificationHash !== expectedHash) { log('_handleIn', 'HASH MISMATCH'); return; } }
-                    this._channels[nid] = { secret: ss, ratchetKey: ss, ratchetIndex: 0, oldKeys: [], lastReceivedRi: -1, peerId: d.peerId, type: 'cup', blobs: [], expires: Date.now() + CONFIG.CHANNEL_TTL, createdAt: Date.now(), verificationHash: d.verificationHash };
-                    delete this._beacons[keys[i]]; this._stopPolling(); this._cleanupBeaconKeys(this._peerId); this._stats.channelsOpened++;
-                    this._emit('channel-opened', { channelId: nid, peerId: d.peerId, nick: 'Лучник', avatar: '001' }); this._startMsgPoll(nid); this.startWebRTC(nid, false); return;
-                } catch(e) { log('beacon-response error', e.message); }
-            }
-        }
+
         const ch = this._channels[chId];
         if (ch && ch.ratchetKey) {
             try {
