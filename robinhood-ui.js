@@ -167,17 +167,61 @@ function initUI() {
 
 function handleIncomingMessage(data) {
     if (!data || !data.text) return;
+    
+    // Проверяем voiceData из Понга (новый формат)
+    if (data.voiceData) {
+        const ct = contacts.find(c => c.channelId === data.channelId);
+        const nick = data.nick || ct?.name || 'Друг';
+        const avatar = data.avatar || ct?.avatar || '001';
+        if (data.channelId === activeChannelId) {
+            appendMessage(nick, '🎤 Голосовое', avatar, data.voiceData, 'audio/webm');
+        } else {
+            rMsg('🎤 Голосовое от ' + nick, 3000);
+            playVoiceBlob(data.voiceData);
+        }
+        updateCupIndicator();
+        return;
+    }
+    
+    // Старый формат (JSON в тексте)
     try {
         const parsed = JSON.parse(data.text);
         if (parsed.webrtc) { handleWebRTCSignal(parsed.webrtc, parsed.sdp, data.channelId); return; }
-        if (parsed.voice) { const ct = contacts.find(c => c.channelId === data.channelId); const nick = ct?.name || 'Друг'; const avatar = ct?.avatar || '001'; if (data.channelId === activeChannelId) { appendMessage(nick, '🎤 Голосовое', avatar, parsed.data, 'audio/webm'); } else { rMsg('🎤 Голосовое от ' + nick, 3000); playVoiceBlob(parsed.data); } updateCupIndicator(); return; }
-        if (parsed.d === '__SMOKE__') { selfDestructMode = true; const sd = document.getElementById('toggle-selfdestruct'); if (sd) sd.checked = true; rMsg('🍁 Собеседник включил режим самоуничтожения', 3000); return; }
+        if (parsed.voice) {
+            const ct = contacts.find(c => c.channelId === data.channelId);
+            const nick = ct?.name || 'Друг';
+            const avatar = ct?.avatar || '001';
+            if (data.channelId === activeChannelId) {
+                appendMessage(nick, '🎤 Голосовое', avatar, parsed.data, 'audio/webm');
+            } else {
+                rMsg('🎤 Голосовое от ' + nick, 3000);
+                playVoiceBlob(parsed.data);
+            }
+            updateCupIndicator();
+            return;
+        }
+        if (parsed.d === '__SMOKE__') {
+            selfDestructMode = true;
+            const sd = document.getElementById('toggle-selfdestruct');
+            if (sd) sd.checked = true;
+            rMsg('🍁 Собеседник включил режим самоуничтожения', 3000);
+            return;
+        }
     } catch (e) {}
+    
+    // Обычное текстовое сообщение
     const ct = contacts.find(c => c.channelId === data.channelId);
-    const nick = ct?.name || 'Лучник';
-    const avatar = ct?.avatar || '001';
-    if (data.channelId === activeChannelId) { appendMessage(nick, data.text, avatar); } else { rMsg('Новое от ' + nick, 3000); }
-    updateCupIndicator(); updateRatchetIndicator(); playSound('arrow_hit.wav');
+    const nick = data.nick || ct?.name || 'Лучник';
+    const avatar = data.avatar || ct?.avatar || '001';
+    
+    if (data.channelId === activeChannelId) {
+        appendMessage(nick, data.text, avatar);
+    } else {
+        rMsg('Новое от ' + nick, 3000);
+    }
+    updateCupIndicator();
+    updateRatchetIndicator();
+    playSound('arrow_hit.wav');
 }
 
 function handleWebRTCSignal(type, sdp, channelId) {
