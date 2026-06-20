@@ -13,7 +13,6 @@ const CONFIG = {
     WEBRTC_POLL_INTERVAL: 15000,
     HOUSEKEEP_INTERVAL: 30000,
     MAX_OLD_KEYS: 50,
-    BLOB_SIZE: 4096,
     MAX_EMOJI_ATTEMPTS: 5,
     MAX_VOICE_SIZE: 300000,
     MAX_VOICE_DURATION: 120,
@@ -88,6 +87,7 @@ const P2PPong = {
     _beacons: {},
     _pending: null,
     _signalServer: null,
+    _webRTCSignalBuffer: {},
     
     _signalServers: [
         { type: 'http', url: 'https://robincall.stephanclaps-491.workers.dev', name: 'Cloudflare' },
@@ -146,7 +146,7 @@ const P2PPong = {
         const nonce = this._genNonce();
         const bk = await SHA(nonce + 'beacon');
         const inner = await workerEncryptAES(JSON.stringify({ timestamp: Date.now(), peerId: this._peerId, emoji }), bk);
-        const bd = { type: 'beacon', pubKey: this._kp.publicKey, peerId: this._peerId, inner, nonce };
+        const bd = { type: 'beacon', pubKey: this._kp.publicKey, peerId: this._peerId, inner, nonce, signalServer: this._signalServer.url };
         bd.sig = await workerComputeHMAC(nonce + bd.peerId, bk);
         
         this._beacons[this._peerId] = { keyPair: this._kp, beaconKey: bk, nonce, expires: Date.now() + CONFIG.BEACON_TTL };
@@ -165,6 +165,12 @@ const P2PPong = {
         
         const bd = JSON.parse(d.packet);
         if (!bd?.pubKey || !bd?.inner) { this._emit('error', { message: 'Маяк повреждён' }); return false; }
+        
+        // Синхронизация сигнального сервера с создателем
+        if (bd.signalServer) {
+            const srv = this._signalServers.find(s => s.url === bd.signalServer);
+            if (srv) { this._signalServer = srv; log('signal-synced', srv.name); }
+        }
         
         const bk = await SHA(bd.nonce + 'beacon');
         const sigValid = await workerVerifyHMAC(bd.nonce + bd.peerId, bd.sig, bk);
@@ -188,7 +194,7 @@ const P2PPong = {
         this._beacons[this._peerId] = { keyPair: this._kp, beaconKey: bk, nonce: bd.nonce, expires: Date.now() + CONFIG.BEACON_TTL };
         this._pending = { type: 'joiner', targetPeerId, verificationHash };
         
-        const br = JSON.stringify({ type: 'beacon-response', pubKey: this._kp.publicKey, peerId: this._peerId, inner: bd.inner, channelId: this._chId, verificationHash });
+        const br = JSON.stringify({ type: 'beacon-response', pubKey: this._kp.publicKey, peerId: this._peerId, inner: bd.inner, channelId: this._chId, verificationHash, signalServer: this._signalServer.url });
         await this._post('/beacon', { keyHash: 'waiting_' + targetPeerId, packet: br });
         
         const ep = JSON.stringify({ type: 'verification-emoji', emoji, peerId: this._peerId, pubKey: this._kp.publicKey, inner: bd.inner });
@@ -203,9 +209,15 @@ const P2PPong = {
     getVerificationEmoji() { return this._verificationEmoji; },
     getPeerId() { return this._peerId; },
 
-    _openChannel(peerId) {
+    _openChannel(peerId, signalServerUrl) {
         if (!this._chId) this._chId = RND();
         if (!this._secret) return;
+        
+        // Синхронизация сервера, если передан URL
+        if (signalServerUrl && this._signalServer?.url !== signalServerUrl) {
+            const srv = this._signalServers.find(s => s.url === signalServerUrl);
+            if (srv) { this._signalServer = srv; log('signal-server-synced', srv.name); }
+        }
         
         this._channels[this._chId] = {
             secret: this._secret,
@@ -273,8 +285,19 @@ const P2PPong = {
         let d; try { d = JSON.parse(blobData); } catch(e) { return; }
         log('_handleIn', d.type || 'unknown');
         
+        // ПРАВКА 1: Буферизация ранних WebRTC-сигналов
         if (d.type && d.type.startsWith('webrtc-')) {
-            if (this._chId) this._handleWSig(this._chId, d);
+            if (this._chId) {
+                if (!this._webRTC[this._chId]) {
+                    if (!this._webRTCSignalBuffer[this._chId]) {
+                        this._webRTCSignalBuffer[this._chId] = [];
+                    }
+                    this._webRTCSignalBuffer[this._chId].push(d);
+                    log('webrtc-signal-buffered', d.type);
+                } else {
+                    this._handleWSig(this._chId, d);
+                }
+            }
             return;
         }
         
@@ -284,9 +307,9 @@ const P2PPong = {
             this._chId = d.channelId;
             this._secret = await deriveSecretLocal(this._kp.privateKey, d.pubKey);
             await this._post('/beacon', { keyHash: 'waiting_' + this._peerId, packet: JSON.stringify({
-                type: 'beacon-ack', peerId: this._peerId, channelId: this._chId, pubKey: this._kp.publicKey
+                type: 'beacon-ack', peerId: this._peerId, channelId: this._chId, pubKey: this._kp.publicKey, signalServer: this._signalServer.url
             })});
-            this._openChannel(d.peerId);
+            this._openChannel(d.peerId, d.signalServer);
             return;
         }
         
@@ -296,7 +319,7 @@ const P2PPong = {
             if (!this._secret && d.pubKey) {
                 this._secret = await deriveSecretLocal(this._kp.privateKey, d.pubKey);
             }
-            this._openChannel(d.peerId);
+            this._openChannel(d.peerId, d.signalServer);
             return;
         }
         
@@ -306,9 +329,9 @@ const P2PPong = {
                 this._chId = RND();
                 this._secret = await deriveSecretLocal(this._kp.privateKey, d.pubKey);
                 await this._post('/beacon', { keyHash: 'waiting_' + this._peerId, packet: JSON.stringify({
-                    type: 'beacon-ack', peerId: this._peerId, channelId: this._chId, pubKey: this._kp.publicKey
+                    type: 'beacon-ack', peerId: this._peerId, channelId: this._chId, pubKey: this._kp.publicKey, signalServer: this._signalServer.url
                 })});
-                this._openChannel(d.peerId);
+                this._openChannel(d.peerId, d.signalServer);
                 return;
             }
             this._emit('verification-received', { emoji: d.emoji });
@@ -367,7 +390,6 @@ const P2PPong = {
         const nonce = RND();
         const rtc = this._webRTC[chId || this._chId];
         
-        // WebRTC — шифруем и отправляем
         if (rtc && rtc.dc && rtc.dc.readyState === 'open') {
             const result = await workerPackBlob(JSON.stringify({ d: text, t: Date.now(), n: nonce }), ch);
             const oldKey = ch.ratchetKey;
@@ -382,7 +404,6 @@ const P2PPong = {
             this._emit('message-sent', { channelId: chId || this._chId, data: text, status: 'sent' }); return true;
         }
         
-        // Polling — шифруем и отправляем на сервер
         if (ch.ratchetKey) {
             const result = await workerPackBlob(JSON.stringify({ d: text, t: Date.now(), n: nonce }), ch);
             const oldKey = ch.ratchetKey;
@@ -435,8 +456,23 @@ const P2PPong = {
     _startWebRTC(chId, asInitiator) {
         const ch = this._channels[chId]; if (!ch || this._webRTC[chId]) return;
         try {
-            const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+            const pc = new RTCPeerConnection({ 
+                iceServers: [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:stun1.l.google.com:19302' },
+                    { urls: 'stun:stun.cloudflare.com:3478' }
+                ] 
+            });
             this._webRTC[chId] = { pc, dc: null, iceBuffer: [], connected: false, initiator: asInitiator, seenMessages: new Set(), offerSent: false };
+            
+            // ПРАВКА 2: Обработка буферизованных WebRTC-сигналов
+            if (this._webRTCSignalBuffer[chId]) {
+                const buffered = this._webRTCSignalBuffer[chId];
+                delete this._webRTCSignalBuffer[chId];
+                buffered.forEach(sig => this._handleWSig(chId, sig));
+                log('webrtc-buffer-flushed', buffered.length);
+            }
+            
             const me = this;
             pc.onicecandidate = e => { if (e.candidate) me._webRTC[chId].iceBuffer.push(e.candidate); else me._flushICE(chId); };
             pc.onconnectionstatechange = () => {
@@ -460,12 +496,12 @@ const P2PPong = {
                     dc.onmessage = ev => me._handleDCMessage(chId, ch, ev);
                 };
             }
-            setTimeout(() => { if (me._webRTC[chId] && !me._webRTC[chId].connected) me._startWebRTCPoll(chId); }, 15000);
+            // ПРАВКА 3: Уменьшенный таймаут до 5 секунд
+            setTimeout(() => { if (me._webRTC[chId] && !me._webRTC[chId].connected) me._startWebRTCPoll(chId); }, 5000);
         } catch(e) { log('startWebRTC error', e.message); }
     },
     
     async _handleDCMessage(chId, ch, e) {
-        // Пробуем как зашифрованный блоб (новый формат)
         if (typeof e.data === 'string' && e.data.length > 100) {
             try {
                 const u = await workerUnpackBlob(e.data, ch);
@@ -495,7 +531,6 @@ const P2PPong = {
             } catch(er) {}
         }
         
-        // Fallback: старый формат (открытый JSON) для обратной совместимости
         try {
             const m = JSON.parse(e.data);
             if (m.type === 'message' && m.text) {
@@ -548,6 +583,7 @@ const P2PPong = {
         this._state = 'idle'; this._peerId = null; this._kp = null;
         this._remotePubKey = null; this._secret = null; this._chId = null;
         this._pending = null; this._verificationEmoji = null; this._signalServer = null;
+        this._webRTCSignalBuffer = {};
         this._emit('destroyed');
     }
 };
