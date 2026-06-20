@@ -61,7 +61,7 @@ function stopRingback() { if (ringbackAudio) { ringbackAudio.pause(); ringbackAu
 function startVoiceTimer() { voiceSeconds = 0; const vt = document.getElementById('voice-timer-text'); if (vt) vt.textContent = '🎤 0:00'; voiceTimerInterval = setInterval(() => { voiceSeconds++; const m = Math.floor(voiceSeconds / 60), s = (voiceSeconds % 60).toString().padStart(2, '0'); const vt = document.getElementById('voice-timer-text'); if (vt) vt.textContent = '🎤 ' + m + ':' + s; }, 1000); }
 function stopVoiceTimer() { if (voiceTimerInterval) clearInterval(voiceTimerInterval); }
 function toggleVoiceRecording() { voiceRecording ? stopVoiceRecording() : startVoiceRecording(); }
-function startVoiceRecording() { if (voiceRecorder?.state === 'recording') return; navigator.mediaDevices.getUserMedia({ audio: true }).then(st => { voiceStream = st; voiceRecorder = new MediaRecorder(st, { mimeType: 'audio/webm;codecs=opus', audioBitsPerSecond: 16000 }); voiceChunks = []; voiceRecorder.ondataavailable = e => voiceChunks.push(e.data); voiceRecorder.onstop = () => { if (voiceRecTimeout) clearTimeout(voiceRecTimeout); const blob = new Blob(voiceChunks, { type: 'audio/webm' }); if (blob.size > 100 && blob.size < CONFIG_MAX_VOICE_SIZE && activeChannelId) { const reader = new FileReader(); reader.onload = async () => { const b64 = reader.result.split(',')[1]; await P2PPong.sendVoiceMessage(activeChannelId, b64); appendMessage('Вы', '🎤 Голосовое', selectedAvatar, b64, 'audio/webm'); }; reader.readAsDataURL(blob); } if (voiceStream) { voiceStream.getTracks().forEach(t => t.stop()); voiceStream = null; } voiceRecorder = null; voiceRecording = false; stopVoiceTimer(); document.getElementById('btn-voice-input').style.background = ''; showVoiceRecordingUI(false); }; voiceRecorder.start(); voiceRecording = true; startVoiceTimer(); document.getElementById('btn-voice-input').style.background = '#f44336'; showVoiceRecordingUI(true); voiceRecTimeout = setTimeout(() => { if (voiceRecorder?.state === 'recording') { voiceRecorder.stop(); rMsg('⏰ Максимальная длина записи — 10 секунд', 3000); } }, 10000); }).catch(e => { voiceChunks = []; rMsg('❌ Микрофон недоступен или занят', 3000); }); }
+function startVoiceRecording() { if (voiceRecorder?.state === 'recording') return; navigator.mediaDevices.getUserMedia({ audio: true }).then(st => { voiceStream = st; voiceRecorder = new MediaRecorder(st, { mimeType: 'audio/webm; codecs=opus', audioBitsPerSecond: 16000 }); voiceChunks = []; voiceRecorder.ondataavailable = e => voiceChunks.push(e.data); voiceRecorder.onstop = () => { if (voiceRecTimeout) clearTimeout(voiceRecTimeout); const blob = new Blob(voiceChunks, { type: 'audio/webm' }); if (blob.size > 100 && blob.size < 300000 && activeChannelId) { const reader = new FileReader(); reader.onload = async () => { const b64 = reader.result.split(',')[1]; await P2PPong.sendVoiceMessage(activeChannelId, b64); appendMessage('Вы', '🎤 Голосовое', selectedAvatar, b64, 'audio/webm'); }; reader.readAsDataURL(blob); } if (voiceStream) { voiceStream.getTracks().forEach(t => t.stop()); voiceStream = null; } voiceRecorder = null; voiceRecording = false; stopVoiceTimer(); document.getElementById('btn-voice-input').style.background = ''; showVoiceRecordingUI(false); }; voiceRecorder.start(); voiceRecording = true; startVoiceTimer(); document.getElementById('btn-voice-input').style.background = '#f44336'; showVoiceRecordingUI(true); voiceRecTimeout = setTimeout(() => { if (voiceRecorder?.state === 'recording') { voiceRecorder.stop(); rMsg('⏰ Максимальная длина записи — 10 секунд', 3000); } }, 10000); }).catch(e => { voiceChunks = []; rMsg('❌ Микрофон недоступен или занят', 3000); }); }
 function stopVoiceRecording() { if (voiceRecorder?.state === 'recording') voiceRecorder.stop(); }
 function playVoiceBlob(b64) { const a = new Audio('data:audio/webm;base64,' + b64); a.load(); a.play().catch(e => {}); }
 
@@ -96,7 +96,7 @@ function unlockApp() { lockScreen.style.display = 'none'; appContainer.style.dis
 async function getMediaStream(video = false) { try { return await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true }, video: video ? { width: { ideal: 320 }, height: { ideal: 240 }, facingMode: 'user' } : false }); } catch (e) { return null; } }
 function createPC() { if (pc) { pc.onconnectionstatechange = null; pc.ontrack = null; pc.onicecandidate = null; pc.close(); pc = null; } iceBuffer = []; if (iceFlushTimer) clearTimeout(iceFlushTimer); try { pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }); } catch (e) { return; } if (localStream) localStream.getTracks().forEach(t => pc.addTrack(t, localStream)); pc.ontrack = e => { if (e.streams[0]) { const a = new Audio(); a.srcObject = e.streams[0]; a.load(); a.play().catch(er => {}); } }; pc.onicecandidate = e => { if (e.candidate) { iceBuffer.push(e.candidate); } else { iceFlushTimer = setTimeout(() => { iceBuffer.forEach(c => sendWebRTCMsg('webrtc-ice', JSON.stringify(c))); iceBuffer = []; }, 300); } }; pc.onconnectionstatechange = () => { if (pc.connectionState == 'connected') { callActive = true; stopRingback(); stopRingtone(); document.getElementById('call-status').textContent = '✅ Разговор'; showIncomingControls(false); showActiveControls(true); showCallWave(true); playSound('open.mp3'); updateCallButtonState(); if (iceRestartTimer) clearTimeout(iceRestartTimer); iceRestartInProgress = false; } if (pc.connectionState == 'disconnected' && callActive && !iceRestartInProgress) { if (iceRestartTimer) clearTimeout(iceRestartTimer); iceRestartInProgress = true; iceRestartTimer = setTimeout(async () => { if (pc && pc.connectionState === 'disconnected') { try { await restartICE(); } catch (e) { hang(false); } finally { iceRestartInProgress = false; } } }, 3000); } if (pc.connectionState == 'failed') { if (iceRestartTimer) clearTimeout(iceRestartTimer); iceRestartInProgress = false; hang(false); } }; return pc; }
 async function restartICE() { if (!pc || pc.connectionState === 'closed') return; const offer = await pc.createOffer({ iceRestart: true }); await pc.setLocalDescription(offer); sendWebRTCMsg('webrtc-offer', JSON.stringify(pc.localDescription)); }
-async function sendWebRTCMsg(type, sdp) { if (!activeChannelId) return; if (P2PPong.sendCallSignal(activeChannelId, { webrtc: type, sdp })) return; await P2PPong.sendMessage(activeChannelId, JSON.stringify({ webrtc: type, sdp })); }
+async function sendWebRTCMsg(type, sdp) { if (!activeChannelId) return; await P2PPong.sendMessage(activeChannelId, JSON.stringify({ webrtc: type, sdp })); }
 async function startCall() { if (callActive || !activeChannelId) { rMsg('❌ Нет канала', 3000); return; } const s = await getMediaStream(false); if (!s) { rMsg('❌ Нет микрофона', 3000); return; } localStream = s; createPC(); const cp = document.getElementById('call-panel'); if (cp) cp.style.display = 'flex'; const ct = contacts.find(c => c.channelId === activeChannelId); document.getElementById('call-avatar').src = 'assets/avatar/' + (ct?.avatar || selectedAvatar) + 'ava.png'; document.getElementById('call-contact-name').textContent = ct?.name || document.getElementById('nick-label')?.textContent || 'Лучник'; document.getElementById('call-status').textContent = '📞 Вызов...'; showIncomingControls(false); showActiveControls(true); showCallWave(false); playRingback(); try { const o = await pc.createOffer(); await pc.setLocalDescription(o); setTimeout(() => { sendWebRTCMsg('webrtc-offer', JSON.stringify(o)); }, 800); } catch (e) { hang(false); } updateCallButtonState(); }
 async function acceptCall() { if (!incomingOffer || !activeChannelId) return; stopRingtone(); stopRingback(); const s = await getMediaStream(false); if (!s) return; localStream = s; createPC(); const cp = document.getElementById('call-panel'); if (cp) cp.style.display = 'flex'; const ct = contacts.find(c => c.channelId === activeChannelId); document.getElementById('call-avatar').src = 'assets/avatar/' + (ct?.avatar || selectedAvatar) + 'ava.png'; document.getElementById('call-contact-name').textContent = ct?.name || document.getElementById('nick-label')?.textContent || 'Лучник'; document.getElementById('call-status').textContent = '✅ Разговор'; showIncomingControls(false); showActiveControls(true); showCallWave(true); playSound('open.mp3'); try { await pc.setRemoteDescription(new RTCSessionDescription(incomingOffer)); iceBuffer.forEach(c => pc.addIceCandidate(new RTCIceCandidate(c)).catch(er => {})); iceBuffer = []; const a = await pc.createAnswer(); await pc.setLocalDescription(a); sendWebRTCMsg('webrtc-answer', JSON.stringify(a)); incomingOffer = null; callActive = true; } catch (e) { incomingOffer = null; hang(false); } updateCallButtonState(); }
 function hang(sig = true) { if (hangInProgress) return; hangInProgress = true; callActive = false; stopRingtone(); stopRingback(); if (sig && activeChannelId) sendWebRTCMsg('webrtc-hangup', ''); if (pc) { pc.onconnectionstatechange = null; pc.ontrack = null; pc.onicecandidate = null; pc.close(); pc = null; } if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; } incomingOffer = null; iceBuffer = []; if (iceFlushTimer) clearTimeout(iceFlushTimer); if (iceRestartTimer) clearTimeout(iceRestartTimer); iceRestartInProgress = false; const cp = document.getElementById('call-panel'); if (cp) cp.style.display = 'none'; showIncomingControls(false); showActiveControls(false); showCallWave(false); playSound('exet.mp3'); updateCallButtonState(); hangInProgress = false; }
@@ -108,7 +108,6 @@ function initUI() {
     P2PPong.on('message-received', (data) => { handleIncomingMessage(data); });
     P2PPong.on('message-sent', () => { updateCupIndicator(); updateRatchetIndicator(); });
     P2PPong.on('beacon-taken', () => { rMsg('👀 Маяк забрали...', 3000); });
-    P2PPong.on('call-signal', (data) => { handleWebRTCSignal(data.webrtc || data.type, data.sdp, data.channelId); });
 
     P2PPong.on('verification-needed', (data) => {
         if (verificationModalShown) return;
@@ -168,80 +167,26 @@ function initUI() {
 
 function handleIncomingMessage(data) {
     if (!data || !data.text) return;
-    
     try {
         const parsed = JSON.parse(data.text);
         if (parsed.webrtc) { handleWebRTCSignal(parsed.webrtc, parsed.sdp, data.channelId); return; }
-        if (parsed.voice) {
-            const ct = contacts.find(c => c.channelId === data.channelId);
-            const nick = ct?.name || data.nick || 'Друг';
-            const avatar = ct?.avatar || data.avatar || '001';
-            if (data.channelId === activeChannelId) {
-                appendMessage(nick, '🎤 Голосовое', avatar, parsed.data, 'audio/webm');
-            } else {
-                rMsg('🎤 Голосовое от ' + nick, 3000);
-                playVoiceBlob(parsed.data);
-            }
-            updateCupIndicator();
-            return;
-        }
-        if (parsed.d === '__SMOKE__') {
-            selfDestructMode = true;
-            const sd = document.getElementById('toggle-selfdestruct');
-            if (sd) sd.checked = true;
-            rMsg('🍁 Собеседник включил режим самоуничтожения', 3000);
-            return;
-        }
+        if (parsed.voice) { const ct = contacts.find(c => c.channelId === data.channelId); const nick = ct?.name || 'Друг'; const avatar = ct?.avatar || '001'; if (data.channelId === activeChannelId) { appendMessage(nick, '🎤 Голосовое', avatar, parsed.data, 'audio/webm'); } else { rMsg('🎤 Голосовое от ' + nick, 3000); playVoiceBlob(parsed.data); } updateCupIndicator(); return; }
+        if (parsed.d === '__SMOKE__') { selfDestructMode = true; const sd = document.getElementById('toggle-selfdestruct'); if (sd) sd.checked = true; rMsg('🍁 Собеседник включил режим самоуничтожения', 3000); return; }
     } catch (e) {}
-    
     const ct = contacts.find(c => c.channelId === data.channelId);
-    const nick = data.nick || ct?.name || 'Лучник';
-    const avatar = data.avatar || ct?.avatar || '001';
-    
-    if (data.channelId === activeChannelId) {
-        appendMessage(nick, data.text, avatar);
-    } else {
-        rMsg('Новое от ' + nick, 3000);
-    }
-    updateCupIndicator();
-    updateRatchetIndicator();
-    playSound('arrow_hit.wav');
+    const nick = ct?.name || 'Лучник';
+    const avatar = ct?.avatar || '001';
+    if (data.channelId === activeChannelId) { appendMessage(nick, data.text, avatar); } else { rMsg('Новое от ' + nick, 3000); }
+    updateCupIndicator(); updateRatchetIndicator(); playSound('arrow_hit.wav');
 }
 
 function handleWebRTCSignal(type, sdp, channelId) {
     if (channelId && activeChannelId && channelId !== activeChannelId) return;
     if (!pc) return;
     try {
-        if (type === 'webrtc-offer' && !callActive) { 
-            incomingOffer = typeof sdp === 'string' ? JSON.parse(sdp) : sdp; 
-            playRingtone(); 
-            const cp = document.getElementById('call-panel'); 
-            if (cp) cp.style.display = 'flex'; 
-            const ct = contacts.find(c => c.channelId === activeChannelId); 
-            document.getElementById('call-avatar').src = 'assets/avatar/' + (ct?.avatar || selectedAvatar) + 'ava.png'; 
-            document.getElementById('call-contact-name').textContent = ct?.name || document.getElementById('nick-label')?.textContent || 'Лучник'; 
-            document.getElementById('call-status').textContent = '📞 Входящий...'; 
-            showIncomingControls(true); 
-            showActiveControls(false); 
-            updateCallButtonState(); 
-        }
-        else if (type === 'webrtc-answer') { 
-            if (pc.signalingState === 'have-local-offer') { 
-                pc.setRemoteDescription(new RTCSessionDescription(typeof sdp === 'string' ? JSON.parse(sdp) : sdp)).then(() => { 
-                    callActive = true; 
-                    document.getElementById('call-status').textContent = '✅ Разговор'; 
-                    showIncomingControls(false); 
-                    showActiveControls(true); 
-                    showCallWave(true); 
-                    updateCallButtonState(); 
-                }).catch(e => {}); 
-            } 
-        }
-        else if (type === 'webrtc-ice') { 
-            if (pc.remoteDescription) { 
-                pc.addIceCandidate(new RTCIceCandidate(typeof sdp === 'string' ? JSON.parse(sdp) : sdp)).catch(e => {}); 
-            } 
-        }
+        if (type === 'webrtc-offer' && !callActive) { incomingOffer = sdp; playRingtone(); const cp = document.getElementById('call-panel'); if (cp) cp.style.display = 'flex'; const ct = contacts.find(c => c.channelId === activeChannelId); document.getElementById('call-avatar').src = 'assets/avatar/' + (ct?.avatar || selectedAvatar) + 'ava.png'; document.getElementById('call-contact-name').textContent = ct?.name || document.getElementById('nick-label')?.textContent || 'Лучник'; document.getElementById('call-status').textContent = '📞 Входящий...'; showIncomingControls(true); showActiveControls(false); updateCallButtonState(); }
+        else if (type === 'webrtc-answer') { if (pc.signalingState === 'have-local-offer') { pc.setRemoteDescription(new RTCSessionDescription(sdp)).then(() => { callActive = true; document.getElementById('call-status').textContent = '✅ Разговор'; showIncomingControls(false); showActiveControls(true); showCallWave(true); updateCallButtonState(); }).catch(e => {}); } }
+        else if (type === 'webrtc-ice') { if (pc.remoteDescription) { pc.addIceCandidate(new RTCIceCandidate(sdp)).catch(e => {}); } }
         else if (type === 'webrtc-hangup') { hang(false); }
     } catch (e) {}
 }
