@@ -166,7 +166,6 @@ const P2PPong = {
         const bd = JSON.parse(d.packet);
         if (!bd?.pubKey || !bd?.inner) { this._emit('error', { message: 'Маяк повреждён' }); return false; }
         
-        // Синхронизация сигнального сервера с создателем
         if (bd.signalServer) {
             const srv = this._signalServers.find(s => s.url === bd.signalServer);
             if (srv) { this._signalServer = srv; log('signal-synced', srv.name); }
@@ -213,7 +212,6 @@ const P2PPong = {
         if (!this._chId) this._chId = RND();
         if (!this._secret) return;
         
-        // Синхронизация сервера, если передан URL
         if (signalServerUrl && this._signalServer?.url !== signalServerUrl) {
             const srv = this._signalServers.find(s => s.url === signalServerUrl);
             if (srv) { this._signalServer = srv; log('signal-server-synced', srv.name); }
@@ -282,10 +280,43 @@ const P2PPong = {
     _stopPolling() { if (this._pollTimer) { clearTimeout(this._pollTimer); this._pollTimer = null; } },
 
     async _handleIn(blobData) {
-        let d; try { d = JSON.parse(blobData); } catch(e) { return; }
+        const chId = this._chId || Object.keys(this._channels)[0];
+        const ch = this._channels[chId];
+        
+        // Шаг 1: Пробуем расшифровать как сообщение от другого Понга
+        if (ch && ch.secret && typeof blobData === 'string') {
+            try {
+                const u = await workerUnpackBlob(blobData, ch);
+                if (u) {
+                    log('_handleIn', 'расшифрованное сообщение');
+                    if (u._ri !== undefined) {
+                        const targetRi = parseInt(u._ri) || 0;
+                        while ((ch.ratchetIndex || 0) <= targetRi) {
+                            const r = await advanceRatchetLocal(ch);
+                            if (!ch.oldKeys) ch.oldKeys = [];
+                            ch.oldKeys.push({ index: ch.ratchetIndex || 0, key: r.oldKey });
+                            if (ch.oldKeys.length > CONFIG.MAX_OLD_KEYS) ch.oldKeys.shift();
+                            ch.ratchetKey = r.newKey;
+                            ch.ratchetIndex = r.index;
+                        }
+                        ch.lastReceivedRi = targetRi;
+                    }
+                    const dedupKey = chId + '_' + (u.n || u._t || '');
+                    if (this._dedupTimers[dedupKey]) return;
+                    this._dedupTimers[dedupKey] = setTimeout(() => delete this._dedupTimers[dedupKey], CONFIG.CHANNEL_TTL);
+                    ch.blobs.push({ d: u.d || u.text || '', t: u._t || Date.now(), n: u.n || '', from: 'them', status: 'delivered' });
+                    ch.expires = Date.now() + CONFIG.CHANNEL_TTL; this._stats.messagesReceived++;
+                    this._emit('message-received', { channelId: chId, text: u.d || u.text || '', from: 'them', timestamp: u._t || Date.now() });
+                    return;
+                }
+            } catch(e) { log('unpack error', e.message); }
+        }
+        
+        // Шаг 2: Не сообщение — парсим как JSON (сигналы, маяки, команды)
+        let d;
+        try { d = JSON.parse(blobData); } catch(e) { return; }
         log('_handleIn', d.type || 'unknown');
         
-        // ПРАВКА 1: Буферизация ранних WebRTC-сигналов
         if (d.type && d.type.startsWith('webrtc-')) {
             if (this._chId) {
                 if (!this._webRTC[this._chId]) {
@@ -339,8 +370,6 @@ const P2PPong = {
         }
         
         if (d.type === 'ratchet-resync' && d.pubKey && d.peerId) {
-            const chId = this._chId || Object.keys(this._channels)[0];
-            const ch = this._channels[chId];
             if (ch) {
                 try {
                     const ss = await deriveSecretLocal(this._kp?.privateKey || '', d.pubKey);
@@ -352,36 +381,6 @@ const P2PPong = {
                 } catch(e) { log('resync error', e.message); }
             }
             return;
-        }
-        
-        const chId = this._chId || Object.keys(this._channels)[0];
-        const ch = this._channels[chId];
-        if (ch && ch.ratchetKey) {
-            try {
-                const u = await workerUnpackBlob(blobData, ch);
-                if (u) {
-                    if (u._ri !== undefined) {
-                        const targetRi = parseInt(u._ri) || 0;
-                        while ((ch.ratchetIndex || 0) <= targetRi) {
-                            const r = await advanceRatchetLocal(ch);
-                            if (!ch.oldKeys) ch.oldKeys = [];
-                            ch.oldKeys.push({ index: ch.ratchetIndex || 0, key: r.oldKey });
-                            if (ch.oldKeys.length > CONFIG.MAX_OLD_KEYS) ch.oldKeys.shift();
-                            ch.ratchetKey = r.newKey;
-                            ch.ratchetIndex = r.index;
-                        }
-                        ch.lastReceivedRi = targetRi;
-                    }
-                    const dedupKey = chId + '_' + (u.n || u._t || '');
-                    if (this._dedupTimers[dedupKey]) return;
-                    this._dedupTimers[dedupKey] = setTimeout(() => delete this._dedupTimers[dedupKey], CONFIG.CHANNEL_TTL);
-                    ch.blobs.push({ d: u.d || u.text || '', t: u._t || Date.now(), n: u.n || '', from: 'them', status: 'delivered' });
-                    ch.expires = Date.now() + CONFIG.CHANNEL_TTL; this._stats.messagesReceived++;
-                    this._emit('message-received', { channelId: chId, text: u.d || u.text || '', from: 'them', timestamp: u._t || Date.now() });
-                } else {
-                    requestRatchetResync(ch);
-                }
-            } catch(e) { log('unpack error', e.message); requestRatchetResync(ch); }
         }
     },
 
@@ -465,7 +464,6 @@ const P2PPong = {
             });
             this._webRTC[chId] = { pc, dc: null, iceBuffer: [], connected: false, initiator: asInitiator, seenMessages: new Set(), offerSent: false };
             
-            // ПРАВКА 2: Обработка буферизованных WebRTC-сигналов
             if (this._webRTCSignalBuffer[chId]) {
                 const buffered = this._webRTCSignalBuffer[chId];
                 delete this._webRTCSignalBuffer[chId];
@@ -496,13 +494,12 @@ const P2PPong = {
                     dc.onmessage = ev => me._handleDCMessage(chId, ch, ev);
                 };
             }
-            // ПРАВКА 3: Уменьшенный таймаут до 5 секунд
             setTimeout(() => { if (me._webRTC[chId] && !me._webRTC[chId].connected) me._startWebRTCPoll(chId); }, 5000);
         } catch(e) { log('startWebRTC error', e.message); }
     },
     
     async _handleDCMessage(chId, ch, e) {
-        if (typeof e.data === 'string' && e.data.length > 100) {
+        if (typeof e.data === 'string' && e.data.length > 50) {
             try {
                 const u = await workerUnpackBlob(e.data, ch);
                 if (u) {
