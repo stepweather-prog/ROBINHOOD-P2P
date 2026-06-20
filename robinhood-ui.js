@@ -1,4 +1,4 @@
-// ==================== RobinHood UI  ====================
+// ==================== RobinHood UI ====================
 // Чистый интерфейс. Ядро: P2PPong.
 
 let contacts = [],
@@ -14,7 +14,7 @@ let pc = null,
     ringtoneAudio = null,
     ringbackAudio = null;
 let audioPool = {},
-    robinDefaultText = 'Слепой Улей активирован ! Святые сокеты стабильны!',
+    robinDefaultText = 'Слепой Улей активирован! Святые сокеты стабильны!',
     robinTimer = null;
 let voiceRecorder = null,
     voiceChunks = [],
@@ -112,13 +112,41 @@ function initUI() {
     P2PPong.on('verification-needed', (data) => {
         if (verificationModalShown) return;
         verificationModalShown = true;
-        document.getElementById('verify-instruction').textContent = 'Введи эмодзи которые назвал пир А:';
-        document.getElementById('verify-emoji-display').textContent = '';
-        document.getElementById('verify-emoji-input').style.display = '';
-        document.getElementById('verify-emoji-input').value = '';
-        document.getElementById('btn-verify-emoji').style.display = '';
-        document.getElementById('btn-verify-confirm').style.display = '';
+        document.getElementById('verify-instruction').textContent = 'Выбери 5 знаков в правильном порядке';
         document.getElementById('verify-error').style.display = 'none';
+        document.getElementById('verify-selected').textContent = '';
+        window._verifyCorrect = P2PPong.getVerificationEmoji();
+        window._verifySelected = [];
+
+        const grid = document.getElementById('verify-emoji-grid');
+        grid.innerHTML = '';
+
+        const allEmoji = ['😀','😂','🤣','😍','😘','😜','😎','🤩','🥳','😇','🤠','🫡','🤔','😏','😤','🥺','😱','💀','👽','🤖'];
+        const correct = [...window._verifyCorrect];
+        const fake = [];
+        while (fake.length < 5) {
+            const e = allEmoji[Math.floor(Math.random() * allEmoji.length)];
+            if (!correct.includes(e) && !fake.includes(e)) fake.push(e);
+        }
+        const all = [...correct, ...fake].sort(() => Math.random() - 0.5);
+
+        all.forEach(e => {
+            const btn = document.createElement('button');
+            btn.textContent = e;
+            btn.className = 'verify-emoji-btn';
+            btn.onclick = () => {
+                if (window._verifySelected.length >= 5) return;
+                window._verifySelected.push(e);
+                document.getElementById('verify-selected').textContent = window._verifySelected.join('');
+            };
+            grid.appendChild(btn);
+        });
+
+        document.getElementById('btn-verify-reset').onclick = () => {
+            window._verifySelected = [];
+            document.getElementById('verify-selected').textContent = '';
+        };
+
         document.getElementById('verify-modal')?.classList.add('active');
     });
 
@@ -126,10 +154,7 @@ function initUI() {
         if (verificationModalShown) return;
         verificationModalShown = true;
         document.getElementById('verify-instruction').textContent = 'Пир Б ввёл эти эмодзи. Подтверди:';
-        document.getElementById('verify-emoji-display').textContent = Array.isArray(data.emoji) ? data.emoji.join('') : data.emoji;
-        document.getElementById('verify-emoji-input').style.display = 'none';
-        document.getElementById('btn-verify-emoji').style.display = 'none';
-        document.getElementById('btn-verify-confirm').style.display = '';
+        document.getElementById('verify-emoji-display') && (document.getElementById('verify-emoji-display').textContent = Array.isArray(data.emoji) ? data.emoji.join(' ') : data.emoji);
         document.getElementById('verify-error').style.display = 'none';
         document.getElementById('verify-modal')?.classList.add('active');
     });
@@ -191,10 +216,29 @@ function initApp() {
     document.getElementById('close-craft-modal')?.addEventListener('click', () => { document.getElementById('craft-modal')?.classList.remove('active'); });
     document.getElementById('craft-modal')?.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('active'); });
     document.getElementById('btn-create-beacon')?.addEventListener('click', async () => { const targetId = document.getElementById('peer-id-input')?.value.trim(); if (targetId) { const ok = await P2PPong.joinBeacon(targetId); if (ok) { rMsg('🏹 Тетива натянута...', 3000); document.getElementById('craft-modal')?.classList.remove('active'); } } });
-    document.getElementById('btn-verify-emoji')?.addEventListener('click', function(e) { e.preventDefault(); e.stopPropagation(); window._emojiTarget = 'verify'; const ep = document.getElementById('emoji-panel'); if (ep) { ep.style.display = ep.style.display === 'block' ? 'none' : 'block'; } });
-    document.getElementById('btn-verify-confirm')?.addEventListener('click', async () => { const input = document.getElementById('verify-emoji-input')?.value.trim().replace(/\s/g, ''); const expected = P2PPong.getVerificationEmoji()?.join('').replace(/\s/g, ''); const errEl = document.getElementById('verify-error'); if (input === expected) { if (errEl) errEl.style.display = 'none'; await P2PPong.confirmVerification(); document.getElementById('verify-modal')?.classList.remove('active'); rMsg('✅ Подтверждено!', 3000); } else { if (errEl) { errEl.textContent = '❌ Не совпадают. Попробуй снова.'; errEl.style.display = 'block'; } } });
-    document.getElementById('close-verify-modal')?.addEventListener('click', () => { document.getElementById('verify-modal')?.classList.remove('active'); window._emojiTarget = 'msg'; });
-    document.getElementById('verify-modal')?.addEventListener('click', function(e) { if (e.target === this) { this.classList.remove('active'); window._emojiTarget = 'msg'; } });
+
+    document.getElementById('btn-verify-confirm')?.addEventListener('click', async () => {
+        const selected = window._verifySelected || [];
+        const expected = window._verifyCorrect || [];
+        const errEl = document.getElementById('verify-error');
+        if (selected.length !== expected.length) {
+            if (errEl) { errEl.textContent = 'Выбери ровно 5 знаков'; errEl.style.display = 'block'; }
+            return;
+        }
+        if (selected.join('') === expected.join('')) {
+            if (errEl) errEl.style.display = 'none';
+            await P2PPong.confirmVerification();
+            document.getElementById('verify-modal')?.classList.remove('active');
+            rMsg('✅ Подтверждено!', 3000);
+        } else {
+            if (errEl) { errEl.textContent = '❌ Неверный порядок. Попробуй снова.'; errEl.style.display = 'block'; }
+            window._verifySelected = [];
+            document.getElementById('verify-selected').textContent = '';
+        }
+    });
+
+    document.getElementById('close-verify-modal')?.addEventListener('click', () => { document.getElementById('verify-modal')?.classList.remove('active'); });
+    document.getElementById('verify-modal')?.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('active'); });
     document.getElementById('btn-clear')?.addEventListener('click', () => { const box = document.getElementById('chat-box'); if (box) box.querySelectorAll('.message-row').forEach(m => m.remove()); playSmokeAnimation(); playSound('clear cache.mp3'); rMsg('🔥 Робин Гуд пустил все письма на самокрутки!', 5000); contacts = []; saveContacts(); P2PPong.destroy().then(() => { localStorage.clear(); setTimeout(() => P2PPong.init(), 500); }); });
     document.getElementById('btn-settings')?.addEventListener('click', () => { closeSheets(); document.getElementById('settings-sheet')?.classList.add('open'); document.getElementById('overlay')?.classList.add('show'); });
     document.getElementById('settings-close')?.addEventListener('click', closeSheets);
@@ -219,8 +263,8 @@ function initApp() {
     document.getElementById('btn-voice-input')?.addEventListener('click', toggleVoiceRecording);
     document.getElementById('setting-lock')?.addEventListener('click', () => { if (lockType) { if (confirm('Сбросить блокировку?')) { try { localStorage.removeItem(LOCK_KEY); } catch (e) {} lockType = null; lockPinHash = ''; const ls3 = document.getElementById('lock-status'); if (ls3) ls3.textContent = 'Не задан'; } } else { isSettingLock = true; lockPinHash = ''; pinInput = ''; lockScreen.style.display = 'flex'; appContainer.style.display = 'none'; setupLockUI(); } });
     const emojis = ['😀','😂','🤣','😍','😘','😜','😎','🤩','🥳','😢','😡','👍','👎','❤️','🔥','🎉','💀','🏹','🌲','🏰','🦊','🐺','✨','⚔️','🛡️','🍺','🍗','🏕️','🌙','☀️','🌟','💪','🤝','🙏','👑','💰','🎯','📞','💬','🔔','❌','✅','🎵','📜','⚜️'];
-    const eg = document.getElementById('emoji-grid'); if (eg) emojis.forEach(e => { const span = document.createElement('span'); span.textContent = e; span.addEventListener('click', () => { if (window._emojiTarget === 'verify') { const vi = document.getElementById('verify-emoji-input'); if (vi) { vi.value += e; vi.focus(); } } else { const mi = document.getElementById('msg-input'); if (mi) { mi.value += e; mi.focus(); } } }); eg.appendChild(span); });
-    const be = document.getElementById('btn-emoji'); if (be) be.addEventListener('click', () => { window._emojiTarget = 'msg'; const ep = document.getElementById('emoji-panel'); if (ep) ep.style.display = ep.style.display === 'block' ? 'none' : 'block'; });
+    const eg = document.getElementById('emoji-grid'); if (eg) emojis.forEach(e => { const span = document.createElement('span'); span.textContent = e; span.addEventListener('click', () => { const mi = document.getElementById('msg-input'); if (mi) { mi.value += e; mi.focus(); } }); eg.appendChild(span); });
+    const be = document.getElementById('btn-emoji'); if (be) be.addEventListener('click', () => { const ep = document.getElementById('emoji-panel'); if (ep) ep.style.display = ep.style.display === 'block' ? 'none' : 'block'; });
     document.addEventListener('click', e => { const ep = document.getElementById('emoji-panel'); if (ep && !ep.contains(e.target) && e.target !== be) ep.style.display = 'none'; });
     document.getElementById('send-btn')?.addEventListener('click', async () => { const mi = document.getElementById('msg-input'); const t = mi?.value.trim(); if (t) { if (!activeChannelId) { const chIds = Object.keys(P2PPong._channels); if (!chIds.length) return; activeChannelId = chIds[0]; } const sent = await P2PPong.sendMessage(activeChannelId, t); if (sent) { appendMessage('Вы', t, selectedAvatar); updateCupIndicator(); updateRatchetIndicator(); if (mi) mi.value = ''; playArcherAnimation(); playBowAnimation(); if (toggleSoundState) playSound('shot.mp3'); } } });
     document.getElementById('msg-input')?.addEventListener('keypress', e => { if (e.key == 'Enter') document.getElementById('send-btn')?.click(); });
