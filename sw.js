@@ -1,5 +1,5 @@
 // sw.js — Service Worker для RobinHood P2P
-const CACHE_VERSION = 'v3';
+const CACHE_VERSION = 'v5';
 const CACHE_NAME = 'robinhood-' + CACHE_VERSION;
 const ASSETS = [
   '/ROBINHOOD-P2P/',
@@ -54,9 +54,14 @@ self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(keys => Promise.all(
       keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))
-    ))
+    )).then(() => self.clients.claim())
   );
-  self.clients.claim();
+  // Принудительно обновить все открытые вкладки
+  event.waitUntil(
+    self.clients.matchAll().then(clients => {
+      clients.forEach(client => client.navigate(client.url));
+    })
+  );
 });
 
 self.addEventListener('fetch', event => {
