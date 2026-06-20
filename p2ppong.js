@@ -14,8 +14,8 @@ const CONFIG = {
     HOUSEKEEP_INTERVAL: 30000,
     MAX_OLD_KEYS: 50,
     MAX_EMOJI_ATTEMPTS: 5,
-    MAX_VOICE_SIZE: 300000,
-    MAX_VOICE_DURATION: 120,
+    MAX_VOICE_SIZE: 50000,
+    MAX_VOICE_DURATION: 10,
     NONCE_LENGTH: 32,
     RATCHET_RESYNC_INTERVAL: 60000
 };
@@ -322,12 +322,10 @@ const P2PPong = {
         const chId = this._chId || Object.keys(this._channels)[0];
         const ch = this._channels[chId];
         
-        // Шаг 1: Пробуем расшифровать как сообщение от другого Понга
         if (ch && ch.secret && typeof blobData === 'string') {
             try {
                 const u = await workerUnpackBlob(blobData, ch);
                 if (u) {
-                    // ПРОВЕРКА: это не моё сообщение?
                     if (u.from === this._peerId) {
                         log('_handleIn', 'игнорирую своё сообщение');
                         return;
@@ -376,12 +374,10 @@ const P2PPong = {
             } catch(e) { log('unpack error', e.message); }
         }
         
-        // Шаг 2: Не сообщение — парсим как JSON (сигналы, маяки, команды)
         let d;
         try { d = JSON.parse(blobData); } catch(e) { return; }
         log('_handleIn', d.type || 'unknown');
         
-        // Проверка на свои сигналы
         if (d.peerId === this._peerId) {
             log('_handleIn', 'игнорирую свой сигнал:', d.type);
             return;
@@ -487,8 +483,8 @@ const P2PPong = {
     async sendVoiceMessage(chId, voiceBase64) {
         const ch = this._channels[chId || this._chId]; if (!ch) return false;
         
-        if (voiceBase64.length > 8000) {
-            this._emit('error', { message: 'Голосовое слишком длинное. Максимум 10 секунд.' });
+        if (voiceBase64.length > CONFIG.MAX_VOICE_SIZE) {
+            this._emit('error', { message: 'Голосовое слишком длинное. Максимум ' + CONFIG.MAX_VOICE_DURATION + ' секунд.' });
             return false;
         }
         
@@ -518,7 +514,7 @@ const P2PPong = {
             ch.oldKeys.push({ index: ch.ratchetIndex - 1, key: oldKey });
             if (ch.oldKeys.length > CONFIG.MAX_OLD_KEYS) ch.oldKeys.shift();
             
-            if (result.packed.length > 16000) {
+            if (result.packed.length > 60000) {
                 this._emit('error', { message: 'Сообщение слишком большое.' });
                 return false;
             }
@@ -539,7 +535,7 @@ const P2PPong = {
         if (ch.ratchetKey) {
             const result = await workerPackBlob(messageData, ch);
             
-            if (result.packed.length > 8000) {
+            if (result.packed.length > 60000) {
                 this._emit('error', { message: 'Сообщение слишком большое для сервера.' });
                 return false;
             }
