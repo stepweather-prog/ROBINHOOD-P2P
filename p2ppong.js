@@ -30,8 +30,7 @@ function arraysEqual(a, b) {
     return true;
 }
 
-const DHT = { _nodeId: null, _buckets: [], _storage: {}, _k: 20, _alpha: 3, _peers: new Map(), _signalSend: null };
-const BLOB_NS = '00000000000000000000000000000000';
+const DHT = { _nodeId: null, _buckets: [], _storage: {}, _k: 20, _alpha: 3, _peers: new Map() };
 
 const cryptoWorker = new Worker('crypto-worker.js');
 const cryptoCallbacks = {};
@@ -76,13 +75,14 @@ async function deriveSecretLocal(myPrivateKeyB64, theirPublicKeyB64) {
 
 const P2PPong = {
     _peerId: null,
-    _kp: null,                    // своя ECDH пара для текущей сессии
-    _remotePubKey: null,          // публичный ключ另一方
-    _secret: null,                // общий секрет (вычисляется при подтверждении)
-    _chId: null,                  // единый channelId для обеих сторон
+    _kp: null,
+    _remotePubKey: null,
+    _secret: null,
+    _chId: null,
     _channels: {},
     _beacons: {},
-    _pending: null,               // ожидание подтверждения: { type: 'creator'|'joiner', ... }
+    _pending: null,
+    _signalServer: null,  // фиксированный сервер для текущей сессии маяка
     
     _signalServers: [
         { type: 'http', url: 'https://robincall.stephanclaps-491.workers.dev', name: 'Cloudflare' },
@@ -114,10 +114,20 @@ const P2PPong = {
         }
     },
 
-    _genNonce() { const a = new Uint32Array(CONFIG.NONCE_LENGTH / 8); crypto.getRandomValues(a); return Array.from(a).map(function(x) { return x.toString(16).padStart(8, '0'); }).join(''); },
+    _genNonce() { const a = new Uint32Array(CONFIG.NONCE_LENGTH / 8); crypto.getRandomValues(a); return Array.from(a).map(x => x.toString(16).padStart(8, '0')).join(''); },
     _genEmoji() { const p = ['😀','😂','🤣','😍','😘','😜','😎','🤩','🥳','😇','🤠','🫡','🤔','😏','😤','🥺','😱','💀','👽','🤖']; return [...Array(5)].map(() => p[Math.floor(Math.random()*p.length)]); },
 
-    // ============= МЕТОДЫ ДЛЯ UI =============
+    async _pickServer() {
+        // Выбираем один сервер на всю сессию маяка
+        for (const s of this._signalServers) {
+            try {
+                const r = await fetch(s.url + '/health', { signal: AbortSignal.timeout(3000) });
+                if (r.ok) { this._signalServer = s; return s; }
+            } catch(e) {}
+        }
+        this._signalServer = this._signalServers[0];
+        return this._signalServer;
+    },
 
     async craftArrow() {
         this._peerId = RND();
@@ -125,6 +135,7 @@ const P2PPong = {
         this._remotePubKey = null;
         this._secret = null;
         this._chId = null;
+        await this._pickServer();
         
         const emoji = this._genEmoji();
         this._verificationEmoji = emoji;
@@ -145,6 +156,7 @@ const P2PPong = {
     },
 
     async joinBeacon(targetPeerId) {
+        await this._pickServer();
         const d = await this._get('/beacon?key=waiting_' + targetPeerId);
         if (!d?.packet) { this._emit('error', { message: 'Маяк не найден' }); return false; }
         
@@ -167,18 +179,16 @@ const P2PPong = {
         this._remotePubKey = bd.pubKey;
         this._chId = RND();
         
-        // Сразу вычисляем секрет
         this._secret = await deriveSecretLocal(this._kp.privateKey, bd.pubKey);
         const verificationHash = await SHA(this._secret + emoji.join(''));
         
         this._beacons[this._peerId] = { keyPair: this._kp, beaconKey: bk, nonce: bd.nonce, expires: Date.now() + CONFIG.BEACON_TTL };
         this._pending = { type: 'joiner', targetPeerId, verificationHash };
         
-        // Отправляем beacon-response
+        // Отправляем и beacon-response (в waiting_), и emoji (в emoji_) на случай ручного режима
         const br = JSON.stringify({ type: 'beacon-response', pubKey: this._kp.publicKey, peerId: this._peerId, inner: bd.inner, channelId: this._chId, verificationHash });
         await this._post('/beacon', { keyHash: 'waiting_' + targetPeerId, packet: br });
         
-        // И emoji для ручного режима
         const ep = JSON.stringify({ type: 'verification-emoji', emoji, peerId: this._peerId, pubKey: this._kp.publicKey, inner: bd.inner });
         await this._post('/beacon', { keyHash: 'emoji_' + targetPeerId, packet: ep });
         
@@ -187,15 +197,9 @@ const P2PPong = {
         return true;
     },
 
-    confirmVerification() {
-        // Ручной режим: ждём beacon-ack, ничего не делаем
-        return true;
-    },
-
+    confirmVerification() { return true; },
     getVerificationEmoji() { return this._verificationEmoji; },
     getPeerId() { return this._peerId; },
-
-    // ============= ОТКРЫТИЕ КАНАЛА =============
 
     _openChannel(peerId) {
         if (!this._chId) this._chId = RND();
@@ -215,7 +219,9 @@ const P2PPong = {
         };
         
         this._stopPolling();
-        this._cleanupBeaconKeys(this._peerId);
+        const me = this, pid = this._peerId;
+        setTimeout(() => me._cleanupBeaconKeys(pid), 10000);
+        
         this._stats.channelsOpened++;
         this._emit('channel-opened', { channelId: this._chId, peerId: peerId || 'unknown', nick: 'Лучник', avatar: '001' });
         this._startMsgPoll(this._chId);
@@ -223,28 +229,22 @@ const P2PPong = {
         this._pending = null;
     },
 
-    // ============= СЕТЬ =============
-
     async _post(path, body) {
-        for (const s of this._signalServers) {
-            try {
-                const r = await fetch(s.url + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(5000) });
-                if (r.ok) return r.json();
-                if (r.status === 429) { await new Promise(resolve => setTimeout(resolve, 10000)); }
-            } catch(e) { log('_post error', s.name, e.message); }
-            if (s.name === 'Render') await new Promise(resolve => setTimeout(resolve, 2000));
-        }
+        const s = this._signalServer || this._signalServers[0];
+        try {
+            const r = await fetch(s.url + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(5000) });
+            if (r.ok) return r.json();
+            if (r.status === 429) { await new Promise(resolve => setTimeout(resolve, 10000)); }
+        } catch(e) { log('_post error', s.name, e.message); }
         return null;
     },
     async _get(path) {
-        for (const s of this._signalServers) {
-            try {
-                const r = await fetch(s.url + path, { signal: AbortSignal.timeout(5000) });
-                if (r.ok) return r.json();
-                if (r.status === 429) { await new Promise(resolve => setTimeout(resolve, 10000)); }
-            } catch(e) { log('_get error', s.name, e.message); }
-            if (s.name === 'Render') await new Promise(resolve => setTimeout(resolve, 2000));
-        }
+        const s = this._signalServer || this._signalServers[0];
+        try {
+            const r = await fetch(s.url + path, { signal: AbortSignal.timeout(5000) });
+            if (r.ok) return r.json();
+            if (r.status === 429) { await new Promise(resolve => setTimeout(resolve, 10000)); }
+        } catch(e) { log('_get error', s.name, e.message); }
         return null;
     },
 
@@ -257,7 +257,6 @@ const P2PPong = {
             if (d && d.status === 'found' && d.packet) {
                 try {
                     const p = JSON.parse(d.packet);
-                    // Игнорируем маяки и свои ответы
                     if (p.type === 'beacon') { me._pollTimer = setTimeout(() => me._doPoll(), 1000); return; }
                     if (p.type === 'beacon-response' && p.peerId === me._peerId) { me._pollTimer = setTimeout(() => me._doPoll(), 1000); return; }
                 } catch(e) {}
@@ -268,38 +267,29 @@ const P2PPong = {
     },
     _stopPolling() { if (this._pollTimer) { clearTimeout(this._pollTimer); this._pollTimer = null; } },
 
-    // ============= ОСНОВНОЙ ОБРАБОТЧИК =============
-
     async _handleIn(blobData) {
         let d; try { d = JSON.parse(blobData); } catch(e) { return; }
         log('_handleIn', d.type || 'unknown');
         
-        // WebRTC сигналы
         if (d.type && d.type.startsWith('webrtc-')) {
             if (this._chId) this._handleWSig(this._chId, d);
             return;
         }
         
-        // beacon-response от присоединяющегося → создатель маяка открывает канал
         if (d.type === 'beacon-response' && d.pubKey && d.channelId) {
             if (this._pending?.type !== 'creator') return;
             this._remotePubKey = d.pubKey;
             this._chId = d.channelId;
             this._secret = await deriveSecretLocal(this._kp.privateKey, d.pubKey);
             
-            // Отправляем beacon-ack
             await this._post('/beacon', { keyHash: 'waiting_' + this._peerId, packet: JSON.stringify({
-                type: 'beacon-ack',
-                peerId: this._peerId,
-                channelId: this._chId,
-                pubKey: this._kp.publicKey
+                type: 'beacon-ack', peerId: this._peerId, channelId: this._chId, pubKey: this._kp.publicKey
             })});
             
             this._openChannel(d.peerId);
             return;
         }
         
-        // beacon-ack от создателя → присоединяющийся открывает канал
         if (d.type === 'beacon-ack' && d.channelId) {
             if (this._pending?.type !== 'joiner') return;
             this._chId = d.channelId;
@@ -310,17 +300,13 @@ const P2PPong = {
             return;
         }
         
-        // verification-emoji (ручной режим)
         if (d.type === 'verification-emoji' && d.emoji) {
             if (this._pending?.type === 'creator' && this._verificationEmoji && arraysEqual(d.emoji, this._verificationEmoji)) {
                 this._remotePubKey = d.pubKey;
                 this._chId = RND();
                 this._secret = await deriveSecretLocal(this._kp.privateKey, d.pubKey);
                 await this._post('/beacon', { keyHash: 'waiting_' + this._peerId, packet: JSON.stringify({
-                    type: 'beacon-ack',
-                    peerId: this._peerId,
-                    channelId: this._chId,
-                    pubKey: this._kp.publicKey
+                    type: 'beacon-ack', peerId: this._peerId, channelId: this._chId, pubKey: this._kp.publicKey
                 })});
                 this._openChannel(d.peerId);
                 return;
@@ -329,7 +315,6 @@ const P2PPong = {
             return;
         }
         
-        // Сообщения
         const chId = this._chId || Object.keys(this._channels)[0];
         const ch = this._channels[chId];
         if (ch && ch.ratchetKey) {
@@ -348,8 +333,6 @@ const P2PPong = {
             } catch(e) { log('unpack error', e.message); requestRatchetResync(ch); }
         }
     },
-
-    // ============= СООБЩЕНИЯ =============
 
     async sendMessage(chId, text) {
         const ch = this._channels[chId || this._chId]; if (!ch) return false;
@@ -377,8 +360,6 @@ const P2PPong = {
         return false;
     },
 
-    // ============= СЛУЖЕБНОЕ =============
-
     _cleanupBeaconKeys(peerId) {
         this._get('/delete?key=waiting_' + peerId).catch(() => {});
         this._get('/delete?key=emoji_' + peerId).catch(() => {});
@@ -391,6 +372,10 @@ const P2PPong = {
             const now = Date.now();
             Object.keys(me._channels).forEach(function(id) { if (now > me._channels[id].expires) { delete me._channels[id]; delete me._webRTC[id]; me._stopMsgPoll(id); me._stopWebRTCPoll(id); me._emit('channel-expired', { channelId: id }); } });
             Object.keys(me._beacons).forEach(function(id) { if (now > me._beacons[id].expires) delete me._beacons[id]; });
+            // Проверяем emoji_ для ручного режима
+            if (me._peerId && me._pending?.type === 'creator' && Object.keys(me._channels).length === 0) {
+                me._get('/beacon?key=emoji_' + me._peerId).then(function(d) { if (d && d.packet) me._handleIn(d.packet); }).catch(() => {});
+            }
         }, CONFIG.HOUSEKEEP_INTERVAL);
     },
 
@@ -487,7 +472,7 @@ const P2PPong = {
         this._channels = {}; this._beacons = {}; this._listeners = {};
         this._state = 'idle'; this._peerId = null; this._kp = null;
         this._remotePubKey = null; this._secret = null; this._chId = null;
-        this._pending = null; this._verificationEmoji = null;
+        this._pending = null; this._verificationEmoji = null; this._signalServer = null;
         this._emit('destroyed');
     }
 };
