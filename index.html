@@ -159,6 +159,9 @@
         .cup-indicator{font-size:0.65em;color:var(--text-dim);display:inline-flex;align-items:center;gap:2px}
         .cup-indicator .low{color:var(--danger)}.cup-indicator .ok{color:var(--accent)}.cup-indicator .full{color:var(--seeding-color)}
         .ratchet-indicator{font-size:0.6em;padding:2px 6px;border-radius:4px;font-family:monospace;white-space:nowrap}
+        .verify-emoji-btn { font-size:2em; width:50px; height:50px; border-radius:10px; border:1px solid var(--border); background:var(--btn-bg); cursor:pointer; transition:all 0.1s; display:flex; align-items:center; justify-content:center; }
+        .verify-emoji-btn:active { background:var(--btn-hover); transform:scale(0.9); }
+        .verify-emoji-btn.selected { border-color: var(--accent); background: var(--btn-hover); box-shadow: 0 0 8px var(--accent); }
     </style>
 </head>
 <body>
@@ -222,13 +225,13 @@
 <div class="modal-overlay" id="craft-modal"><div class="modal-dialog"><h3>🏹 Открыть колчан</h3><button class="btn-primary" id="btn-craft-arrow">🏹 Крафт стрелы</button><div style="color:var(--text-dim);margin-bottom:6px;">Твоя стрела:</div><div class="code-display" id="craft-peer-id-display"></div><div style="color:var(--text-dim);margin:8px 0 4px;">Секретный манускрипт:</div>
 <div class="code-display" id="craft-emoji-display" style="display:none;font-size:1.5em;letter-spacing:6px;"></div><button class="btn-dark" id="btn-copy-peer-id">📋 Скопировать</button><div style="color:var(--text-dim);margin:16px 0 6px;">Стрела друга:</div><input type="text" id="peer-id-input" placeholder="Peer ID друга..." style="width:100%;margin:0 0 12px;padding:8px;background:var(--input-bg);border:1px solid var(--border);color:var(--input-text);border-radius:8px;font-size:0.75em;font-family:monospace;"><button class="btn-primary" id="btn-create-beacon" style="background:linear-gradient(135deg,#6b7db3,#4a5a8a);">🏹 Натянуть тетиву</button><button class="btn-dark" id="close-craft-modal">Закрыть</button></div></div>
 
-<div class="modal-overlay" id="verify-modal"><div class="modal-dialog"><h3>🔐 Подтверждение</h3><div id="verify-instruction" style="color:var(--text-dim);margin-bottom:6px;"></div><div id="verify-emoji-display" style="font-size:2em;letter-spacing:8px;margin:12px 0;"></div><input type="text" id="verify-emoji-input" placeholder="Введи эмодзи" style="width:100%;margin:8px 0;padding:8px;background:var(--input-bg);border:1px solid var(--border);color:var(--input-text);border-radius:8px;font-size:1.2em;text-align:center;letter-spacing:4px;"><button class="btn-dark" id="btn-verify-emoji" style="width:auto;display:inline-block;margin:0 auto 8px;">😊 Смайлы</button><div id="verify-error" style="color:var(--danger);font-size:0.8em;margin-top:6px;display:none;"></div><button class="btn-primary" id="btn-verify-confirm">✅ Подтвердить</button><button class="btn-dark" id="close-verify-modal">Закрыть</button></div></div>
+<div class="modal-overlay" id="verify-modal"><div class="modal-dialog"><h3>🔐 Подтверждение</h3><div id="verify-instruction" style="color:var(--text-dim);margin-bottom:6px;">Выбери 5 знаков в правильном порядке</div><div id="verify-emoji-grid" style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:12px 0;"></div><div id="verify-selected" style="font-size:1.5em;letter-spacing:6px;min-height:36px;margin:8px 0;"></div><div id="verify-error" style="color:var(--danger);font-size:0.8em;margin-top:6px;display:none;"></div><button class="btn-dark" id="btn-verify-reset" style="width:auto;display:inline-block;margin:0 auto 8px;">↩ Сбросить</button><button class="btn-primary" id="btn-verify-confirm">✅ Подтвердить</button><button class="btn-dark" id="close-verify-modal">Закрыть</button></div></div>
 
 <div class="modal-overlay" id="nick-modal"><div class="modal-dialog"><h3>🏷 Придумай ник</h3><input type="text" id="nick-input" placeholder="Введи ник (макс 12 символов)..." style="width:100%;margin:8px 0;padding:8px;background:var(--input-bg);border:1px solid var(--border);color:var(--input-text);border-radius:8px;font-size:0.9em;font-family:monospace;"><button class="btn-primary" id="btn-save-nick">💾 Сохранить</button><button class="btn-dark" id="close-nick-modal">Закрыть</button></div></div>
 <div id="bow-above-send"></div>
 </div>
 
-<script src="peer-help.js?v=1.0.4"></script>
+<script src="peer-help.js?v=1.0.5"></script>
 <script src="p2ppong.js"></script>
 <script src="robinhood-ui.js"></script>
 </body>
