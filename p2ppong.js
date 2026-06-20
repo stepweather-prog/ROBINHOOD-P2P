@@ -337,7 +337,6 @@ const P2PPong = {
             try {
                 const u = await workerUnpackBlob(blobData, ch);
                 if (u) {
-                    // Продвигаем ratchet получателя до индекса отправителя
                     if (u._ri !== undefined) {
                         const targetRi = parseInt(u._ri) || 0;
                         while ((ch.ratchetIndex || 0) <= targetRi) {
@@ -368,12 +367,22 @@ const P2PPong = {
         const nonce = RND();
         const rtc = this._webRTC[chId || this._chId];
         
+        // WebRTC — шифруем и отправляем
         if (rtc && rtc.dc && rtc.dc.readyState === 'open') {
-            rtc.dc.send(JSON.stringify({ type: 'message', text, time: Date.now(), nonce }));
+            const result = await workerPackBlob(JSON.stringify({ d: text, t: Date.now(), n: nonce }), ch);
+            const oldKey = ch.ratchetKey;
+            ch.ratchetKey = result.newRatchetKey;
+            ch.ratchetIndex = result.newRatchetIndex;
+            if (!ch.oldKeys) ch.oldKeys = [];
+            ch.oldKeys.push({ index: ch.ratchetIndex - 1, key: oldKey });
+            if (ch.oldKeys.length > CONFIG.MAX_OLD_KEYS) ch.oldKeys.shift();
+            rtc.dc.send(result.packed);
             ch.blobs.push({ d: text, t: Date.now(), n: nonce, from: 'me', status: 'sent' });
             ch.expires = Date.now() + CONFIG.CHANNEL_TTL; this._stats.messagesSent++;
             this._emit('message-sent', { channelId: chId || this._chId, data: text, status: 'sent' }); return true;
         }
+        
+        // Polling — шифруем и отправляем на сервер
         if (ch.ratchetKey) {
             const result = await workerPackBlob(JSON.stringify({ d: text, t: Date.now(), n: nonce }), ch);
             const oldKey = ch.ratchetKey;
@@ -454,15 +463,52 @@ const P2PPong = {
             setTimeout(() => { if (me._webRTC[chId] && !me._webRTC[chId].connected) me._startWebRTCPoll(chId); }, 15000);
         } catch(e) { log('startWebRTC error', e.message); }
     },
-    _handleDCMessage(chId, ch, e) {
-        let m; try { m = JSON.parse(e.data); } catch(er) { return; }
-        if (m.type === 'message' && !this._webRTC[chId].seenMessages.has(m.nonce)) {
-            this._webRTC[chId].seenMessages.add(m.nonce);
-            ch.blobs.push({ d: m.text, t: m.time, n: m.nonce, from: 'them', status: 'delivered' });
-            ch.expires = Date.now() + CONFIG.CHANNEL_TTL; this._stats.messagesReceived++;
-            this._emit('message-received', { channelId: chId, text: m.text, from: 'them', timestamp: m.time });
+    
+    async _handleDCMessage(chId, ch, e) {
+        // Пробуем как зашифрованный блоб (новый формат)
+        if (typeof e.data === 'string' && e.data.length > 100) {
+            try {
+                const u = await workerUnpackBlob(e.data, ch);
+                if (u) {
+                    if (u._ri !== undefined) {
+                        const targetRi = parseInt(u._ri) || 0;
+                        while ((ch.ratchetIndex || 0) <= targetRi) {
+                            const r = await advanceRatchetLocal(ch);
+                            if (!ch.oldKeys) ch.oldKeys = [];
+                            ch.oldKeys.push({ index: ch.ratchetIndex || 0, key: r.oldKey });
+                            if (ch.oldKeys.length > CONFIG.MAX_OLD_KEYS) ch.oldKeys.shift();
+                            ch.ratchetKey = r.newKey;
+                            ch.ratchetIndex = r.index;
+                        }
+                        ch.lastReceivedRi = targetRi;
+                    }
+                    const dedupKey = chId + '_' + (u.n || u._t || '');
+                    if (this._webRTC[chId]?.seenMessages?.has(u.n)) return;
+                    if (this._dedupTimers[dedupKey]) return;
+                    this._dedupTimers[dedupKey] = setTimeout(() => delete this._dedupTimers[dedupKey], CONFIG.CHANNEL_TTL);
+                    this._webRTC[chId]?.seenMessages?.add(u.n);
+                    ch.blobs.push({ d: u.d || u.text || '', t: u._t || Date.now(), n: u.n || '', from: 'them', status: 'delivered' });
+                    ch.expires = Date.now() + CONFIG.CHANNEL_TTL; this._stats.messagesReceived++;
+                    this._emit('message-received', { channelId: chId, text: u.d || u.text || '', from: 'them', timestamp: u._t || Date.now() });
+                    return;
+                }
+            } catch(er) {}
         }
+        
+        // Fallback: старый формат (открытый JSON) для обратной совместимости
+        try {
+            const m = JSON.parse(e.data);
+            if (m.type === 'message' && m.text) {
+                const dedupKey = chId + '_' + (m.nonce || '');
+                if (this._dedupTimers[dedupKey]) return;
+                this._dedupTimers[dedupKey] = setTimeout(() => delete this._dedupTimers[dedupKey], CONFIG.CHANNEL_TTL);
+                ch.blobs.push({ d: m.text, t: m.time, n: m.nonce, from: 'them', status: 'delivered' });
+                ch.expires = Date.now() + CONFIG.CHANNEL_TTL; this._stats.messagesReceived++;
+                this._emit('message-received', { channelId: chId, text: m.text, from: 'them', timestamp: m.time });
+            }
+        } catch(er) {}
     },
+    
     _startWebRTCPoll(chId) {
         if (this._webRTCPolling[chId]) return;
         const me = this;
