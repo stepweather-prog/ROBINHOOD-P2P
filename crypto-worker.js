@@ -1,17 +1,17 @@
-// crypto-worker.js — Web Worker с таймаутом, восстановлением и очисткой
+// crypto-worker.js — Web Worker для криптографии
 const MAX_TIMEOUT = 30000;
 let isProcessing = false;
 
 self.onmessage = async function(e) {
     if (isProcessing) {
-        self.postMessage({ id: e.data.id, error: 'Worker busy, retry' });
+        self.postMessage({ id: e.data.id, error: 'Worker busy' });
         return;
     }
     isProcessing = true;
     const { id, action, payload } = e.data;
     const timeout = setTimeout(() => {
         isProcessing = false;
-        self.postMessage({ id, error: 'Operation timed out after ' + MAX_TIMEOUT + 'ms' });
+        self.postMessage({ id, error: 'Timeout' });
     }, MAX_TIMEOUT);
 
     try {
@@ -28,9 +28,7 @@ self.onmessage = async function(e) {
             case 'verifyHMAC': result = await verifyHMAC(payload.data, payload.sig, payload.secret); break;
             case 'packBlob': result = await packBlob(payload.jsonString, payload.ch); break;
             case 'unpackBlob': result = await unpackBlob(payload.blob, payload.ch); break;
-            case 'ping': result = 'pong'; break;
-            case 'clearMemory': result = await clearMemory(); break;
-            default: throw new Error('Unknown action: ' + action);
+            default: throw new Error('Unknown: ' + action);
         }
         clearTimeout(timeout);
         self.postMessage({ id, result });
@@ -39,21 +37,12 @@ self.onmessage = async function(e) {
         self.postMessage({ id, error: error.message });
     } finally {
         isProcessing = false;
-        if (action !== 'ping') {
-            setTimeout(() => { if (!isProcessing) clearMemory(); }, 5000);
-        }
     }
-};
-
-self.onerror = function(e) {
-    isProcessing = false;
-    self.postMessage({ id: 0, error: 'Worker crashed: ' + e.message });
 };
 
 async function SHA(t) {
     const h = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t));
-    const result = Array.from(new Uint8Array(h)).map(b => b.toString(16).padStart(2, '0')).join('');
-    return result;
+    return Array.from(new Uint8Array(h)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
 async function generateKeyPair() {
@@ -78,7 +67,7 @@ async function importPublicKey(b64) {
 
 async function deriveSecret(kp, remotePubKey) {
     const b = await crypto.subtle.deriveBits({ name: 'ECDH', public: remotePubKey }, kp, 256);
-    return Array.from(new Uint8Array(b)).map(b => b.toString(16).padStart(2, '0')).join('');
+    return Array.from(new Uint8Array(b)).map(x => x.toString(16).padStart(2, '0')).join('');
 }
 
 async function encryptAES(text, secret) {
@@ -95,8 +84,7 @@ async function decryptAES(enc, secret) {
     const keyData = new TextEncoder().encode(secret.substring(0, 32));
     const k = await crypto.subtle.importKey('raw', keyData, { name: 'AES-GCM' }, false, ['decrypt']);
     const c = Uint8Array.from(atob(enc), x => x.charCodeAt(0));
-    const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: c.slice(0, 12) }, k, c.slice(12));
-    return new TextDecoder().decode(decrypted);
+    return new TextDecoder().decode(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: c.slice(0, 12) }, k, c.slice(12)));
 }
 
 async function computeHMAC(data, secret) {
@@ -154,7 +142,8 @@ async function packBlob(jsonString, ch) {
     const padSize = Math.floor(Math.random() * 50) + 20;
     const randomPad = btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(padSize))));
     const nonce = Array.from(crypto.getRandomValues(new Uint32Array(4))).map(x => x.toString(16).padStart(8, '0')).join('');
-    const data = JSON.stringify({ z: compressed, t: Date.now(), n: nonce, pad: randomPad, ri: ch.ratchetIndex || 0 });
+    const ri = ch.ratchetIndex || 0;
+    const data = JSON.stringify({ z: compressed, t: Date.now(), n: nonce, pad: randomPad, ri });
     const currentKey = ch.ratchetKey || ch.secret;
     const hmac = await computeHMAC(data, currentKey);
     let padded = hmac + '|' + data;
@@ -197,14 +186,4 @@ async function tryDecryptWithKey(decrypted, key) {
     delete parsed.pad;
     delete parsed.ri;
     return parsed;
-}
-
-async function clearMemory() {
-    try {
-        if (crypto.subtle && typeof crypto.subtle.digest === 'function') {
-            const testData = new Uint8Array(1);
-            await crypto.subtle.digest('SHA-256', testData);
-        }
-    } catch(e) {}
-    return 'ok';
 }
