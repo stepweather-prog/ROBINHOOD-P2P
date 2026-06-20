@@ -11,7 +11,6 @@ function toBase64(bytes) {
 }
 
 function fromBase64(b64) {
-    // Очищаем строку от не-ASCII и не-base64 символов
     const clean = (b64 || '').replace(/[^A-Za-z0-9+/=]/g, '');
     if (!clean) return new Uint8Array(0);
     try {
