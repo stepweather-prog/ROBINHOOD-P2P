@@ -98,7 +98,7 @@ function createPC() { if (pc) { pc.onconnectionstatechange = null; pc.ontrack = 
 async function restartICE() { if (!pc || pc.connectionState === 'closed') return; const offer = await pc.createOffer({ iceRestart: true }); await pc.setLocalDescription(offer); sendWebRTCMsg('webrtc-offer', JSON.stringify(pc.localDescription)); }
 async function sendWebRTCMsg(type, sdp) { if (!activeChannelId) return; await P2PPong.sendMessage(activeChannelId, JSON.stringify({ webrtc: type, sdp })); }
 async function startCall() { if (callActive || !activeChannelId) { rMsg('❌ Нет канала', 3000); return; } const s = await getMediaStream(false); if (!s) { rMsg('❌ Нет микрофона', 3000); return; } localStream = s; createPC(); const cp = document.getElementById('call-panel'); if (cp) cp.style.display = 'flex'; const ct = contacts.find(c => c.channelId === activeChannelId); document.getElementById('call-avatar').src = 'assets/avatar/' + (ct?.avatar || selectedAvatar) + 'ava.png'; document.getElementById('call-contact-name').textContent = ct?.name || document.getElementById('nick-label')?.textContent || 'Лучник'; document.getElementById('call-status').textContent = '📞 Вызов...'; showIncomingControls(false); showActiveControls(true); showCallWave(false); playRingback(); try { const o = await pc.createOffer(); await pc.setLocalDescription(o); setTimeout(() => { sendWebRTCMsg('webrtc-offer', JSON.stringify(o)); }, 800); } catch (e) { hang(false); } updateCallButtonState(); }
-async function acceptCall() { if (!incomingOffer || !activeChannelId) return; stopRingtone(); stopRingback(); const s = await getMediaStream(false); if (!s) return; localStream = s; createPC(); const cp = document.getElementById('call-panel'); if (cp) cp.style.display = 'flex'; const ct = contacts.find(c => c.channelId === activeChannelId); document.getElementById('call-avatar').src = 'assets/avatar/' + (ct?.avatar || selectedAvatar) + 'ava.png'; document.getElementById('call-contact-name').textContent = ct?.name || document.getElementById('nick-label')?.textContent || 'Лучник'; document.getElementById('call-status').textContent = '✅ Разговор'; showIncomingControls(false); showActiveControls(true); showCallWave(true); playSound('open.mp3'); try { await pc.setRemoteDescription(new RTCSessionDescription(incomingOffer)); iceBuffer.forEach(c => pc.addIceCandidate(new RTCIceCandidate(c)).catch(er => {})); iceBuffer = []; const a = await pc.createAnswer(); await pc.setLocalDescription(a); sendWebRTCMsg('webrtc-answer', JSON.stringify(a)); incomingOffer = null; callActive = true; } catch (e) { incomingOffer = null; hang(false); } updateCallButtonState(); }
+async function acceptCall() { if (!incomingOffer || !activeChannelId) return; stopRingtone(); stopRingback(); const s = await getMediaStream(false); if (!s) return; localStream = s; createPC(); const cp = document.getElementById('call-panel'); if (cp) cp.style.display = 'flex'; const ct = contacts.find(c => c.channelId === activeChannelId); document.getElementById('call-avatar').src = 'assets/avatar/' + (ct?.avatar || selectedAvatar) + 'ava.png'; document.getElementById('call-contact-name').textContent = ct?.name || document.getElementById('nick-label')?.textContent || 'Лучник'; document.getElementById('call-status').textContent = '✅ Разговор'; showIncomingControls(false); showActiveControls(true); showCallWave(true); playSound('open.mp3'); try { const offerSdp = typeof incomingOffer === 'string' ? JSON.parse(incomingOffer) : incomingOffer; await pc.setRemoteDescription(new RTCSessionDescription(offerSdp)); iceBuffer.forEach(c => pc.addIceCandidate(new RTCIceCandidate(c)).catch(er => {})); iceBuffer = []; const a = await pc.createAnswer(); await pc.setLocalDescription(a); sendWebRTCMsg('webrtc-answer', JSON.stringify(a)); incomingOffer = null; callActive = true; } catch (e) { console.error('acceptCall error:', e); incomingOffer = null; hang(false); } updateCallButtonState(); }
 function hang(sig = true) { if (hangInProgress) return; hangInProgress = true; callActive = false; stopRingtone(); stopRingback(); if (sig && activeChannelId) sendWebRTCMsg('webrtc-hangup', ''); if (pc) { pc.onconnectionstatechange = null; pc.ontrack = null; pc.onicecandidate = null; pc.close(); pc = null; } if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; } incomingOffer = null; iceBuffer = []; if (iceFlushTimer) clearTimeout(iceFlushTimer); if (iceRestartTimer) clearTimeout(iceRestartTimer); iceRestartInProgress = false; const cp = document.getElementById('call-panel'); if (cp) cp.style.display = 'none'; showIncomingControls(false); showActiveControls(false); showCallWave(false); playSound('exet.mp3'); updateCallButtonState(); hangInProgress = false; }
 
 function initUI() {
@@ -168,7 +168,6 @@ function initUI() {
 function handleIncomingMessage(data) {
     if (!data || !data.text) return;
     
-    // Проверяем voiceData из Понга (новый формат)
     if (data.voiceData) {
         const ct = contacts.find(c => c.channelId === data.channelId);
         const nick = data.nick || ct?.name || 'Друг';
@@ -183,7 +182,6 @@ function handleIncomingMessage(data) {
         return;
     }
     
-    // Старый формат (JSON в тексте)
     try {
         const parsed = JSON.parse(data.text);
         if (parsed.webrtc) { handleWebRTCSignal(parsed.webrtc, parsed.sdp, data.channelId); return; }
@@ -209,7 +207,6 @@ function handleIncomingMessage(data) {
         }
     } catch (e) {}
     
-    // Обычное текстовое сообщение
     const ct = contacts.find(c => c.channelId === data.channelId);
     const nick = data.nick || ct?.name || 'Лучник';
     const avatar = data.avatar || ct?.avatar || '001';
@@ -225,14 +222,51 @@ function handleIncomingMessage(data) {
 }
 
 function handleWebRTCSignal(type, sdp, channelId) {
+    console.log('WebRTC сигнал:', type, 'sdp длина:', typeof sdp === 'string' ? sdp.length : 'не строка', 'pc:', !!pc);
     if (channelId && activeChannelId && channelId !== activeChannelId) return;
-    if (!pc) return;
+    
+    if (type === 'webrtc-offer' && !callActive) {
+        try {
+            incomingOffer = typeof sdp === 'string' ? JSON.parse(sdp) : sdp;
+        } catch(e) { incomingOffer = sdp; }
+        console.log('Входящий звонок, incomingOffer установлен');
+        playRingtone();
+        const cp = document.getElementById('call-panel');
+        if (cp) cp.style.display = 'flex';
+        const ct = contacts.find(c => c.channelId === activeChannelId);
+        document.getElementById('call-avatar').src = 'assets/avatar/' + (ct?.avatar || selectedAvatar) + 'ava.png';
+        document.getElementById('call-contact-name').textContent = ct?.name || 'Лучник';
+        document.getElementById('call-status').textContent = '📞 Входящий...';
+        showIncomingControls(true);
+        showActiveControls(false);
+        updateCallButtonState();
+        return;
+    }
+    
+    if (!pc) { console.log('pc не создан, сигнал игнорирован'); return; }
+    
     try {
-        if (type === 'webrtc-offer' && !callActive) { incomingOffer = sdp; playRingtone(); const cp = document.getElementById('call-panel'); if (cp) cp.style.display = 'flex'; const ct = contacts.find(c => c.channelId === activeChannelId); document.getElementById('call-avatar').src = 'assets/avatar/' + (ct?.avatar || selectedAvatar) + 'ava.png'; document.getElementById('call-contact-name').textContent = ct?.name || document.getElementById('nick-label')?.textContent || 'Лучник'; document.getElementById('call-status').textContent = '📞 Входящий...'; showIncomingControls(true); showActiveControls(false); updateCallButtonState(); }
-        else if (type === 'webrtc-answer') { if (pc.signalingState === 'have-local-offer') { pc.setRemoteDescription(new RTCSessionDescription(sdp)).then(() => { callActive = true; document.getElementById('call-status').textContent = '✅ Разговор'; showIncomingControls(false); showActiveControls(true); showCallWave(true); updateCallButtonState(); }).catch(e => {}); } }
-        else if (type === 'webrtc-ice') { if (pc.remoteDescription) { pc.addIceCandidate(new RTCIceCandidate(sdp)).catch(e => {}); } }
+        if (type === 'webrtc-answer') {
+            if (pc.signalingState === 'have-local-offer') {
+                const answerSdp = typeof sdp === 'string' ? JSON.parse(sdp) : sdp;
+                pc.setRemoteDescription(new RTCSessionDescription(answerSdp)).then(() => {
+                    callActive = true;
+                    document.getElementById('call-status').textContent = '✅ Разговор';
+                    showIncomingControls(false);
+                    showActiveControls(true);
+                    showCallWave(true);
+                    updateCallButtonState();
+                }).catch(e => console.error('setRemoteDescription error:', e));
+            }
+        }
+        else if (type === 'webrtc-ice') {
+            if (pc.remoteDescription) {
+                const candidate = typeof sdp === 'string' ? JSON.parse(sdp) : sdp;
+                pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(e => {});
+            }
+        }
         else if (type === 'webrtc-hangup') { hang(false); }
-    } catch (e) {}
+    } catch (e) { console.error('handleWebRTCSignal error:', e); }
 }
 
 function updateDateTime() { const now = new Date(); const de = document.getElementById('header-date'); const te = document.getElementById('header-time'); if (de) de.textContent = now.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' }); if (te) te.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }
