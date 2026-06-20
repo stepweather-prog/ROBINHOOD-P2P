@@ -30,8 +30,6 @@ function arraysEqual(a, b) {
     return true;
 }
 
-const DHT = { _nodeId: null, _buckets: [], _storage: {}, _k: 20, _alpha: 3, _peers: new Map() };
-
 const cryptoWorker = new Worker('crypto-worker.js');
 const cryptoCallbacks = {};
 let cryptoMsgId = 0;
@@ -73,6 +71,13 @@ async function deriveSecretLocal(myPrivateKeyB64, theirPublicKeyB64) {
     return Array.from(new Uint8Array(bits)).map(x => x.toString(16).padStart(2, '0')).join('');
 }
 
+async function advanceRatchetLocal(ch) {
+    const oldKey = ch.ratchetKey || ch.secret;
+    const salt = (ch.ratchetIndex || 0).toString(16).padStart(16, '0');
+    const newKey = await SHA(oldKey + salt);
+    return { newKey, index: (ch.ratchetIndex || 0) + 1, oldKey };
+}
+
 const P2PPong = {
     _peerId: null,
     _kp: null,
@@ -82,7 +87,7 @@ const P2PPong = {
     _channels: {},
     _beacons: {},
     _pending: null,
-    _signalServer: null,  // фиксированный сервер для текущей сессии маяка
+    _signalServer: null,
     
     _signalServers: [
         { type: 'http', url: 'https://robincall.stephanclaps-491.workers.dev', name: 'Cloudflare' },
@@ -106,7 +111,6 @@ const P2PPong = {
         if (this._state === 'online') { this._emit('ready', {}); return; }
         this._state = 'connecting'; this._emit('state-change', { state: 'connecting' });
         try {
-            DHT._nodeId = RND(); initBuckets();
             this._startHousekeeping();
             this._state = 'online'; this._emit('state-change', { state: 'online' }); this._emit('ready', {});
         } catch(e) {
@@ -118,7 +122,6 @@ const P2PPong = {
     _genEmoji() { const p = ['😀','😂','🤣','😍','😘','😜','😎','🤩','🥳','😇','🤠','🫡','🤔','😏','😤','🥺','😱','💀','👽','🤖']; return [...Array(5)].map(() => p[Math.floor(Math.random()*p.length)]); },
 
     async _pickServer() {
-        // Выбираем один сервер на всю сессию маяка
         for (const s of this._signalServers) {
             try {
                 const r = await fetch(s.url + '/health', { signal: AbortSignal.timeout(3000) });
@@ -185,7 +188,6 @@ const P2PPong = {
         this._beacons[this._peerId] = { keyPair: this._kp, beaconKey: bk, nonce: bd.nonce, expires: Date.now() + CONFIG.BEACON_TTL };
         this._pending = { type: 'joiner', targetPeerId, verificationHash };
         
-        // Отправляем и beacon-response (в waiting_), и emoji (в emoji_) на случай ручного режима
         const br = JSON.stringify({ type: 'beacon-response', pubKey: this._kp.publicKey, peerId: this._peerId, inner: bd.inner, channelId: this._chId, verificationHash });
         await this._post('/beacon', { keyHash: 'waiting_' + targetPeerId, packet: br });
         
@@ -281,11 +283,9 @@ const P2PPong = {
             this._remotePubKey = d.pubKey;
             this._chId = d.channelId;
             this._secret = await deriveSecretLocal(this._kp.privateKey, d.pubKey);
-            
             await this._post('/beacon', { keyHash: 'waiting_' + this._peerId, packet: JSON.stringify({
                 type: 'beacon-ack', peerId: this._peerId, channelId: this._chId, pubKey: this._kp.publicKey
             })});
-            
             this._openChannel(d.peerId);
             return;
         }
@@ -315,12 +315,41 @@ const P2PPong = {
             return;
         }
         
+        if (d.type === 'ratchet-resync' && d.pubKey && d.peerId) {
+            const chId = this._chId || Object.keys(this._channels)[0];
+            const ch = this._channels[chId];
+            if (ch) {
+                try {
+                    const ss = await deriveSecretLocal(this._kp?.privateKey || '', d.pubKey);
+                    ch.secret = ss;
+                    ch.ratchetKey = ss;
+                    ch.ratchetIndex = 0;
+                    ch.oldKeys = [];
+                    ch.lastReceivedRi = -1;
+                } catch(e) { log('resync error', e.message); }
+            }
+            return;
+        }
+        
         const chId = this._chId || Object.keys(this._channels)[0];
         const ch = this._channels[chId];
         if (ch && ch.ratchetKey) {
             try {
                 const u = await workerUnpackBlob(blobData, ch);
                 if (u) {
+                    // Продвигаем ratchet получателя до индекса отправителя
+                    if (u._ri !== undefined) {
+                        const targetRi = parseInt(u._ri) || 0;
+                        while ((ch.ratchetIndex || 0) <= targetRi) {
+                            const r = await advanceRatchetLocal(ch);
+                            if (!ch.oldKeys) ch.oldKeys = [];
+                            ch.oldKeys.push({ index: ch.ratchetIndex || 0, key: r.oldKey });
+                            if (ch.oldKeys.length > CONFIG.MAX_OLD_KEYS) ch.oldKeys.shift();
+                            ch.ratchetKey = r.newKey;
+                            ch.ratchetIndex = r.index;
+                        }
+                        ch.lastReceivedRi = targetRi;
+                    }
                     const dedupKey = chId + '_' + (u.n || u._t || '');
                     if (this._dedupTimers[dedupKey]) return;
                     this._dedupTimers[dedupKey] = setTimeout(() => delete this._dedupTimers[dedupKey], CONFIG.CHANNEL_TTL);
@@ -347,10 +376,11 @@ const P2PPong = {
         }
         if (ch.ratchetKey) {
             const result = await workerPackBlob(JSON.stringify({ d: text, t: Date.now(), n: nonce }), ch);
+            const oldKey = ch.ratchetKey;
             ch.ratchetKey = result.newRatchetKey;
             ch.ratchetIndex = result.newRatchetIndex;
             if (!ch.oldKeys) ch.oldKeys = [];
-            ch.oldKeys.push({ index: ch.ratchetIndex - 1, key: ch.ratchetKey });
+            ch.oldKeys.push({ index: ch.ratchetIndex - 1, key: oldKey });
             if (ch.oldKeys.length > CONFIG.MAX_OLD_KEYS) ch.oldKeys.shift();
             await this._post('/beacon', { keyHash: 'msg_' + (chId || this._chId), packet: result.packed });
             ch.blobs.push({ d: text, t: Date.now(), n: nonce, from: 'me', status: 'sent' });
@@ -372,7 +402,6 @@ const P2PPong = {
             const now = Date.now();
             Object.keys(me._channels).forEach(function(id) { if (now > me._channels[id].expires) { delete me._channels[id]; delete me._webRTC[id]; me._stopMsgPoll(id); me._stopWebRTCPoll(id); me._emit('channel-expired', { channelId: id }); } });
             Object.keys(me._beacons).forEach(function(id) { if (now > me._beacons[id].expires) delete me._beacons[id]; });
-            // Проверяем emoji_ для ручного режима
             if (me._peerId && me._pending?.type === 'creator' && Object.keys(me._channels).length === 0) {
                 me._get('/beacon?key=emoji_' + me._peerId).then(function(d) { if (d && d.packet) me._handleIn(d.packet); }).catch(() => {});
             }
@@ -478,13 +507,20 @@ const P2PPong = {
 };
 
 const RND = () => { const a = new Uint32Array(4); crypto.getRandomValues(a); return Array.from(a).map(x => x.toString(16).padStart(8, '0')).join(''); };
-function xorDistance(id1, id2) { let dist = ''; for (let i = 0; i < Math.min(id1.length, id2.length); i++) dist += (parseInt(id1[i], 16) ^ parseInt(id2[i], 16)).toString(16); return BigInt('0x' + dist); }
-function getBucketIndex(dist) { if (dist === 0n) return 0; return dist.toString(2).length - 1; }
-function initBuckets() { DHT._buckets = Array.from({ length: 256 }, () => []); }
-function addPeer(peerId, conn) { const dist = xorDistance(DHT._nodeId, peerId); const idx = Math.min(getBucketIndex(dist), 255); const bucket = DHT._buckets[idx]; const existing = bucket.findIndex(p => p.id === peerId); if (existing >= 0) bucket.splice(existing, 1); bucket.unshift({ id: peerId, conn, lastSeen: Date.now() }); if (bucket.length > DHT._k) bucket.pop(); DHT._peers.set(peerId, { conn, lastSeen: Date.now() }); }
-function getClosestPeers(targetId, count) { count = count || DHT._k; const all = []; DHT._buckets.forEach(bucket => { bucket.forEach(peer => { all.push({ id: peer.id, conn: peer.conn, lastSeen: peer.lastSeen, distance: xorDistance(targetId, peer.id) }); }); }); all.sort((a, b) => a.distance < b.distance ? -1 : 1); return all.slice(0, count); }
-async function sendToPeer(peerId, message) { const peer = DHT._peers.get(peerId); if (!peer || !peer.conn || peer.conn.readyState !== 'open') return; try { peer.conn.send(JSON.stringify(message)); } catch(e) {} }
 let lastResyncTime = {}, resyncInProgress = {};
-async function requestRatchetResync(ch) { const chId = Object.keys(P2PPong._channels).find(id => P2PPong._channels[id] === ch); if (!chId) return; const now = Date.now(); if (lastResyncTime[chId] && now - lastResyncTime[chId] < CONFIG.RATCHET_RESYNC_INTERVAL) return; if (resyncInProgress[chId]) return; resyncInProgress[chId] = true; lastResyncTime[chId] = now; log('ratchet-resync', 'Запрошен для ' + chId); try { const kp = await workerGenerateKeyPair(); P2PPong._post('/beacon', { keyHash: 'msg_' + chId, packet: await workerEncryptAES(JSON.stringify({ type: 'ratchet-resync', pubKey: kp.publicKey, peerId: P2PPong._peerId }), ch.secret) }); } catch(e) {} finally { resyncInProgress[chId] = false; } }
+async function requestRatchetResync(ch) {
+    const chId = Object.keys(P2PPong._channels).find(id => P2PPong._channels[id] === ch);
+    if (!chId) return;
+    const now = Date.now();
+    if (lastResyncTime[chId] && now - lastResyncTime[chId] < CONFIG.RATCHET_RESYNC_INTERVAL) return;
+    if (resyncInProgress[chId]) return;
+    resyncInProgress[chId] = true;
+    lastResyncTime[chId] = now;
+    log('ratchet-resync', 'Запрошен для ' + chId);
+    try {
+        const kp = await workerGenerateKeyPair();
+        P2PPong._post('/beacon', { keyHash: 'msg_' + chId, packet: await workerEncryptAES(JSON.stringify({ type: 'ratchet-resync', pubKey: kp.publicKey, peerId: P2PPong._peerId }), ch.secret) });
+    } catch(e) {} finally { resyncInProgress[chId] = false; }
+}
 
 if (typeof window !== 'undefined') { window.P2PPong = P2PPong; }
