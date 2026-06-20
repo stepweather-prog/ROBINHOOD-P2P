@@ -1,6 +1,23 @@
-// crypto-worker.js — Web Worker для криптографии
+// crypto-worker.js — Web Worker для криптографии (чистый base64, без бинарного паддинга)
 const MAX_TIMEOUT = 30000;
 let isProcessing = false;
+
+function toBase64(bytes) {
+    let binary = '';
+    for (let i = 0; i < bytes.length; i++) {
+        binary += String.fromCharCode(bytes[i] & 0xFF);
+    }
+    return btoa(binary);
+}
+
+function fromBase64(b64) {
+    const binary = atob(b64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i) & 0xFF;
+    }
+    return bytes;
+}
 
 self.onmessage = async function(e) {
     if (isProcessing) {
@@ -50,18 +67,18 @@ async function generateKeyPair() {
     const pubKey = await crypto.subtle.exportKey('raw', kp.publicKey);
     const privKey = await crypto.subtle.exportKey('pkcs8', kp.privateKey);
     return {
-        publicKey: btoa(String.fromCharCode(...new Uint8Array(pubKey))),
-        privateKey: btoa(String.fromCharCode(...new Uint8Array(privKey)))
+        publicKey: toBase64(new Uint8Array(pubKey)),
+        privateKey: toBase64(new Uint8Array(privKey))
     };
 }
 
 async function exportPublicKey(kp) {
     const r = await crypto.subtle.exportKey('raw', kp);
-    return btoa(String.fromCharCode(...new Uint8Array(r)));
+    return toBase64(new Uint8Array(r));
 }
 
 async function importPublicKey(b64) {
-    const r = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+    const r = fromBase64(b64);
     return await crypto.subtle.importKey('raw', r, { name: 'ECDH', namedCurve: 'P-256' }, false, []);
 }
 
@@ -75,15 +92,16 @@ async function encryptAES(text, secret) {
     const k = await crypto.subtle.importKey('raw', keyData, { name: 'AES-GCM' }, false, ['encrypt']);
     const iv = crypto.getRandomValues(new Uint8Array(12));
     const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, k, new TextEncoder().encode(text));
-    const c = new Uint8Array(iv.length + new Uint8Array(ct).length);
-    c.set(iv); c.set(new Uint8Array(ct), iv.length);
-    return btoa(String.fromCharCode(...c));
+    const combined = new Uint8Array(iv.length + new Uint8Array(ct).length);
+    combined.set(iv);
+    combined.set(new Uint8Array(ct), iv.length);
+    return toBase64(combined);
 }
 
 async function decryptAES(enc, secret) {
     const keyData = new TextEncoder().encode(secret.substring(0, 32));
     const k = await crypto.subtle.importKey('raw', keyData, { name: 'AES-GCM' }, false, ['decrypt']);
-    const c = Uint8Array.from(atob(enc), x => x.charCodeAt(0));
+    const c = fromBase64(enc);
     return new TextDecoder().decode(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: c.slice(0, 12) }, k, c.slice(12)));
 }
 
@@ -91,13 +109,13 @@ async function computeHMAC(data, secret) {
     const keyData = new TextEncoder().encode(secret.substring(0, 32));
     const k = await crypto.subtle.importKey('raw', keyData, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
     const sig = await crypto.subtle.sign('HMAC', k, new TextEncoder().encode(data));
-    return btoa(String.fromCharCode(...new Uint8Array(sig)));
+    return toBase64(new Uint8Array(sig));
 }
 
 async function verifyHMAC(data, sig, secret) {
     const keyData = new TextEncoder().encode(secret.substring(0, 32));
     const k = await crypto.subtle.importKey('raw', keyData, { name: 'HMAC', hash: 'SHA-256' }, false, ['verify']);
-    const sigBytes = Uint8Array.from(atob(sig), c => c.charCodeAt(0));
+    const sigBytes = fromBase64(sig);
     return await crypto.subtle.verify('HMAC', k, sigBytes, new TextEncoder().encode(data));
 }
 
@@ -112,11 +130,11 @@ async function compressData(str) {
     const total = new Uint8Array(chunks.reduce((s, c) => s + c.length, 0));
     let offset = 0;
     chunks.forEach(chunk => { total.set(chunk, offset); offset += chunk.length; });
-    return btoa(String.fromCharCode(...total));
+    return toBase64(total);
 }
 
 async function decompressData(b64) {
-    const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+    const bytes = fromBase64(b64);
     const ds = new DecompressionStream('gzip');
     const writer = ds.writable.getWriter();
     writer.write(bytes);
@@ -139,18 +157,12 @@ async function advanceRatchet(ch) {
 
 async function packBlob(jsonString, ch) {
     const compressed = await compressData(jsonString);
-    const padSize = Math.floor(Math.random() * 50) + 20;
-    const randomPad = btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(padSize))));
     const nonce = Array.from(crypto.getRandomValues(new Uint32Array(4))).map(x => x.toString(16).padStart(8, '0')).join('');
     const ri = ch.ratchetIndex || 0;
-    const data = JSON.stringify({ z: compressed, t: Date.now(), n: nonce, pad: randomPad, ri });
+    const data = JSON.stringify({ z: compressed, t: Date.now(), n: nonce, ri });
     const currentKey = ch.ratchetKey || ch.secret;
     const hmac = await computeHMAC(data, currentKey);
-    let padded = hmac + '|' + data;
-    if (padded.length < 4096) {
-        const pad = crypto.getRandomValues(new Uint8Array(4096 - padded.length));
-        padded += String.fromCharCode(...pad);
-    }
+    const padded = hmac + '|' + data;
     const { newKey, index } = await advanceRatchet(ch);
     const encrypted = await encryptAES(padded, ch.secret);
     return { packed: encrypted, newRatchetKey: newKey, newRatchetIndex: index };
@@ -174,7 +186,7 @@ async function tryDecryptWithKey(decrypted, key) {
     const separatorIndex = decrypted.indexOf('|');
     if (separatorIndex === -1) return null;
     const hmac = decrypted.substring(0, separatorIndex);
-    const data = decrypted.substring(separatorIndex + 1).trim().replace(/\x00+$/, '');
+    const data = decrypted.substring(separatorIndex + 1);
     if (!await verifyHMAC(data, hmac, key)) return null;
     const parsed = JSON.parse(data);
     if (parsed.z) {
@@ -183,7 +195,5 @@ async function tryDecryptWithKey(decrypted, key) {
         inner._ri = parsed.ri;
         return inner;
     }
-    delete parsed.pad;
-    delete parsed.ri;
     return parsed;
 }
