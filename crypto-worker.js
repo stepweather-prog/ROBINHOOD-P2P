@@ -11,12 +11,19 @@ function toBase64(bytes) {
 }
 
 function fromBase64(b64) {
-    const binary = atob(b64);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) {
-        bytes[i] = binary.charCodeAt(i) & 0xFF;
+    // Очищаем строку от не-ASCII и не-base64 символов
+    const clean = (b64 || '').replace(/[^A-Za-z0-9+/=]/g, '');
+    if (!clean) return new Uint8Array(0);
+    try {
+        const binary = atob(clean);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) {
+            bytes[i] = binary.charCodeAt(i) & 0xFF;
+        }
+        return bytes;
+    } catch(e) {
+        return new Uint8Array(0);
     }
-    return bytes;
 }
 
 self.onmessage = async function(e) {
@@ -102,7 +109,12 @@ async function decryptAES(enc, secret) {
     const keyData = new TextEncoder().encode(secret.substring(0, 32));
     const k = await crypto.subtle.importKey('raw', keyData, { name: 'AES-GCM' }, false, ['decrypt']);
     const c = fromBase64(enc);
-    return new TextDecoder().decode(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: c.slice(0, 12) }, k, c.slice(12)));
+    if (!c || c.length === 0) return null;
+    try {
+        return new TextDecoder().decode(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: c.slice(0, 12) }, k, c.slice(12)));
+    } catch(e) {
+        return null;
+    }
 }
 
 async function computeHMAC(data, secret) {
@@ -113,10 +125,14 @@ async function computeHMAC(data, secret) {
 }
 
 async function verifyHMAC(data, sig, secret) {
-    const keyData = new TextEncoder().encode(secret.substring(0, 32));
-    const k = await crypto.subtle.importKey('raw', keyData, { name: 'HMAC', hash: 'SHA-256' }, false, ['verify']);
-    const sigBytes = fromBase64(sig);
-    return await crypto.subtle.verify('HMAC', k, sigBytes, new TextEncoder().encode(data));
+    try {
+        const keyData = new TextEncoder().encode(secret.substring(0, 32));
+        const k = await crypto.subtle.importKey('raw', keyData, { name: 'HMAC', hash: 'SHA-256' }, false, ['verify']);
+        const sigBytes = fromBase64(sig);
+        return await crypto.subtle.verify('HMAC', k, sigBytes, new TextEncoder().encode(data));
+    } catch(e) {
+        return false;
+    }
 }
 
 async function compressData(str) {
@@ -135,17 +151,22 @@ async function compressData(str) {
 
 async function decompressData(b64) {
     const bytes = fromBase64(b64);
-    const ds = new DecompressionStream('gzip');
-    const writer = ds.writable.getWriter();
-    writer.write(bytes);
-    writer.close();
-    const reader = ds.readable.getReader();
-    const chunks = [];
-    while (true) { const r = await reader.read(); if (r.done) break; chunks.push(r.value); }
-    const total = new Uint8Array(chunks.reduce((s, c) => s + c.length, 0));
-    let offset = 0;
-    chunks.forEach(chunk => { total.set(chunk, offset); offset += chunk.length; });
-    return new TextDecoder().decode(total);
+    if (!bytes || bytes.length === 0) return null;
+    try {
+        const ds = new DecompressionStream('gzip');
+        const writer = ds.writable.getWriter();
+        writer.write(bytes);
+        writer.close();
+        const reader = ds.readable.getReader();
+        const chunks = [];
+        while (true) { const r = await reader.read(); if (r.done) break; chunks.push(r.value); }
+        const total = new Uint8Array(chunks.reduce((s, c) => s + c.length, 0));
+        let offset = 0;
+        chunks.forEach(chunk => { total.set(chunk, offset); offset += chunk.length; });
+        return new TextDecoder().decode(total);
+    } catch(e) {
+        return null;
+    }
 }
 
 async function advanceRatchet(ch) {
@@ -162,9 +183,9 @@ async function packBlob(jsonString, ch) {
     const data = JSON.stringify({ z: compressed, t: Date.now(), n: nonce, ri });
     const currentKey = ch.ratchetKey || ch.secret;
     const hmac = await computeHMAC(data, currentKey);
-    const padded = hmac + '|' + data;
+    const payload = hmac + '|' + data;
     const { newKey, index } = await advanceRatchet(ch);
-    const encrypted = await encryptAES(padded, ch.secret);
+    const encrypted = await encryptAES(payload, ch.secret);
     return { packed: encrypted, newRatchetKey: newKey, newRatchetIndex: index };
 }
 
@@ -188,12 +209,18 @@ async function tryDecryptWithKey(decrypted, key) {
     const hmac = decrypted.substring(0, separatorIndex);
     const data = decrypted.substring(separatorIndex + 1);
     if (!await verifyHMAC(data, hmac, key)) return null;
-    const parsed = JSON.parse(data);
-    if (parsed.z) {
-        const inner = JSON.parse(await decompressData(parsed.z));
-        inner._t = parsed.t;
-        inner._ri = parsed.ri;
-        return inner;
+    try {
+        const parsed = JSON.parse(data);
+        if (parsed.z) {
+            const inner = JSON.parse(await decompressData(parsed.z));
+            if (inner) {
+                inner._t = parsed.t;
+                inner._ri = parsed.ri;
+                return inner;
+            }
+        }
+        return parsed;
+    } catch(e) {
+        return null;
     }
-    return parsed;
 }
