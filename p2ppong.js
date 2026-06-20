@@ -348,8 +348,11 @@ const P2PPong = {
                     const dedupKey = chId + '_' + (u.n || u._t || '');
                     if (this._dedupTimers[dedupKey]) return;
                     this._dedupTimers[dedupKey] = setTimeout(() => delete this._dedupTimers[dedupKey], CONFIG.CHANNEL_TTL);
+                    
+                    const displayText = u.type === 'voice' ? '[Голосовое сообщение]' : (u.d || u.text || '');
                     ch.blobs.push({ 
-                        d: u.d || u.text || '', 
+                        d: displayText, 
+                        voiceData: u.type === 'voice' ? u.d : null,
                         t: u._t || Date.now(), 
                         n: u.n || '', 
                         from: 'them', 
@@ -360,7 +363,9 @@ const P2PPong = {
                     ch.expires = Date.now() + CONFIG.CHANNEL_TTL; this._stats.messagesReceived++;
                     this._emit('message-received', { 
                         channelId: chId, 
-                        text: u.d || u.text || '', 
+                        text: displayText,
+                        voiceData: u.type === 'voice' ? u.d : null,
+                        type: u.type || 'text',
                         from: 'them', 
                         timestamp: u._t || Date.now(),
                         nick: this._theirNick,
@@ -376,7 +381,7 @@ const P2PPong = {
         try { d = JSON.parse(blobData); } catch(e) { return; }
         log('_handleIn', d.type || 'unknown');
         
-        // Проверка на свои сигналы (не от другого Понга)
+        // Проверка на свои сигналы
         if (d.peerId === this._peerId) {
             log('_handleIn', 'игнорирую свой сигнал:', d.type);
             return;
@@ -466,8 +471,8 @@ const P2PPong = {
     async sendMessage(chId, text) {
         const ch = this._channels[chId || this._chId]; if (!ch) return false;
         const nonce = RND();
-        const rtc = this._webRTC[chId || this._chId];
         const messageData = JSON.stringify({ 
+            type: 'text',
             d: text, 
             t: Date.now(), 
             n: nonce,
@@ -475,6 +480,34 @@ const P2PPong = {
             nick: this._myNick,
             avatar: this._myAvatar
         });
+        
+        return this._sendEncrypted(ch, chId, messageData, text, nonce);
+    },
+
+    async sendVoiceMessage(chId, voiceBase64) {
+        const ch = this._channels[chId || this._chId]; if (!ch) return false;
+        
+        if (voiceBase64.length > 8000) {
+            this._emit('error', { message: 'Голосовое слишком длинное. Максимум 10 секунд.' });
+            return false;
+        }
+        
+        const nonce = RND();
+        const messageData = JSON.stringify({ 
+            type: 'voice',
+            d: voiceBase64, 
+            t: Date.now(), 
+            n: nonce,
+            from: this._peerId,
+            nick: this._myNick,
+            avatar: this._myAvatar
+        });
+        
+        return this._sendEncrypted(ch, chId, messageData, '[Голосовое сообщение]', nonce);
+    },
+
+    async _sendEncrypted(ch, chId, messageData, displayText, nonce) {
+        const rtc = this._webRTC[chId || this._chId];
         
         if (rtc && rtc.dc && rtc.dc.readyState === 'open') {
             const result = await workerPackBlob(messageData, ch);
@@ -484,12 +517,18 @@ const P2PPong = {
             if (!ch.oldKeys) ch.oldKeys = [];
             ch.oldKeys.push({ index: ch.ratchetIndex - 1, key: oldKey });
             if (ch.oldKeys.length > CONFIG.MAX_OLD_KEYS) ch.oldKeys.shift();
+            
+            if (result.packed.length > 16000) {
+                this._emit('error', { message: 'Сообщение слишком большое.' });
+                return false;
+            }
+            
             rtc.dc.send(result.packed);
-            ch.blobs.push({ d: text, t: Date.now(), n: nonce, from: 'me', status: 'sent', nick: this._myNick, avatar: this._myAvatar });
+            ch.blobs.push({ d: displayText, t: Date.now(), n: nonce, from: 'me', status: 'sent', nick: this._myNick, avatar: this._myAvatar });
             ch.expires = Date.now() + CONFIG.CHANNEL_TTL; this._stats.messagesSent++;
             this._emit('message-sent', { 
                 channelId: chId || this._chId, 
-                data: text, 
+                data: displayText, 
                 status: 'sent',
                 nick: this._myNick,
                 avatar: this._myAvatar
@@ -499,18 +538,25 @@ const P2PPong = {
         
         if (ch.ratchetKey) {
             const result = await workerPackBlob(messageData, ch);
+            
+            if (result.packed.length > 8000) {
+                this._emit('error', { message: 'Сообщение слишком большое для сервера.' });
+                return false;
+            }
+            
             const oldKey = ch.ratchetKey;
             ch.ratchetKey = result.newRatchetKey;
             ch.ratchetIndex = result.newRatchetIndex;
             if (!ch.oldKeys) ch.oldKeys = [];
             ch.oldKeys.push({ index: ch.ratchetIndex - 1, key: oldKey });
             if (ch.oldKeys.length > CONFIG.MAX_OLD_KEYS) ch.oldKeys.shift();
-            await this._post('/beacon', { keyHash: 'msg_' + (chId || this._chId), packet: result.packed });
-            ch.blobs.push({ d: text, t: Date.now(), n: nonce, from: 'me', status: 'sent', nick: this._myNick, avatar: this._myAvatar });
+            
+            await this._post('/beacon', { keyHash: 'msg_' + (chId || this._chId) + '_' + this._remotePeerId, packet: result.packed });
+            ch.blobs.push({ d: displayText, t: Date.now(), n: nonce, from: 'me', status: 'sent', nick: this._myNick, avatar: this._myAvatar });
             ch.expires = Date.now() + CONFIG.CHANNEL_TTL; this._stats.messagesSent++;
             this._emit('message-sent', { 
                 channelId: chId || this._chId, 
-                data: text, 
+                data: displayText, 
                 status: 'sent',
                 nick: this._myNick,
                 avatar: this._myAvatar
@@ -556,7 +602,7 @@ const P2PPong = {
         function poll() {
             if (!me._channels[chId]) { me._stopMsgPoll(chId); return; }
             if (me._webRTC[chId] && me._webRTC[chId].connected) { me._stopMsgPoll(chId); return; }
-            me._get('/beacon?key=msg_' + chId).then(function(d) {
+            me._get('/beacon?key=msg_' + chId + '_' + me._peerId).then(function(d) {
                 if (d && d.packet) me._handleIn(d.packet);
                 me._msgPollTimers[chId] = setTimeout(poll, CONFIG.MSG_POLL_INTERVAL);
             }).catch(() => { me._msgPollTimers[chId] = setTimeout(poll, CONFIG.MSG_POLL_INTERVAL); });
@@ -607,7 +653,6 @@ const P2PPong = {
                 }
             };
             
-            // DataChannel для сообщений
             if (asInitiator) {
                 const dc = pc.createDataChannel('chat');
                 me._setupDataChannel(chId, ch, dc, true);
@@ -653,7 +698,6 @@ const P2PPong = {
             try {
                 const u = await workerUnpackBlob(e.data, ch);
                 if (u) {
-                    // ПРОВЕРКА: не моё сообщение?
                     if (u.from === this._peerId) {
                         log('_handleDCMessage', 'игнорирую своё сообщение через WebRTC');
                         return;
@@ -675,8 +719,11 @@ const P2PPong = {
                     if (this._dedupTimers[dedupKey]) return;
                     this._dedupTimers[dedupKey] = setTimeout(() => delete this._dedupTimers[dedupKey], CONFIG.CHANNEL_TTL);
                     this._webRTC[chId]?.seenMessages?.add(u.n);
+                    
+                    const displayText = u.type === 'voice' ? '[Голосовое сообщение]' : (u.d || u.text || '');
                     ch.blobs.push({ 
-                        d: u.d || u.text || '', 
+                        d: displayText, 
+                        voiceData: u.type === 'voice' ? u.d : null,
                         t: u._t || Date.now(), 
                         n: u.n || '', 
                         from: 'them', 
@@ -687,7 +734,9 @@ const P2PPong = {
                     ch.expires = Date.now() + CONFIG.CHANNEL_TTL; this._stats.messagesReceived++;
                     this._emit('message-received', { 
                         channelId: chId, 
-                        text: u.d || u.text || '', 
+                        text: displayText,
+                        voiceData: u.type === 'voice' ? u.d : null,
+                        type: u.type || 'text',
                         from: 'them', 
                         timestamp: u._t || Date.now(),
                         nick: this._theirNick,
@@ -698,7 +747,6 @@ const P2PPong = {
             } catch(er) {}
         }
         
-        // Fallback для старых форматов
         try {
             const m = JSON.parse(e.data);
             if (m.type === 'message' && m.text) {
@@ -840,7 +888,7 @@ async function requestRatchetResync(ch) {
     try {
         const kp = await workerGenerateKeyPair();
         P2PPong._post('/beacon', { 
-            keyHash: 'msg_' + chId, 
+            keyHash: 'msg_' + chId + '_' + P2PPong._remotePeerId, 
             packet: await workerEncryptAES(JSON.stringify({ 
                 type: 'ratchet-resync', 
                 pubKey: kp.publicKey, 
