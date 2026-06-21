@@ -59,7 +59,7 @@ function playQuiverAnimation() {
     rt.appendChild(wrapper);
     
     const img = document.createElement('img');
-    img.src = 'assets/docking/docking.webp';
+    img.src = 'assets/docking.webp';
     img.style.cssText = 'width:80px;height:40px;';
     wrapper.appendChild(img);
     
