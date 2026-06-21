@@ -357,7 +357,31 @@ function initApp() {
 
     document.getElementById('close-verify-modal')?.addEventListener('click', () => { document.getElementById('verify-modal')?.classList.remove('active'); });
     document.getElementById('verify-modal')?.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('active'); });
-    document.getElementById('btn-clear')?.addEventListener('click', () => { const box = document.getElementById('chat-box'); if (box) box.querySelectorAll('.message-row').forEach(m => m.remove()); playSmokeAnimation(); playSound('clear cache.mp3'); rMsg('🔥 Робин Гуд пустил все письма на самокрутки!', 5000); contacts = []; saveContacts(); P2PPong.destroy().then(() => { localStorage.clear(); setTimeout(() => P2PPong.init(), 500); }); });
+    document.getElementById('btn-clear')?.addEventListener('click', () => { 
+        const box = document.getElementById('chat-box'); 
+        if (box) box.querySelectorAll('.message-row').forEach(m => m.remove()); 
+        playSmokeAnimation(); 
+        playSound('clear cache.mp3'); 
+        rMsg('🔥 Робин Гуд пустил все письма на самокрутки!', 5000); 
+        contacts = []; 
+        saveContacts(); 
+        P2PPong.destroy().then(() => { 
+            localStorage.clear(); 
+            if ('caches' in window) {
+                caches.keys().then(names => {
+                    names.forEach(name => caches.delete(name));
+                });
+            }
+            if (window.indexedDB) {
+                indexedDB.databases().then(dbs => {
+                    dbs.forEach(db => {
+                        indexedDB.deleteDatabase(db.name);
+                    });
+                }).catch(() => {});
+            }
+            setTimeout(() => P2PPong.init(), 500); 
+        }); 
+    });
     document.getElementById('btn-settings')?.addEventListener('click', () => { closeSheets(); document.getElementById('settings-sheet')?.classList.add('open'); document.getElementById('overlay')?.classList.add('show'); });
     document.getElementById('settings-close')?.addEventListener('click', closeSheets);
     document.getElementById('overlay')?.addEventListener('click', closeSheets);
