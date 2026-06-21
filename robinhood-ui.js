@@ -48,33 +48,15 @@ function playSmokeAnimation() { const smoke = document.createElement('div'); smo
 function playArcherAnimation() { const rt = document.getElementById('robin-text'); if (!rt) return; if (currentArrowContainer?.parentNode) currentArrowContainer.remove(); if (archerAnimation) { archerAnimation.destroy(); archerAnimation = null; } const wrapper = document.createElement('span'); wrapper.className = 'robin-arrow-container'; wrapper.style.cssText = 'width:80px;height:40px;display:inline-block;vertical-align:middle;'; currentArrowContainer = wrapper; rt.textContent = ''; rt.appendChild(wrapper); if (typeof lottie !== 'undefined') { try { archerAnimation = lottie.loadAnimation({ container: wrapper, renderer: 'canvas', loop: false, autoplay: true, path: 'assets/Archer.json' }); archerAnimation.addEventListener('complete', () => { if (wrapper.parentNode) wrapper.remove(); currentArrowContainer = null; archerAnimation = null; rt.textContent = robinDefaultText; }); } catch (e) { wrapper.textContent = '🏹'; setTimeout(() => { if (wrapper.parentNode) wrapper.remove(); currentArrowContainer = null; rt.textContent = robinDefaultText; }, 1500); } } else { wrapper.textContent = '🏹'; setTimeout(() => { if (wrapper.parentNode) wrapper.remove(); currentArrowContainer = null; rt.textContent = robinDefaultText; }, 1500); } }
 function playBowAnimation() { const bc = document.getElementById('bow-above-send'); if (!bc) return; if (bowAnim) { bowAnim.destroy(); bowAnim = null; } bc.style.display = 'block'; if (typeof lottie !== 'undefined') { try { bowAnim = lottie.loadAnimation({ container: bc, renderer: 'canvas', loop: false, autoplay: true, path: 'assets/bow.json' }); bowAnim.addEventListener('complete', () => { bc.style.display = 'none'; bowAnim = null; }); } catch (e) { bc.textContent = '🏹'; setTimeout(() => { bc.style.display = 'none'; bc.textContent = ''; }, 800); } } else { bc.textContent = '🏹'; setTimeout(() => { bc.style.display = 'none'; bc.textContent = ''; }, 800); } const sb = document.getElementById('send-btn'); if (sb) { sb.classList.add('shooting'); setTimeout(() => sb.classList.remove('shooting'), 400); } }
 function playQuiverAnimation() {
-    const rt = document.getElementById('robin-text');
-    if (!rt) return;
-    if (currentArrowContainer?.parentNode) currentArrowContainer.remove();
-    if (quiverAnim) { quiverAnim.destroy(); quiverAnim = null; }
-    rt.style.overflow = 'visible';
-    rt.style.maxHeight = 'none';
-    rt.style.display = 'flex';
-    rt.style.alignItems = 'center';
-    const wrapper = document.createElement('span');
-    wrapper.className = 'robin-arrow-container';
-    wrapper.style.cssText = 'width:80px;height:40px;display:inline-block;vertical-align:middle;';
-    currentArrowContainer = wrapper;
-    rt.textContent = '';
-    rt.appendChild(wrapper);
+    const quiver = document.createElement('div');
+    quiver.className = 'quiver-anim';
     const img = document.createElement('img');
     img.src = 'assets/docking.gif?t=' + Date.now();
-    img.style.cssText = 'width:80px;height:40px;display:block;';
-    wrapper.appendChild(img);
-    setTimeout(() => { 
-        if (wrapper.parentNode) wrapper.remove(); 
-        currentArrowContainer = null; 
-        rt.textContent = robinDefaultText; 
-        rt.style.overflow = '';
-        rt.style.maxHeight = '';
-        rt.style.display = '';
-        rt.style.alignItems = '';
-    }, 3500);
+    img.style.cssText = 'width:150px;height:150px;object-fit:contain;';
+    img.onerror = () => { quiver.innerHTML = '<div style="font-size:80px;">🏹</div>'; };
+    quiver.appendChild(img);
+    document.body.appendChild(quiver);
+    setTimeout(() => { quiver.style.opacity = '0'; quiver.style.transition = 'opacity 0.5s'; setTimeout(() => quiver.remove(), 500); }, 3500);
 }
 
 function showCallWave(show) { const cw = document.getElementById('call-wave'); if (!cw) return; if (show) { cw.innerHTML = ''; cw.style.display = 'flex'; for (let i = 0; i < 8; i++) { const bar = document.createElement('div'); bar.className = 'voice-wave-bar'; bar.style.animation = 'wave 1s ease-in-out infinite'; bar.style.animationDelay = `${i * 0.1}s`; cw.appendChild(bar); } } else { cw.style.display = 'none'; cw.innerHTML = ''; } }
