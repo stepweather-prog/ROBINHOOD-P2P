@@ -53,29 +53,19 @@ function playBowAnimation() { const bc = document.getElementById('bow-above-send
 function playQuiverAnimation() {
     const quiver = document.createElement('div');
     quiver.className = 'quiver-anim';
-    quiver.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 9999;
-        pointer-events: none;
-        background: rgba(0,0,0,0.3);
-        animation: fadeIn 0.3s ease;
-    `;
+    
     const img = document.createElement('img');
     img.src = 'assets/docking.gif?t=' + Date.now();
     img.style.cssText = 'width:200px;height:200px;object-fit:contain;filter:drop-shadow(0 0 20px rgba(255,215,0,0.8));';
-    img.onerror = () => { quiver.innerHTML = '<div style="font-size:120px;animation:quiverPulse 0.5s ease-in-out 7;">🏹</div>'; };
+    img.onerror = () => { 
+        quiver.innerHTML = '<div style="font-size:120px;animation:quiverPulse 0.5s ease-in-out 7;">🏹</div>'; 
+    };
     quiver.appendChild(img);
     document.body.appendChild(quiver);
+    
     setTimeout(() => { 
         quiver.style.opacity = '0'; 
-        quiver.style.transition = 'opacity 0.5s'; 
+        quiver.style.transition = 'opacity 0.5s ease'; 
         setTimeout(() => quiver.remove(), 500); 
     }, 3500);
 }
@@ -164,13 +154,51 @@ function initUI() {
         if (verificationModalShown) return;
         verificationModalShown = true;
         verificationDone = false;
+        
+        // Авто-подтверждение для создателя если эмодзи совпадают
+        if (window._verifyCorrect && Array.isArray(data.emoji) && 
+            JSON.stringify(data.emoji) === JSON.stringify(window._verifyCorrect)) {
+            document.getElementById('verify-modal')?.classList.add('active');
+            document.getElementById('verify-instruction').textContent = '✅ Эмодзи совпали! Канал открывается...';
+            document.getElementById('verify-emoji-display') && 
+                (document.getElementById('verify-emoji-display').textContent = data.emoji.join(' '));
+            document.getElementById('verify-error').style.display = 'none';
+            
+            setTimeout(async () => {
+                await P2PPong.confirmVerification();
+                document.getElementById('verify-modal')?.classList.remove('active');
+                verificationModalShown = false;
+                verificationDone = true;
+                
+                if (window._pendingChannel) {
+                    const chData = window._pendingChannel;
+                    window._pendingChannel = null;
+                    setTimeout(() => {
+                        playQuiverAnimation();
+                        rMsg('✅ Колчан открыт! Тетива натянута!', 3000);
+                        addContact({ peerId: chData.peerId, name: chData.nick || 'Лучник', channelId: chData.channelId, verified: false, avatar: chData.avatar || '001' });
+                        showChatForChannel(chData.channelId);
+                    }, 500);
+                }
+            }, 1500);
+            return;
+        }
+        
+        // Ручное подтверждение
         document.getElementById('verify-instruction').textContent = 'Пир Б ввёл эти эмодзи. Подтверди:';
-        document.getElementById('verify-emoji-display') && (document.getElementById('verify-emoji-display').textContent = Array.isArray(data.emoji) ? data.emoji.join(' ') : data.emoji);
+        document.getElementById('verify-emoji-display') && 
+            (document.getElementById('verify-emoji-display').textContent = Array.isArray(data.emoji) ? data.emoji.join(' ') : data.emoji);
         document.getElementById('verify-error').style.display = 'none';
         document.getElementById('verify-modal')?.classList.add('active');
     });
 
     P2PPong.on('channel-opened', (data) => { 
+        // Ждём подтверждения эмодзи если верификация активна
+        if (verificationModalShown && !verificationDone) {
+            window._pendingChannel = data;
+            return;
+        }
+        
         document.getElementById('verify-modal')?.classList.remove('active');
         verificationModalShown = false; 
         verificationDone = false;
@@ -232,8 +260,30 @@ function initApp() {
     document.getElementById('btn-verify-confirm')?.addEventListener('click', async () => {
         const selected = window._verifySelected || []; const expected = window._verifyCorrect || []; const errEl = document.getElementById('verify-error');
         if (selected.length !== expected.length) { if (errEl) { errEl.textContent = 'Выбери ровно 5 знаков'; errEl.style.display = 'block'; } return; }
-        if (selected.join('') === expected.join('')) { if (errEl) errEl.style.display = 'none'; await P2PPong.confirmVerification(); document.getElementById('verify-modal')?.classList.remove('active'); verificationModalShown = false; verificationDone = true; rMsg('✅ Подтверждено!', 3000); }
-        else { if (errEl) { errEl.textContent = '❌ Неверный порядок. Попробуй снова.'; errEl.style.display = 'block'; } window._verifySelected = []; document.getElementById('verify-selected').textContent = ''; }
+        if (selected.join('') === expected.join('')) { 
+            if (errEl) errEl.style.display = 'none'; 
+            await P2PPong.confirmVerification(); 
+            document.getElementById('verify-modal')?.classList.remove('active'); 
+            verificationModalShown = false; 
+            verificationDone = true; 
+            rMsg('✅ Подтверждено!', 3000); 
+            
+            // Обработка отложенного канала
+            if (window._pendingChannel) {
+                const data = window._pendingChannel;
+                window._pendingChannel = null;
+                setTimeout(() => {
+                    playQuiverAnimation(); 
+                    rMsg('✅ Колчан открыт! Тетива натянута!', 3000); 
+                    addContact({ peerId: data.peerId, name: data.nick || 'Лучник', channelId: data.channelId, verified: false, avatar: data.avatar || '001' }); 
+                    showChatForChannel(data.channelId); 
+                }, 1000);
+            }
+        } else { 
+            if (errEl) { errEl.textContent = '❌ Неверный порядок. Попробуй снова.'; errEl.style.display = 'block'; } 
+            window._verifySelected = []; 
+            document.getElementById('verify-selected').textContent = ''; 
+        }
     });
 
     document.getElementById('close-verify-modal')?.addEventListener('click', () => { document.getElementById('verify-modal')?.classList.remove('active'); verificationModalShown = false; });
