@@ -33,6 +33,7 @@ let deferredPrompt = null,
     iceRestartInProgress = false;
 let hangInProgress = false;
 let verificationModalShown = false;
+let verificationDone = false;
 
 const avatars = [];
 for (let i = 1; i <= 168; i++) avatars.push('assets/avatar/' + String(i).padStart(3, '0') + 'ava.png');
@@ -51,6 +52,10 @@ function playQuiverAnimation() {
     if (!rt) return;
     if (currentArrowContainer?.parentNode) currentArrowContainer.remove();
     if (quiverAnim) { quiverAnim.destroy(); quiverAnim = null; }
+    rt.style.overflow = 'visible';
+    rt.style.maxHeight = 'none';
+    rt.style.display = 'flex';
+    rt.style.alignItems = 'center';
     const wrapper = document.createElement('span');
     wrapper.className = 'robin-arrow-container';
     wrapper.style.cssText = 'width:80px;height:40px;display:inline-block;vertical-align:middle;';
@@ -58,10 +63,18 @@ function playQuiverAnimation() {
     rt.textContent = '';
     rt.appendChild(wrapper);
     const img = document.createElement('img');
-    img.src = 'assets/docking.gif';
-    img.style.cssText = 'width:80px;height:40px;';
+    img.src = 'assets/docking.gif?t=' + Date.now();
+    img.style.cssText = 'width:80px;height:40px;display:block;';
     wrapper.appendChild(img);
-    setTimeout(() => { if (wrapper.parentNode) wrapper.remove(); currentArrowContainer = null; rt.textContent = robinDefaultText; }, 3500);
+    setTimeout(() => { 
+        if (wrapper.parentNode) wrapper.remove(); 
+        currentArrowContainer = null; 
+        rt.textContent = robinDefaultText; 
+        rt.style.overflow = '';
+        rt.style.maxHeight = '';
+        rt.style.display = '';
+        rt.style.alignItems = '';
+    }, 3500);
 }
 
 function showCallWave(show) { const cw = document.getElementById('call-wave'); if (!cw) return; if (show) { cw.innerHTML = ''; cw.style.display = 'flex'; for (let i = 0; i < 8; i++) { const bar = document.createElement('div'); bar.className = 'voice-wave-bar'; bar.style.animation = 'wave 1s ease-in-out infinite'; bar.style.animationDelay = `${i * 0.1}s`; cw.appendChild(bar); } } else { cw.style.display = 'none'; cw.innerHTML = ''; } }
@@ -128,6 +141,7 @@ function initUI() {
     P2PPong.on('verification-needed', (data) => {
         if (verificationModalShown) return;
         verificationModalShown = true;
+        verificationDone = false;
         document.getElementById('verify-instruction').textContent = 'Выбери 5 знаков в правильном порядке';
         document.getElementById('verify-error').style.display = 'none';
         document.getElementById('verify-selected').textContent = '';
@@ -146,6 +160,7 @@ function initUI() {
     P2PPong.on('verification-received', (data) => {
         if (verificationModalShown) return;
         verificationModalShown = true;
+        verificationDone = false;
         document.getElementById('verify-instruction').textContent = 'Пир Б ввёл эти эмодзи. Подтверди:';
         document.getElementById('verify-emoji-display') && (document.getElementById('verify-emoji-display').textContent = Array.isArray(data.emoji) ? data.emoji.join(' ') : data.emoji);
         document.getElementById('verify-error').style.display = 'none';
@@ -153,8 +168,10 @@ function initUI() {
     });
 
     P2PPong.on('channel-opened', (data) => { 
+        if (!verificationDone) return;
         document.getElementById('verify-modal')?.classList.remove('active');
         verificationModalShown = false; 
+        verificationDone = false;
         playQuiverAnimation(); 
         rMsg('✅ Колчан открыт! Тетива натянута!', 3000); 
         addContact({ peerId: data.peerId, name: data.nick || 'Лучник', channelId: data.channelId, verified: false, avatar: data.avatar || '001' }); 
@@ -213,7 +230,7 @@ function initApp() {
     document.getElementById('btn-verify-confirm')?.addEventListener('click', async () => {
         const selected = window._verifySelected || []; const expected = window._verifyCorrect || []; const errEl = document.getElementById('verify-error');
         if (selected.length !== expected.length) { if (errEl) { errEl.textContent = 'Выбери ровно 5 знаков'; errEl.style.display = 'block'; } return; }
-        if (selected.join('') === expected.join('')) { if (errEl) errEl.style.display = 'none'; await P2PPong.confirmVerification(); document.getElementById('verify-modal')?.classList.remove('active'); verificationModalShown = false; rMsg('✅ Подтверждено!', 3000); }
+        if (selected.join('') === expected.join('')) { if (errEl) errEl.style.display = 'none'; await P2PPong.confirmVerification(); document.getElementById('verify-modal')?.classList.remove('active'); verificationModalShown = false; verificationDone = true; rMsg('✅ Подтверждено!', 3000); }
         else { if (errEl) { errEl.textContent = '❌ Неверный порядок. Попробуй снова.'; errEl.style.display = 'block'; } window._verifySelected = []; document.getElementById('verify-selected').textContent = ''; }
     });
 
@@ -223,12 +240,15 @@ function initApp() {
         const box = document.getElementById('chat-box'); if (box) box.querySelectorAll('.message-row').forEach(m => m.remove()); 
         playSmokeAnimation(); playSound('clear cache.mp3'); rMsg('🔥 Робин Гуд пустил все письма на самокрутки!', 5000); 
         contacts = []; saveContacts(); 
-        P2PPong.destroy(); 
-        localStorage.clear(); 
-        if ('caches' in window) { caches.keys().then(names => { names.forEach(name => caches.delete(name)); }); }
-        if (window.indexedDB) { indexedDB.databases().then(dbs => { dbs.forEach(db => { indexedDB.deleteDatabase(db.name); }); }).catch(() => {}); }
-        sessionStorage.clear();
-        setTimeout(() => { window.location.reload(true); }, 300);
+        setTimeout(() => {
+            P2PPong.destroy().then(() => { 
+                localStorage.clear(); 
+                if ('caches' in window) { caches.keys().then(names => { names.forEach(name => caches.delete(name)); }); }
+                if (window.indexedDB) { indexedDB.databases().then(dbs => { dbs.forEach(db => { indexedDB.deleteDatabase(db.name); }); }).catch(() => {}); }
+                sessionStorage.clear();
+                window.location.reload(true);
+            });
+        }, 6000);
     });
     document.getElementById('btn-settings')?.addEventListener('click', () => { closeSheets(); document.getElementById('settings-sheet')?.classList.add('open'); document.getElementById('overlay')?.classList.add('show'); });
     document.getElementById('settings-close')?.addEventListener('click', closeSheets);
