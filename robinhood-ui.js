@@ -115,13 +115,233 @@ function updatePinDots() { const dots = document.querySelectorAll('.lock-pin-dot
 async function verifyPin() { if (isSettingLock) { if (!lockPinHash) { lockPinHash = pinInput; pinInput = ''; updatePinDots(); if (document.getElementById('lock-subtitle')) document.getElementById('lock-subtitle').textContent = 'Повторите пин-код'; return; } if (pinInput === lockPinHash) { const hash = await pbkdf2Hash(pinInput, 'robinhood_lock_salt'); try { localStorage.setItem(LOCK_KEY, JSON.stringify({ type: 'pin', pinHash: hash })); } catch (e) {} lockType = 'pin'; lockPinHash = hash; isSettingLock = false; pinInput = ''; updatePinDots(); const ls = document.getElementById('lock-status'); if (ls) ls.textContent = 'Пин-код'; unlockApp(); } else { const err = document.getElementById('lock-error'); if (err) err.textContent = 'Не совпадают. Попробуйте снова.'; lockPinHash = ''; pinInput = ''; updatePinDots(); const sub = document.getElementById('lock-subtitle'); if (sub) sub.textContent = 'Задайте пин-код (5 цифр)'; } } else { const hash = await pbkdf2Hash(pinInput, 'robinhood_lock_salt'); if (hash === lockPinHash) { failedAttempts = 0; unlockApp(); } else { failedAttempts++; pinInput = ''; updatePinDots(); if (failedAttempts >= 3) { document.querySelectorAll('.lock-num').forEach(b => b.disabled = true); const err = document.getElementById('lock-error'); if (err) err.textContent = 'Заблокировано. Обновите страницу.'; } else { const err = document.getElementById('lock-error'); if (err) err.textContent = 'Неверно. Осталось попыток: ' + (3 - failedAttempts); } } } }
 function unlockApp() { lockScreen.style.display = 'none'; appContainer.style.display = 'flex'; P2PPong.init(); }
 
-async function getMediaStream(video = false) { try { return await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true }, video: video ? { width: { ideal: 320 }, height: { ideal: 240 }, facingMode: 'user' } : false }); } catch (e) { return null; } }
-function createPC() { if (pc) { pc.onconnectionstatechange = null; pc.ontrack = null; pc.onicecandidate = null; pc.close(); pc = null; } iceBuffer = []; if (iceFlushTimer) clearTimeout(iceFlushTimer); try { pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }, { urls: 'stun:stun.cloudflare.com:3478' }] }); } catch (e) { return null; } if (localStream) localStream.getTracks().forEach(t => pc.addTrack(t, localStream)); pc.ontrack = e => { if (e.streams[0]) { const a = new Audio(); a.srcObject = e.streams[0]; a.load(); a.play().catch(er => {}); } }; pc.onicecandidate = e => { if (e.candidate) { iceBuffer.push(e.candidate); } else { iceFlushTimer = setTimeout(() => { iceBuffer.forEach(c => sendWebRTCMsg('webrtc-ice', JSON.stringify(c))); iceBuffer = []; }, 100); } }; pc.onconnectionstatechange = () => { if (pc.connectionState == 'connected') { callActive = true; stopRingback(); stopRingtone(); document.getElementById('call-status').textContent = '✅ Разговор'; showIncomingControls(false); showActiveControls(true); showCallWave(true); playSound('open.mp3'); updateCallButtonState(); playArcherAnimation(); if (iceRestartTimer) clearTimeout(iceRestartTimer); iceRestartInProgress = false; } if (pc.connectionState == 'disconnected' && callActive && !iceRestartInProgress) { if (iceRestartTimer) clearTimeout(iceRestartTimer); iceRestartInProgress = true; iceRestartTimer = setTimeout(async () => { if (pc && pc.connectionState === 'disconnected') { try { await restartICE(); } catch (e) { hang(false); } finally { iceRestartInProgress = false; } } }, 15000); } if (pc.connectionState == 'failed') { if (iceRestartTimer) clearTimeout(iceRestartTimer); iceRestartInProgress = false; hang(false); } }; return pc; }
+async function getMediaStream(video = false) { 
+    try { 
+        return await navigator.mediaDevices.getUserMedia({ 
+            audio: { echoCancellation: true, noiseSuppression: true }, 
+            video: video ? { width: { ideal: 320 }, height: { ideal: 240 }, facingMode: 'user' } : false 
+        }); 
+    } catch (e) { 
+        // Fallback: только аудио если видео не получилось
+        try {
+            return await navigator.mediaDevices.getUserMedia({ 
+                audio: { echoCancellation: true, noiseSuppression: true }, 
+                video: false 
+            });
+        } catch (e2) {
+            return null; 
+        }
+    } 
+}
+
+function createPC() { 
+    if (pc) { 
+        pc.onconnectionstatechange = null; 
+        pc.ontrack = null; 
+        pc.onicecandidate = null; 
+        pc.close(); 
+        pc = null; 
+    } 
+    iceBuffer = []; 
+    if (iceFlushTimer) clearTimeout(iceFlushTimer); 
+    try { 
+        pc = new RTCPeerConnection({ 
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' },
+                { urls: 'stun:stun.cloudflare.com:3478' },
+                { 
+                    urls: 'turn:robinhoodp2p.metered.live:80?transport=tcp', 
+                    username: '466624d8364bb4660ed45c7d', 
+                    credential: 'mpODzmBDhwG/b+VL' 
+                },
+                { 
+                    urls: 'turn:robinhoodp2p.metered.live:443?transport=tcp', 
+                    username: '466624d8364bb4660ed45c7d', 
+                    credential: 'mpODzmBDhwG/b+VL' 
+                }
+            ] 
+        }); 
+    } catch (e) { 
+        return null; 
+    } 
+    if (localStream) {
+        localStream.getTracks().forEach(t => {
+            console.log('🔊 [WebRTC] Добавлен трек:', t.kind);
+            pc.addTrack(t, localStream);
+        });
+    }
+    pc.ontrack = e => { 
+        console.log('🔊 [WebRTC] Получен трек:', e.track.kind, 'потоков:', e.streams.length);
+        if (e.streams[0]) { 
+            const a = new Audio(); 
+            a.srcObject = e.streams[0]; 
+            a.load(); 
+            a.play()
+                .then(() => console.log('✅ [WebRTC] Аудио воспроизводится'))
+                .catch(er => console.error('❌ [WebRTC] Ошибка аудио:', er)); 
+        } else {
+            console.error('❌ [WebRTC] Нет потока в треке');
+        }
+    }; 
+    pc.onicecandidate = e => { 
+        if (e.candidate) { 
+            iceBuffer.push(e.candidate); 
+        } else { 
+            iceFlushTimer = setTimeout(() => { 
+                iceBuffer.forEach(c => sendWebRTCMsg('webrtc-ice', JSON.stringify(c))); 
+                iceBuffer = []; 
+            }, 100); 
+        } 
+    }; 
+    pc.onconnectionstatechange = () => { 
+        console.log('🔗 [WebRTC] Состояние:', pc.connectionState);
+        if (pc.connectionState == 'connected') { 
+            callActive = true; 
+            stopRingback(); 
+            stopRingtone(); 
+            document.getElementById('call-status').textContent = '✅ Разговор'; 
+            showIncomingControls(false); 
+            showActiveControls(true); 
+            showCallWave(true); 
+            playSound('open.mp3'); 
+            updateCallButtonState(); 
+            playArcherAnimation(); 
+            if (iceRestartTimer) clearTimeout(iceRestartTimer); 
+            iceRestartInProgress = false; 
+        } 
+        if (pc.connectionState == 'disconnected' && callActive && !iceRestartInProgress) { 
+            if (iceRestartTimer) clearTimeout(iceRestartTimer); 
+            iceRestartInProgress = true; 
+            iceRestartTimer = setTimeout(async () => { 
+                if (pc && pc.connectionState === 'disconnected') { 
+                    try { 
+                        await restartICE(); 
+                    } catch (e) { 
+                        hang(false); 
+                    } finally { 
+                        iceRestartInProgress = false; 
+                    } 
+                } 
+            }, 15000); 
+        } 
+        if (pc.connectionState == 'failed') { 
+            if (iceRestartTimer) clearTimeout(iceRestartTimer); 
+            iceRestartInProgress = false; 
+            hang(false); 
+        } 
+    }; 
+    return pc; 
+}
+
 async function restartICE() { if (!pc || pc.connectionState === 'closed') return; const offer = await pc.createOffer({ iceRestart: true }); await pc.setLocalDescription(offer); sendWebRTCMsg('webrtc-offer', JSON.stringify(pc.localDescription)); }
 async function sendWebRTCMsg(type, sdp) { if (!activeChannelId) return; await P2PPong.sendMessage(activeChannelId, JSON.stringify({ webrtc: type, sdp })); }
-async function startCall() { if (callActive || !activeChannelId) { rMsg('❌ Нет канала', 3000); return; } const s = await getMediaStream(false); if (!s) { rMsg('❌ Нет микрофона', 3000); return; } localStream = s; createPC(); const cp = document.getElementById('call-panel'); if (cp) cp.style.display = 'flex'; const ct = contacts.find(c => c.channelId === activeChannelId); document.getElementById('call-avatar').src = 'assets/avatar/' + (ct?.avatar || selectedAvatar) + 'ava.png'; document.getElementById('call-contact-name').textContent = ct?.name || document.getElementById('nick-label')?.textContent || 'Лучник'; document.getElementById('call-status').textContent = '📞 Вызов...'; showIncomingControls(false); showActiveControls(true); showCallWave(false); playRingback(); playArcherAnimation(); try { const o = await pc.createOffer(); await pc.setLocalDescription(o); sendWebRTCMsg('webrtc-offer', JSON.stringify(o)); setTimeout(() => { if (!callActive && pc && pc.signalingState === 'have-local-offer') { sendWebRTCMsg('webrtc-offer', JSON.stringify(o)); } }, 3000); } catch (e) { hang(false); } updateCallButtonState(); }
-async function acceptCall() { if (!incomingOffer || !activeChannelId) return; stopRingtone(); stopRingback(); const s = await getMediaStream(false); if (!s) return; localStream = s; createPC(); const cp = document.getElementById('call-panel'); if (cp) cp.style.display = 'flex'; const ct = contacts.find(c => c.channelId === activeChannelId); document.getElementById('call-avatar').src = 'assets/avatar/' + (ct?.avatar || selectedAvatar) + 'ava.png'; document.getElementById('call-contact-name').textContent = ct?.name || document.getElementById('nick-label')?.textContent || 'Лучник'; document.getElementById('call-status').textContent = '✅ Разговор'; showIncomingControls(false); showActiveControls(true); showCallWave(true); playSound('open.mp3'); playArcherAnimation(); try { const offerSdp = typeof incomingOffer === 'string' ? JSON.parse(incomingOffer) : incomingOffer; await pc.setRemoteDescription(new RTCSessionDescription(offerSdp)); iceBuffer.forEach(c => pc.addIceCandidate(new RTCIceCandidate(c)).catch(er => {})); iceBuffer = []; const a = await pc.createAnswer(); await pc.setLocalDescription(a); sendWebRTCMsg('webrtc-answer', JSON.stringify(a)); incomingOffer = null; callActive = true; } catch (e) { incomingOffer = null; hang(false); } updateCallButtonState(); }
-function hang(sig = true) { if (hangInProgress) return; hangInProgress = true; callActive = false; stopRingtone(); stopRingback(); if (sig && activeChannelId) sendWebRTCMsg('webrtc-hangup', ''); if (pc) { pc.onconnectionstatechange = null; pc.ontrack = null; pc.onicecandidate = null; pc.close(); pc = null; } if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; } incomingOffer = null; iceBuffer = []; if (iceFlushTimer) clearTimeout(iceFlushTimer); if (iceRestartTimer) clearTimeout(iceRestartTimer); iceRestartInProgress = false; const cp = document.getElementById('call-panel'); if (cp) cp.style.display = 'none'; showIncomingControls(false); showActiveControls(false); showCallWave(false); playSound('exet.mp3'); updateCallButtonState(); hangInProgress = false; }
+
+async function startCall() { 
+    if (callActive || !activeChannelId) { rMsg('❌ Нет канала', 3000); return; } 
+    const s = await getMediaStream(false); 
+    if (!s) { rMsg('❌ Нет микрофона', 3000); return; } 
+    localStream = s; 
+    console.log('📞 [WebRTC] Начинаю звонок, треков:', localStream.getTracks().length);
+    localStream.getTracks().forEach(t => console.log('🎙 [WebRTC] Трек:', t.kind, t.label));
+    createPC(); 
+    const cp = document.getElementById('call-panel'); 
+    if (cp) cp.style.display = 'flex'; 
+    const ct = contacts.find(c => c.channelId === activeChannelId); 
+    document.getElementById('call-avatar').src = 'assets/avatar/' + (ct?.avatar || selectedAvatar) + 'ava.png'; 
+    document.getElementById('call-contact-name').textContent = ct?.name || document.getElementById('nick-label')?.textContent || 'Лучник'; 
+    document.getElementById('call-status').textContent = '📞 Вызов...'; 
+    showIncomingControls(false); 
+    showActiveControls(true); 
+    showCallWave(false); 
+    playRingback(); 
+    playArcherAnimation(); 
+    try { 
+        const o = await pc.createOffer(); 
+        await pc.setLocalDescription(o); 
+        sendWebRTCMsg('webrtc-offer', JSON.stringify(o)); 
+        setTimeout(() => { 
+            if (!callActive && pc && pc.signalingState === 'have-local-offer') { 
+                sendWebRTCMsg('webrtc-offer', JSON.stringify(o)); 
+            } 
+        }, 3000); 
+    } catch (e) { 
+        console.error('❌ [WebRTC] Ошибка создания оффера:', e);
+        hang(false); 
+    } 
+    updateCallButtonState(); 
+}
+
+async function acceptCall() { 
+    if (!incomingOffer || !activeChannelId) return; 
+    stopRingtone(); 
+    stopRingback(); 
+    const s = await getMediaStream(false); 
+    if (!s) return; 
+    localStream = s; 
+    console.log('📞 [WebRTC] Принимаю звонок, треков:', localStream.getTracks().length);
+    createPC(); 
+    const cp = document.getElementById('call-panel'); 
+    if (cp) cp.style.display = 'flex'; 
+    const ct = contacts.find(c => c.channelId === activeChannelId); 
+    document.getElementById('call-avatar').src = 'assets/avatar/' + (ct?.avatar || selectedAvatar) + 'ava.png'; 
+    document.getElementById('call-contact-name').textContent = ct?.name || document.getElementById('nick-label')?.textContent || 'Лучник'; 
+    document.getElementById('call-status').textContent = '✅ Разговор'; 
+    showIncomingControls(false); 
+    showActiveControls(true); 
+    showCallWave(true); 
+    playSound('open.mp3'); 
+    playArcherAnimation(); 
+    try { 
+        const offerSdp = typeof incomingOffer === 'string' ? JSON.parse(incomingOffer) : incomingOffer; 
+        await pc.setRemoteDescription(new RTCSessionDescription(offerSdp)); 
+        iceBuffer.forEach(c => pc.addIceCandidate(new RTCIceCandidate(c)).catch(er => {})); 
+        iceBuffer = []; 
+        const a = await pc.createAnswer(); 
+        await pc.setLocalDescription(a); 
+        sendWebRTCMsg('webrtc-answer', JSON.stringify(a)); 
+        incomingOffer = null; 
+        callActive = true; 
+    } catch (e) { 
+        console.error('❌ [WebRTC] Ошибка принятия звонка:', e);
+        incomingOffer = null; 
+        hang(false); 
+    } 
+    updateCallButtonState(); 
+}
+
+function hang(sig = true) { 
+    if (hangInProgress) return; 
+    hangInProgress = true; 
+    callActive = false; 
+    stopRingtone(); 
+    stopRingback(); 
+    if (sig && activeChannelId) sendWebRTCMsg('webrtc-hangup', ''); 
+    if (pc) { 
+        pc.onconnectionstatechange = null; 
+        pc.ontrack = null; 
+        pc.onicecandidate = null; 
+        pc.close(); 
+        pc = null; 
+    } 
+    if (localStream) { 
+        localStream.getTracks().forEach(t => t.stop()); 
+        localStream = null; 
+    } 
+    incomingOffer = null; 
+    iceBuffer = []; 
+    if (iceFlushTimer) clearTimeout(iceFlushTimer); 
+    if (iceRestartTimer) clearTimeout(iceRestartTimer); 
+    iceRestartInProgress = false; 
+    const cp = document.getElementById('call-panel'); 
+    if (cp) cp.style.display = 'none'; 
+    showIncomingControls(false); 
+    showActiveControls(false); 
+    showCallWave(false); 
+    playSound('exet.mp3'); 
+    updateCallButtonState(); 
+    hangInProgress = false; 
+}
 
 function initUI() {
     P2PPong.on('ready', () => { setConnectionStatus('online'); rMsg('🏹 Слепой Улей готов', 0); });
@@ -155,7 +375,6 @@ function initUI() {
         verificationModalShown = true;
         verificationDone = false;
         
-        // Авто-подтверждение для создателя если эмодзи совпадают
         if (window._verifyCorrect && Array.isArray(data.emoji) && 
             JSON.stringify(data.emoji) === JSON.stringify(window._verifyCorrect)) {
             document.getElementById('verify-modal')?.classList.add('active');
@@ -184,7 +403,6 @@ function initUI() {
             return;
         }
         
-        // Ручное подтверждение
         document.getElementById('verify-instruction').textContent = 'Пир Б ввёл эти эмодзи. Подтверди:';
         document.getElementById('verify-emoji-display') && 
             (document.getElementById('verify-emoji-display').textContent = Array.isArray(data.emoji) ? data.emoji.join(' ') : data.emoji);
@@ -193,7 +411,6 @@ function initUI() {
     });
 
     P2PPong.on('channel-opened', (data) => { 
-        // Ждём подтверждения эмодзи если верификация активна
         if (verificationModalShown && !verificationDone) {
             window._pendingChannel = data;
             return;
@@ -268,7 +485,6 @@ function initApp() {
             verificationDone = true; 
             rMsg('✅ Подтверждено!', 3000); 
             
-            // Обработка отложенного канала
             if (window._pendingChannel) {
                 const data = window._pendingChannel;
                 window._pendingChannel = null;
