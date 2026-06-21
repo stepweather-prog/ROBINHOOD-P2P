@@ -1,21 +1,33 @@
 # Security Policy
 
-## Supported Versions
+## Поддерживаемые версии
 
-Use this section to tell people about which versions of your project are
-currently being supported with security updates.
+| Версия | Поддержка |
+|--------|-----------|
+| 5.5.x (последняя) | ✅ Активная |
+| < 5.5 | ❌ Не поддерживается |
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 5.1.x   | :white_check_mark: |
-| 5.0.x   | :x:                |
-| 4.0.x   | :white_check_mark: |
-| < 4.0   | :x:                |
+## Сообщить об уязвимости
 
-## Reporting a Vulnerability
+Если вы нашли уязвимость — пожалуйста, напишите на [stepweather-prog@proton.me](mailto:stepweather-prog@proton.me) или создайте Issue в разделе [Issues](https://github.com/stepweather-prog/ROBINHOOD-P2P/issues).
 
-Use this section to tell people how to report a vulnerability.
+### Что будет дальше
 
-Tell them where to go, how often they can expect to get an update on a
-reported vulnerability, what to expect if the vulnerability is accepted or
-declined, etc.
+- Ответ в течение 48 часов
+- Подтверждение или отклонение уязвимости в течение 5 дней
+- После подтверждения — исправление в ближайшем обновлении
+- Публичное раскрытие после выхода патча
+
+### Безопасное раскрытие
+
+Пожалуйста, не публикуйте уязвимость публично до выхода исправления. Дайте время на реакцию.
+
+## Криптография
+
+Проект использует:
+- ECDH P-256
+- AES-256-GCM
+- HMAC-SHA256
+- Double Ratchet
+
+Криптографические решения не прошли независимый аудит. Если вы криптограф — будем рады аудиту.
