@@ -58,16 +58,37 @@ function playQuiverAnimation() {
     rt.textContent = '✅ ';
     rt.appendChild(wrapper);
     
-    const img = document.createElement('img');
-    img.src = 'assets/docking.webp';
-    img.style.cssText = 'width:80px;height:40px;';
-    wrapper.appendChild(img);
-    
-    setTimeout(() => {
-        if (wrapper.parentNode) wrapper.remove();
-        currentArrowContainer = null;
-        rt.textContent = robinDefaultText;
-    }, 3500);
+    if (typeof lottie !== 'undefined') {
+        try {
+            quiverAnim = lottie.loadAnimation({
+                container: wrapper,
+                renderer: 'canvas',
+                loop: false,
+                autoplay: true,
+                path: 'assets/docking.json'
+            });
+            quiverAnim.addEventListener('complete', () => {
+                if (wrapper.parentNode) wrapper.remove();
+                currentArrowContainer = null;
+                quiverAnim = null;
+                rt.textContent = robinDefaultText;
+            });
+        } catch(e) {
+            wrapper.textContent = '✓';
+            setTimeout(() => {
+                if (wrapper.parentNode) wrapper.remove();
+                currentArrowContainer = null;
+                rt.textContent = robinDefaultText;
+            }, 2000);
+        }
+    } else {
+        wrapper.textContent = '✓';
+        setTimeout(() => {
+            if (wrapper.parentNode) wrapper.remove();
+            currentArrowContainer = null;
+            rt.textContent = robinDefaultText;
+        }, 2000);
+    }
 }
 
 function showCallWave(show) {
