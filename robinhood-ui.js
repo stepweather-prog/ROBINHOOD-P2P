@@ -64,12 +64,7 @@ function playQuiverAnimation() {
     setTimeout(() => { if (wrapper.parentNode) wrapper.remove(); currentArrowContainer = null; rt.textContent = robinDefaultText; }, 3500);
 }
 
-function showCallWave(show) {
-    const cw = document.getElementById('call-wave');
-    if (!cw) return;
-    if (show) { cw.innerHTML = ''; cw.style.display = 'flex'; for (let i = 0; i < 8; i++) { const bar = document.createElement('div'); bar.className = 'voice-wave-bar'; bar.style.animation = 'wave 1s ease-in-out infinite'; bar.style.animationDelay = `${i * 0.1}s`; cw.appendChild(bar); } }
-    else { cw.style.display = 'none'; cw.innerHTML = ''; }
-}
+function showCallWave(show) { const cw = document.getElementById('call-wave'); if (!cw) return; if (show) { cw.innerHTML = ''; cw.style.display = 'flex'; for (let i = 0; i < 8; i++) { const bar = document.createElement('div'); bar.className = 'voice-wave-bar'; bar.style.animation = 'wave 1s ease-in-out infinite'; bar.style.animationDelay = `${i * 0.1}s`; cw.appendChild(bar); } } else { cw.style.display = 'none'; cw.innerHTML = ''; } }
 function showVoiceRecordingUI(show) { const old = document.getElementById('voice-recording-indicator'); if (old) old.remove(); if (!show) return; const btn = document.getElementById('btn-voice-input'); if (!btn) return; const container = document.createElement('div'); container.id = 'voice-recording-indicator'; container.className = 'voice-recording-indicator'; const timer = document.createElement('span'); timer.className = 'voice-timer-text'; timer.id = 'voice-timer-text'; timer.textContent = '🎤 0:00'; const wave = document.createElement('div'); wave.style.cssText = 'display:flex;align-items:flex-end;gap:2px;height:18px;'; for (let i = 0; i < 6; i++) { const bar = document.createElement('div'); bar.className = 'voice-wave-bar'; bar.style.cssText = `width:3px;animation:wave 1s ease-in-out infinite;animation-delay:${i * 0.08}s;height:${6 + i * 3}px;`; wave.appendChild(bar); } container.appendChild(timer); container.appendChild(wave); btn.parentNode.insertBefore(container, btn); }
 function showIncomingControls(show) { const ic = document.getElementById('incoming-call-controls'); if (ic) ic.style.display = show ? 'flex' : 'none'; }
 function showActiveControls(show) { const ac = document.getElementById('active-call-controls'); if (ac) ac.style.display = show ? 'flex' : 'none'; }
@@ -228,12 +223,12 @@ function initApp() {
         const box = document.getElementById('chat-box'); if (box) box.querySelectorAll('.message-row').forEach(m => m.remove()); 
         playSmokeAnimation(); playSound('clear cache.mp3'); rMsg('🔥 Робин Гуд пустил все письма на самокрутки!', 5000); 
         contacts = []; saveContacts(); 
-        P2PPong.destroy().then(() => { 
-            localStorage.clear(); 
-            if ('caches' in window) { caches.keys().then(names => { names.forEach(name => caches.delete(name)); }); }
-            if (window.indexedDB) { indexedDB.databases().then(dbs => { dbs.forEach(db => { indexedDB.deleteDatabase(db.name); }); }).catch(() => {}); }
-            window.location.reload(true);
-        }); 
+        P2PPong.destroy(); 
+        localStorage.clear(); 
+        if ('caches' in window) { caches.keys().then(names => { names.forEach(name => caches.delete(name)); }); }
+        if (window.indexedDB) { indexedDB.databases().then(dbs => { dbs.forEach(db => { indexedDB.deleteDatabase(db.name); }); }).catch(() => {}); }
+        sessionStorage.clear();
+        setTimeout(() => { window.location.reload(true); }, 300);
     });
     document.getElementById('btn-settings')?.addEventListener('click', () => { closeSheets(); document.getElementById('settings-sheet')?.classList.add('open'); document.getElementById('overlay')?.classList.add('show'); });
     document.getElementById('settings-close')?.addEventListener('click', closeSheets);
