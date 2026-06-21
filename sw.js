@@ -32,7 +32,7 @@ const ASSETS = [
   '/ROBINHOOD-P2P/assets/smoke.json',
   '/ROBINHOOD-P2P/assets/Archer.json',
   '/ROBINHOOD-P2P/assets/bow.json',
-  '/ROBINHOOD-P2P/assets/docking/animation.json'
+  '/ROBINHOOD-P2P/assets/docking.webp'
 ];
 
 for (let i = 1; i <= 168; i++) {
