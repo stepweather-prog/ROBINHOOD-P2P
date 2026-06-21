@@ -1,5 +1,5 @@
 // sw.js — Service Worker для RobinHood P2P
-const CACHE_VERSION = 'v8';
+const CACHE_VERSION = 'v1';
 const CACHE_NAME = 'robinhood-' + CACHE_VERSION;
 const ASSETS = [
   '/ROBINHOOD-P2P/',
