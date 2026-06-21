@@ -27,6 +27,8 @@ let archerAnimation, quiverAnim, bowAnim, currentArrowContainer;
 let deferredPrompt = null,
     speakerOn = true,
     micOn = true,
+    micVolume = 1.0,
+    speakerVolume = 1.0,
     iceBuffer = [],
     iceFlushTimer = null,
     iceRestartTimer = null,
@@ -122,7 +124,6 @@ async function getMediaStream(video = false) {
             video: video ? { width: { ideal: 320 }, height: { ideal: 240 }, facingMode: 'user' } : false 
         }); 
     } catch (e) { 
-        // Fallback: только аудио если видео не получилось
         try {
             return await navigator.mediaDevices.getUserMedia({ 
                 audio: { echoCancellation: true, noiseSuppression: true }, 
@@ -150,16 +151,8 @@ function createPC() {
                 { urls: 'stun:stun.l.google.com:19302' },
                 { urls: 'stun:stun1.l.google.com:19302' },
                 { urls: 'stun:stun.cloudflare.com:3478' },
-                { 
-                    urls: 'turn:robinhoodp2p.metered.live:80?transport=tcp', 
-                    username: '466624d8364bb4660ed45c7d', 
-                    credential: 'mpODzmBDhwG/b+VL' 
-                },
-                { 
-                    urls: 'turn:robinhoodp2p.metered.live:443?transport=tcp', 
-                    username: '466624d8364bb4660ed45c7d', 
-                    credential: 'mpODzmBDhwG/b+VL' 
-                }
+                { urls: 'turn:robinhoodp2p.metered.live:80?transport=tcp', username: '466624d8364bb4660ed45c7d', credential: 'mpODzmBDhwG/b+VL' },
+                { urls: 'turn:robinhoodp2p.metered.live:443?transport=tcp', username: '466624d8364bb4660ed45c7d', credential: 'mpODzmBDhwG/b+VL' }
             ] 
         }); 
     } catch (e) { 
@@ -174,12 +167,30 @@ function createPC() {
     pc.ontrack = e => { 
         console.log('🔊 [WebRTC] Получен трек:', e.track.kind, 'потоков:', e.streams.length);
         if (e.streams[0]) { 
+            const oldAudio = document.getElementById('remote-audio');
+            if (oldAudio) oldAudio.remove();
+            
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const source = audioContext.createMediaStreamSource(e.streams[0]);
+            const gainNode = audioContext.createGain();
+            gainNode.gain.value = speakerVolume;
+            window._speakerGain = gainNode;
+            
+            source.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
             const a = new Audio(); 
-            a.srcObject = e.streams[0]; 
-            a.load(); 
+            a.id = 'remote-audio';
+            a.srcObject = e.streams[0];
+            a.autoplay = true;
+            a.volume = speakerVolume;
+            a.style.display = 'none';
+            document.body.appendChild(a);
+            
+            a.load();
             a.play()
-                .then(() => console.log('✅ [WebRTC] Аудио воспроизводится'))
-                .catch(er => console.error('❌ [WebRTC] Ошибка аудио:', er)); 
+                .then(() => console.log('✅ [WebRTC] Аудио воспроизводится, громкость:', a.volume))
+                .catch(er => console.warn('⚠️ [WebRTC] Ошибка:', er.message));
         } else {
             console.error('❌ [WebRTC] Нет потока в треке');
         }
@@ -241,9 +252,23 @@ async function startCall() {
     if (callActive || !activeChannelId) { rMsg('❌ Нет канала', 3000); return; } 
     const s = await getMediaStream(false); 
     if (!s) { rMsg('❌ Нет микрофона', 3000); return; } 
-    localStream = s; 
+    localStream = s;
+    
+    try {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const source = audioContext.createMediaStreamSource(localStream);
+        const gainNode = audioContext.createGain();
+        gainNode.gain.value = micVolume;
+        window._micGain = gainNode;
+        source.connect(gainNode);
+    } catch(e) {}
+    
     console.log('📞 [WebRTC] Начинаю звонок, треков:', localStream.getTracks().length);
-    localStream.getTracks().forEach(t => console.log('🎙 [WebRTC] Трек:', t.kind, t.label));
+    localStream.getTracks().forEach(t => {
+        console.log('🎙 [WebRTC] Трек:', t.kind, t.label);
+        if (t.kind === 'audio') t.enabled = true;
+    });
+    
     createPC(); 
     const cp = document.getElementById('call-panel'); 
     if (cp) cp.style.display = 'flex'; 
@@ -256,6 +281,12 @@ async function startCall() {
     showCallWave(false); 
     playRingback(); 
     playArcherAnimation(); 
+    
+    document.getElementById('mic-volume').value = micVolume * 100;
+    document.getElementById('mic-volume-value').textContent = Math.round(micVolume * 100) + '%';
+    document.getElementById('speaker-volume').value = speakerVolume * 100;
+    document.getElementById('speaker-volume-value').textContent = Math.round(speakerVolume * 100) + '%';
+    
     try { 
         const o = await pc.createOffer(); 
         await pc.setLocalDescription(o); 
@@ -278,8 +309,19 @@ async function acceptCall() {
     stopRingback(); 
     const s = await getMediaStream(false); 
     if (!s) return; 
-    localStream = s; 
+    localStream = s;
+    
+    try {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const source = audioContext.createMediaStreamSource(localStream);
+        const gainNode = audioContext.createGain();
+        gainNode.gain.value = micVolume;
+        window._micGain = gainNode;
+        source.connect(gainNode);
+    } catch(e) {}
+    
     console.log('📞 [WebRTC] Принимаю звонок, треков:', localStream.getTracks().length);
+    
     createPC(); 
     const cp = document.getElementById('call-panel'); 
     if (cp) cp.style.display = 'flex'; 
@@ -292,6 +334,12 @@ async function acceptCall() {
     showCallWave(true); 
     playSound('open.mp3'); 
     playArcherAnimation(); 
+    
+    document.getElementById('mic-volume').value = micVolume * 100;
+    document.getElementById('mic-volume-value').textContent = Math.round(micVolume * 100) + '%';
+    document.getElementById('speaker-volume').value = speakerVolume * 100;
+    document.getElementById('speaker-volume-value').textContent = Math.round(speakerVolume * 100) + '%';
+    
     try { 
         const offerSdp = typeof incomingOffer === 'string' ? JSON.parse(incomingOffer) : incomingOffer; 
         await pc.setRemoteDescription(new RTCSessionDescription(offerSdp)); 
@@ -333,6 +381,8 @@ function hang(sig = true) {
     if (iceFlushTimer) clearTimeout(iceFlushTimer); 
     if (iceRestartTimer) clearTimeout(iceRestartTimer); 
     iceRestartInProgress = false; 
+    window._micGain = null;
+    window._speakerGain = null;
     const cp = document.getElementById('call-panel'); 
     if (cp) cp.style.display = 'none'; 
     showIncomingControls(false); 
@@ -530,12 +580,35 @@ function initApp() {
     document.getElementById('setting-terms')?.addEventListener('click', () => { window.open('https://github.com/stepweather-prog/ROBINHOOD-P2P/blob/main/README.md', '_blank'); });
     si?.addEventListener('click', () => { if (deferredPrompt) deferredPrompt.prompt().catch(() => {}); else rMsg('📲 Меню браузера → Добавить на экран', 4000); document.getElementById('settings-sheet')?.classList.remove('open'); document.getElementById('overlay')?.classList.remove('show'); });
     window.addEventListener('beforeinstallprompt', e => { deferredPrompt = e; });
+    
     document.getElementById('btn-call')?.addEventListener('click', () => { callActive ? hang(true) : startCall(); });
     document.getElementById('call-accept')?.addEventListener('click', acceptCall);
     document.getElementById('call-reject')?.addEventListener('click', () => { if (incomingOffer) { stopRingtone(); sendWebRTCMsg('webrtc-hangup', ''); incomingOffer = null; const cp2 = document.getElementById('call-panel'); if (cp2) cp2.style.display = 'none'; updateCallButtonState(); } });
     document.getElementById('call-end')?.addEventListener('click', () => hang(true));
     document.getElementById('call-speaker')?.addEventListener('click', () => { speakerOn = !speakerOn; const s = document.getElementById('call-speaker'); if (s) { s.classList.toggle('active', speakerOn); s.textContent = speakerOn ? '🔊' : '🔇'; } });
     document.getElementById('call-mic')?.addEventListener('click', () => { if (!localStream) return; micOn = !micOn; localStream.getAudioTracks().forEach(t => t.enabled = micOn); const m = document.getElementById('call-mic'); if (m) { m.classList.toggle('muted', !micOn); m.textContent = micOn ? '🎤' : '🚫'; } });
+    
+    // Ползунки громкости
+    document.getElementById('mic-volume')?.addEventListener('input', function() {
+        micVolume = this.value / 100;
+        document.getElementById('mic-volume-value').textContent = this.value + '%';
+        if (window._micGain) {
+            window._micGain.gain.value = micVolume;
+        }
+    });
+    
+    document.getElementById('speaker-volume')?.addEventListener('input', function() {
+        speakerVolume = this.value / 100;
+        document.getElementById('speaker-volume-value').textContent = this.value + '%';
+        const remoteAudio = document.getElementById('remote-audio');
+        if (remoteAudio) {
+            remoteAudio.volume = speakerVolume;
+        }
+        if (window._speakerGain) {
+            window._speakerGain.gain.value = speakerVolume;
+        }
+    });
+    
     if (ts) ts.addEventListener('change', function() { toggleSoundState = this.checked; try { localStorage.setItem('robinhood_sound', toggleSoundState); } catch (e) {} });
     if (sd) sd.addEventListener('change', function() { selfDestructMode = this.checked; try { localStorage.setItem('robinhood_selfdestruct', selfDestructMode); } catch (e) {} if (selfDestructMode && activeChannelId) { P2PPong.sendMessage(activeChannelId, JSON.stringify({ d: '__SMOKE__' })); rMsg('🍁 Листопад включён. Сообщения будут исчезать.', 3000); } });
     document.getElementById('btn-voice-input')?.addEventListener('click', toggleVoiceRecording);
