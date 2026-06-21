@@ -57,18 +57,17 @@ function playQuiverAnimation() {
     currentArrowContainer = wrapper;
     rt.textContent = '✅ ';
     rt.appendChild(wrapper);
-    if (typeof lottie !== 'undefined') {
-        try {
-            quiverAnim = lottie.loadAnimation({ container: wrapper, renderer: 'canvas', loop: false, autoplay: true, path: 'assets/docking/animation.json' });
-            quiverAnim.addEventListener('complete', () => { if (wrapper.parentNode) wrapper.remove(); currentArrowContainer = null; quiverAnim = null; rt.textContent = robinDefaultText; });
-            return;
-        } catch (e) { console.log('lottie docking error, fallback to webp'); }
-    }
+    
     const img = document.createElement('img');
-    img.src = 'assets/docking/1.webp';
+    img.src = 'assets/docking/docking.webp';
     img.style.cssText = 'width:80px;height:40px;';
     wrapper.appendChild(img);
-    setTimeout(() => { if (wrapper.parentNode) wrapper.remove(); currentArrowContainer = null; rt.textContent = robinDefaultText; }, 2500);
+    
+    setTimeout(() => {
+        if (wrapper.parentNode) wrapper.remove();
+        currentArrowContainer = null;
+        rt.textContent = robinDefaultText;
+    }, 3500);
 }
 
 function showCallWave(show) {
