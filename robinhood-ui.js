@@ -1,4 +1,3 @@
-
 // ==================== RobinHood UI ====================
 // Чистый интерфейс. Ядро: P2PPong.
 
@@ -163,7 +162,6 @@ function initUI() {
     P2PPong.on('message-sent', () => { updateCupIndicator(); updateRatchetIndicator(); });
     P2PPong.on('beacon-taken', () => { rMsg('👀 Маяк забрали...', 3000); });
 
-    // Боб: нужно ввести код
     P2PPong.on('verification-needed', (data) => {
         if (verificationModalShown) return;
         verificationModalShown = true; verificationDone = false;
@@ -181,30 +179,23 @@ function initUI() {
         document.getElementById('verify-modal')?.classList.add('active');
     });
 
-    // Алиса: код совпал — авто-подтверждение (без ввода!)
     P2PPong.on('verification-received', (data) => {
         if (verificationModalShown) return;
         verificationModalShown = true; verificationDone = false;
         const code = data.code || P2PPong.getVerificationCode();
-        
         if (window._verifyCode && code === window._verifyCode) {
             document.getElementById('verify-modal')?.classList.add('active');
             document.getElementById('verify-instruction').textContent = '✅ Код совпал! Канал открывается...';
             document.getElementById('verify-code-display').textContent = code;
             document.getElementById('verify-error').style.display = 'none';
-            
             setTimeout(async () => {
-                // Сначала обновляем флаги, потом подтверждаем
                 verificationModalShown = false;
                 verificationDone = true;
                 document.getElementById('verify-modal')?.classList.remove('active');
-                
                 await P2PPong.confirmVerification();
-                // channel-opened теперь не будет заблокирован
             }, 1500);
             return;
         }
-        
         document.getElementById('verify-instruction').textContent = 'Введи 7-значный код';
         document.getElementById('verify-error').style.display = 'none';
         document.getElementById('verify-modal')?.classList.add('active');
@@ -255,30 +246,22 @@ function initApp() {
     document.getElementById('craft-modal')?.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('active'); });
     document.getElementById('btn-create-beacon')?.addEventListener('click', async () => { const targetId = document.getElementById('peer-id-input')?.value.trim(); if (targetId) { const ok = await P2PPong.joinBeacon(targetId); if (ok) { rMsg('🏹 Тетива натянута...', 3000); document.getElementById('craft-modal')?.classList.remove('active'); } } });
 
-    // Шайки
+    // Шайки Шервуда
     document.getElementById('btn-bands')?.addEventListener('click', () => { showBandsList(); document.getElementById('bands-modal')?.classList.add('active'); });
     document.getElementById('btn-craft-band-arrow')?.addEventListener('click', () => { const bandId = RND(); const code = Math.floor(1000000 + Math.random() * 9000000).toString(); document.getElementById('band-id-display').textContent = bandId; document.getElementById('band-code-display').textContent = code; document.getElementById('band-code-display').style.display = 'block'; rMsg('🏹 Стрела шайки изготовлена!', 3000); });
     document.getElementById('btn-copy-band-id')?.addEventListener('click', () => { const bandId = document.getElementById('band-id-display')?.textContent; const code = document.getElementById('band-code-display')?.textContent; let copyText = ''; if (bandId && bandId !== '') copyText += bandId; if (code && code !== '') copyText += '\n' + code; if (copyText) { navigator.clipboard.writeText(copyText).then(() => rMsg('⎘ ID шайки и код скопированы!')).catch(() => {}); } else { rMsg('❌ Сначала скрафти стрелу шайки', 3000); } });
     document.getElementById('btn-create-band')?.addEventListener('click', async () => { const bandId = document.getElementById('band-id-display')?.textContent; const name = document.getElementById('band-name-input')?.value.trim() || 'Шайка лучников'; if (!bandId || bandId === '') { rMsg('❌ Сначала скрафти стрелу шайки', 3000); return; } const needPass = await showConfirm('Пароль', 'Установить пароль на вход?'); let pass = null; if (needPass) { pass = await showInput('Пароль шайки', 'Введи пароль'); } createBand(bandId, name, pass); document.getElementById('bands-modal')?.classList.remove('active'); });
-    document.getElementById('btn-join-band')?.addEventListener('click', async () => { const bandId = document.getElementById('band-id-input')?.value.trim(); if (!bandId) { rMsg('❌ Введи ID шайки', 3000); return; } const codeInput = document.getElementById('band-code-input')?.value.trim(); if (codeInput) { window._verifyCode = codeInput; window._verifyInput = ''; pendingBandData = { bandId }; document.getElementById('verify-instruction').textContent = 'Введи 7-значный код шайки'; document.getElementById('verify-code-display').textContent = '_______'; const grid = document.getElementById('verify-code-grid'); grid.innerHTML = ''; grid.style.cssText = 'display:grid;grid-template-columns:repeat(3,1fr);gap:6px;max-width:240px;margin:12px auto;'; for (let i = 1; i <= 9; i++) { const btn = document.createElement('button'); btn.textContent = i; btn.className = 'lock-num'; btn.style.cssText = 'width:65px;height:65px;font-size:1.8em;'; btn.onclick = () => addVerifyDigit(i.toString()); grid.appendChild(btn); } const btn0 = document.createElement('button'); btn0.textContent = '0'; btn0.className = 'lock-num'; btn0.style.cssText = 'width:65px;height:65px;font-size:1.8em;'; btn0.onclick = () => addVerifyDigit('0'); grid.appendChild(btn0); const btnDel = document.createElement('button'); btnDel.textContent = '⌫'; btnDel.className = 'lock-num'; btnDel.style.cssText = 'width:65px;height:65px;font-size:1.5em;background:rgba(244,67,54,0.3);'; btnDel.onclick = () => { window._verifyInput = window._verifyInput.slice(0, -1); document.getElementById('verify-code-display').textContent = window._verifyInput.padEnd(7, '_'); }; grid.appendChild(btnDel); document.getElementById('btn-verify-reset').onclick = () => { window._verifyInput = ''; document.getElementById('verify-code-display').textContent = '_______'; }; verificationModalShown = true; verificationDone = false; document.getElementById('verify-modal')?.classList.add('active'); document.getElementById('bands-modal')?.classList.remove('active'); return; } joinBand(bandId); document.getElementById('bands-modal')?.classList.remove('active'); });
+    document.getElementById('btn-join-band')?.addEventListener('click', async () => { const bandId = document.getElementById('band-id-input')?.value.trim(); if (!bandId) { rMsg('❌ Введи ID шайки', 3000); return; } const codeInput = document.getElementById('band-code-input')?.value.trim(); if (codeInput) { window._verifyCode = codeInput; window._verifyInput = ''; pendingBandData = { bandId }; verificationModalShown = true; verificationDone = false; document.getElementById('verify-instruction').textContent = 'Введи 7-значный код шайки'; document.getElementById('verify-code-display').textContent = '_______'; const grid = document.getElementById('verify-code-grid'); grid.innerHTML = ''; grid.style.cssText = 'display:grid;grid-template-columns:repeat(3,1fr);gap:6px;max-width:240px;margin:12px auto;'; for (let i = 1; i <= 9; i++) { const btn = document.createElement('button'); btn.textContent = i; btn.className = 'lock-num'; btn.style.cssText = 'width:65px;height:65px;font-size:1.8em;'; btn.onclick = () => addVerifyDigit(i.toString()); grid.appendChild(btn); } const btn0 = document.createElement('button'); btn0.textContent = '0'; btn0.className = 'lock-num'; btn0.style.cssText = 'width:65px;height:65px;font-size:1.8em;'; btn0.onclick = () => addVerifyDigit('0'); grid.appendChild(btn0); const btnDel = document.createElement('button'); btnDel.textContent = '⌫'; btnDel.className = 'lock-num'; btnDel.style.cssText = 'width:65px;height:65px;font-size:1.5em;background:rgba(244,67,54,0.3);'; btnDel.onclick = () => { window._verifyInput = window._verifyInput.slice(0, -1); document.getElementById('verify-code-display').textContent = window._verifyInput.padEnd(7, '_'); }; grid.appendChild(btnDel); document.getElementById('btn-verify-reset').onclick = () => { window._verifyInput = ''; document.getElementById('verify-code-display').textContent = '_______'; }; document.getElementById('verify-modal')?.classList.add('active'); document.getElementById('bands-modal')?.classList.remove('active'); return; } joinBand(bandId); document.getElementById('bands-modal')?.classList.remove('active'); });
     document.getElementById('close-bands-modal')?.addEventListener('click', () => { document.getElementById('bands-modal')?.classList.remove('active'); });
     document.getElementById('bands-modal')?.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('active'); });
 
-    // Кнопка подтверждения кода
     document.getElementById('btn-verify-confirm')?.addEventListener('click', async () => { 
         const inputCode = window._verifyInput || ''; 
         const expectedCode = window._verifyCode || ''; 
         const errEl = document.getElementById('verify-error'); 
-        
-        if (inputCode.length !== 7) { 
-            if (errEl) { errEl.textContent = 'Введи ровно 7 цифр'; errEl.style.display = 'block'; } 
-            return; 
-        } 
-        
+        if (inputCode.length !== 7) { if (errEl) { errEl.textContent = 'Введи ровно 7 цифр'; errEl.style.display = 'block'; } return; } 
         if (inputCode === expectedCode) { 
             if (errEl) errEl.style.display = 'none'; 
-            
-            // Шайка?
             if (pendingBandData) { 
                 const { bandId } = pendingBandData; 
                 pendingBandData = null; 
@@ -289,14 +272,10 @@ function initApp() {
                 rMsg('✅ Шайка подтверждена!', 3000); 
                 return; 
             } 
-            
-            // Сначала сбрасываем флаги, потом подтверждаем
             verificationModalShown = false; 
             verificationDone = true; 
             document.getElementById('verify-modal')?.classList.remove('active'); 
-            
             await P2PPong.confirmVerification(); 
-            // channel-opened теперь не заблокирован
             rMsg('✅ Подтверждено!', 3000); 
         } else { 
             if (errEl) { errEl.textContent = '❌ Неверный код. Попробуй снова.'; errEl.style.display = 'block'; } 
@@ -304,7 +283,6 @@ function initApp() {
             document.getElementById('verify-code-display').textContent = '_______'; 
         } 
     });
-    
     document.getElementById('close-verify-modal')?.addEventListener('click', () => { document.getElementById('verify-modal')?.classList.remove('active'); verificationModalShown = false; });
     document.getElementById('verify-modal')?.addEventListener('click', function(e) { if (e.target === this) { this.classList.remove('active'); verificationModalShown = false; } });
     document.getElementById('btn-clear')?.addEventListener('click', () => { const box = document.getElementById('chat-box'); if (box) box.querySelectorAll('.message-row').forEach(m => m.remove()); playSmokeAnimation(); playSound('clear cache.mp3'); rMsg('🔥 Робин Гуд пустил все письма на самокрутки!', 5000); contacts = []; saveContacts(); setTimeout(() => { P2PPong.destroy().then(() => { localStorage.clear(); if ('caches' in window) { caches.keys().then(names => { names.forEach(name => caches.delete(name)); }); } if (window.indexedDB) { indexedDB.databases().then(dbs => { dbs.forEach(db => { indexedDB.deleteDatabase(db.name); }); }).catch(() => {}); } sessionStorage.clear(); window.location.reload(true); }); }, 6000); });
