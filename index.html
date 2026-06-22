@@ -40,15 +40,15 @@
         .header-datetime{font-size:clamp(0.6em,2vw,0.75em);color:var(--text-dim);margin-left:auto;display:flex;gap:4px}
         .header-row-2{display:flex;justify-content:space-around;align-items:center}
         .header-row-3{display:flex;justify-content:space-around;font-size:0.7em;color:var(--text-dim);margin-top:2px}
-        .header-row-3 span{width:clamp(40px,9vw,48px);text-align:center;cursor:pointer;font-weight:500;letter-spacing:0.3px}
-        .header-btn{width:clamp(44px,10vw,52px);height:clamp(44px,10vw,52px);display:flex;align-items:center;justify-content:center;cursor:pointer;border-radius:50%;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);transition:all 0.15s;position:relative;backdrop-filter:blur(8px);box-shadow:0 2px 8px rgba(0,0,0,0.15)}
+        .header-row-3 span{width:clamp(36px,8vw,44px);text-align:center;cursor:pointer;font-weight:500;letter-spacing:0.3px}
+        .header-btn{width:clamp(38px,9vw,46px);height:clamp(38px,9vw,46px);display:flex;align-items:center;justify-content:center;cursor:pointer;border-radius:50%;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);transition:all 0.15s;position:relative;backdrop-filter:blur(8px);box-shadow:0 2px 8px rgba(0,0,0,0.15)}
         .header-btn:active{background:rgba(255,255,255,0.12);transform:scale(0.93);box-shadow:0 1px 4px rgba(0,0,0,0.2)}
         .header-btn img{width:60%;height:60%;object-fit:contain;padding:0}
         .header-btn.calling { background: var(--call-accept-bg); box-shadow: 0 0 12px var(--seeding-color); }
         .header-btn.ringing { background: var(--call-reject-bg); animation: btnBlink 0.8s ease-in-out infinite; }
         @keyframes btnBlink{0%,100%{box-shadow:0 0 8px rgba(196,162,75,0.5)}50%{box-shadow:0 0 20px rgba(196,162,75,0.9),0 0 40px rgba(196,162,75,0.4)}}
-        .header-label{font-size:0.7em;color:var(--text-dim);text-align:center;width:clamp(40px,9vw,48px);cursor:pointer;font-weight:500}
-        .header-avatar{width:clamp(32px,7vw,38px);height:clamp(32px,7vw,38px);border-radius:50%;object-fit:cover;border:2px solid var(--border)}
+        .header-label{font-size:0.6em;color:var(--text-dim);text-align:center;width:clamp(36px,8vw,44px);cursor:pointer;font-weight:500}
+        .header-avatar{width:clamp(28px,6vw,34px);height:clamp(28px,6vw,34px);border-radius:50%;object-fit:cover;border:2px solid var(--border)}
         .robin-bar{background:rgba(50,70,40,0.6);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-radius:14px;padding:8px 14px;display:flex;align-items:center;gap:10px;width:100%;border-left:3px solid var(--robin-accent);border:1px solid rgba(255,255,255,0.1);box-shadow:0 4px 16px rgba(0,0,0,0.2),inset 0 1px 0 rgba(255,255,255,0.05)}
         .robin-bar-avatar{width:40px;height:40px;border-radius:50%;border:2px solid var(--robin-accent);object-fit:cover;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,0.3)}
         .robin-bar-text{flex:1;min-width:0;text-shadow:0 1px 2px rgba(0,0,0,0.3)}
@@ -153,12 +153,12 @@
         .audio-play-btn{width:36px;height:36px;border-radius:50%;border:none;background:var(--accent);color:#1a1f0f;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
         .audio-wave{flex:1;display:flex;align-items:flex-end;gap:2px;height:24px}
         .audio-wave-bar{width:3px;background:var(--accent);border-radius:1px;animation:waveAnim 0.8s ease-in-out infinite}
-        .audio-wave-bar:nth-child(1){animation-delay:0s;height:8px}.audio-wave-bar:nth-child(2){animation-delay:0.1s;height:14px}.audio-wave-bar:nth-child(3){animation-delay:0.2s;height:10px}.audio-wave-bar:nth-child(4){animation-delay:0.3s;height:18px}.audio-wave-bar:nth-child(5){animation-delay:0.4s;height:12px}.audio-wave-bar:nth-child(6){animation-delay:0.5s;height:16px}.audio-wave-bar:nth-child(7){animation-delay:0.6s;height:8px}.audio-wave-bar:nth-child(8){animation-delay:0.7s;height:20px}
+        .audio-wave-bar:nth-child(1){animation-delay:0s;height:8px}.audio-wave-bar:nth-child(2){animation-delay:0.1s;height:14px}.audio-wave-bar:nth-child(3){animation-delay:0.2s;height:10px}.audio-wave-bar:nth-child(4){animation-delay:0.3s;height:18px}
         @keyframes waveAnim{0%,100%{transform:scaleY(1)}50%{transform:scaleY(0.4)}}
         .audio-playing .audio-wave-bar{animation-play-state:running}
         .audio-paused .audio-wave-bar{animation-play-state:paused}
         .audio-time{font-size:0.65em;color:var(--text-dim);min-width:32px;text-align:right;font-family:monospace}
-        #btn-voice-input{width:clamp(44px,10vw,52px)!important;height:clamp(44px,10vw,52px)!important;border-radius:50%!important}
+        #btn-voice-input{width:clamp(38px,9vw,46px)!important;height:clamp(38px,9vw,46px)!important;border-radius:50%!important}
         .cup-indicator{font-size:0.65em;color:var(--text-dim);display:inline-flex;align-items:center;gap:2px}
         .cup-indicator .low{color:var(--danger)}.cup-indicator .ok{color:var(--accent)}.cup-indicator .full{color:var(--seeding-color)}
         .ratchet-indicator{font-size:0.6em;padding:2px 6px;border-radius:4px;font-family:monospace;white-space:nowrap}
@@ -166,6 +166,8 @@
         .verify-emoji-btn:active { background:var(--btn-hover); transform:scale(0.9); }
         .verify-emoji-btn.selected { border-color: var(--accent); background: var(--btn-hover); box-shadow: 0 0 8px var(--accent); }
         .hidden { display: none !important; }
+        .call-volume-controls input[type="range"] { -webkit-appearance:none; height:6px; background:var(--call-btn-bg); border-radius:3px; outline:none; }
+        .call-volume-controls input[type="range"]::-webkit-slider-thumb { -webkit-appearance:none; width:20px; height:20px; border-radius:50%; background:var(--accent); cursor:pointer; border:2px solid var(--accent-light); }
     </style>
 </head>
 <body>
@@ -187,9 +189,10 @@
         <div class="header-btn" id="btn-craft"><img src="assets/icons/08icon.png" alt="craft"></div>
         <div class="header-btn" id="btn-call"><img src="assets/icons/16icon.png" alt="call"></div>
         <div class="header-btn" id="btn-clear"><img src="assets/icons/18icon.png" alt="clear"></div>
+        <div class="header-btn" id="btn-bands"><img src="assets/icons/10icon.png" alt="bands"></div>
         <div class="header-btn" id="btn-settings"><img src="assets/icons/11icon.png" alt="settings"></div>
     </div>
-   <div class="header-row-3"><span class="header-label" id="nick-label">Твой ник</span><span class="header-label">Открыть колчан</span><span class="header-label">Колчан звонков</span><span class="header-label">Скурить чат</span><span class="header-label">Опции Шервуда</span></div>
+   <div class="header-row-3"><span class="header-label" id="nick-label">Твой ник</span><span class="header-label">Открыть колчан</span><span class="header-label">Колчан звонков</span><span class="header-label">Скурить чат</span><span class="header-label">Шайки Шервуда</span><span class="header-label">Опции Шервуда</span></div>
     <div class="robin-bar"><img src="assets/avatar/001ava.png" class="robin-bar-avatar" id="robin-avatar"><div class="robin-bar-text"><div class="robin-bar-sender" id="robin-bar-sender">RobinHood P2P</div><div class="robin-bar-msg" id="robin-text">Слепой Улей активирован! Святые сокеты стабильны!</div></div><div class="robin-bar-status"><span class="ratchet-indicator" id="ratchet-indicator" style="display:none;">🔄 0</span><img src="assets/icons/05icon.png" id="connection-icon" alt="status"><span class="cup-indicator" id="cup-indicator" style="display:none;">&nbsp;🍺<span id="cup-blobs">0/10</span>&nbsp;⏱<span id="cup-timer">10:00</span></span></div></div>
 </div>
 <div class="chat-area" id="chat-box"><div class="typing-indicator" id="typing-indicator"></div></div>
@@ -204,6 +207,10 @@
     <img id="call-avatar" class="call-avatar-large" src="assets/avatar/001ava.png">
     <div class="call-name" id="call-contact-name">Лучник</div>
     <div class="call-status-text" id="call-status">📞 Вызов...</div>
+    <div class="call-volume-controls" style="display:flex;flex-direction:column;gap:8px;width:80%;max-width:250px;margin:8px 0;">
+        <div style="display:flex;align-items:center;gap:8px;"><span style="font-size:16px;">🎤</span><input type="range" id="mic-volume" min="0" max="200" value="100" style="flex:1;accent-color:var(--accent);"><span style="font-size:16px;" id="mic-volume-value">100%</span></div>
+        <div style="display:flex;align-items:center;gap:8px;"><span style="font-size:16px;">🔊</span><input type="range" id="speaker-volume" min="0" max="200" value="100" style="flex:1;accent-color:var(--accent);"><span style="font-size:16px;" id="speaker-volume-value">100%</span></div>
+    </div>
     <div class="call-buttons" id="active-call-controls" style="display:none;">
         <button class="call-btn-round call-btn-speaker" id="call-speaker">🔊</button>
         <button class="call-btn-round call-btn-mute" id="call-mic">🎤</button>
@@ -218,16 +225,7 @@
 <div class="avatar-selector" id="avatar-selector"><p>🏹 Выбери лучника 🏹</p><div id="avatar-list"></div></div>
 <div class="bottom-sheet" id="settings-sheet"><div class="bottom-sheet-header"><span>⚙️ Опции Шервуда</span><button class="bottom-sheet-close" id="settings-close">✕</button></div><div class="bottom-sheet-list">
     <div class="contact-item" id="setting-sound"><div class="contact-info"><img src="assets/icons/15icon.png"><span class="contact-name">Звук</span></div><label class="toggle-switch"><input type="checkbox" id="toggle-sound" checked><span class="toggle-slider"></span></label></div>
-    <div class="contact-item" id="setting-animations">
-    <div class="contact-info">
-        <span style="font-size:24px;">✨</span>
-        <span class="contact-name">Анимации</span>
-    </div>
-    <label class="toggle-switch">
-        <input type="checkbox" id="toggle-animations" checked>
-        <span class="toggle-slider"></span>
-    </label>
-</div>
+    <div class="contact-item" id="setting-animations"><div class="contact-info"><span style="font-size:24px;">✨</span><span class="contact-name">Анимации</span></div><label class="toggle-switch"><input type="checkbox" id="toggle-animations" checked><span class="toggle-slider"></span></label></div>
     <div class="contact-item" id="setting-theme"><div class="contact-info"><img src="assets/icons/12icon.png"><span class="contact-name">Тема</span></div><span id="theme-name">Сланец</span></div>
     <div class="contact-item" id="setting-theme-random"><div class="contact-info"><span style="font-size:24px;">🎲</span><span class="contact-name">Авто-тема</span></div><span>🎨</span></div>
     <div class="contact-item" id="setting-self-destruct"><div class="contact-info"><span style="font-size:24px;">🍁</span><span class="contact-name">Листопад</span></div><label class="toggle-switch"><input type="checkbox" id="toggle-selfdestruct"><span class="toggle-slider"></span></label></div>
@@ -242,6 +240,9 @@
 <div class="modal-overlay" id="verify-modal"><div class="modal-dialog"><h3>🔐 Подтверждение</h3><div id="verify-instruction" style="color:var(--text-dim);margin-bottom:6px;">Выбери 5 знаков в правильном порядке</div><div id="verify-emoji-grid" style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:12px 0;"></div><div id="verify-selected" style="font-size:1.5em;letter-spacing:6px;min-height:36px;margin:8px 0;"></div><div id="verify-error" style="color:var(--danger);font-size:0.8em;margin-top:6px;display:none;"></div><button class="btn-dark" id="btn-verify-reset" style="width:auto;display:inline-block;margin:0 auto 8px;">↩ Сбросить</button><button class="btn-primary" id="btn-verify-confirm">✅ Подтвердить</button><button class="btn-dark" id="close-verify-modal">Закрыть</button></div></div>
 
 <div class="modal-overlay" id="nick-modal"><div class="modal-dialog"><h3>🏷 Придумай ник</h3><input type="text" id="nick-input" placeholder="Введи ник (макс 12 символов)..." style="width:100%;margin:8px 0;padding:8px;background:var(--input-bg);border:1px solid var(--border);color:var(--input-text);border-radius:8px;font-size:0.9em;font-family:monospace;"><button class="btn-primary" id="btn-save-nick">💾 Сохранить</button><button class="btn-dark" id="close-nick-modal">Закрыть</button></div></div>
+
+<div class="modal-overlay" id="bands-modal"><div class="modal-dialog"><h3>🏹 Обитатели Шервуда</h3><div id="bands-list"></div><button class="btn-primary" id="btn-create-band">🏹 Создать шайку</button><button class="btn-dark" id="btn-join-band">🔗 Войти в шайку</button><button class="btn-dark" id="close-bands-modal">Закрыть</button></div></div>
+
 <div id="bow-above-send"></div>
 </div>
 
