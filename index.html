@@ -28,27 +28,27 @@
         html,body { height:100%; overflow:hidden; font-family:'Segoe UI','Inter',sans-serif; font-size:clamp(14px,2.5vw,16px); }
         body { background:linear-gradient(135deg, var(--bg-primary), var(--bg-secondary)); color:var(--text); display:flex; flex-direction:column; height:100dvh; position:relative; }
         body::before { content:""; position:fixed; top:0; left:0; width:100%; height:100%; background-image:url('assets/icons/background.webp'); background-size:cover; background-position:center; z-index:0; opacity:0.35; }
-        .leaves-container { position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:1; overflow:hidden; }
+        .leaves-container { position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:1; overflow:hidden; transition: opacity 2s ease; }
         .leaf,.feather{position:absolute;top:-50px;animation:fall linear infinite;opacity:0.8}
         .leaf{font-size:clamp(14px,3vw,22px)}.feather{font-size:clamp(10px,2.5vw,18px)}
         @keyframes fall{0%{transform:translateY(-50px) rotate(0deg) translateX(0);opacity:.9}25%{transform:translateY(25vh) rotate(90deg) translateX(40px);opacity:.8}50%{transform:translateY(50vh) rotate(180deg) translateX(-30px);opacity:.7}75%{transform:translateY(75vh) rotate(270deg) translateX(35px);opacity:.5}100%{transform:translateY(105vh) rotate(360deg) translateX(-20px);opacity:0}}
         .leaf:nth-child(odd){animation-duration:15s}.leaf:nth-child(even){animation-duration:20s}.feather:nth-child(odd){animation-duration:24s}.feather:nth-child(even){animation-duration:30s}
         .leaves-container.sleeping .leaf,.leaves-container.sleeping .feather{animation-play-state:paused;opacity:0.15}
-        .header{background:linear-gradient(135deg,var(--bg-primary),var(--bg-secondary));border-bottom:2px solid var(--border);backdrop-filter:blur(8px);z-index:10;padding:6px 10px;display:flex;flex-direction:column;gap:4px;flex-shrink:0}
+        .header{background:linear-gradient(135deg,var(--bg-primary),var(--bg-secondary));border-bottom:2px solid var(--border);backdrop-filter:blur(8px);z-index:10;padding:6px 8px;display:flex;flex-direction:column;gap:4px;flex-shrink:0}
         .header-row-1{display:flex;align-items:center;gap:6px}
         .header-title-text{font-size:clamp(1em,3vw,1.3em);font-weight:bold;background:linear-gradient(135deg,var(--accent-light),var(--accent));-webkit-background-clip:text;background-clip:text;color:transparent}
         .header-datetime{font-size:clamp(0.6em,2vw,0.75em);color:var(--text-dim);margin-left:auto;display:flex;gap:4px}
         .header-row-2{display:flex;justify-content:space-around;align-items:center}
-        .header-row-3{display:flex;justify-content:space-around;font-size:0.7em;color:var(--text-dim);margin-top:2px}
-        .header-row-3 span{width:clamp(36px,8vw,44px);text-align:center;cursor:pointer;font-weight:500;letter-spacing:0.3px}
-        .header-btn{width:clamp(38px,9vw,46px);height:clamp(38px,9vw,46px);display:flex;align-items:center;justify-content:center;cursor:pointer;border-radius:50%;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);transition:all 0.15s;position:relative;backdrop-filter:blur(8px);box-shadow:0 2px 8px rgba(0,0,0,0.15)}
+        .header-row-3{display:flex;justify-content:space-around;font-size:0.6em;color:var(--text-dim);margin-top:2px}
+        .header-row-3 span{width:clamp(32px,7vw,42px);text-align:center;cursor:pointer;font-weight:500;letter-spacing:0.3px}
+        .header-btn{width:clamp(36px,8vw,44px);height:clamp(36px,8vw,44px);display:flex;align-items:center;justify-content:center;cursor:pointer;border-radius:50%;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);transition:all 0.15s;position:relative;backdrop-filter:blur(8px);box-shadow:0 2px 8px rgba(0,0,0,0.15)}
         .header-btn:active{background:rgba(255,255,255,0.12);transform:scale(0.93);box-shadow:0 1px 4px rgba(0,0,0,0.2)}
         .header-btn img{width:60%;height:60%;object-fit:contain;padding:0}
         .header-btn.calling { background: var(--call-accept-bg); box-shadow: 0 0 12px var(--seeding-color); }
         .header-btn.ringing { background: var(--call-reject-bg); animation: btnBlink 0.8s ease-in-out infinite; }
         @keyframes btnBlink{0%,100%{box-shadow:0 0 8px rgba(196,162,75,0.5)}50%{box-shadow:0 0 20px rgba(196,162,75,0.9),0 0 40px rgba(196,162,75,0.4)}}
-        .header-label{font-size:0.6em;color:var(--text-dim);text-align:center;width:clamp(36px,8vw,44px);cursor:pointer;font-weight:500}
-        .header-avatar{width:clamp(28px,6vw,34px);height:clamp(28px,6vw,34px);border-radius:50%;object-fit:cover;border:2px solid var(--border)}
+        .header-label{font-size:0.6em;color:var(--text-dim);text-align:center;width:clamp(32px,7vw,42px);cursor:pointer;font-weight:500}
+        .header-avatar{width:clamp(26px,6vw,32px);height:clamp(26px,6vw,32px);border-radius:50%;object-fit:cover;border:2px solid var(--border)}
         .robin-bar{background:rgba(50,70,40,0.6);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-radius:14px;padding:8px 14px;display:flex;align-items:center;gap:10px;width:100%;border-left:3px solid var(--robin-accent);border:1px solid rgba(255,255,255,0.1);box-shadow:0 4px 16px rgba(0,0,0,0.2),inset 0 1px 0 rgba(255,255,255,0.05)}
         .robin-bar-avatar{width:40px;height:40px;border-radius:50%;border:2px solid var(--robin-accent);object-fit:cover;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,0.3)}
         .robin-bar-text{flex:1;min-width:0;text-shadow:0 1px 2px rgba(0,0,0,0.3)}
@@ -138,6 +138,8 @@
         .call-action-btn.accept{border-color:var(--seeding-color);color:var(--seeding-color);background:rgba(76,175,80,0.2);box-shadow:0 0 25px rgba(76,175,80,0.3)}
         .call-action-btn.reject{border-color:var(--danger);color:var(--danger);background:rgba(244,67,54,0.2);box-shadow:0 0 25px rgba(244,67,54,0.3)}
         .call-action-btn:active{transform:scale(0.8);filter:brightness(1.5)}
+        .call-volume-controls input[type="range"] { -webkit-appearance:none; height:6px; background:var(--call-btn-bg); border-radius:3px; outline:none; }
+        .call-volume-controls input[type="range"]::-webkit-slider-thumb { -webkit-appearance:none; width:20px; height:20px; border-radius:50%; background:var(--accent); cursor:pointer; border:2px solid var(--accent-light); }
         .voice-recording-indicator{position:absolute;top:-38px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:6px;z-index:22;pointer-events:none}
         .voice-timer-text{color:var(--danger);font-family:monospace;font-size:0.75em;background:rgba(0,0,0,0.85);padding:2px 6px;border-radius:4px;white-space:nowrap}
         .voice-wave-bar{width:3px;background:var(--danger);border-radius:1px;animation:voiceWaveAnim 0.5s ease-in-out infinite}
@@ -158,7 +160,7 @@
         .audio-playing .audio-wave-bar{animation-play-state:running}
         .audio-paused .audio-wave-bar{animation-play-state:paused}
         .audio-time{font-size:0.65em;color:var(--text-dim);min-width:32px;text-align:right;font-family:monospace}
-        #btn-voice-input{width:clamp(38px,9vw,46px)!important;height:clamp(38px,9vw,46px)!important;border-radius:50%!important}
+        #btn-voice-input{width:clamp(36px,8vw,44px)!important;height:clamp(36px,8vw,44px)!important;border-radius:50%!important}
         .cup-indicator{font-size:0.65em;color:var(--text-dim);display:inline-flex;align-items:center;gap:2px}
         .cup-indicator .low{color:var(--danger)}.cup-indicator .ok{color:var(--accent)}.cup-indicator .full{color:var(--seeding-color)}
         .ratchet-indicator{font-size:0.6em;padding:2px 6px;border-radius:4px;font-family:monospace;white-space:nowrap}
@@ -166,8 +168,6 @@
         .verify-emoji-btn:active { background:var(--btn-hover); transform:scale(0.9); }
         .verify-emoji-btn.selected { border-color: var(--accent); background: var(--btn-hover); box-shadow: 0 0 8px var(--accent); }
         .hidden { display: none !important; }
-        .call-volume-controls input[type="range"] { -webkit-appearance:none; height:6px; background:var(--call-btn-bg); border-radius:3px; outline:none; }
-        .call-volume-controls input[type="range"]::-webkit-slider-thumb { -webkit-appearance:none; width:20px; height:20px; border-radius:50%; background:var(--accent); cursor:pointer; border:2px solid var(--accent-light); }
     </style>
 </head>
 <body>
@@ -192,7 +192,7 @@
         <div class="header-btn" id="btn-bands"><img src="assets/icons/10icon.png" alt="bands"></div>
         <div class="header-btn" id="btn-settings"><img src="assets/icons/11icon.png" alt="settings"></div>
     </div>
-   <div class="header-row-3"><span class="header-label" id="nick-label">Твой ник</span><span class="header-label">Открыть колчан</span><span class="header-label">Колчан звонков</span><span class="header-label">Скурить чат</span><span class="header-label">Шайки Шервуда</span><span class="header-label">Опции Шервуда</span></div>
+   <div class="header-row-3"><span class="header-label" id="nick-label">Твой ник</span><span class="header-label">Колчан</span><span class="header-label">Звонки</span><span class="header-label">Скурить</span><span class="header-label">Шайки</span><span class="header-label">Опции</span></div>
     <div class="robin-bar"><img src="assets/avatar/001ava.png" class="robin-bar-avatar" id="robin-avatar"><div class="robin-bar-text"><div class="robin-bar-sender" id="robin-bar-sender">RobinHood P2P</div><div class="robin-bar-msg" id="robin-text">Слепой Улей активирован! Святые сокеты стабильны!</div></div><div class="robin-bar-status"><span class="ratchet-indicator" id="ratchet-indicator" style="display:none;">🔄 0</span><img src="assets/icons/05icon.png" id="connection-icon" alt="status"><span class="cup-indicator" id="cup-indicator" style="display:none;">&nbsp;🍺<span id="cup-blobs">0/10</span>&nbsp;⏱<span id="cup-timer">10:00</span></span></div></div>
 </div>
 <div class="chat-area" id="chat-box"><div class="typing-indicator" id="typing-indicator"></div></div>
@@ -241,7 +241,27 @@
 
 <div class="modal-overlay" id="nick-modal"><div class="modal-dialog"><h3>🏷 Придумай ник</h3><input type="text" id="nick-input" placeholder="Введи ник (макс 12 символов)..." style="width:100%;margin:8px 0;padding:8px;background:var(--input-bg);border:1px solid var(--border);color:var(--input-text);border-radius:8px;font-size:0.9em;font-family:monospace;"><button class="btn-primary" id="btn-save-nick">💾 Сохранить</button><button class="btn-dark" id="close-nick-modal">Закрыть</button></div></div>
 
-<div class="modal-overlay" id="bands-modal"><div class="modal-dialog"><h3>🏹 Обитатели Шервуда</h3><div id="bands-list"></div><button class="btn-primary" id="btn-create-band">🏹 Создать шайку</button><button class="btn-dark" id="btn-join-band">🔗 Войти в шайку</button><button class="btn-dark" id="close-bands-modal">Закрыть</button></div></div>
+<div class="modal-overlay" id="bands-modal"><div class="modal-dialog"><h3>🏹 Обитатели Шервуда</h3>
+    <button class="btn-primary" id="btn-craft-band-arrow">🏹 Крафт стрелы шайки</button>
+    <div style="color:var(--text-dim);margin:8px 0 4px;">ID шайки:</div>
+    <div class="code-display" id="band-id-display"></div>
+    <button class="btn-dark" id="btn-copy-band-id">📋 Скопировать ID</button>
+    <hr style="border-color:var(--border);margin:12px 0;">
+    <div style="color:var(--text-dim);margin:8px 0 4px;">Название шайки:</div>
+    <input type="text" id="band-name-input" placeholder="Шайка лучников..." style="width:100%;margin:0 0 8px;padding:8px;background:var(--input-bg);border:1px solid var(--border);color:var(--input-text);border-radius:8px;font-size:0.9em;">
+    <button class="btn-primary" id="btn-create-band">🏹 Создать шайку</button>
+    <hr style="border-color:var(--border);margin:12px 0;">
+    <div style="color:var(--text-dim);margin:8px 0 4px;">ID чужой шайки:</div>
+    <input type="text" id="band-id-input" placeholder="Вставь ID шайки..." style="width:100%;margin:0 0 8px;padding:8px;background:var(--input-bg);border:1px solid var(--border);color:var(--input-text);border-radius:8px;font-size:0.75em;font-family:monospace;">
+    <button class="btn-dark" id="btn-join-band">🔗 Войти в шайку</button>
+    <hr style="border-color:var(--border);margin:12px 0;">
+    <div id="bands-list"></div>
+    <button class="btn-dark" id="close-bands-modal">Закрыть</button>
+</div></div>
+
+<div class="modal-overlay" id="input-modal"><div class="modal-dialog"><h3 id="input-modal-title">Ввод</h3><input type="text" id="input-modal-field" placeholder="..." style="width:100%;margin:8px 0;padding:8px;background:var(--input-bg);border:1px solid var(--border);color:var(--input-text);border-radius:8px;"><div id="input-modal-error" style="color:var(--danger);font-size:0.8em;display:none;"></div><button class="btn-primary" id="input-modal-ok">✅ ОК</button><button class="btn-dark" id="input-modal-cancel">Отмена</button></div></div>
+
+<div class="modal-overlay" id="confirm-modal"><div class="modal-dialog"><h3 id="confirm-modal-title">Подтверждение</h3><div id="confirm-modal-text" style="color:var(--text-dim);margin:12px 0;"></div><button class="btn-primary" id="confirm-modal-yes">✅ Да</button><button class="btn-dark" id="confirm-modal-no">Нет</button></div></div>
 
 <div id="bow-above-send"></div>
 </div>
