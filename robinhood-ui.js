@@ -1,3 +1,4 @@
+
 // ==================== RobinHood UI ====================
 // Чистый интерфейс. Ядро: P2PPong.
 
@@ -124,10 +125,8 @@ function loadContacts() { try { const r = localStorage.getItem('rh_contacts'); i
 // Шайки Шервуда (только RAM)
 function createBand(bandId, name, password = null) { if (bands.find(b => b.id === bandId)) { rMsg('❌ Шайка с таким ID уже существует', 3000); return null; } const band = { id: bandId, name: name || 'Шайка лучников', sheriff: P2PPong._peerId, rangers: [], outlaws: [P2PPong._peerId], strangers: [], password: password, created: Date.now(), maxMembers: 12, blobs: [] }; bands.push(band); activeBandId = bandId; activeChannelId = null; showBandChat(bandId); playQuiverAnimation(); rMsg('🏹 Шайка собрана в Шервуде! Вы — шериф.', 4000); return bandId; }
 function joinBand(bandId, password = null) { let band = bands.find(b => b.id === bandId); if (!band) { band = { id: bandId, name: 'Шайка лучников', sheriff: null, rangers: [], outlaws: [P2PPong._peerId], strangers: [], password: password, created: Date.now(), maxMembers: 12, blobs: [] }; bands.push(band); } else { if (band.password && band.password !== password) { rMsg('❌ Неверный пароль шайки', 3000); return false; } if (band.outlaws.length >= band.maxMembers) { rMsg('❌ Шайка полна (макс 12 лучников)', 3000); return false; } if (!band.outlaws.includes(P2PPong._peerId)) { band.outlaws.push(P2PPong._peerId); } } activeBandId = bandId; activeChannelId = null; showBandChat(bandId); playQuiverAnimation(); rMsg('🏹 Вы вступили в шайку!', 4000); return true; }
-function leaveBand(bandId) { const band = bands.find(b => b.id === bandId); if (!band) return; if (band.sheriff === P2PPong._peerId) { rMsg('❌ Шериф не может покинуть шайку', 3000); return; } band.outlaws = band.outlaws.filter(id => id !== P2PPong._peerId); band.rangers = band.rangers.filter(id => id !== P2PPong._peerId); if (activeBandId === bandId) { activeBandId = null; document.getElementById('chat-box').innerHTML = '<div class="typing-indicator" id="typing-indicator"></div>'; } rMsg('🚶 Вы покинули шайку', 3000); }
-function destroyBand(bandId) { const band = bands.find(b => b.id === bandId); if (!band) return; if (band.sheriff !== P2PPong._peerId) { rMsg('❌ Только шериф может распустить шайку', 3000); return; } bands = bands.filter(b => b.id !== bandId); if (activeBandId === bandId) { activeBandId = null; document.getElementById('chat-box').innerHTML = '<div class="typing-indicator" id="typing-indicator"></div>'; } rMsg('🔥 Шайка распущена шерифом', 3000); }
-function showBandChat(bandId) { const band = bands.find(b => b.id === bandId); if (!band) return; activeBandId = bandId; activeChannelId = null; const role = band.sheriff === P2PPong._peerId ? '⭐Шериф' : band.rangers.includes(P2PPong._peerId) ? '🛡Рейнджер' : '🏹Разбойник'; document.getElementById('robin-bar-sender').textContent = role + ' ' + (band.name || 'Шайка'); const box = document.getElementById('chat-box'); box.innerHTML = '<div class="typing-indicator" id="typing-indicator"></div>'; if (band.blobs) { band.blobs.forEach(b => { const im = b.from === P2PPong._peerId; appendMessage(im ? 'Вы' : (b.nick || 'Лучник'), b.text || '', im ? selectedAvatar : (b.avatar || '001')); }); } }
-function showBandsList() { const list = document.getElementById('bands-list'); if (!list) return; list.innerHTML = ''; if (bands.length === 0) { list.innerHTML = '<div style="color:var(--text-dim);text-align:center;padding:20px;">Нет шаек. Создайте первую!</div>'; return; } bands.forEach(band => { const item = document.createElement('div'); item.className = 'contact-item'; const role = band.sheriff === P2PPong._peerId ? '⭐Шериф' : band.rangers.includes(P2PPong._peerId) ? '🛡Рейнджер' : '🏹Разбойник'; item.innerHTML = `<div style="display:flex;align-items:center;gap:8px;width:100%;"><img src="assets/icons/10icon.png" style="width:28px;height:28px;"><div><div class="contact-name">${band.name || 'Шайка'}</div><div style="font-size:0.65em;color:var(--text-dim);">${role} · ${band.outlaws.length}/12 ${band.password ? '🔐' : ''}</div></div></div>`; item.addEventListener('click', () => { if (band.outlaws.includes(P2PPong._peerId)) { showBandChat(band.id); document.getElementById('bands-modal')?.classList.remove('active'); } else if (band.password) { showInput('Пароль шайки', 'Введи пароль').then(pass => { if (pass) joinBand(band.id, pass); }); } else { joinBand(band.id); } }); list.appendChild(item); }); }
+function showBandChat(bandId) { const band = bands.find(b => b.id === bandId); if (!band) return; activeBandId = bandId; activeChannelId = null; const role = band.sheriff === P2PPong._peerId ? '⭐Шериф' : '🏹Разбойник'; document.getElementById('robin-bar-sender').textContent = role + ' ' + (band.name || 'Шайка'); const box = document.getElementById('chat-box'); box.innerHTML = '<div class="typing-indicator" id="typing-indicator"></div>'; if (band.blobs) { band.blobs.forEach(b => { const im = b.from === P2PPong._peerId; appendMessage(im ? 'Вы' : (b.nick || 'Лучник'), b.text || '', im ? selectedAvatar : (b.avatar || '001')); }); } }
+function showBandsList() { const list = document.getElementById('bands-list'); if (!list) return; list.innerHTML = ''; if (bands.length === 0) { list.innerHTML = '<div style="color:var(--text-dim);text-align:center;padding:20px;">Нет шаек. Создайте первую!</div>'; return; } bands.forEach(band => { const item = document.createElement('div'); item.className = 'contact-item'; const role = band.sheriff === P2PPong._peerId ? '⭐Шериф' : '🏹Разбойник'; item.innerHTML = `<div style="display:flex;align-items:center;gap:8px;width:100%;"><img src="assets/icons/10icon.png" style="width:28px;height:28px;"><div><div class="contact-name">${band.name || 'Шайка'}</div><div style="font-size:0.65em;color:var(--text-dim);">${role} · ${band.outlaws.length}/12 ${band.password ? '🔐' : ''}</div></div></div>`; item.addEventListener('click', () => { if (band.outlaws.includes(P2PPong._peerId)) { showBandChat(band.id); document.getElementById('bands-modal')?.classList.remove('active'); } else if (band.password) { showInput('Пароль шайки', 'Введи пароль').then(pass => { if (pass) joinBand(band.id, pass); }); } else { joinBand(band.id); } }); list.appendChild(item); }); }
 
 function updateCupIndicator() { const chId = activeChannelId || Object.keys(P2PPong._channels)[0]; const ch = chId ? P2PPong._channels[chId] : null; const ind = document.getElementById('cup-indicator'); if (!ch || !ind) { if (ind) ind.style.display = 'none'; return; } ind.style.display = 'inline-flex'; const bc = ch.blobs ? ch.blobs.length : 0; const be = document.getElementById('cup-blobs'); if (be) { be.textContent = bc + '/10'; be.className = bc >= 10 ? 'full' : bc >= 7 ? 'ok' : ''; } const totalSec = Math.max(0, Math.round((ch.expires - Date.now()) / 1000)); const min = Math.floor(totalSec / 60); const sec = totalSec % 60; const te = document.getElementById('cup-timer'); if (te) { te.textContent = min + ':' + sec.toString().padStart(2, '0'); te.className = min <= 2 ? 'low' : min <= 5 ? 'ok' : ''; } }
 function updateRatchetIndicator() { const chId = activeChannelId || Object.keys(P2PPong._channels)[0]; const ch = chId ? P2PPong._channels[chId] : null; const indicator = document.getElementById('ratchet-indicator'); if (!indicator) return; if (!ch || !ch.ratchetKey) { indicator.style.display = 'none'; return; } indicator.style.display = 'inline'; const ri = ch.ratchetIndex || 0; let color, icon; if (ri === 0) { color = 'var(--danger)'; icon = '⚠️'; } else if (ri < 10) { color = 'orange'; icon = '🔄'; } else if (ri < 50) { color = 'var(--accent)'; icon = '🔒'; } else { color = 'var(--seeding-color)'; icon = '🔐'; } indicator.style.color = color; indicator.style.background = 'rgba(0,0,0,0.3)'; indicator.textContent = icon + ' ' + ri; indicator.title = 'Ratchet: ' + ri + ' оборотов'; }
@@ -188,33 +187,24 @@ function initUI() {
         verificationModalShown = true; verificationDone = false;
         const code = data.code || P2PPong.getVerificationCode();
         
-        // У Алисы window._verifyCode уже есть из craftArrow
         if (window._verifyCode && code === window._verifyCode) {
-            // Авто-подтверждение без окна ввода
             document.getElementById('verify-modal')?.classList.add('active');
             document.getElementById('verify-instruction').textContent = '✅ Код совпал! Канал открывается...';
             document.getElementById('verify-code-display').textContent = code;
             document.getElementById('verify-error').style.display = 'none';
             
             setTimeout(async () => {
-                await P2PPong.confirmVerification();
+                // Сначала обновляем флаги, потом подтверждаем
+                verificationModalShown = false;
+                verificationDone = true;
                 document.getElementById('verify-modal')?.classList.remove('active');
-                verificationModalShown = false; verificationDone = true;
                 
-                if (window._pendingChannel) {
-                    const chData = window._pendingChannel; window._pendingChannel = null;
-                    setTimeout(() => {
-                        playQuiverAnimation();
-                        rMsg('✅ Колчан открыт! Тетива натянута!', 3000);
-                        addContact({ peerId: chData.peerId, name: chData.nick || 'Лучник', channelId: chData.channelId, verified: false, avatar: chData.avatar || '001' });
-                        showChatForChannel(chData.channelId);
-                    }, 500);
-                }
+                await P2PPong.confirmVerification();
+                // channel-opened теперь не будет заблокирован
             }, 1500);
             return;
         }
         
-        // Если код не совпал — показываем ввод (на всякий случай)
         document.getElementById('verify-instruction').textContent = 'Введи 7-значный код';
         document.getElementById('verify-error').style.display = 'none';
         document.getElementById('verify-modal')?.classList.add('active');
@@ -267,14 +257,54 @@ function initApp() {
 
     // Шайки
     document.getElementById('btn-bands')?.addEventListener('click', () => { showBandsList(); document.getElementById('bands-modal')?.classList.add('active'); });
-    document.getElementById('btn-craft-band-arrow')?.addEventListener('click', () => { const bandId = RND(); const code = Math.floor(1000000 + Math.random() * 9000000).toString(); document.getElementById('band-id-display').textContent = bandId; document.getElementById('band-code-display').textContent = code; document.getElementById('band-code-display').style.display = 'block'; window._bandCode = code; rMsg('🏹 Стрела шайки изготовлена!', 3000); });
+    document.getElementById('btn-craft-band-arrow')?.addEventListener('click', () => { const bandId = RND(); const code = Math.floor(1000000 + Math.random() * 9000000).toString(); document.getElementById('band-id-display').textContent = bandId; document.getElementById('band-code-display').textContent = code; document.getElementById('band-code-display').style.display = 'block'; rMsg('🏹 Стрела шайки изготовлена!', 3000); });
     document.getElementById('btn-copy-band-id')?.addEventListener('click', () => { const bandId = document.getElementById('band-id-display')?.textContent; const code = document.getElementById('band-code-display')?.textContent; let copyText = ''; if (bandId && bandId !== '') copyText += bandId; if (code && code !== '') copyText += '\n' + code; if (copyText) { navigator.clipboard.writeText(copyText).then(() => rMsg('⎘ ID шайки и код скопированы!')).catch(() => {}); } else { rMsg('❌ Сначала скрафти стрелу шайки', 3000); } });
     document.getElementById('btn-create-band')?.addEventListener('click', async () => { const bandId = document.getElementById('band-id-display')?.textContent; const name = document.getElementById('band-name-input')?.value.trim() || 'Шайка лучников'; if (!bandId || bandId === '') { rMsg('❌ Сначала скрафти стрелу шайки', 3000); return; } const needPass = await showConfirm('Пароль', 'Установить пароль на вход?'); let pass = null; if (needPass) { pass = await showInput('Пароль шайки', 'Введи пароль'); } createBand(bandId, name, pass); document.getElementById('bands-modal')?.classList.remove('active'); });
-    document.getElementById('btn-join-band')?.addEventListener('click', async () => { const bandId = document.getElementById('band-id-input')?.value.trim(); if (!bandId) { rMsg('❌ Введи ID шайки', 3000); return; } const codeInput = document.getElementById('band-code-input')?.value.trim(); if (codeInput && window._bandCode && codeInput === window._bandCode) { joinBand(bandId); document.getElementById('bands-modal')?.classList.remove('active'); return; } if (codeInput) { window._verifyCode = codeInput; window._verifyInput = ''; pendingBandData = { bandId }; document.getElementById('verify-instruction').textContent = 'Введи 7-значный код шайки'; document.getElementById('verify-code-display').textContent = '_______'; const grid = document.getElementById('verify-code-grid'); grid.innerHTML = ''; grid.style.cssText = 'display:grid;grid-template-columns:repeat(3,1fr);gap:6px;max-width:240px;margin:12px auto;'; for (let i = 1; i <= 9; i++) { const btn = document.createElement('button'); btn.textContent = i; btn.className = 'lock-num'; btn.style.cssText = 'width:65px;height:65px;font-size:1.8em;'; btn.onclick = () => addVerifyDigit(i.toString()); grid.appendChild(btn); } const btn0 = document.createElement('button'); btn0.textContent = '0'; btn0.className = 'lock-num'; btn0.style.cssText = 'width:65px;height:65px;font-size:1.8em;'; btn0.onclick = () => addVerifyDigit('0'); grid.appendChild(btn0); const btnDel = document.createElement('button'); btnDel.textContent = '⌫'; btnDel.className = 'lock-num'; btnDel.style.cssText = 'width:65px;height:65px;font-size:1.5em;background:rgba(244,67,54,0.3);'; btnDel.onclick = () => { window._verifyInput = window._verifyInput.slice(0, -1); document.getElementById('verify-code-display').textContent = window._verifyInput.padEnd(7, '_'); }; grid.appendChild(btnDel); document.getElementById('btn-verify-reset').onclick = () => { window._verifyInput = ''; document.getElementById('verify-code-display').textContent = '_______'; }; verificationModalShown = true; verificationDone = false; document.getElementById('verify-modal')?.classList.add('active'); document.getElementById('bands-modal')?.classList.remove('active'); return; } joinBand(bandId); document.getElementById('bands-modal')?.classList.remove('active'); });
+    document.getElementById('btn-join-band')?.addEventListener('click', async () => { const bandId = document.getElementById('band-id-input')?.value.trim(); if (!bandId) { rMsg('❌ Введи ID шайки', 3000); return; } const codeInput = document.getElementById('band-code-input')?.value.trim(); if (codeInput) { window._verifyCode = codeInput; window._verifyInput = ''; pendingBandData = { bandId }; document.getElementById('verify-instruction').textContent = 'Введи 7-значный код шайки'; document.getElementById('verify-code-display').textContent = '_______'; const grid = document.getElementById('verify-code-grid'); grid.innerHTML = ''; grid.style.cssText = 'display:grid;grid-template-columns:repeat(3,1fr);gap:6px;max-width:240px;margin:12px auto;'; for (let i = 1; i <= 9; i++) { const btn = document.createElement('button'); btn.textContent = i; btn.className = 'lock-num'; btn.style.cssText = 'width:65px;height:65px;font-size:1.8em;'; btn.onclick = () => addVerifyDigit(i.toString()); grid.appendChild(btn); } const btn0 = document.createElement('button'); btn0.textContent = '0'; btn0.className = 'lock-num'; btn0.style.cssText = 'width:65px;height:65px;font-size:1.8em;'; btn0.onclick = () => addVerifyDigit('0'); grid.appendChild(btn0); const btnDel = document.createElement('button'); btnDel.textContent = '⌫'; btnDel.className = 'lock-num'; btnDel.style.cssText = 'width:65px;height:65px;font-size:1.5em;background:rgba(244,67,54,0.3);'; btnDel.onclick = () => { window._verifyInput = window._verifyInput.slice(0, -1); document.getElementById('verify-code-display').textContent = window._verifyInput.padEnd(7, '_'); }; grid.appendChild(btnDel); document.getElementById('btn-verify-reset').onclick = () => { window._verifyInput = ''; document.getElementById('verify-code-display').textContent = '_______'; }; verificationModalShown = true; verificationDone = false; document.getElementById('verify-modal')?.classList.add('active'); document.getElementById('bands-modal')?.classList.remove('active'); return; } joinBand(bandId); document.getElementById('bands-modal')?.classList.remove('active'); });
     document.getElementById('close-bands-modal')?.addEventListener('click', () => { document.getElementById('bands-modal')?.classList.remove('active'); });
     document.getElementById('bands-modal')?.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('active'); });
 
-    document.getElementById('btn-verify-confirm')?.addEventListener('click', async () => { const inputCode = window._verifyInput || ''; const expectedCode = window._verifyCode || ''; const errEl = document.getElementById('verify-error'); if (inputCode.length !== 7) { if (errEl) { errEl.textContent = 'Введи ровно 7 цифр'; errEl.style.display = 'block'; } return; } if (inputCode === expectedCode) { if (errEl) errEl.style.display = 'none'; if (pendingBandData) { const { bandId } = pendingBandData; pendingBandData = null; document.getElementById('verify-modal')?.classList.remove('active'); verificationModalShown = false; verificationDone = true; joinBand(bandId); rMsg('✅ Шайка подтверждена!', 3000); return; } await P2PPong.confirmVerification(); document.getElementById('verify-modal')?.classList.remove('active'); verificationModalShown = false; verificationDone = true; rMsg('✅ Подтверждено!', 3000); if (window._pendingChannel) { const data = window._pendingChannel; window._pendingChannel = null; setTimeout(() => { playQuiverAnimation(); rMsg('✅ Колчан открыт! Тетива натянута!', 3000); addContact({ peerId: data.peerId, name: data.nick || 'Лучник', channelId: data.channelId, verified: false, avatar: data.avatar || '001' }); showChatForChannel(data.channelId); }, 1000); } } else { if (errEl) { errEl.textContent = '❌ Неверный код. Попробуй снова.'; errEl.style.display = 'block'; } window._verifyInput = ''; document.getElementById('verify-code-display').textContent = '_______'; } });
+    // Кнопка подтверждения кода
+    document.getElementById('btn-verify-confirm')?.addEventListener('click', async () => { 
+        const inputCode = window._verifyInput || ''; 
+        const expectedCode = window._verifyCode || ''; 
+        const errEl = document.getElementById('verify-error'); 
+        
+        if (inputCode.length !== 7) { 
+            if (errEl) { errEl.textContent = 'Введи ровно 7 цифр'; errEl.style.display = 'block'; } 
+            return; 
+        } 
+        
+        if (inputCode === expectedCode) { 
+            if (errEl) errEl.style.display = 'none'; 
+            
+            // Шайка?
+            if (pendingBandData) { 
+                const { bandId } = pendingBandData; 
+                pendingBandData = null; 
+                verificationModalShown = false; 
+                verificationDone = true; 
+                document.getElementById('verify-modal')?.classList.remove('active'); 
+                joinBand(bandId); 
+                rMsg('✅ Шайка подтверждена!', 3000); 
+                return; 
+            } 
+            
+            // Сначала сбрасываем флаги, потом подтверждаем
+            verificationModalShown = false; 
+            verificationDone = true; 
+            document.getElementById('verify-modal')?.classList.remove('active'); 
+            
+            await P2PPong.confirmVerification(); 
+            // channel-opened теперь не заблокирован
+            rMsg('✅ Подтверждено!', 3000); 
+        } else { 
+            if (errEl) { errEl.textContent = '❌ Неверный код. Попробуй снова.'; errEl.style.display = 'block'; } 
+            window._verifyInput = ''; 
+            document.getElementById('verify-code-display').textContent = '_______'; 
+        } 
+    });
+    
     document.getElementById('close-verify-modal')?.addEventListener('click', () => { document.getElementById('verify-modal')?.classList.remove('active'); verificationModalShown = false; });
     document.getElementById('verify-modal')?.addEventListener('click', function(e) { if (e.target === this) { this.classList.remove('active'); verificationModalShown = false; } });
     document.getElementById('btn-clear')?.addEventListener('click', () => { const box = document.getElementById('chat-box'); if (box) box.querySelectorAll('.message-row').forEach(m => m.remove()); playSmokeAnimation(); playSound('clear cache.mp3'); rMsg('🔥 Робин Гуд пустил все письма на самокрутки!', 5000); contacts = []; saveContacts(); setTimeout(() => { P2PPong.destroy().then(() => { localStorage.clear(); if ('caches' in window) { caches.keys().then(names => { names.forEach(name => caches.delete(name)); }); } if (window.indexedDB) { indexedDB.databases().then(dbs => { dbs.forEach(db => { indexedDB.deleteDatabase(db.name); }); }).catch(() => {}); } sessionStorage.clear(); window.location.reload(true); }); }, 6000); });
