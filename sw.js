@@ -16,6 +16,7 @@ const ASSETS = [
   '/ROBINHOOD-P2P/assets/icons/05icon.png',
   '/ROBINHOOD-P2P/assets/icons/06icon.png',
   '/ROBINHOOD-P2P/assets/icons/08icon.png',
+  '/ROBINHOOD-P2P/assets/icons/10icon.png',
   '/ROBINHOOD-P2P/assets/icons/11icon.png',
   '/ROBINHOOD-P2P/assets/icons/12icon.png',
   '/ROBINHOOD-P2P/assets/icons/15icon.png',
@@ -52,14 +53,13 @@ self.addEventListener('install', event => {
 });
 
 self.addEventListener('activate', event => {
+  // Один waitUntil — очистка старых кешей + обновление клиентов
   event.waitUntil(
     caches.keys().then(keys => Promise.all(
       keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))
     )).then(() => self.clients.claim())
-  );
-  // Принудительно обновить все открытые вкладки
-  event.waitUntil(
-    self.clients.matchAll().then(clients => {
+    .then(() => self.clients.matchAll())
+    .then(clients => {
       clients.forEach(client => client.navigate(client.url));
     })
   );
