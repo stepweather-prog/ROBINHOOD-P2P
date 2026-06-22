@@ -1,12 +1,12 @@
 // ==================== RobinHood UI ====================
 // Чистый интерфейс. Ядро: P2PPong.
-// Оптимизация: снижена нагрузка на CPU/GPU
 
 let contacts = [],
     activeChannelId = null,
     activePeerId = null,
     selectedAvatar = '001';
 let toggleSoundState = true,
+    toggleAnimations = true,
     selfDestructMode = false;
 let pc = null,
     localStream = null,
@@ -41,7 +41,6 @@ let verificationDone = false;
 const avatars = [];
 for (let i = 1; i <= 168; i++) avatars.push('assets/avatar/' + String(i).padStart(3, '0') + 'ava.png');
 
-// Оптимизация: throttle для частых событий
 function throttle(fn, delay) {
     let last = 0;
     return function(...args) {
@@ -59,70 +58,74 @@ function setConnectionStatus(s) { const ic = document.getElementById('connection
 function playSound(f) { if (!toggleSoundState) return; if (!audioPool[f]) { audioPool[f] = new Audio('assets/sounds/' + f); audioPool[f].volume = 0.5; audioPool[f].preload = 'auto'; } const a = audioPool[f]; a.currentTime = 0; a.play().catch(e => {}); }
 function closeSheets() { document.getElementById('avatar-selector')?.classList.remove('show'); document.getElementById('settings-sheet')?.classList.remove('open'); document.getElementById('overlay')?.classList.remove('show'); }
 
-// Оптимизированная анимация дыма (без Lottie для слабых устройств)
 function playSmokeAnimation() { 
+    if (!toggleAnimations) return;
     const smoke = document.createElement('div'); 
     smoke.className = 'smoke-anim'; 
-    smoke.style.cssText = `
-        position:fixed;top:0;left:0;width:100%;height:100%;
-        z-index:500;pointer-events:none;
-        background:radial-gradient(circle,rgba(255,200,100,0.15)0%,transparent 70%);
-        animation:smokeFade 1.5s ease-out forwards;
-    `;
     document.body.appendChild(smoke); 
-    setTimeout(() => { if (smoke.parentNode) smoke.remove(); }, 1500); 
+    if (typeof lottie !== 'undefined') { 
+        try { lottie.loadAnimation({ container: smoke, renderer: 'canvas', loop: false, autoplay: true, path: 'assets/smoke.json' }); } catch (e) {} 
+    } 
+    setTimeout(() => { if (smoke.parentNode) smoke.remove(); }, 5000); 
 }
 
-// Оптимизированная анимация лучника (CSS вместо Lottie)
 function playArcherAnimation() { 
+    if (!toggleAnimations) return;
     const rt = document.getElementById('robin-text'); 
     if (!rt) return; 
     if (currentArrowContainer?.parentNode) currentArrowContainer.remove(); 
     if (archerAnimation) { archerAnimation.destroy(); archerAnimation = null; } 
     const wrapper = document.createElement('span'); 
     wrapper.className = 'robin-arrow-container'; 
-    wrapper.style.cssText = 'display:inline-block;vertical-align:middle;animation:archerShoot 1.5s ease-out forwards;'; 
-    wrapper.textContent = '🏹'; 
-    wrapper.style.fontSize = '24px';
+    wrapper.style.cssText = 'width:80px;height:40px;display:inline-block;vertical-align:middle;'; 
     currentArrowContainer = wrapper; 
     rt.textContent = ''; 
     rt.appendChild(wrapper); 
-    setTimeout(() => { 
-        if (wrapper.parentNode) wrapper.remove(); 
-        currentArrowContainer = null; 
-        archerAnimation = null; 
-        rt.textContent = robinDefaultText; 
-    }, 1500); 
+    if (typeof lottie !== 'undefined') { 
+        try { 
+            archerAnimation = lottie.loadAnimation({ container: wrapper, renderer: 'canvas', loop: false, autoplay: true, path: 'assets/Archer.json' }); 
+            archerAnimation.addEventListener('complete', () => { 
+                if (wrapper.parentNode) wrapper.remove(); 
+                currentArrowContainer = null; 
+                archerAnimation = null; 
+                rt.textContent = robinDefaultText; 
+            }); 
+        } catch (e) { 
+            wrapper.textContent = '🏹'; 
+            setTimeout(() => { if (wrapper.parentNode) wrapper.remove(); currentArrowContainer = null; rt.textContent = robinDefaultText; }, 1500); 
+        } 
+    } else { 
+        wrapper.textContent = '🏹'; 
+        setTimeout(() => { if (wrapper.parentNode) wrapper.remove(); currentArrowContainer = null; rt.textContent = robinDefaultText; }, 1500); 
+    } 
 }
 
-// Оптимизированная анимация лука
 function playBowAnimation() { 
+    if (!toggleAnimations) return;
     const bc = document.getElementById('bow-above-send'); 
     if (!bc) return; 
     if (bowAnim) { bowAnim.destroy(); bowAnim = null; } 
     bc.style.display = 'block'; 
-    bc.innerHTML = '🏹'; 
-    bc.style.fontSize = '40px'; 
-    bc.style.animation = 'bowShoot 0.4s ease-out'; 
-    setTimeout(() => { 
-        bc.style.display = 'none'; 
-        bc.innerHTML = ''; 
-        bowAnim = null; 
-    }, 800); 
+    if (typeof lottie !== 'undefined') { 
+        try { 
+            bowAnim = lottie.loadAnimation({ container: bc, renderer: 'canvas', loop: false, autoplay: true, path: 'assets/bow.json' }); 
+            bowAnim.addEventListener('complete', () => { bc.style.display = 'none'; bowAnim = null; }); 
+        } catch (e) { 
+            bc.textContent = '🏹'; 
+            setTimeout(() => { bc.style.display = 'none'; bc.textContent = ''; }, 800); 
+        } 
+    } else { 
+        bc.textContent = '🏹'; 
+        setTimeout(() => { bc.style.display = 'none'; bc.textContent = ''; }, 800); 
+    } 
     const sb = document.getElementById('send-btn'); 
     if (sb) { sb.classList.add('shooting'); setTimeout(() => sb.classList.remove('shooting'), 400); } 
 }
 
-// Оптимизированная анимация колчана
 function playQuiverAnimation() {
+    if (!toggleAnimations) return;
     const quiver = document.createElement('div');
     quiver.className = 'quiver-anim';
-    quiver.style.cssText = `
-        position:fixed;top:0;left:0;width:100%;height:100%;
-        z-index:500;pointer-events:none;
-        display:flex;align-items:center;justify-content:center;
-        background:rgba(0,0,0,0.3);animation:fadeIn 0.3s ease;
-    `;
     
     const img = document.createElement('img');
     img.src = 'assets/docking.gif?t=' + Date.now();
@@ -148,7 +151,7 @@ function showActiveControls(show) { const ac = document.getElementById('active-c
 function updateCallButtonState() { const btn = document.getElementById('btn-call'); if (!btn) return; btn.classList.remove('calling', 'ringing'); if (callActive) btn.classList.add('calling'); else if (incomingOffer) btn.classList.add('ringing'); }
 function playRingtone() { stopRingtone(); ringtoneAudio = new Audio('assets/sounds/melodi.mp3'); ringtoneAudio.loop = true; ringtoneAudio.volume = 0.5; ringtoneAudio.play().catch(e => {}); }
 function stopRingtone() { if (ringtoneAudio) { ringtoneAudio.pause(); ringtoneAudio.loop = false; ringtoneAudio = null; } }
-function playRingback() { stopRingback(); ringbackAudio = new Audio('assets/sounds/Welk.mp3'); ringbackAudio.loop = true; ringtoneAudio.volume = 0.5; ringbackAudio.play().catch(e => {}); }
+function playRingback() { stopRingback(); ringbackAudio = new Audio('assets/sounds/Welk.mp3'); ringbackAudio.loop = true; ringbackAudio.volume = 0.5; ringbackAudio.play().catch(e => {}); }
 function stopRingback() { if (ringbackAudio) { ringbackAudio.pause(); ringbackAudio.loop = false; ringbackAudio = null; } }
 
 function startVoiceTimer() { voiceSeconds = 0; const vt = document.getElementById('voice-timer-text'); if (vt) vt.textContent = '🎤 0:00'; voiceTimerInterval = setInterval(() => { voiceSeconds++; const m = Math.floor(voiceSeconds / 60), s = (voiceSeconds % 60).toString().padStart(2, '0'); const vt = document.getElementById('voice-timer-text'); if (vt) vt.textContent = '🎤 ' + m + ':' + s; }, 1000); }
@@ -285,6 +288,7 @@ function initUI() {
     });
 
     P2PPong.on('channel-opened', (data) => { 
+        // Анимация только после подтверждения обоими
         if (verificationModalShown && !verificationDone) {
             window._pendingChannel = data;
             return;
@@ -326,7 +330,6 @@ function handleWebRTCSignal(type, sdp, channelId) {
 
 function updateDateTime() { const now = new Date(); const de = document.getElementById('header-date'); const te = document.getElementById('header-time'); if (de) de.textContent = now.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' }); if (te) te.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }
 
-// Оптимизация: ленивые листья
 let inactivityTimer;
 function resetInactivityTimer() { 
     clearTimeout(inactivityTimer); 
@@ -378,9 +381,15 @@ function initApp() {
     if (savedNick && nl) nl.textContent = savedNick.substring(0, 12);
     
     P2PPong.setMyProfile(savedNick || 'Лучник', selectedAvatar);
+    
     toggleSoundState = localStorage.getItem('robinhood_sound') !== 'false'; 
     const ts = document.getElementById('toggle-sound'); 
     if (ts) ts.checked = toggleSoundState;
+    
+    toggleAnimations = localStorage.getItem('robinhood_animations') !== 'false';
+    const ta = document.getElementById('toggle-animations');
+    if (ta) ta.checked = toggleAnimations;
+    
     selfDestructMode = localStorage.getItem('robinhood_selfdestruct') === 'true'; 
     const sd = document.getElementById('toggle-selfdestruct'); 
     if (sd) sd.checked = selfDestructMode;
@@ -392,7 +401,6 @@ function initApp() {
     const si = document.getElementById('setting-install'); 
     if (!isPWA && si) si.classList.remove('hidden');
 
-    // Обработчики кнопок
     document.getElementById('btn-craft')?.addEventListener('click', () => { 
         document.getElementById('craft-modal')?.classList.add('active'); 
         const pid = P2PPong._peerId; 
@@ -597,6 +605,11 @@ function initApp() {
         try { localStorage.setItem('robinhood_sound', toggleSoundState); } catch (e) {} 
     });
     
+    if (ta) ta.addEventListener('change', function() {
+        toggleAnimations = this.checked;
+        try { localStorage.setItem('robinhood_animations', toggleAnimations); } catch (e) {}
+    });
+    
     if (sd) sd.addEventListener('change', function() { 
         selfDestructMode = this.checked; 
         try { localStorage.setItem('robinhood_selfdestruct', selfDestructMode); } catch (e) {} 
@@ -678,7 +691,7 @@ function initApp() {
     
     setConnectionStatus('online'); 
     updateDateTime(); 
-    setInterval(updateDateTime, 60000); // Обновление раз в минуту вместо раз в секунду
+    setInterval(updateDateTime, 60000);
 }
 
 window.addEventListener('beforeunload', () => { 
