@@ -1,5 +1,7 @@
 // ==================== RobinHood UI ====================
 // Чистый интерфейс. Ядро: P2PPong.
+// Шайки Шервуда — групповые чаты (до 12 чел)
+// Шериф управляет, рейнджеры следят, разбойники общаются
 
 let contacts = [],
     activeChannelId = null,
@@ -37,6 +39,15 @@ let deferredPrompt = null,
 let hangInProgress = false;
 let verificationModalShown = false;
 let verificationDone = false;
+
+// Листопад
+let selfDestructBatchSize = 5;
+let selfDestructIntervalTime = 20000;
+let selfDestructIntervalId = null;
+
+// Шайки Шервуда (только в RAM)
+let bands = [];
+let activeBandId = null;
 
 const avatars = [];
 for (let i = 1; i <= 168; i++) avatars.push('assets/avatar/' + String(i).padStart(3, '0') + 'ava.png');
@@ -126,7 +137,6 @@ function playQuiverAnimation() {
     if (!toggleAnimations) return;
     const quiver = document.createElement('div');
     quiver.className = 'quiver-anim';
-    
     const img = document.createElement('img');
     img.src = 'assets/docking.gif?t=' + Date.now();
     img.style.cssText = 'width:min(200px,40vw);height:min(200px,40vw);object-fit:contain;filter:drop-shadow(0 0 20px rgba(255,215,0,0.8));';
@@ -136,12 +146,55 @@ function playQuiverAnimation() {
     };
     quiver.appendChild(img);
     document.body.appendChild(quiver);
-    
     setTimeout(() => { 
         quiver.style.opacity = '0'; 
         quiver.style.transition = 'opacity 0.5s ease'; 
         setTimeout(() => quiver.remove(), 500); 
     }, 3500);
+}
+
+// Листопад: удаляет по 5 сообщений каждые 20 секунд
+function startSelfDestruct() {
+    stopSelfDestruct();
+    
+    selfDestructIntervalId = setInterval(() => {
+        const box = document.getElementById('chat-box');
+        if (!box) return;
+        
+        const allMessages = box.querySelectorAll('.message-row');
+        const totalMessages = allMessages.length;
+        
+        if (totalMessages === 0) {
+            stopSelfDestruct();
+            return;
+        }
+        
+        const deleteCount = Math.min(selfDestructBatchSize, totalMessages);
+        const startIndex = totalMessages - deleteCount;
+        
+        for (let i = startIndex; i < totalMessages; i++) {
+            const el = allMessages[i];
+            if (el && el.parentNode) {
+                el.style.transition = 'opacity 0.5s';
+                el.style.opacity = '0';
+                setTimeout(() => { 
+                    if (el.parentNode) el.remove(); 
+                }, 500);
+            }
+        }
+        
+        const remaining = box.querySelectorAll('.message-row').length;
+        if (remaining === 0) {
+            stopSelfDestruct();
+        }
+    }, selfDestructIntervalTime);
+}
+
+function stopSelfDestruct() {
+    if (selfDestructIntervalId) {
+        clearInterval(selfDestructIntervalId);
+        selfDestructIntervalId = null;
+    }
 }
 
 function showCallWave(show) { const cw = document.getElementById('call-wave'); if (!cw) return; if (show) { cw.innerHTML = ''; cw.style.display = 'flex'; for (let i = 0; i < 4; i++) { const bar = document.createElement('div'); bar.className = 'voice-wave-bar'; bar.style.cssText = `animation:voiceWaveAnim 0.5s ease-in-out infinite;animation-delay:${i * 0.15}s;`; cw.appendChild(bar); } } else { cw.style.display = 'none'; cw.innerHTML = ''; } }
@@ -161,14 +214,223 @@ function startVoiceRecording() { if (voiceRecorder?.state === 'recording') retur
 function stopVoiceRecording() { if (voiceRecorder?.state === 'recording') voiceRecorder.stop(); }
 function playVoiceBlob(b64) { const a = new Audio('data:audio/webm;base64,' + b64); a.load(); a.play().catch(e => {}); }
 
-function appendMessage(sender, text, avatarSrc, audioData, audioMime) { const box = document.getElementById('chat-box'); const row = document.createElement('div'); row.className = 'message-row'; const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); const av = getAvatarUrl(avatarSrc); if (audioData && audioMime && audioMime.startsWith('audio/')) { const player = createAudioPlayer(audioData, audioMime); row.innerHTML = `<img src="${av}" class="avatar" onerror="this.src='assets/avatar/001ava.png'" loading="lazy"><div class="msg-body"><div class="msg-sender">${safeHtml(sender)}</div></div>`; row.querySelector('.msg-body').appendChild(player); const ts = document.createElement('div'); ts.className = 'msg-status'; ts.textContent = time; row.querySelector('.msg-body').appendChild(ts); } else { row.innerHTML = `<img src="${av}" class="avatar" onerror="this.src='assets/avatar/001ava.png'" loading="lazy"><div class="msg-body"><div class="msg-sender">${safeHtml(sender)}</div><div>${safeHtml(text)}</div><div class="msg-status">${time}</div></div>`; } const msgId = 'msg_' + Date.now() + Math.random(); row.dataset.msgId = msgId; box.insertBefore(row, document.getElementById('typing-indicator')); box.scrollTop = box.scrollHeight; if (selfDestructMode) { setTimeout(() => { const el = document.querySelector(`[data-msg-id="${msgId}"]`); if (el) { el.style.transition = 'opacity 0.5s'; el.style.opacity = '0'; setTimeout(() => { if (el.parentNode) el.remove(); }, 500); } }, 30000); } }
+function appendMessage(sender, text, avatarSrc, audioData, audioMime) { 
+    const box = document.getElementById('chat-box'); 
+    const row = document.createElement('div'); 
+    row.className = 'message-row'; 
+    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); 
+    const av = getAvatarUrl(avatarSrc); 
+    if (audioData && audioMime && audioMime.startsWith('audio/')) { 
+        const player = createAudioPlayer(audioData, audioMime); 
+        row.innerHTML = `<img src="${av}" class="avatar" onerror="this.src='assets/avatar/001ava.png'" loading="lazy"><div class="msg-body"><div class="msg-sender">${safeHtml(sender)}</div></div>`; 
+        row.querySelector('.msg-body').appendChild(player); 
+        const ts = document.createElement('div'); ts.className = 'msg-status'; ts.textContent = time; 
+        row.querySelector('.msg-body').appendChild(ts); 
+    } else { 
+        row.innerHTML = `<img src="${av}" class="avatar" onerror="this.src='assets/avatar/001ava.png'" loading="lazy"><div class="msg-body"><div class="msg-sender">${safeHtml(sender)}</div><div>${safeHtml(text)}</div><div class="msg-status">${time}</div></div>`; 
+    } 
+    const msgId = 'msg_' + Date.now() + Math.random(); 
+    row.dataset.msgId = msgId; 
+    box.insertBefore(row, document.getElementById('typing-indicator')); 
+    box.scrollTop = box.scrollHeight; 
+}
+
 function createAudioPlayer(audioData, audioMime) { const container = document.createElement('div'); container.className = 'audio-player audio-paused'; const audio = new Audio('data:' + audioMime + ';base64,' + audioData); audio.load(); let isPlaying = false; const playBtn = document.createElement('button'); playBtn.className = 'audio-play-btn'; playBtn.textContent = '▶'; const waveDiv = document.createElement('div'); waveDiv.className = 'audio-wave'; for (let i = 0; i < 4; i++) { const bar = document.createElement('div'); bar.className = 'audio-wave-bar'; waveDiv.appendChild(bar); } const timeSpan = document.createElement('span'); timeSpan.className = 'audio-time'; timeSpan.textContent = '0:00'; playBtn.addEventListener('click', () => { if (isPlaying) { audio.pause(); container.classList.remove('audio-playing'); container.classList.add('audio-paused'); playBtn.textContent = '▶'; } else { audio.play(); container.classList.remove('audio-paused'); container.classList.add('audio-playing'); playBtn.textContent = '⏸'; } isPlaying = !isPlaying; }); audio.addEventListener('timeupdate', () => { const m = Math.floor(audio.currentTime / 60); const s = Math.floor(audio.currentTime % 60).toString().padStart(2, '0'); timeSpan.textContent = m + ':' + s; }); audio.addEventListener('ended', () => { container.classList.remove('audio-playing'); container.classList.add('audio-paused'); playBtn.textContent = '▶'; isPlaying = false; }); container.appendChild(playBtn); container.appendChild(waveDiv); container.appendChild(timeSpan); return container; }
-function showChatForChannel(channelId) { activeChannelId = channelId; const ct = contacts.find(c => c.channelId === channelId); if (ct) { activePeerId = ct.peerId; document.getElementById('robin-bar-sender').textContent = ct.name || 'Лучник'; } const box = document.getElementById('chat-box'); box.innerHTML = '<div class="typing-indicator" id="typing-indicator"></div>'; const ch = P2PPong._channels[channelId]; if (ch && ch.blobs) { ch.blobs.forEach(b => { const im = b.from === 'me'; const ct2 = contacts.find(c => c.channelId === channelId); appendMessage(im ? 'Вы' : (ct2?.name || 'Друг'), b.d || b.text || '', im ? selectedAvatar : (ct2?.avatar || '001')); }); } updateCupIndicator(); updateRatchetIndicator(); }
+
+function showChatForChannel(channelId) { 
+    activeChannelId = channelId; 
+    activeBandId = null;
+    const ct = contacts.find(c => c.channelId === channelId); 
+    if (ct) { activePeerId = ct.peerId; document.getElementById('robin-bar-sender').textContent = ct.name || 'Лучник'; } 
+    const box = document.getElementById('chat-box'); 
+    box.innerHTML = '<div class="typing-indicator" id="typing-indicator"></div>'; 
+    const ch = P2PPong._channels[channelId]; 
+    if (ch && ch.blobs) { 
+        ch.blobs.forEach(b => { 
+            const im = b.from === 'me'; 
+            const ct2 = contacts.find(c => c.channelId === channelId); 
+            appendMessage(im ? 'Вы' : (ct2?.name || 'Друг'), b.d || b.text || '', im ? selectedAvatar : (ct2?.avatar || '001')); 
+        }); 
+    } 
+    updateCupIndicator(); 
+    updateRatchetIndicator(); 
+}
 
 function getAvatarUrl(avatarSrc) { if (!avatarSrc || avatarSrc === '001') return 'assets/avatar/001ava.png'; if (avatarSrc.startsWith('assets/')) return avatarSrc.endsWith('.png') ? avatarSrc : avatarSrc + 'ava.png'; if (avatarSrc.includes('/')) return avatarSrc.endsWith('.png') ? avatarSrc : avatarSrc + 'ava.png'; return 'assets/avatar/' + avatarSrc + 'ava.png'; }
 function addContact(c) { if (!contacts.find(x => x.peerId === c.peerId)) { contacts.push(c); saveContacts(); } else { const existing = contacts.find(x => x.peerId === c.peerId); if (c.name && c.name !== 'Лучник') existing.name = c.name; if (c.avatar && c.avatar !== '001') existing.avatar = c.avatar; if (c.channelId) existing.channelId = c.channelId; saveContacts(); } }
 function saveContacts() { try { localStorage.setItem('rh_contacts', JSON.stringify(contacts)); } catch (e) {} }
 function loadContacts() { try { const r = localStorage.getItem('rh_contacts'); if (r) contacts = JSON.parse(r); } catch (e) {} }
+
+// Шайки Шервуда (только RAM)
+function createBand(name, password = null) {
+    const bandId = RND();
+    const band = {
+        id: bandId,
+        name: name || 'Шайка лучников',
+        sheriff: P2PPong._peerId,
+        rangers: [],
+        outlaws: [P2PPong._peerId],
+        strangers: [],
+        password: password,
+        created: Date.now(),
+        maxMembers: 12,
+        blobs: []
+    };
+    bands.push(band);
+    activeBandId = bandId;
+    activeChannelId = null;
+    showBandChat(bandId);
+    rMsg('🏹 Шайка собрана в Шервуде!', 3000);
+    playQuiverAnimation();
+    return bandId;
+}
+
+function joinBand(bandId, password = null) {
+    const band = bands.find(b => b.id === bandId);
+    if (!band) { rMsg('❌ Шайка не найдена', 3000); return false; }
+    if (band.password && band.password !== password) { rMsg('❌ Неверный пароль шайки', 3000); return false; }
+    if (band.outlaws.length >= band.maxMembers) { rMsg('❌ Шайка полна (макс 12 лучников)', 3000); return false; }
+    if (!band.outlaws.includes(P2PPong._peerId)) {
+        band.outlaws.push(P2PPong._peerId);
+    }
+    activeBandId = bandId;
+    activeChannelId = null;
+    showBandChat(bandId);
+    rMsg('🏹 Вы вступили в шайку!', 3000);
+    return true;
+}
+
+function leaveBand(bandId) {
+    const band = bands.find(b => b.id === bandId);
+    if (!band) return;
+    if (band.sheriff === P2PPong._peerId) {
+        rMsg('❌ Шериф не может покинуть шайку. Только распустить.', 3000);
+        return;
+    }
+    band.outlaws = band.outlaws.filter(id => id !== P2PPong._peerId);
+    band.rangers = band.rangers.filter(id => id !== P2PPong._peerId);
+    if (activeBandId === bandId) {
+        activeBandId = null;
+        document.getElementById('chat-box').innerHTML = '<div class="typing-indicator" id="typing-indicator"></div>';
+    }
+    rMsg('🚶 Вы покинули шайку', 3000);
+}
+
+function destroyBand(bandId) {
+    const band = bands.find(b => b.id === bandId);
+    if (!band) return;
+    if (band.sheriff !== P2PPong._peerId) {
+        rMsg('❌ Только шериф может распустить шайку', 3000);
+        return;
+    }
+    bands = bands.filter(b => b.id !== bandId);
+    if (activeBandId === bandId) {
+        activeBandId = null;
+        document.getElementById('chat-box').innerHTML = '<div class="typing-indicator" id="typing-indicator"></div>';
+    }
+    rMsg('🔥 Шайка распущена шерифом', 3000);
+}
+
+function kickFromBand(bandId, peerId) {
+    const band = bands.find(b => b.id === bandId);
+    if (!band) return;
+    if (band.sheriff !== P2PPong._peerId) {
+        rMsg('❌ Только шериф может изгонять из шайки', 3000);
+        return;
+    }
+    if (peerId === band.sheriff) {
+        rMsg('❌ Шерифа нельзя изгнать', 3000);
+        return;
+    }
+    band.outlaws = band.outlaws.filter(id => id !== peerId);
+    band.rangers = band.rangers.filter(id => id !== peerId);
+    rMsg('🚫 Лучник изгнан из шайки', 3000);
+}
+
+function appointRanger(bandId, peerId) {
+    const band = bands.find(b => b.id === bandId);
+    if (!band) return;
+    if (band.sheriff !== P2PPong._peerId) {
+        rMsg('❌ Только шериф может назначать рейнджеров', 3000);
+        return;
+    }
+    if (!band.rangers.includes(peerId)) {
+        band.rangers.push(peerId);
+        rMsg('⭐ Рейнджер назначен', 3000);
+    }
+}
+
+function isSheriff(bandId) {
+    const band = bands.find(b => b.id === bandId);
+    return band && band.sheriff === P2PPong._peerId;
+}
+
+function isRanger(bandId) {
+    const band = bands.find(b => b.id === bandId);
+    return band && band.rangers.includes(P2PPong._peerId);
+}
+
+function canManageBand(bandId) {
+    return isSheriff(bandId) || isRanger(bandId);
+}
+
+function showBandChat(bandId) {
+    const band = bands.find(b => b.id === bandId);
+    if (!band) return;
+    activeBandId = bandId;
+    activeChannelId = null;
+    document.getElementById('robin-bar-sender').textContent = '🏹 ' + (band.name || 'Шайка');
+    const box = document.getElementById('chat-box');
+    box.innerHTML = '<div class="typing-indicator" id="typing-indicator"></div>';
+    if (band.blobs) {
+        band.blobs.forEach(b => {
+            const im = b.from === P2PPong._peerId;
+            appendMessage(im ? 'Вы' : (b.nick || 'Лучник'), b.text || '', im ? selectedAvatar : (b.avatar || '001'));
+        });
+    }
+}
+
+function showBandsList() {
+    const list = document.getElementById('bands-list');
+    if (!list) return;
+    list.innerHTML = '';
+    
+    if (bands.length === 0) {
+        list.innerHTML = '<div style="color:var(--text-dim);text-align:center;padding:20px;">Нет шаек. Создайте первую!</div>';
+        return;
+    }
+    
+    bands.forEach(band => {
+        const item = document.createElement('div');
+        item.className = 'contact-item';
+        item.innerHTML = `
+            <div style="display:flex;align-items:center;gap:8px;width:100%;">
+                <img src="assets/icons/10icon.png" style="width:28px;height:28px;">
+                <div>
+                    <div class="contact-name">${band.name || 'Шайка'}</div>
+                    <div style="font-size:0.65em;color:var(--text-dim);">
+                        ${band.outlaws.length}/12 лучников
+                        ${band.password ? '🔐' : ''}
+                        ${band.sheriff === P2PPong._peerId ? ' ⭐Шериф' : ''}
+                        ${band.rangers.includes(P2PPong._peerId) ? ' 🛡Рейнджер' : ''}
+                    </div>
+                </div>
+            </div>
+        `;
+        item.addEventListener('click', () => {
+            if (band.outlaws.includes(P2PPong._peerId)) {
+                showBandChat(band.id);
+                document.getElementById('bands-modal')?.classList.remove('active');
+            } else if (band.password) {
+                const pass = prompt('Введи пароль шайки:');
+                if (pass) joinBand(band.id, pass);
+            } else {
+                joinBand(band.id);
+            }
+        });
+        list.appendChild(item);
+    });
+}
 
 function updateCupIndicator() { const chId = activeChannelId || Object.keys(P2PPong._channels)[0]; const ch = chId ? P2PPong._channels[chId] : null; const ind = document.getElementById('cup-indicator'); if (!ch || !ind) { if (ind) ind.style.display = 'none'; return; } ind.style.display = 'inline-flex'; const bc = ch.blobs ? ch.blobs.length : 0; const be = document.getElementById('cup-blobs'); if (be) { be.textContent = bc + '/10'; be.className = bc >= 10 ? 'full' : bc >= 7 ? 'ok' : ''; } const totalSec = Math.max(0, Math.round((ch.expires - Date.now()) / 1000)); const min = Math.floor(totalSec / 60); const sec = totalSec % 60; const te = document.getElementById('cup-timer'); if (te) { te.textContent = min + ':' + sec.toString().padStart(2, '0'); te.className = min <= 2 ? 'low' : min <= 5 ? 'ok' : ''; } }
 function updateRatchetIndicator() { const chId = activeChannelId || Object.keys(P2PPong._channels)[0]; const ch = chId ? P2PPong._channels[chId] : null; const indicator = document.getElementById('ratchet-indicator'); if (!indicator) return; if (!ch || !ch.ratchetKey) { indicator.style.display = 'none'; return; } indicator.style.display = 'inline'; const ri = ch.ratchetIndex || 0; let color, icon; if (ri === 0) { color = 'var(--danger)'; icon = '⚠️'; } else if (ri < 10) { color = 'orange'; icon = '🔄'; } else if (ri < 50) { color = 'var(--accent)'; icon = '🔒'; } else { color = 'var(--seeding-color)'; icon = '🔐'; } indicator.style.color = color; indicator.style.background = 'rgba(0,0,0,0.3)'; indicator.textContent = icon + ' ' + ri; indicator.title = 'Ratchet: ' + ri + ' оборотов'; }
@@ -222,33 +484,13 @@ function initUI() {
         const grid = document.getElementById('verify-emoji-grid'); 
         grid.innerHTML = '';
         grid.style.cssText = 'display:grid;grid-template-columns:repeat(5,1fr);gap:6px;justify-content:center;margin:12px 0;';
-        
         const allEmoji = ['😀','😂','🤣','😍','😘','😜','😎','🤩','🥳','😇','🤠','🫡','🤔','😏','😤','🥺','😱','💀','👽','🤖'];
         const correct = [...window._verifyCorrect]; 
         const fake = [];
-        while (fake.length < 5) { 
-            const e = allEmoji[Math.floor(Math.random()*allEmoji.length)]; 
-            if (!correct.includes(e) && !fake.includes(e)) fake.push(e); 
-        }
+        while (fake.length < 5) { const e = allEmoji[Math.floor(Math.random()*allEmoji.length)]; if (!correct.includes(e) && !fake.includes(e)) fake.push(e); }
         const all = [...correct, ...fake].sort(() => Math.random()-0.5);
-        
-        all.forEach(e => { 
-            const btn = document.createElement('button'); 
-            btn.textContent = e; 
-            btn.className = 'verify-emoji-btn'; 
-            btn.style.cssText = 'width:46px;height:46px;font-size:1.5em;border-radius:8px;';
-            btn.onclick = () => { 
-                if (window._verifySelected.length >= 5) return; 
-                window._verifySelected.push(e); 
-                document.getElementById('verify-selected').textContent = window._verifySelected.join(''); 
-            }; 
-            grid.appendChild(btn); 
-        });
-        
-        document.getElementById('btn-verify-reset').onclick = () => { 
-            window._verifySelected = []; 
-            document.getElementById('verify-selected').textContent = ''; 
-        };
+        all.forEach(e => { const btn = document.createElement('button'); btn.textContent = e; btn.className = 'verify-emoji-btn'; btn.style.cssText = 'width:46px;height:46px;font-size:1.5em;border-radius:8px;'; btn.onclick = () => { if (window._verifySelected.length >= 5) return; window._verifySelected.push(e); document.getElementById('verify-selected').textContent = window._verifySelected.join(''); }; grid.appendChild(btn); });
+        document.getElementById('btn-verify-reset').onclick = () => { window._verifySelected = []; document.getElementById('verify-selected').textContent = ''; };
         document.getElementById('verify-modal')?.classList.add('active');
     });
 
@@ -256,18 +498,15 @@ function initUI() {
         if (verificationModalShown) return;
         verificationModalShown = true;
         verificationDone = false;
-        
         if (window._verifyCorrect && Array.isArray(data.emoji) && JSON.stringify(data.emoji) === JSON.stringify(window._verifyCorrect)) {
             document.getElementById('verify-modal')?.classList.add('active');
             document.getElementById('verify-instruction').textContent = '✅ Эмодзи совпали! Канал открывается...';
             document.getElementById('verify-error').style.display = 'none';
-            
             setTimeout(async () => {
                 await P2PPong.confirmVerification();
                 document.getElementById('verify-modal')?.classList.remove('active');
                 verificationModalShown = false;
                 verificationDone = true;
-                
                 if (window._pendingChannel) {
                     const chData = window._pendingChannel;
                     window._pendingChannel = null;
@@ -281,19 +520,16 @@ function initUI() {
             }, 1500);
             return;
         }
-        
         document.getElementById('verify-instruction').textContent = 'Пир Б ввёл эти эмодзи. Подтверди:';
         document.getElementById('verify-error').style.display = 'none';
         document.getElementById('verify-modal')?.classList.add('active');
     });
 
     P2PPong.on('channel-opened', (data) => { 
-        // Анимация только после подтверждения обоими
         if (verificationModalShown && !verificationDone) {
             window._pendingChannel = data;
             return;
         }
-        
         document.getElementById('verify-modal')?.classList.remove('active');
         verificationModalShown = false; 
         verificationDone = false;
@@ -311,7 +547,7 @@ function initUI() {
 function handleIncomingMessage(data) {
     if (!data || !data.text) return;
     if (data.voiceData) { const ct = contacts.find(c => c.channelId === data.channelId); const nick = data.nick || ct?.name || 'Друг'; const avatar = data.avatar || ct?.avatar || '001'; if (data.channelId === activeChannelId) { appendMessage(nick, '🎤 Голосовое', avatar, data.voiceData, 'audio/webm'); } else { rMsg('🎤 Голосовое от ' + nick, 3000); playVoiceBlob(data.voiceData); } updateCupIndicator(); return; }
-    try { const parsed = JSON.parse(data.text); if (parsed.webrtc) { handleWebRTCSignal(parsed.webrtc, parsed.sdp, data.channelId); return; } if (parsed.voice) { const ct = contacts.find(c => c.channelId === data.channelId); const nick = ct?.name || 'Друг'; const avatar = ct?.avatar || '001'; if (data.channelId === activeChannelId) { appendMessage(nick, '🎤 Голосовое', avatar, parsed.data, 'audio/webm'); } else { rMsg('🎤 Голосовое от ' + nick, 3000); playVoiceBlob(parsed.data); } updateCupIndicator(); return; } if (parsed.d === '__SMOKE__') { selfDestructMode = true; const sd = document.getElementById('toggle-selfdestruct'); if (sd) sd.checked = true; rMsg('🍁 Собеседник включил режим самоуничтожения', 3000); return; } } catch (e) {}
+    try { const parsed = JSON.parse(data.text); if (parsed.webrtc) { handleWebRTCSignal(parsed.webrtc, parsed.sdp, data.channelId); return; } if (parsed.voice) { const ct = contacts.find(c => c.channelId === data.channelId); const nick = ct?.name || 'Друг'; const avatar = ct?.avatar || '001'; if (data.channelId === activeChannelId) { appendMessage(nick, '🎤 Голосовое', avatar, parsed.data, 'audio/webm'); } else { rMsg('🎤 Голосовое от ' + nick, 3000); playVoiceBlob(parsed.data); } updateCupIndicator(); return; } if (parsed.d === '__SMOKE__') { selfDestructMode = true; const sd = document.getElementById('toggle-selfdestruct'); if (sd) sd.checked = true; startSelfDestruct(); rMsg('🍁 Собеседник включил листопад', 3000); return; } } catch (e) {}
     const ct = contacts.find(c => c.channelId === data.channelId); const nick = data.nick || ct?.name || 'Лучник'; const avatar = data.avatar || ct?.avatar || '001';
     if (data.channelId === activeChannelId) { appendMessage(nick, data.text, avatar); } else { rMsg('Новое от ' + nick, 3000); }
     updateCupIndicator(); updateRatchetIndicator(); playSound('arrow_hit.wav');
@@ -331,55 +567,22 @@ function handleWebRTCSignal(type, sdp, channelId) {
 function updateDateTime() { const now = new Date(); const de = document.getElementById('header-date'); const te = document.getElementById('header-time'); if (de) de.textContent = now.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' }); if (te) te.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }
 
 let inactivityTimer;
-function resetInactivityTimer() { 
-    clearTimeout(inactivityTimer); 
-    const lc = document.getElementById('leaves-container');
-    if (lc) lc.style.display = 'block';
-    inactivityTimer = setTimeout(() => { 
-        const lc = document.getElementById('leaves-container');
-        if (lc) lc.style.display = 'none';
-    }, 90000); 
-}
+function resetInactivityTimer() { clearTimeout(inactivityTimer); const lc = document.getElementById('leaves-container'); if (lc) lc.style.display = 'block'; inactivityTimer = setTimeout(() => { const lc = document.getElementById('leaves-container'); if (lc) lc.style.display = 'none'; }, 90000); }
 document.addEventListener('pointermove', throttle(resetInactivityTimer, 5000)); 
 document.addEventListener('pointerdown', resetInactivityTimer); 
 document.addEventListener('keypress', resetInactivityTimer);
 window.addEventListener('blur', () => { clearTimeout(inactivityTimer); const lc = document.getElementById('leaves-container'); if (lc) lc.style.display = 'none'; });
 window.addEventListener('focus', resetInactivityTimer);
 
-function initLeaves() { 
-    const c = document.getElementById('leaves-container'); 
-    if (!c || c.children.length > 0) return; 
-    const emojis = ['🍁','🍂','🌿','🍃','🪶']; 
-    const fragment = document.createDocumentFragment();
-    for (let i = 0; i < 7; i++) { 
-        const el = document.createElement('span'); 
-        el.className = i % 3 == 0 ? 'feather' : 'leaf'; 
-        el.textContent = emojis[i % emojis.length]; 
-        el.style.left = Math.random() * 100 + '%'; 
-        el.style.animationDelay = Math.random() * 15 + 's'; 
-        el.style.animationDuration = (16 + Math.random() * 18) + 's'; 
-        fragment.appendChild(el); 
-    } 
-    c.appendChild(fragment); 
-    resetInactivityTimer(); 
-}
+function initLeaves() { const c = document.getElementById('leaves-container'); if (!c || c.children.length > 0) return; const emojis = ['🍁','🍂','🌿','🍃','🪶']; const fragment = document.createDocumentFragment(); for (let i = 0; i < 7; i++) { const el = document.createElement('span'); el.className = i % 3 == 0 ? 'feather' : 'leaf'; el.textContent = emojis[i % emojis.length]; el.style.left = Math.random() * 100 + '%'; el.style.animationDelay = Math.random() * 15 + 's'; el.style.animationDuration = (16 + Math.random() * 18) + 's'; fragment.appendChild(el); } c.appendChild(fragment); resetInactivityTimer(); }
 
 function initApp() {
     initLeaves(); 
     applyTheme(localStorage.getItem('robinhood_theme') || 'slate');
     
     const savedAvatar = localStorage.getItem('robinhood_avatar'); 
-    if (savedAvatar) { 
-        selectedAvatar = savedAvatar.includes('/') ? savedAvatar.split('/').pop()?.replace('ava.png', '') || '001' : savedAvatar; 
-        const pas = document.getElementById('profile-avatar-small'); 
-        if (pas) pas.src = 'assets/avatar/' + selectedAvatar + 'ava.png'; 
-        document.getElementById('robin-avatar').src = 'assets/avatar/' + selectedAvatar + 'ava.png'; 
-    }
-    
-    const savedNick = localStorage.getItem('robinhood_nick'); 
-    const nl = document.getElementById('nick-label'); 
-    if (savedNick && nl) nl.textContent = savedNick.substring(0, 12);
-    
+    if (savedAvatar) { selectedAvatar = savedAvatar.includes('/') ? savedAvatar.split('/').pop()?.replace('ava.png', '') || '001' : savedAvatar; const pas = document.getElementById('profile-avatar-small'); if (pas) pas.src = 'assets/avatar/' + selectedAvatar + 'ava.png'; document.getElementById('robin-avatar').src = 'assets/avatar/' + selectedAvatar + 'ava.png'; }
+    const savedNick = localStorage.getItem('robinhood_nick'); const nl = document.getElementById('nick-label'); if (savedNick && nl) nl.textContent = savedNick.substring(0, 12);
     P2PPong.setMyProfile(savedNick || 'Лучник', selectedAvatar);
     
     toggleSoundState = localStorage.getItem('robinhood_sound') !== 'false'; 
@@ -393,72 +596,61 @@ function initApp() {
     selfDestructMode = localStorage.getItem('robinhood_selfdestruct') === 'true'; 
     const sd = document.getElementById('toggle-selfdestruct'); 
     if (sd) sd.checked = selfDestructMode;
+    if (selfDestructMode) startSelfDestruct();
     
     const ls = document.getElementById('lock-status'); 
     if (ls) ls.textContent = lockType === 'pin' ? 'Пин-код' : 'Не задан';
-    
     const isPWA = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone || false; 
     const si = document.getElementById('setting-install'); 
     if (!isPWA && si) si.classList.remove('hidden');
 
-    document.getElementById('btn-craft')?.addEventListener('click', () => { 
-        document.getElementById('craft-modal')?.classList.add('active'); 
-        const pid = P2PPong._peerId; 
-        const display = document.getElementById('craft-peer-id-display'); 
-        if (display) display.textContent = pid || 'Не создана'; 
+    document.getElementById('btn-craft')?.addEventListener('click', () => { document.getElementById('craft-modal')?.classList.add('active'); const pid = P2PPong._peerId; const display = document.getElementById('craft-peer-id-display'); if (display) display.textContent = pid || 'Не создана'; });
+    document.getElementById('btn-craft-arrow')?.addEventListener('click', async () => { try { const peerId = await P2PPong.craftArrow(); const display = document.getElementById('craft-peer-id-display'); if (display) display.textContent = peerId; const emoji = P2PPong.getVerificationEmoji(); if (emoji && emoji.length) { const emojiDisplay = document.getElementById('craft-emoji-display'); if (emojiDisplay) { emojiDisplay.textContent = emoji.join(' '); emojiDisplay.style.display = 'block'; } } rMsg('🏹 Стрела изготовлена!', 3000); } catch(e) {} });
+    document.getElementById('btn-copy-peer-id')?.addEventListener('click', () => { const pid = P2PPong._peerId; if (pid) { navigator.clipboard.writeText(pid).then(() => rMsg('⎘ Стрела скопирована!')).catch(() => {}); } });
+    document.getElementById('close-craft-modal')?.addEventListener('click', () => { document.getElementById('craft-modal')?.classList.remove('active'); });
+    document.getElementById('craft-modal')?.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('active'); });
+    document.getElementById('btn-create-beacon')?.addEventListener('click', async () => { const targetId = document.getElementById('peer-id-input')?.value.trim(); if (targetId) { const ok = await P2PPong.joinBeacon(targetId); if (ok) { rMsg('🏹 Тетива натянута...', 3000); document.getElementById('craft-modal')?.classList.remove('active'); } } });
+
+    // Шайки Шервуда
+    document.getElementById('btn-bands')?.addEventListener('click', () => {
+        showBandsList();
+        document.getElementById('bands-modal')?.classList.add('active');
     });
     
-    document.getElementById('btn-craft-arrow')?.addEventListener('click', async () => { 
-        try { 
-            const peerId = await P2PPong.craftArrow(); 
-            const display = document.getElementById('craft-peer-id-display'); 
-            if (display) display.textContent = peerId; 
-            const emoji = P2PPong.getVerificationEmoji(); 
-            if (emoji && emoji.length) { 
-                const emojiDisplay = document.getElementById('craft-emoji-display'); 
-                if (emojiDisplay) { 
-                    emojiDisplay.textContent = emoji.join(' '); 
-                    emojiDisplay.style.display = 'block'; 
-                } 
-            } 
-            rMsg('🏹 Стрела изготовлена!', 3000); 
-        } catch(e) {} 
+    document.getElementById('btn-create-band')?.addEventListener('click', () => {
+        const name = prompt('Название шайки:', 'Шайка лучников');
+        if (name) {
+            const pass = confirm('Установить пароль на вход?') ? prompt('Введи пароль:') : null;
+            createBand(name, pass);
+            document.getElementById('bands-modal')?.classList.remove('active');
+        }
     });
     
-    document.getElementById('btn-copy-peer-id')?.addEventListener('click', () => { 
-        const pid = P2PPong._peerId; 
-        if (pid) { 
-            navigator.clipboard.writeText(pid).then(() => rMsg('⎘ Стрела скопирована!')).catch(() => {}); 
-        } 
+    document.getElementById('btn-join-band')?.addEventListener('click', () => {
+        const bandId = prompt('Введи ID шайки:');
+        if (bandId) {
+            const band = bands.find(b => b.id === bandId);
+            if (band && band.password) {
+                const pass = prompt('Введи пароль шайки:');
+                joinBand(bandId, pass);
+            } else {
+                joinBand(bandId);
+            }
+            document.getElementById('bands-modal')?.classList.remove('active');
+        }
     });
     
-    document.getElementById('close-craft-modal')?.addEventListener('click', () => { 
-        document.getElementById('craft-modal')?.classList.remove('active'); 
+    document.getElementById('close-bands-modal')?.addEventListener('click', () => {
+        document.getElementById('bands-modal')?.classList.remove('active');
     });
     
-    document.getElementById('craft-modal')?.addEventListener('click', function(e) { 
-        if (e.target === this) this.classList.remove('active'); 
-    });
-    
-    document.getElementById('btn-create-beacon')?.addEventListener('click', async () => { 
-        const targetId = document.getElementById('peer-id-input')?.value.trim(); 
-        if (targetId) { 
-            const ok = await P2PPong.joinBeacon(targetId); 
-            if (ok) { 
-                rMsg('🏹 Тетива натянута...', 3000); 
-                document.getElementById('craft-modal')?.classList.remove('active'); 
-            } 
-        } 
+    document.getElementById('bands-modal')?.addEventListener('click', function(e) {
+        if (e.target === this) this.classList.remove('active');
     });
 
     document.getElementById('btn-verify-confirm')?.addEventListener('click', async () => {
-        const selected = window._verifySelected || []; 
-        const expected = window._verifyCorrect || []; 
-        const errEl = document.getElementById('verify-error');
-        if (selected.length !== expected.length) { 
-            if (errEl) { errEl.textContent = 'Выбери ровно 5 знаков'; errEl.style.display = 'block'; } 
-            return; 
-        }
+        const selected = window._verifySelected || []; const expected = window._verifyCorrect || []; const errEl = document.getElementById('verify-error');
+        if (selected.length !== expected.length) { if (errEl) { errEl.textContent = 'Выбери ровно 5 знаков'; errEl.style.display = 'block'; } return; }
         if (selected.join('') === expected.join('')) { 
             if (errEl) errEl.style.display = 'none'; 
             await P2PPong.confirmVerification(); 
@@ -466,7 +658,6 @@ function initApp() {
             verificationModalShown = false; 
             verificationDone = true; 
             rMsg('✅ Подтверждено!', 3000); 
-            
             if (window._pendingChannel) {
                 const data = window._pendingChannel;
                 window._pendingChannel = null;
@@ -477,30 +668,15 @@ function initApp() {
                     showChatForChannel(data.channelId); 
                 }, 1000);
             }
-        } else { 
-            if (errEl) { errEl.textContent = '❌ Неверный порядок. Попробуй снова.'; errEl.style.display = 'block'; } 
-            window._verifySelected = []; 
-            document.getElementById('verify-selected').textContent = ''; 
-        }
+        } else { if (errEl) { errEl.textContent = '❌ Неверный порядок. Попробуй снова.'; errEl.style.display = 'block'; } window._verifySelected = []; document.getElementById('verify-selected').textContent = ''; }
     });
 
-    document.getElementById('close-verify-modal')?.addEventListener('click', () => { 
-        document.getElementById('verify-modal')?.classList.remove('active'); 
-        verificationModalShown = false; 
-    });
-    
-    document.getElementById('verify-modal')?.addEventListener('click', function(e) { 
-        if (e.target === this) { this.classList.remove('active'); verificationModalShown = false; } 
-    });
-    
+    document.getElementById('close-verify-modal')?.addEventListener('click', () => { document.getElementById('verify-modal')?.classList.remove('active'); verificationModalShown = false; });
+    document.getElementById('verify-modal')?.addEventListener('click', function(e) { if (e.target === this) { this.classList.remove('active'); verificationModalShown = false; } });
     document.getElementById('btn-clear')?.addEventListener('click', () => { 
-        const box = document.getElementById('chat-box'); 
-        if (box) box.querySelectorAll('.message-row').forEach(m => m.remove()); 
-        playSmokeAnimation(); 
-        playSound('clear cache.mp3'); 
-        rMsg('🔥 Робин Гуд пустил все письма на самокрутки!', 5000); 
-        contacts = []; 
-        saveContacts(); 
+        const box = document.getElementById('chat-box'); if (box) box.querySelectorAll('.message-row').forEach(m => m.remove()); 
+        playSmokeAnimation(); playSound('clear cache.mp3'); rMsg('🔥 Робин Гуд пустил все письма на самокрутки!', 5000); 
+        contacts = []; saveContacts(); 
         setTimeout(() => {
             P2PPong.destroy().then(() => { 
                 localStorage.clear(); 
@@ -511,194 +687,77 @@ function initApp() {
             });
         }, 6000);
     });
-    
-    document.getElementById('btn-settings')?.addEventListener('click', () => { 
-        closeSheets(); 
-        document.getElementById('settings-sheet')?.classList.add('open'); 
-        document.getElementById('overlay')?.classList.add('show'); 
-    });
-    
+    document.getElementById('btn-settings')?.addEventListener('click', () => { closeSheets(); document.getElementById('settings-sheet')?.classList.add('open'); document.getElementById('overlay')?.classList.add('show'); });
     document.getElementById('settings-close')?.addEventListener('click', closeSheets);
     document.getElementById('overlay')?.addEventListener('click', closeSheets);
-    
-    document.getElementById('btn-avatar')?.addEventListener('click', () => { 
-        closeSheets(); 
-        loadAvatars(); 
-        document.getElementById('avatar-selector')?.classList.add('show'); 
-        document.getElementById('overlay')?.classList.add('show'); 
-    });
-    
-    document.getElementById('nick-label')?.addEventListener('click', () => { 
-        const modal = document.getElementById('nick-modal'); 
-        const input = document.getElementById('nick-input'); 
-        if (modal && input) { 
-            input.value = document.getElementById('nick-label')?.textContent || ''; 
-            modal.classList.add('active'); 
-        } 
-    });
-    
-    document.getElementById('btn-save-nick')?.addEventListener('click', () => { 
-        const n = document.getElementById('nick-input')?.value.trim(); 
-        if (n) { 
-            const nl2 = document.getElementById('nick-label'); 
-            if (nl2) nl2.textContent = n.substring(0, 12); 
-            try { localStorage.setItem('robinhood_nick', n.substring(0, 12)); } catch (e) {} 
-            P2PPong.setMyProfile(n.substring(0, 12), selectedAvatar); 
-        } 
-        document.getElementById('nick-modal')?.classList.remove('active'); 
-    });
-    
-    document.getElementById('close-nick-modal')?.addEventListener('click', () => { 
-        document.getElementById('nick-modal')?.classList.remove('active'); 
-    });
-    
-    document.getElementById('setting-theme')?.addEventListener('click', () => { 
-        const ct = localStorage.getItem('robinhood_theme') || 'slate'; 
-        const idx = themes.findIndex(t => t.id === ct); 
-        applyTheme(themes[(idx + 1) % themes.length].id); 
-    });
-    
+    document.getElementById('btn-avatar')?.addEventListener('click', () => { closeSheets(); loadAvatars(); document.getElementById('avatar-selector')?.classList.add('show'); document.getElementById('overlay')?.classList.add('show'); });
+    document.getElementById('nick-label')?.addEventListener('click', () => { const modal = document.getElementById('nick-modal'); const input = document.getElementById('nick-input'); if (modal && input) { input.value = document.getElementById('nick-label')?.textContent || ''; modal.classList.add('active'); } });
+    document.getElementById('btn-save-nick')?.addEventListener('click', () => { const n = document.getElementById('nick-input')?.value.trim(); if (n) { const nl2 = document.getElementById('nick-label'); if (nl2) nl2.textContent = n.substring(0, 12); try { localStorage.setItem('robinhood_nick', n.substring(0, 12)); } catch (e) {} P2PPong.setMyProfile(n.substring(0, 12), selectedAvatar); } document.getElementById('nick-modal')?.classList.remove('active'); });
+    document.getElementById('close-nick-modal')?.addEventListener('click', () => { document.getElementById('nick-modal')?.classList.remove('active'); });
+    document.getElementById('setting-theme')?.addEventListener('click', () => { const ct = localStorage.getItem('robinhood_theme') || 'slate'; const idx = themes.findIndex(t => t.id === ct); applyTheme(themes[(idx + 1) % themes.length].id); });
     document.getElementById('setting-theme-random')?.addEventListener('click', generateRandomTheme);
-    document.getElementById('setting-terms')?.addEventListener('click', () => { 
-        window.open('https://github.com/stepweather-prog/ROBINHOOD-P2P/blob/main/README.md', '_blank'); 
-    });
-    
-    si?.addEventListener('click', () => { 
-        if (deferredPrompt) deferredPrompt.prompt().catch(() => {}); 
-        else rMsg('📲 Меню браузера → Добавить на экран', 4000); 
-        document.getElementById('settings-sheet')?.classList.remove('open'); 
-        document.getElementById('overlay')?.classList.remove('show'); 
-    });
-    
+    document.getElementById('setting-terms')?.addEventListener('click', () => { window.open('https://github.com/stepweather-prog/ROBINHOOD-P2P/blob/main/README.md', '_blank'); });
+    si?.addEventListener('click', () => { if (deferredPrompt) deferredPrompt.prompt().catch(() => {}); else rMsg('📲 Меню браузера → Добавить на экран', 4000); document.getElementById('settings-sheet')?.classList.remove('open'); document.getElementById('overlay')?.classList.remove('show'); });
     window.addEventListener('beforeinstallprompt', e => { deferredPrompt = e; });
-    
     document.getElementById('btn-call')?.addEventListener('click', () => { callActive ? hang(true) : startCall(); });
     document.getElementById('call-accept')?.addEventListener('click', acceptCall);
-    document.getElementById('call-reject')?.addEventListener('click', () => { 
-        if (incomingOffer) { 
-            stopRingtone(); 
-            sendWebRTCMsg('webrtc-hangup', ''); 
-            incomingOffer = null; 
-            const cp2 = document.getElementById('call-panel'); 
-            if (cp2) cp2.style.display = 'none'; 
-            updateCallButtonState(); 
-        } 
-    });
-    
+    document.getElementById('call-reject')?.addEventListener('click', () => { if (incomingOffer) { stopRingtone(); sendWebRTCMsg('webrtc-hangup', ''); incomingOffer = null; const cp2 = document.getElementById('call-panel'); if (cp2) cp2.style.display = 'none'; updateCallButtonState(); } });
     document.getElementById('call-end')?.addEventListener('click', () => hang(true));
-    document.getElementById('call-speaker')?.addEventListener('click', () => { 
-        speakerOn = !speakerOn; 
-        const s = document.getElementById('call-speaker'); 
-        if (s) { s.classList.toggle('active', speakerOn); s.textContent = speakerOn ? '🔊' : '🔇'; } 
-    });
-    
-    document.getElementById('call-mic')?.addEventListener('click', () => { 
-        if (!localStream) return; 
-        micOn = !micOn; 
-        localStream.getAudioTracks().forEach(t => t.enabled = micOn); 
-        const m = document.getElementById('call-mic'); 
-        if (m) { m.classList.toggle('muted', !micOn); m.textContent = micOn ? '🎤' : '🚫'; } 
-    });
-    
-    if (ts) ts.addEventListener('change', function() { 
-        toggleSoundState = this.checked; 
-        try { localStorage.setItem('robinhood_sound', toggleSoundState); } catch (e) {} 
-    });
-    
-    if (ta) ta.addEventListener('change', function() {
-        toggleAnimations = this.checked;
-        try { localStorage.setItem('robinhood_animations', toggleAnimations); } catch (e) {}
-    });
-    
+    document.getElementById('call-speaker')?.addEventListener('click', () => { speakerOn = !speakerOn; const s = document.getElementById('call-speaker'); if (s) { s.classList.toggle('active', speakerOn); s.textContent = speakerOn ? '🔊' : '🔇'; } });
+    document.getElementById('call-mic')?.addEventListener('click', () => { if (!localStream) return; micOn = !micOn; localStream.getAudioTracks().forEach(t => t.enabled = micOn); const m = document.getElementById('call-mic'); if (m) { m.classList.toggle('muted', !micOn); m.textContent = micOn ? '🎤' : '🚫'; } });
+    if (ts) ts.addEventListener('change', function() { toggleSoundState = this.checked; try { localStorage.setItem('robinhood_sound', toggleSoundState); } catch (e) {} });
+    if (ta) ta.addEventListener('change', function() { toggleAnimations = this.checked; try { localStorage.setItem('robinhood_animations', toggleAnimations); } catch (e) {} });
     if (sd) sd.addEventListener('change', function() { 
         selfDestructMode = this.checked; 
         try { localStorage.setItem('robinhood_selfdestruct', selfDestructMode); } catch (e) {} 
-        if (selfDestructMode && activeChannelId) { 
-            P2PPong.sendMessage(activeChannelId, JSON.stringify({ d: '__SMOKE__' })); 
-            rMsg('🍁 Листопад включён. Сообщения будут исчезать.', 3000); 
-        } 
-    });
-    
-    document.getElementById('btn-voice-input')?.addEventListener('click', toggleVoiceRecording);
-    
-    document.getElementById('setting-lock')?.addEventListener('click', () => { 
-        if (lockType) { 
-            if (confirm('Сбросить блокировку?')) { 
-                try { localStorage.removeItem(LOCK_KEY); } catch (e) {} 
-                lockType = null; 
-                lockPinHash = ''; 
-                const ls3 = document.getElementById('lock-status'); 
-                if (ls3) ls3.textContent = 'Не задан'; 
+        if (selfDestructMode) { 
+            startSelfDestruct(); 
+            if (activeChannelId) { 
+                P2PPong.sendMessage(activeChannelId, JSON.stringify({ d: '__SMOKE__' })); 
             } 
+            rMsg('🍁 Листопад включён! По 5 сообщений каждые 20 секунд.', 3000); 
         } else { 
-            isSettingLock = true; 
-            lockPinHash = ''; 
-            pinInput = ''; 
-            lockScreen.style.display = 'flex'; 
-            appContainer.style.display = 'none'; 
-            setupLockUI(); 
+            stopSelfDestruct(); 
+            rMsg('🍂 Листопад остановлен.', 3000); 
         } 
     });
-    
+    document.getElementById('btn-voice-input')?.addEventListener('click', toggleVoiceRecording);
+    document.getElementById('setting-lock')?.addEventListener('click', () => { if (lockType) { if (confirm('Сбросить блокировку?')) { try { localStorage.removeItem(LOCK_KEY); } catch (e) {} lockType = null; lockPinHash = ''; const ls3 = document.getElementById('lock-status'); if (ls3) ls3.textContent = 'Не задан'; } } else { isSettingLock = true; lockPinHash = ''; pinInput = ''; lockScreen.style.display = 'flex'; appContainer.style.display = 'none'; setupLockUI(); } });
     const emojis = ['😀','😂','🤣','😍','😘','😜','😎','🤩','🥳','😢','😡','👍','👎','❤️','🔥','🎉','💀','🏹','🌲','🏰','🦊','🐺','✨','⚔️','🛡️','🍺','🍗','🏕️','🌙','☀️','🌟','💪','🤝','🙏','👑','💰','🎯','📞','💬','🔔','❌','✅','🎵','📜','⚜️'];
-    const eg = document.getElementById('emoji-grid'); 
-    if (eg) emojis.forEach(e => { 
-        const span = document.createElement('span'); 
-        span.textContent = e; 
-        span.addEventListener('click', () => { 
-            const mi = document.getElementById('msg-input'); 
-            if (mi) { mi.value += e; mi.focus(); } 
-        }); 
-        eg.appendChild(span); 
-    });
-    
-    const be = document.getElementById('btn-emoji'); 
-    if (be) be.addEventListener('click', () => { 
-        const ep = document.getElementById('emoji-panel'); 
-        if (ep) ep.style.display = ep.style.display === 'block' ? 'none' : 'block'; 
-    });
-    
-    document.addEventListener('click', e => { 
-        const ep = document.getElementById('emoji-panel'); 
-        if (ep && !ep.contains(e.target) && e.target !== be) ep.style.display = 'none'; 
-    });
-    
+    const eg = document.getElementById('emoji-grid'); if (eg) emojis.forEach(e => { const span = document.createElement('span'); span.textContent = e; span.addEventListener('click', () => { const mi = document.getElementById('msg-input'); if (mi) { mi.value += e; mi.focus(); } }); eg.appendChild(span); });
+    const be = document.getElementById('btn-emoji'); if (be) be.addEventListener('click', () => { const ep = document.getElementById('emoji-panel'); if (ep) ep.style.display = ep.style.display === 'block' ? 'none' : 'block'; });
+    document.addEventListener('click', e => { const ep = document.getElementById('emoji-panel'); if (ep && !ep.contains(e.target) && e.target !== be) ep.style.display = 'none'; });
     document.getElementById('send-btn')?.addEventListener('click', async () => { 
         const mi = document.getElementById('msg-input'); 
         const t = mi?.value.trim(); 
         if (t) { 
-            if (!activeChannelId) { 
-                const chIds = Object.keys(P2PPong._channels); 
-                if (!chIds.length) return; 
-                activeChannelId = chIds[0]; 
-            } 
+            if (activeBandId) {
+                const band = bands.find(b => b.id === activeBandId);
+                if (band) {
+                    band.blobs.push({ text: t, from: P2PPong._peerId, nick: 'Вы', avatar: selectedAvatar, time: Date.now() });
+                    appendMessage('Вы', t, selectedAvatar);
+                    if (mi) mi.value = '';
+                    playArcherAnimation();
+                    playBowAnimation();
+                    if (toggleSoundState) playSound('shot.mp3');
+                    return;
+                }
+            }
+            if (!activeChannelId) { const chIds = Object.keys(P2PPong._channels); if (!chIds.length) return; activeChannelId = chIds[0]; } 
             const sent = await P2PPong.sendMessage(activeChannelId, t); 
-            if (sent) { 
-                appendMessage('Вы', t, selectedAvatar); 
-                updateCupIndicator(); 
-                updateRatchetIndicator(); 
-                if (mi) mi.value = ''; 
-                playArcherAnimation(); 
-                playBowAnimation(); 
-                if (toggleSoundState) playSound('shot.mp3'); 
-            } 
+            if (sent) { appendMessage('Вы', t, selectedAvatar); updateCupIndicator(); updateRatchetIndicator(); if (mi) mi.value = ''; playArcherAnimation(); playBowAnimation(); if (toggleSoundState) playSound('shot.mp3'); } 
         } 
     });
-    
-    document.getElementById('msg-input')?.addEventListener('keypress', e => { 
-        if (e.key == 'Enter') document.getElementById('send-btn')?.click(); 
-    });
-    
-    setConnectionStatus('online'); 
-    updateDateTime(); 
-    setInterval(updateDateTime, 60000);
+    document.getElementById('msg-input')?.addEventListener('keypress', e => { if (e.key == 'Enter') document.getElementById('send-btn')?.click(); });
+    setConnectionStatus('online'); updateDateTime(); setInterval(updateDateTime, 60000);
 }
 
 window.addEventListener('beforeunload', () => { 
     if (callActive) hang(false); 
     if (voiceTimerInterval) clearInterval(voiceTimerInterval); 
+    stopSelfDestruct();
+    bands = [];
     P2PPong.destroy(); 
 });
-
 P2PPong.on('ready', () => { initUI(); initApp(); });
 loadLockSettings();
