@@ -323,6 +323,11 @@ const P2PPong = {
         setTimeout(() => me._cleanupBeaconKeys(pid), 10000);
         
         this._stats.channelsOpened++;
+        
+        // Определяем кто инициатор WebRTC
+        const isCreator = this._pending?.type === 'creator';
+        this._pending = null;
+        
         this._emit('channel-opened', { 
             channelId: this._chId, 
             peerId: peerId || 'unknown', 
@@ -330,8 +335,7 @@ const P2PPong = {
             avatar: this._theirAvatar 
         });
         this._startMsgPoll(this._chId);
-        this._startWebRTC(this._chId, this._pending?.type === 'creator');
-        this._pending = null;
+        this._startWebRTC(this._chId, isCreator);
     },
 
     async _postWithRetry(path, body, retryCount = 0) {
@@ -453,28 +457,35 @@ const P2PPong = {
             return;
         }
         
+        // beacon-response от Боба → Алисе
         if (d.type === 'beacon-response' && d.pubKey && d.channelId) {
             if (this._pending?.type !== 'creator') return;
             this._remotePubKey = d.pubKey;
             this._remotePeerId = d.peerId;
             this._chId = d.channelId;
             this._secret = await deriveSecretLocal(this._kp.privateKey, d.pubKey);
+            // Отправляем beacon-ack в ответ
             await this._post('/beacon', { keyHash: 'waiting_' + this._peerId, packet: JSON.stringify({
                 type: 'beacon-ack', peerId: this._peerId, channelId: this._chId, pubKey: this._kp.publicKey, signalServer: this._signalServer.url, nick: this._myNick, avatar: this._myAvatar
             })});
+            // НЕ открываем канал — ждём verification-code
             this._pendingChannelData = { peerId: d.peerId, signalServer: d.signalServer, nick: d.nick, avatar: d.avatar };
             return;
         }
         
+        // beacon-ack от Алисы → Бобу (НЕ открываем канал!)
         if (d.type === 'beacon-ack' && d.channelId) {
             if (this._pending?.type !== 'joiner') return;
             this._chId = d.channelId;
             if (!this._secret && d.pubKey) { this._secret = await deriveSecretLocal(this._kp.privateKey, d.pubKey); }
+            // НЕ открываем канал — ждём подтверждения кода
             this._pendingChannelData = { peerId: d.peerId, signalServer: d.signalServer, nick: d.nick, avatar: d.avatar };
             return;
         }
         
+        // verification-code: код от Боба → Алисе (или наоборот)
         if (d.type === 'verification-code' && d.code) {
+            // Алиса (creator) получает код от Боба
             if (this._pending?.type === 'creator' && this._verificationCode && d.code === this._verificationCode) {
                 this._remotePubKey = d.pubKey;
                 this._remotePeerId = d.peerId;
@@ -484,9 +495,11 @@ const P2PPong = {
                     type: 'beacon-ack', peerId: this._peerId, channelId: this._chId, pubKey: this._kp.publicKey, signalServer: this._signalServer.url, nick: this._myNick, avatar: this._myAvatar
                 })});
                 this._pendingChannelData = { peerId: d.peerId, signalServer: d.signalServer, nick: d.nick, avatar: d.avatar };
+                // Эмитим событие для UI Алисы (авто-подтверждение)
                 this._emit('verification-received', { code: d.code });
                 return;
             }
+            // Боб (joiner) получает verification-received
             this._emit('verification-received', { code: d.code });
             return;
         }
@@ -546,6 +559,7 @@ const P2PPong = {
             if (!ch.oldKeys) ch.oldKeys = [];
             ch.oldKeys.push({ index: ch.ratchetIndex - 1, key: oldKey });
             if (ch.oldKeys.length > CONFIG.MAX_OLD_KEYS) ch.oldKeys.shift();
+            // Отправляем через сигнальный сервер
             await this._post('/beacon', { keyHash: 'msg_' + (chId || this._chId) + '_' + this._remotePeerId, packet: result.packed });
             ch.blobs.push({ d: displayText, t: Date.now(), n: nonce, from: 'me', status: 'sent', nick: this._myNick, avatar: this._myAvatar });
             ch.expires = Date.now() + CONFIG.CHANNEL_TTL; this._stats.messagesSent++;
@@ -644,7 +658,7 @@ const P2PPong = {
         this._channels = {}; this._beacons = {}; this._listeners = {};
         this._state = 'idle'; this._peerId = null; this._kp = null;
         this._remotePubKey = null; this._secret = null; this._chId = null;
-        this._pending = null; this._verificationCode = null; this._signalServer = null;
+        this._pending = null; this._pendingChannelData = null; this._verificationCode = null; this._signalServer = null;
         this._webRTCSignalBuffer = {}; this._remotePeerId = null; this._serverHealth = {};
         this._emit('destroyed');
     }
