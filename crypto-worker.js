@@ -1,5 +1,6 @@
 // crypto-worker.js — Web Worker для криптографии (чистый base64, без бинарного паддинга)
 const MAX_TIMEOUT = 30000;
+const MAX_DECOMPRESSED_SIZE = 1024 * 1024; // 1 МБ максимум после распаковки (защита от zip-бомбы)
 let isProcessing = false;
 
 function toBase64(bytes) {
@@ -93,9 +94,19 @@ async function deriveSecret(kp, remotePubKey) {
     return Array.from(new Uint8Array(b)).map(x => x.toString(16).padStart(2, '0')).join('');
 }
 
+// ✅ Исправлено: секрет хешируется для получения ключа нужной длины
+async function deriveKey(secret) {
+    const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(secret));
+    return await crypto.subtle.importKey('raw', hash, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
+}
+
+async function deriveHMACKey(secret) {
+    const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(secret));
+    return await crypto.subtle.importKey('raw', hash, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign', 'verify']);
+}
+
 async function encryptAES(text, secret) {
-    const keyData = new TextEncoder().encode(secret.substring(0, 32));
-    const k = await crypto.subtle.importKey('raw', keyData, { name: 'AES-GCM' }, false, ['encrypt']);
+    const k = await deriveKey(secret);
     const iv = crypto.getRandomValues(new Uint8Array(12));
     const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, k, new TextEncoder().encode(text));
     const combined = new Uint8Array(iv.length + new Uint8Array(ct).length);
@@ -105,8 +116,7 @@ async function encryptAES(text, secret) {
 }
 
 async function decryptAES(enc, secret) {
-    const keyData = new TextEncoder().encode(secret.substring(0, 32));
-    const k = await crypto.subtle.importKey('raw', keyData, { name: 'AES-GCM' }, false, ['decrypt']);
+    const k = await deriveKey(secret);
     const c = fromBase64(enc);
     if (!c || c.length === 0) return null;
     try {
@@ -117,16 +127,14 @@ async function decryptAES(enc, secret) {
 }
 
 async function computeHMAC(data, secret) {
-    const keyData = new TextEncoder().encode(secret.substring(0, 32));
-    const k = await crypto.subtle.importKey('raw', keyData, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+    const k = await deriveHMACKey(secret);
     const sig = await crypto.subtle.sign('HMAC', k, new TextEncoder().encode(data));
     return toBase64(new Uint8Array(sig));
 }
 
 async function verifyHMAC(data, sig, secret) {
     try {
-        const keyData = new TextEncoder().encode(secret.substring(0, 32));
-        const k = await crypto.subtle.importKey('raw', keyData, { name: 'HMAC', hash: 'SHA-256' }, false, ['verify']);
+        const k = await deriveHMACKey(secret);
         const sigBytes = fromBase64(sig);
         return await crypto.subtle.verify('HMAC', k, sigBytes, new TextEncoder().encode(data));
     } catch(e) {
@@ -148,6 +156,7 @@ async function compressData(str) {
     return toBase64(total);
 }
 
+// ✅ Исправлено: защита от zip-бомбы — проверка размера после распаковки
 async function decompressData(b64) {
     const bytes = fromBase64(b64);
     if (!bytes || bytes.length === 0) return null;
@@ -158,8 +167,19 @@ async function decompressData(b64) {
         writer.close();
         const reader = ds.readable.getReader();
         const chunks = [];
-        while (true) { const r = await reader.read(); if (r.done) break; chunks.push(r.value); }
-        const total = new Uint8Array(chunks.reduce((s, c) => s + c.length, 0));
+        let totalSize = 0;
+        while (true) { 
+            const r = await reader.read(); 
+            if (r.done) break; 
+            totalSize += r.value.length;
+            // Защита от zip-бомбы
+            if (totalSize > MAX_DECOMPRESSED_SIZE) {
+                reader.cancel();
+                return null;
+            }
+            chunks.push(r.value); 
+        }
+        const total = new Uint8Array(totalSize);
         let offset = 0;
         chunks.forEach(chunk => { total.set(chunk, offset); offset += chunk.length; });
         return new TextDecoder().decode(total);
@@ -175,6 +195,9 @@ async function advanceRatchet(ch) {
     return { newKey, index: (ch.ratchetIndex || 0) + 1, oldKey };
 }
 
+// ✅ Исправлено: разделитель | заменён на неиспользуемый в base64 символ
+const SEPARATOR = '\x00'; // Нулевой байт — не встречается в base64
+
 async function packBlob(jsonString, ch) {
     const compressed = await compressData(jsonString);
     const nonce = Array.from(crypto.getRandomValues(new Uint32Array(4))).map(x => x.toString(16).padStart(8, '0')).join('');
@@ -182,7 +205,7 @@ async function packBlob(jsonString, ch) {
     const data = JSON.stringify({ z: compressed, t: Date.now(), n: nonce, ri });
     const currentKey = ch.ratchetKey || ch.secret;
     const hmac = await computeHMAC(data, currentKey);
-    const payload = hmac + '|' + data;
+    const payload = hmac + SEPARATOR + data;
     const { newKey, index } = await advanceRatchet(ch);
     const encrypted = await encryptAES(payload, ch.secret);
     return { packed: encrypted, newRatchetKey: newKey, newRatchetIndex: index };
@@ -202,8 +225,9 @@ async function unpackBlob(blob, ch) {
     return null;
 }
 
+// ✅ Исправлено: поиск разделителя \x00 вместо |
 async function tryDecryptWithKey(decrypted, key) {
-    const separatorIndex = decrypted.indexOf('|');
+    const separatorIndex = decrypted.indexOf(SEPARATOR);
     if (separatorIndex === -1) return null;
     const hmac = decrypted.substring(0, separatorIndex);
     const data = decrypted.substring(separatorIndex + 1);
