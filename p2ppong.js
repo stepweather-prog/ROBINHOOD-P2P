@@ -305,7 +305,6 @@ const P2PPong = {
         if (theirNick) this._theirNick = theirNick;
         if (theirAvatar) this._theirAvatar = theirAvatar;
         
-        // Сохраняем правильный remotePeerId
         if (peerId) this._remotePeerId = peerId;
         
         this._channels[this._chId] = {
@@ -435,6 +434,10 @@ const P2PPong = {
                     if (this._dedupTimers[dedupKey]) return;
                     this._dedupTimers[dedupKey] = setTimeout(() => delete this._dedupTimers[dedupKey], CONFIG.CHANNEL_TTL);
                     
+                    // ✅ Обновляем ник и аватар из сообщения
+                    if (u.nick) this._theirNick = u.nick;
+                    if (u.avatar) this._theirAvatar = u.avatar;
+                    
                     const displayText = u.type === 'voice' ? '[Голосовое сообщение]' : (u.d || u.text || '');
                     ch.blobs.push({ d: displayText, voiceData: u.type === 'voice' ? u.d : null, t: u._t || Date.now(), n: u.n || '', from: 'them', status: 'delivered', nick: this._theirNick, avatar: this._theirAvatar });
                     ch.expires = Date.now() + CONFIG.CHANNEL_TTL; this._stats.messagesReceived++;
@@ -466,10 +469,11 @@ const P2PPong = {
             this._remotePeerId = d.peerId;
             this._chId = d.channelId;
             this._secret = await deriveSecretLocal(this._kp.privateKey, d.pubKey);
+            if (d.nick) this._theirNick = d.nick;
+            if (d.avatar) this._theirAvatar = d.avatar;
             await this._post('/beacon', { keyHash: 'waiting_' + this._peerId, packet: JSON.stringify({
                 type: 'beacon-ack', peerId: this._peerId, channelId: this._chId, pubKey: this._kp.publicKey, signalServer: this._signalServer.url, nick: this._myNick, avatar: this._myAvatar
             })});
-            // НЕ открываем канал — ждём verification-code
             this._pendingChannelData = { peerId: d.peerId, signalServer: d.signalServer, nick: d.nick, avatar: d.avatar };
             return;
         }
@@ -480,18 +484,17 @@ const P2PPong = {
             this._chId = d.channelId;
             if (!this._secret && d.pubKey) { this._secret = await deriveSecretLocal(this._kp.privateKey, d.pubKey); }
             if (d.peerId) this._remotePeerId = d.peerId;
-            // НЕ открываем канал — ждём подтверждения кода
+            if (d.nick) this._theirNick = d.nick;
+            if (d.avatar) this._theirAvatar = d.avatar;
             this._pendingChannelData = { peerId: d.peerId, signalServer: d.signalServer, nick: d.nick, avatar: d.avatar };
             return;
         }
         
         // verification-code: код от Боба → Алисе (или наоборот)
         if (d.type === 'verification-code' && d.code) {
-            // Алиса (creator) получает код от Боба
             if (this._pending?.type === 'creator' && this._verificationCode && d.code === this._verificationCode) {
                 this._remotePubKey = d.pubKey;
                 this._remotePeerId = d.peerId;
-                // НЕ перезаписываем chId! Он уже установлен из beacon-response
                 this._secret = await deriveSecretLocal(this._kp.privateKey, d.pubKey);
                 await this._post('/beacon', { keyHash: 'waiting_' + this._peerId, packet: JSON.stringify({
                     type: 'beacon-ack', peerId: this._peerId, channelId: this._chId, pubKey: this._kp.publicKey, signalServer: this._signalServer.url, nick: this._myNick, avatar: this._myAvatar
@@ -500,7 +503,6 @@ const P2PPong = {
                 this._emit('verification-received', { code: d.code });
                 return;
             }
-            // Боб (joiner) получает verification-received
             this._emit('verification-received', { code: d.code });
             return;
         }
@@ -631,6 +633,9 @@ const P2PPong = {
                     if (u._ri !== undefined) { const targetRi = parseInt(u._ri) || 0; while ((ch.ratchetIndex || 0) <= targetRi) { const r = await advanceRatchetLocal(ch); if (!ch.oldKeys) ch.oldKeys = []; ch.oldKeys.push({ index: ch.ratchetIndex || 0, key: r.oldKey }); if (ch.oldKeys.length > CONFIG.MAX_OLD_KEYS) ch.oldKeys.shift(); ch.ratchetKey = r.newKey; ch.ratchetIndex = r.index; } ch.lastReceivedRi = targetRi; }
                     const dedupKey = chId + '_' + (u.n || u._t || ''); if (this._webRTC[chId]?.seenMessages?.has(u.n)) return; if (this._dedupTimers[dedupKey]) return;
                     this._dedupTimers[dedupKey] = setTimeout(() => delete this._dedupTimers[dedupKey], CONFIG.CHANNEL_TTL); this._webRTC[chId]?.seenMessages?.add(u.n);
+                    // ✅ Обновляем ник и аватар
+                    if (u.nick) this._theirNick = u.nick;
+                    if (u.avatar) this._theirAvatar = u.avatar;
                     const displayText = u.type === 'voice' ? '[Голосовое сообщение]' : (u.d || u.text || '');
                     ch.blobs.push({ d: displayText, voiceData: u.type === 'voice' ? u.d : null, t: u._t || Date.now(), n: u.n || '', from: 'them', status: 'delivered', nick: this._theirNick, avatar: this._theirAvatar });
                     ch.expires = Date.now() + CONFIG.CHANNEL_TTL; this._stats.messagesReceived++;
