@@ -25,7 +25,7 @@ let voiceRecorder = null,
     voiceTimerInterval = null,
     voiceRecTimeout = null;
 let archerAnimation, quiverAnim, bowAnim, currentArrowContainer;
-let callArcherAnimation, callArrowContainer; // ✅ Анимация на экране звонка
+let callArcherAnimation, callArrowContainer;
 let deferredPrompt = null,
     speakerOn = true,
     micOn = true,
@@ -76,11 +76,120 @@ function playSound(f) { if (!toggleSoundState) return; if (!audioPool[f]) { audi
 function closeSheets() { document.getElementById('avatar-selector')?.classList.remove('show'); document.getElementById('settings-sheet')?.classList.remove('open'); document.getElementById('overlay')?.classList.remove('show'); }
 
 function playSmokeAnimation() { if (!toggleAnimations) return; const smoke = document.createElement('div'); smoke.className = 'smoke-anim'; document.body.appendChild(smoke); if (typeof lottie !== 'undefined') { try { lottie.loadAnimation({ container: smoke, renderer: 'canvas', loop: false, autoplay: true, path: 'assets/smoke.json' }); } catch (e) {} } setTimeout(() => { if (smoke.parentNode) smoke.remove(); }, 5000); }
-function playArcherAnimation() { if (!toggleAnimations) return; const rt = document.getElementById('robin-text'); if (!rt) return; if (currentArrowContainer?.parentNode) currentArrowContainer.remove(); if (archerAnimation) { archerAnimation.destroy(); archerAnimation = null; } const wrapper = document.createElement('span'); wrapper.className = 'robin-arrow-container'; wrapper.style.cssText = 'width:80px;height:40px;display:inline-block;vertical-align:middle;'; currentArrowContainer = wrapper; rt.textContent = ''; rt.appendChild(wrapper); if (typeof lottie !== 'undefined') { try { archerAnimation = lottie.loadAnimation({ container: wrapper, renderer: 'canvas', loop: false, autoplay: true, path: 'assets/Archer.json' }); archerAnimation.addEventListener('complete', () => { if (wrapper.parentNode) wrapper.remove(); currentArrowContainer = null; archerAnimation = null; rt.textContent = robinDefaultText; }); } catch (e) { wrapper.textContent = '🏹'; setTimeout(() => { if (wrapper.parentNode) wrapper.remove(); currentArrowContainer = null; rt.textContent = robinDefaultText; }, 1500); } } else { wrapper.textContent = '🏹'; setTimeout(() => { if (wrapper.parentNode) wrapper.remove(); currentArrowContainer = null; rt.textContent = robinDefaultText; }, 1500); } }
-function playCallArcherAnimation() { if (!toggleAnimations) return; const callPanel = document.getElementById('call-panel'); if (!callPanel) return; if (callArrowContainer?.parentNode) callArrowContainer.remove(); if (callArcherAnimation) { callArcherAnimation.destroy(); callArcherAnimation = null; } const wrapper = document.createElement('div'); wrapper.style.cssText = 'width:120px;height:60px;margin:0 auto;'; callArrowContainer = wrapper; callPanel.appendChild(wrapper); if (typeof lottie !== 'undefined') { try { callArcherAnimation = lottie.loadAnimation({ container: wrapper, renderer: 'canvas', loop: true, autoplay: true, path: 'assets/Archer.json' }); } catch (e) { wrapper.textContent = '🏹'; } } else { wrapper.textContent = '🏹'; } }
-function stopCallArcherAnimation() { if (callArrowContainer?.parentNode) callArrowContainer.remove(); callArrowContainer = null; if (callArcherAnimation) { callArcherAnimation.destroy(); callArcherAnimation = null; } }
-function playBowAnimation() { if (!toggleAnimations) return; const bc = document.getElementById('bow-above-send'); if (!bc) return; if (bowAnim) { bowAnim.destroy(); bowAnim = null; } bc.style.display = 'block'; if (typeof lottie !== 'undefined') { try { bowAnim = lottie.loadAnimation({ container: bc, renderer: 'canvas', loop: false, autoplay: true, path: 'assets/bow.json' }); bowAnim.addEventListener('complete', () => { bc.style.display = 'none'; bowAnim = null; }); } catch (e) { bc.textContent = '🏹'; setTimeout(() => { bc.style.display = 'none'; bc.textContent = ''; }, 800); } } else { bc.textContent = '🏹'; setTimeout(() => { bc.style.display = 'none'; bc.textContent = ''; }, 800); } const sb = document.getElementById('send-btn'); if (sb) { sb.classList.add('shooting'); setTimeout(() => sb.classList.remove('shooting'), 400); } }
-function playQuiverAnimation() { if (!toggleAnimations) return; const quiver = document.createElement('div'); quiver.className = 'quiver-anim'; const img = document.createElement('img'); img.src = 'assets/docking.gif?t=' + Date.now(); img.style.cssText = 'width:min(200px,40vw);height:min(200px,40vw);object-fit:contain;filter:drop-shadow(0 0 20px rgba(255,215,0,0.8));'; img.loading = 'lazy'; img.onerror = () => { quiver.innerHTML = '<div style="font-size:min(120px,25vw);animation:quiverPulse 0.5s ease-in-out 7;">🏹</div>'; }; quiver.appendChild(img); document.body.appendChild(quiver); setTimeout(() => { quiver.style.opacity = '0'; quiver.style.transition = 'opacity 0.5s ease'; setTimeout(() => quiver.remove(), 500); }, 3500); }
+
+// ✅ УВЕЛИЧЕННАЯ анимация лучника в строке Робина (120x60 вместо 80x40)
+function playArcherAnimation() {
+    if (!toggleAnimations) return;
+    const rt = document.getElementById('robin-text');
+    if (!rt) return;
+    
+    if (currentArrowContainer?.parentNode) currentArrowContainer.remove();
+    if (archerAnimation) { archerAnimation.destroy(); archerAnimation = null; }
+    
+    const wrapper = document.createElement('span');
+    wrapper.className = 'robin-arrow-container';
+    wrapper.style.cssText = 'width:120px;height:60px;display:inline-block;vertical-align:middle;';
+    currentArrowContainer = wrapper;
+    
+    rt.textContent = '';
+    rt.appendChild(wrapper);
+    
+    if (typeof lottie !== 'undefined') {
+        try {
+            archerAnimation = lottie.loadAnimation({
+                container: wrapper,
+                renderer: 'canvas',
+                loop: false,
+                autoplay: true,
+                path: 'assets/Archer.json'
+            });
+            archerAnimation.addEventListener('complete', () => {
+                if (wrapper.parentNode) wrapper.remove();
+                currentArrowContainer = null;
+                archerAnimation = null;
+                rt.textContent = robinDefaultText;
+            });
+        } catch (e) {
+            wrapper.textContent = '🏹';
+            wrapper.style.fontSize = '40px';
+            setTimeout(() => {
+                if (wrapper.parentNode) wrapper.remove();
+                currentArrowContainer = null;
+                rt.textContent = robinDefaultText;
+            }, 1500);
+        }
+    } else {
+        wrapper.textContent = '🏹';
+        wrapper.style.fontSize = '40px';
+        setTimeout(() => {
+            if (wrapper.parentNode) wrapper.remove();
+            currentArrowContainer = null;
+            rt.textContent = robinDefaultText;
+        }, 1500);
+    }
+}
+
+// ✅ УВЕЛИЧЕННАЯ анимация лучника на экране звонка (200x100 вместо 120x60)
+function playCallArcherAnimation() {
+    if (!toggleAnimations) return;
+    
+    const callPanel = document.getElementById('call-panel');
+    if (!callPanel) return;
+    
+    stopCallArcherAnimation();
+    
+    const wrapper = document.createElement('div');
+    wrapper.style.cssText = 'width:200px;height:100px;margin:0 auto;position:relative;z-index:1;';
+    callArrowContainer = wrapper;
+    
+    const statusEl = document.getElementById('call-status');
+    if (statusEl) {
+        statusEl.parentNode.insertBefore(wrapper, statusEl);
+    } else {
+        callPanel.appendChild(wrapper);
+    }
+    
+    if (typeof lottie !== 'undefined') {
+        try {
+            callArcherAnimation = lottie.loadAnimation({
+                container: wrapper,
+                renderer: 'canvas',
+                loop: true,
+                autoplay: true,
+                path: 'assets/Archer.json'
+            });
+        } catch (e) {
+            wrapper.textContent = '🏹';
+            wrapper.style.cssText += 'font-size:60px;display:flex;align-items:center;justify-content:center;';
+        }
+    } else {
+        wrapper.textContent = '🏹';
+        wrapper.style.cssText += 'font-size:60px;display:flex;align-items:center;justify-content:center;';
+    }
+}
+
+function stopCallArcherAnimation() {
+    if (callArrowContainer?.parentNode) callArrowContainer.remove();
+    callArrowContainer = null;
+    if (callArcherAnimation) {
+        callArcherAnimation.destroy();
+        callArcherAnimation = null;
+    }
+}
+
+function playQuiverAnimation() {
+    if (!toggleAnimations) return;
+    const quiver = document.createElement('div');
+    quiver.className = 'quiver-anim';
+    const img = document.createElement('img');
+    img.src = 'assets/docking.gif?t=' + Date.now();
+    img.style.cssText = 'width:min(200px,40vw);height:min(200px,40vw);object-fit:contain;filter:drop-shadow(0 0 20px rgba(255,215,0,0.8));';
+    img.loading = 'lazy';
+    img.onerror = () => { quiver.innerHTML = '<div style="font-size:min(120px,25vw);animation:quiverPulse 0.5s ease-in-out 7;">🏹</div>'; };
+    quiver.appendChild(img);
+    document.body.appendChild(quiver);
+    setTimeout(() => { quiver.style.opacity = '0'; quiver.style.transition = 'opacity 0.5s ease'; setTimeout(() => quiver.remove(), 500); }, 3500);
+}
 
 function showInput(title, placeholder = '') {
     return new Promise((resolve) => {
@@ -142,11 +251,137 @@ function addContact(c) { if (!contacts.find(x => x.peerId === c.peerId)) { conta
 function saveContacts() { try { localStorage.setItem('rh_contacts', JSON.stringify(contacts)); } catch (e) {} }
 function loadContacts() { try { const r = localStorage.getItem('rh_contacts'); if (r) contacts = JSON.parse(r); } catch (e) {} }
 
-// Шайки
-function createBand(bandId, name, password = null) { if (bands.find(b => b.id === bandId)) { rMsg('❌ Шайка с таким ID уже существует', 3000); return null; } const band = { id: bandId, name: name || 'Шайка лучников', sheriff: P2PPong._peerId, rangers: [], outlaws: [P2PPong._peerId], strangers: [], password: password, created: Date.now(), maxMembers: 12, blobs: [] }; bands.push(band); activeBandId = bandId; activeChannelId = null; showBandChat(bandId); playQuiverAnimation(); rMsg('🏹 Шайка собрана в Шервуде! Вы — шериф.', 4000); if (activeChannelId) { P2PPong.sendMessage(activeChannelId, JSON.stringify({ band: 'invite', bandId: bandId, name: name || 'Шайка лучников', password: password, sheriff: P2PPong._peerId })); } return bandId; }
-function joinBand(bandId, password = null) { let band = bands.find(b => b.id === bandId); if (!band) { rMsg('⏳ Ожидание приглашения...', 3000); if (activeChannelId) { P2PPong.sendMessage(activeChannelId, JSON.stringify({ band: 'join-request', bandId: bandId, peerId: P2PPong._peerId })); } return false; } if (band.password && band.password !== password) { rMsg('❌ Неверный пароль шайки', 3000); return false; } if (band.outlaws.length >= band.maxMembers) { rMsg('❌ Шайка полна (макс 12 лучников)', 3000); return false; } if (!band.outlaws.includes(P2PPong._peerId)) { band.outlaws.push(P2PPong._peerId); if (activeChannelId) { P2PPong.sendMessage(activeChannelId, JSON.stringify({ band: 'member-joined', bandId: bandId, peerId: P2PPong._peerId })); } } activeBandId = bandId; activeChannelId = null; showBandChat(bandId); playQuiverAnimation(); rMsg('🏹 Вы вступили в шайку!', 4000); return true; }
-function showBandChat(bandId) { const band = bands.find(b => b.id === bandId); if (!band) return; activeBandId = bandId; activeChannelId = null; const role = band.sheriff === P2PPong._peerId ? '⭐Шериф' : '🏹Разбойник'; document.getElementById('robin-bar-sender').textContent = role + ' ' + (band.name || 'Шайка'); const box = document.getElementById('chat-box'); box.innerHTML = '<div class="typing-indicator" id="typing-indicator"></div>'; if (band.blobs) { band.blobs.forEach(b => { const im = b.from === P2PPong._peerId; appendMessage(im ? 'Вы' : (b.nick || 'Лучник'), b.text || '', im ? selectedAvatar : (b.avatar || '001')); }); } }
-function showBandsList() { const list = document.getElementById('bands-list'); if (!list) return; list.innerHTML = ''; if (bands.length === 0) { list.innerHTML = '<div style="color:var(--text-dim);text-align:center;padding:20px;">Нет шаек. Создайте первую!</div>'; return; } bands.forEach(band => { const item = document.createElement('div'); item.className = 'contact-item'; const role = band.sheriff === P2PPong._peerId ? '⭐Шериф' : '🏹Разбойник'; item.innerHTML = `<div style="display:flex;align-items:center;gap:8px;width:100%;"><img src="assets/icons/10icon.png" style="width:28px;height:28px;"><div><div class="contact-name">${band.name || 'Шайка'}</div><div style="font-size:0.65em;color:var(--text-dim);">${role} · ${band.outlaws.length}/12 ${band.password ? '🔐' : ''}</div></div></div>`; item.addEventListener('click', () => { if (band.outlaws.includes(P2PPong._peerId)) { showBandChat(band.id); document.getElementById('bands-modal')?.classList.remove('active'); } else { if (band.password) { showInput('Пароль шайки', 'Введи пароль').then(pass => { if (pass) joinBand(band.id, pass); }); } else { joinBand(band.id); } } }); list.appendChild(item); }); }
+// Шайки Шервуда
+function createBand(bandId, name, password = null) {
+    if (bands.find(b => b.id === bandId)) { rMsg('❌ Шайка с таким ID уже существует', 3000); return null; }
+    const band = {
+        id: bandId,
+        name: name || 'Шайка лучников',
+        sheriff: P2PPong._peerId,
+        rangers: [],
+        outlaws: [P2PPong._peerId],
+        strangers: [],
+        password: password,
+        created: Date.now(),
+        maxMembers: 12,
+        blobs: []
+    };
+    bands.push(band);
+    activeBandId = bandId;
+    activeChannelId = null;
+    showBandChat(bandId);
+    playQuiverAnimation();
+    rMsg('🏹 Шайка собрана в Шервуде! Вы — шериф.', 4000);
+    if (activeChannelId) {
+        P2PPong.sendMessage(activeChannelId, JSON.stringify({
+            band: 'invite',
+            bandId: bandId,
+            name: name || 'Шайка лучников',
+            password: password,
+            sheriff: P2PPong._peerId
+        }));
+    }
+    return bandId;
+}
+
+function joinBand(bandId, password = null) {
+    let band = bands.find(b => b.id === bandId);
+    if (!band) {
+        band = {
+            id: bandId,
+            name: 'Шайка лучников',
+            sheriff: null,
+            rangers: [],
+            outlaws: [P2PPong._peerId],
+            strangers: [],
+            password: password,
+            created: Date.now(),
+            maxMembers: 12,
+            blobs: []
+        };
+        bands.push(band);
+        if (activeChannelId) {
+            P2PPong.sendMessage(activeChannelId, JSON.stringify({
+                band: 'join-request',
+                bandId: bandId,
+                peerId: P2PPong._peerId
+            }));
+        }
+    } else {
+        if (band.password && band.password !== password) {
+            rMsg('❌ Неверный пароль шайки', 3000);
+            return false;
+        }
+        if (band.outlaws.length >= band.maxMembers) {
+            rMsg('❌ Шайка полна (макс 12 лучников)', 3000);
+            return false;
+        }
+        if (!band.outlaws.includes(P2PPong._peerId)) {
+            band.outlaws.push(P2PPong._peerId);
+            if (activeChannelId) {
+                P2PPong.sendMessage(activeChannelId, JSON.stringify({
+                    band: 'member-joined',
+                    bandId: bandId,
+                    peerId: P2PPong._peerId
+                }));
+            }
+        }
+    }
+    activeBandId = bandId;
+    activeChannelId = null;
+    showBandChat(bandId);
+    playQuiverAnimation();
+    rMsg('🏹 Вы вступили в шайку!', 4000);
+    return true;
+}
+
+function showBandChat(bandId) {
+    const band = bands.find(b => b.id === bandId);
+    if (!band) return;
+    activeBandId = bandId;
+    activeChannelId = null;
+    const role = band.sheriff === P2PPong._peerId ? '⭐Шериф' : '🏹Разбойник';
+    document.getElementById('robin-bar-sender').textContent = role + ' ' + (band.name || 'Шайка');
+    const box = document.getElementById('chat-box');
+    box.innerHTML = '<div class="typing-indicator" id="typing-indicator"></div>';
+    if (band.blobs) {
+        band.blobs.forEach(b => {
+            const im = b.from === P2PPong._peerId;
+            appendMessage(im ? 'Вы' : (b.nick || 'Лучник'), b.text || '', im ? selectedAvatar : (b.avatar || '001'));
+        });
+    }
+}
+
+function showBandsList() {
+    const list = document.getElementById('bands-list');
+    if (!list) return;
+    list.innerHTML = '';
+    if (bands.length === 0) {
+        list.innerHTML = '<div style="color:var(--text-dim);text-align:center;padding:20px;">Нет шаек. Создайте первую!</div>';
+        return;
+    }
+    bands.forEach(band => {
+        const item = document.createElement('div');
+        item.className = 'contact-item';
+        const role = band.sheriff === P2PPong._peerId ? '⭐Шериф' : '🏹Разбойник';
+        item.innerHTML = `<div style="display:flex;align-items:center;gap:8px;width:100%;"><img src="assets/icons/10icon.png" style="width:28px;height:28px;"><div><div class="contact-name">${band.name || 'Шайка'}</div><div style="font-size:0.65em;color:var(--text-dim);">${role} · ${band.outlaws.length}/12 ${band.password ? '🔐' : ''}</div></div></div>`;
+        item.addEventListener('click', () => {
+            if (band.outlaws.includes(P2PPong._peerId)) {
+                showBandChat(band.id);
+                document.getElementById('bands-modal')?.classList.remove('active');
+            } else {
+                if (band.password) {
+                    showInput('Пароль шайки', 'Введи пароль').then(pass => {
+                        if (pass) joinBand(band.id, pass);
+                    });
+                } else {
+                    joinBand(band.id);
+                }
+            }
+        });
+        list.appendChild(item);
+    });
+}
 
 function updateCupIndicator() { const chId = activeChannelId || Object.keys(P2PPong._channels)[0]; const ch = chId ? P2PPong._channels[chId] : null; const ind = document.getElementById('cup-indicator'); if (!ch || !ind) { if (ind) ind.style.display = 'none'; return; } ind.style.display = 'inline-flex'; const bc = ch.blobs ? ch.blobs.length : 0; const be = document.getElementById('cup-blobs'); if (be) { be.textContent = bc + '/10'; be.className = bc >= 10 ? 'full' : bc >= 7 ? 'ok' : ''; } const totalSec = Math.max(0, Math.round((ch.expires - Date.now()) / 1000)); const min = Math.floor(totalSec / 60); const sec = totalSec % 60; const te = document.getElementById('cup-timer'); if (te) { te.textContent = min + ':' + sec.toString().padStart(2, '0'); te.className = min <= 2 ? 'low' : min <= 5 ? 'ok' : ''; } }
 function updateRatchetIndicator() { const chId = activeChannelId || Object.keys(P2PPong._channels)[0]; const ch = chId ? P2PPong._channels[chId] : null; const indicator = document.getElementById('ratchet-indicator'); if (!indicator) return; if (!ch || !ch.ratchetKey) { indicator.style.display = 'none'; return; } indicator.style.display = 'inline'; const ri = ch.ratchetIndex || 0; let color, icon; if (ri === 0) { color = 'var(--danger)'; icon = '⚠️'; } else if (ri < 10) { color = 'orange'; icon = '🔄'; } else if (ri < 50) { color = 'var(--accent)'; icon = '🔒'; } else { color = 'var(--seeding-color)'; icon = '🔐'; } indicator.style.color = color; indicator.style.background = 'rgba(0,0,0,0.3)'; indicator.textContent = icon + ' ' + ri; indicator.title = 'Ratchet: ' + ri + ' оборотов'; }
@@ -275,7 +510,39 @@ function initApp() {
     const eg = document.getElementById('emoji-grid'); if (eg) emojis.forEach(e => { const span = document.createElement('span'); span.textContent = e; span.addEventListener('click', () => { const mi = document.getElementById('msg-input'); if (mi) { mi.value += e; mi.focus(); } }); eg.appendChild(span); });
     const be = document.getElementById('btn-emoji'); if (be) be.addEventListener('click', () => { const ep = document.getElementById('emoji-panel'); if (ep) ep.style.display = ep.style.display === 'block' ? 'none' : 'block'; });
     document.addEventListener('click', e => { const ep = document.getElementById('emoji-panel'); if (ep && !ep.contains(e.target) && e.target !== be) ep.style.display = 'none'; });
-    document.getElementById('send-btn')?.addEventListener('click', async () => { const mi = document.getElementById('msg-input'); const t = mi?.value.trim(); if (t) { if (activeBandId) { const band = bands.find(b => b.id === activeBandId); if (band) { band.blobs.push({ text: t, from: P2PPong._peerId, nick: document.getElementById('nick-label')?.textContent || 'Лучник', avatar: selectedAvatar, time: Date.now() }); appendMessage('Вы', t, selectedAvatar); if (mi) mi.value = ''; playArcherAnimation(); playBowAnimation(); if (toggleSoundState) playSound('shot.mp3'); if (activeChannelId) { P2PPong.sendMessage(activeChannelId, JSON.stringify({ band: 'band-message', bandId: activeBandId, text: t, from: P2PPong._peerId, nick: document.getElementById('nick-label')?.textContent || 'Лучник', avatar: selectedAvatar })); } return; } } if (!activeChannelId) { const chIds = Object.keys(P2PPong._channels); if (!chIds.length) return; activeChannelId = chIds[0]; } const sent = await P2PPong.sendMessage(activeChannelId, t); if (sent) { appendMessage('Вы', t, selectedAvatar); updateCupIndicator(); updateRatchetIndicator(); if (mi) mi.value = ''; playArcherAnimation(); playBowAnimation(); if (toggleSoundState) playSound('shot.mp3'); } } });
+    
+    // ✅ Обработчик отправки БЕЗ playBowAnimation, только playArcherAnimation
+    document.getElementById('send-btn')?.addEventListener('click', async () => {
+        const mi = document.getElementById('msg-input');
+        const t = mi?.value.trim();
+        if (t) {
+            if (activeBandId) {
+                const band = bands.find(b => b.id === activeBandId);
+                if (band) {
+                    band.blobs.push({ text: t, from: P2PPong._peerId, nick: document.getElementById('nick-label')?.textContent || 'Лучник', avatar: selectedAvatar, time: Date.now() });
+                    appendMessage('Вы', t, selectedAvatar);
+                    if (mi) mi.value = '';
+                    playArcherAnimation(); // ✅ Только лучник
+                    if (toggleSoundState) playSound('shot.mp3');
+                    if (activeChannelId) {
+                        P2PPong.sendMessage(activeChannelId, JSON.stringify({ band: 'band-message', bandId: activeBandId, text: t, from: P2PPong._peerId, nick: document.getElementById('nick-label')?.textContent || 'Лучник', avatar: selectedAvatar }));
+                    }
+                    return;
+                }
+            }
+            if (!activeChannelId) { const chIds = Object.keys(P2PPong._channels); if (!chIds.length) return; activeChannelId = chIds[0]; }
+            const sent = await P2PPong.sendMessage(activeChannelId, t);
+            if (sent) {
+                appendMessage('Вы', t, selectedAvatar);
+                updateCupIndicator();
+                updateRatchetIndicator();
+                if (mi) mi.value = '';
+                playArcherAnimation(); // ✅ Только лучник
+                if (toggleSoundState) playSound('shot.mp3');
+            }
+        }
+    });
+    
     document.getElementById('msg-input')?.addEventListener('keypress', e => { if (e.key == 'Enter') document.getElementById('send-btn')?.click(); });
     setConnectionStatus('online');
 }
