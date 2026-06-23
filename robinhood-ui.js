@@ -70,7 +70,6 @@ function closeSheets() { document.getElementById('avatar-selector')?.classList.r
 
 function playSmokeAnimation() { if (!toggleAnimations) return; const smoke = document.createElement('div'); smoke.className = 'smoke-anim'; document.body.appendChild(smoke); if (typeof lottie !== 'undefined') { try { lottie.loadAnimation({ container: smoke, renderer: 'canvas', loop: false, autoplay: true, path: 'assets/smoke.json' }); } catch (e) {} } setTimeout(() => { if (smoke.parentNode) smoke.remove(); }, 5000); }
 function playArcherAnimation() { if (!toggleAnimations) return; const rt = document.getElementById('robin-text'); if (!rt) return; if (currentArrowContainer?.parentNode) currentArrowContainer.remove(); if (archerAnimation) { archerAnimation.destroy(); archerAnimation = null; } const wrapper = document.createElement('span'); wrapper.className = 'robin-arrow-container'; wrapper.style.cssText = 'width:80px;height:40px;display:inline-block;vertical-align:middle;'; currentArrowContainer = wrapper; rt.textContent = ''; rt.appendChild(wrapper); if (typeof lottie !== 'undefined') { try { archerAnimation = lottie.loadAnimation({ container: wrapper, renderer: 'canvas', loop: false, autoplay: true, path: 'assets/Archer.json' }); archerAnimation.addEventListener('complete', () => { if (wrapper.parentNode) wrapper.remove(); currentArrowContainer = null; archerAnimation = null; rt.textContent = robinDefaultText; }); } catch (e) { wrapper.textContent = '🏹'; setTimeout(() => { if (wrapper.parentNode) wrapper.remove(); currentArrowContainer = null; rt.textContent = robinDefaultText; }, 1500); } } else { wrapper.textContent = '🏹'; setTimeout(() => { if (wrapper.parentNode) wrapper.remove(); currentArrowContainer = null; rt.textContent = robinDefaultText; }, 1500); } }
-function playBowAnimation() { if (!toggleAnimations) return; const bc = document.getElementById('bow-above-send'); if (!bc) return; if (bowAnim) { bowAnim.destroy(); bowAnim = null; } bc.style.display = 'block'; if (typeof lottie !== 'undefined') { try { bowAnim = lottie.loadAnimation({ container: bc, renderer: 'canvas', loop: false, autoplay: true, path: 'assets/bow.json' }); bowAnim.addEventListener('complete', () => { bc.style.display = 'none'; bowAnim = null; }); } catch (e) { bc.textContent = '🏹'; setTimeout(() => { bc.style.display = 'none'; bc.textContent = ''; }, 800); } } else { bc.textContent = '🏹'; setTimeout(() => { bc.style.display = 'none'; bc.textContent = ''; }, 800); } const sb = document.getElementById('send-btn'); if (sb) { sb.classList.add('shooting'); setTimeout(() => sb.classList.remove('shooting'), 400); } }
 function playQuiverAnimation() { if (!toggleAnimations) return; const quiver = document.createElement('div'); quiver.className = 'quiver-anim'; const img = document.createElement('img'); img.src = 'assets/docking.gif?t=' + Date.now(); img.style.cssText = 'width:min(200px,40vw);height:min(200px,40vw);object-fit:contain;filter:drop-shadow(0 0 20px rgba(255,215,0,0.8));'; img.loading = 'lazy'; img.onerror = () => { quiver.innerHTML = '<div style="font-size:min(120px,25vw);animation:quiverPulse 0.5s ease-in-out 7;">🏹</div>'; }; quiver.appendChild(img); document.body.appendChild(quiver); setTimeout(() => { quiver.style.opacity = '0'; quiver.style.transition = 'opacity 0.5s ease'; setTimeout(() => quiver.remove(), 500); }, 3500); }
 
 function showInput(title, placeholder = '') {
@@ -154,7 +153,6 @@ function createBand(bandId, name, password = null) {
     showBandChat(bandId);
     playQuiverAnimation();
     rMsg('🏹 Шайка собрана в Шервуде! Вы — шериф.', 4000);
-    // ✅ Отправляем приглашение через активный канал
     if (activeChannelId) {
         P2PPong.sendMessage(activeChannelId, JSON.stringify({
             band: 'invite',
@@ -183,7 +181,6 @@ function joinBand(bandId, password = null) {
             blobs: []
         };
         bands.push(band);
-        // ✅ Отправляем запрос на вступление
         if (activeChannelId) {
             P2PPong.sendMessage(activeChannelId, JSON.stringify({
                 band: 'join-request',
@@ -254,7 +251,6 @@ function showBandsList() {
                 showBandChat(band.id);
                 document.getElementById('bands-modal')?.classList.remove('active');
             } else {
-                // ✅ Проверяем пароль при входе в чужую шайку
                 if (band.password) {
                     showInput('Пароль шайки', 'Введи пароль').then(pass => {
                         if (pass) joinBand(band.id, pass);
@@ -288,23 +284,10 @@ async function verifyPin() { if (isSettingLock) { if (!lockPinHash) { lockPinHas
 function unlockApp() { lockScreen.style.display = 'none'; appContainer.style.display = 'flex'; P2PPong.init(); }
 
 async function getMediaStream(video = false) { try { return await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, sampleRate: 16000 }, video: false }); } catch (e) { return null; } }
-function createPC() { if (pc) { pc.onconnectionstatechange = null; pc.ontrack = null; pc.onicecandidate = null; pc.close(); pc = null; } iceBuffer = []; if (iceFlushTimer) clearTimeout(iceFlushTimer); try { pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }, { urls: 'stun:stun.cloudflare.com:3478' }, { urls: 'turn:robinhoodp2p.metered.live:80?transport=tcp', username: '466624d8364bb4660ed45c7d', credential: 'mpODzmBDhwG/b+VL' }, { urls: 'turn:robinhoodp2p.metered.live:443?transport=tcp', username: '466624d8364bb4660ed45c7d', credential: 'mpODzmBDhwG/b+VL' }] }); } catch (e) { return null; } if (localStream) { localStream.getTracks().forEach(t => pc.addTrack(t, localStream)); } pc.ontrack = e => { if (e.streams[0]) { const oldAudio = document.getElementById('remote-audio'); if (oldAudio) { oldAudio.srcObject = null; oldAudio.remove(); } const audioContext = getAudioContext(); const source = audioContext.createMediaStreamSource(e.streams[0]); const gainNode = audioContext.createGain(); gainNode.gain.value = speakerVolume; window._speakerGain = gainNode; source.connect(gainNode); gainNode.connect(audioContext.destination); const a = new Audio(); a.id = 'remote-audio'; a.srcObject = e.streams[0]; a.autoplay = true; a.volume = speakerVolume; a.style.display = 'none'; document.body.appendChild(a);
-            // ✅ Звук: пробуем play, при блокировке ждём клик
-            a.play().then(() => {
-                console.log('✅ Звук пошёл');
-            }).catch(() => {
-                console.log('🔊 Аудио заблокировано, ждём клик');
-                rMsg('🔊 Нажми на экран для звука', 0);
-                const unlock = () => {
-                    a.play().then(() => {
-                        console.log('✅ Звук разблокирован');
-                        rMsg('✅ Звонок активен', 2000);
-                    }).catch(() => {});
-                    document.removeEventListener('click', unlock);
-                };
-                document.addEventListener('click', unlock);
-            });
-        } }; pc.onicecandidate = e => { if (e.candidate) { iceBuffer.push(e.candidate); } else { iceFlushTimer = setTimeout(() => { iceBuffer.forEach(c => sendWebRTCMsg('webrtc-ice', JSON.stringify(c))); iceBuffer = []; }, 100); } }; pc.onconnectionstatechange = () => { if (pc.connectionState == 'connected') { callActive = true; stopRingback(); stopRingtone(); document.getElementById('call-status').textContent = '✅ Разговор'; showIncomingControls(false); showActiveControls(true); showCallWave(true); playSound('open.mp3'); updateCallButtonState(); playArcherAnimation(); if (iceRestartTimer) clearTimeout(iceRestartTimer); iceRestartInProgress = false; } if (pc.connectionState == 'disconnected' && callActive && !iceRestartInProgress) { if (iceRestartTimer) clearTimeout(iceRestartTimer); iceRestartInProgress = true; iceRestartTimer = setTimeout(async () => { if (pc && pc.connectionState === 'disconnected') { try { await restartICE(); } catch (e) { hang(false); } finally { iceRestartInProgress = false; } } }, 15000); } if (pc.connectionState == 'failed') { if (iceRestartTimer) clearTimeout(iceRestartTimer); iceRestartInProgress = false; hang(false); } }; return pc; }
+function createPC() { if (pc) { pc.onconnectionstatechange = null; pc.ontrack = null; pc.onicecandidate = null; pc.close(); pc = null; } iceBuffer = []; if (iceFlushTimer) clearTimeout(iceFlushTimer); try { pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }, { urls: 'stun:stun.cloudflare.com:3478' }, { urls: 'turn:robinhoodp2p.metered.live:80?transport=tcp', username: '466624d8364bb4660ed45c7d', credential: 'mpODzmBDhwG/b+VL' }, { urls: 'turn:robinhoodp2p.metered.live:443?transport=tcp', username: '466624d8364bb4660ed45c7d', credential: 'mpODzmBDhwG/b+VL' }] }); } catch (e) { return null; } if (localStream) { localStream.getTracks().forEach(t => pc.addTrack(t, localStream)); } 
+    // ✅ ЗВУК: только AudioContext, без HTML Audio элемента
+    pc.ontrack = e => { if (e.streams[0]) { const oldAudio = document.getElementById('remote-audio'); if (oldAudio) { oldAudio.srcObject = null; oldAudio.remove(); } const audioContext = getAudioContext(); if (audioContext.state === 'suspended') { audioContext.resume().catch(() => {}); } const source = audioContext.createMediaStreamSource(e.streams[0]); const gainNode = audioContext.createGain(); gainNode.gain.value = speakerVolume; window._speakerGain = gainNode; source.connect(gainNode); gainNode.connect(audioContext.destination); console.log('✅ Звук подключён через AudioContext'); } };
+    pc.onicecandidate = e => { if (e.candidate) { iceBuffer.push(e.candidate); } else { iceFlushTimer = setTimeout(() => { iceBuffer.forEach(c => sendWebRTCMsg('webrtc-ice', JSON.stringify(c))); iceBuffer = []; }, 100); } }; pc.onconnectionstatechange = () => { if (pc.connectionState == 'connected') { callActive = true; stopRingback(); stopRingtone(); document.getElementById('call-status').textContent = '✅ Разговор'; showIncomingControls(false); showActiveControls(true); showCallWave(true); playSound('open.mp3'); updateCallButtonState(); playArcherAnimation(); if (iceRestartTimer) clearTimeout(iceRestartTimer); iceRestartInProgress = false; } if (pc.connectionState == 'disconnected' && callActive && !iceRestartInProgress) { if (iceRestartTimer) clearTimeout(iceRestartTimer); iceRestartInProgress = true; iceRestartTimer = setTimeout(async () => { if (pc && pc.connectionState === 'disconnected') { try { await restartICE(); } catch (e) { hang(false); } finally { iceRestartInProgress = false; } } }, 15000); } if (pc.connectionState == 'failed') { if (iceRestartTimer) clearTimeout(iceRestartTimer); iceRestartInProgress = false; hang(false); } }; return pc; }
 async function restartICE() { if (!pc || pc.connectionState === 'closed') return; const offer = await pc.createOffer({ iceRestart: true }); await pc.setLocalDescription(offer); sendWebRTCMsg('webrtc-offer', JSON.stringify(pc.localDescription)); }
 async function sendWebRTCMsg(type, sdp) { if (!activeChannelId) return; await P2PPong.sendMessage(activeChannelId, JSON.stringify({ webrtc: type, sdp })); }
 async function startCall() { if (callActive || !activeChannelId) { rMsg('❌ Нет канала', 3000); return; } const s = await getMediaStream(false); if (!s) { rMsg('❌ Нет микрофона', 3000); return; } localStream = s; try { const audioContext = getAudioContext(); const source = audioContext.createMediaStreamSource(localStream); const gainNode = audioContext.createGain(); gainNode.gain.value = micVolume; window._micGain = gainNode; source.connect(gainNode); } catch(e) {} createPC(); const cp = document.getElementById('call-panel'); if (cp) cp.style.display = 'flex'; const ct = contacts.find(c => c.channelId === activeChannelId); const contactName = ct?.name || document.getElementById('nick-label')?.textContent || 'Лучник'; const contactAvatar = ct?.avatar || selectedAvatar; document.getElementById('call-avatar').src = 'assets/avatar/' + contactAvatar + 'ava.png'; document.getElementById('call-contact-name').textContent = contactName; document.getElementById('call-status').textContent = '📞 Вызов...'; showIncomingControls(false); showActiveControls(true); showCallWave(false); playRingback(); playArcherAnimation(); try { const o = await pc.createOffer(); await pc.setLocalDescription(o); sendWebRTCMsg('webrtc-offer', JSON.stringify(o)); setTimeout(() => { if (!callActive && pc && pc.signalingState === 'have-local-offer') { sendWebRTCMsg('webrtc-offer', JSON.stringify(o)); } }, 3000); } catch (e) { hang(false); } updateCallButtonState(); }
@@ -375,14 +358,9 @@ function addVerifyDigit(d) { if (window._verifyInput.length >= 7) return; window
 
 function handleIncomingMessage(data) {
     if (!data || !data.text) return;
-    
-    // ✅ Обработка band-сообщений (шайки)
     try {
         const parsed = JSON.parse(data.text);
-        if (parsed.band) {
-            handleBandMessage(parsed, data);
-            return;
-        }
+        if (parsed.band) { handleBandMessage(parsed, data); return; }
     } catch(e) {}
     
     if (data.voiceData) { const ct = contacts.find(c => c.channelId === data.channelId); const nick = safeHtml(data.nick || ct?.name || 'Друг'); const avatar = data.avatar || ct?.avatar || '001'; if (data.channelId === activeChannelId) { appendMessage(nick, '🎤 Голосовое', avatar, data.voiceData, 'audio/webm'); } else { rMsg('🎤 Голосовое от ' + nick, 3000); playVoiceBlob(data.voiceData); } updateCupIndicator(); return; }
@@ -415,15 +393,12 @@ function handleBandMessage(parsed, data) {
                 playQuiverAnimation();
             }
             break;
-            
         case 'join-request':
             var band = bands.find(b => b.id === parsed.bandId);
-            // ✅ Добавляем участника в локальный список
             if (band && !band.outlaws.includes(parsed.peerId)) {
                 band.outlaws.push(parsed.peerId);
                 rMsg('🏹 Лучник присоединился к шайке!', 3000);
             }
-            // Если мы создатель — отправляем подтверждение
             if (band && band.sheriff === P2PPong._peerId && activeChannelId) {
                 P2PPong.sendMessage(activeChannelId, JSON.stringify({
                     band: 'member-joined',
@@ -432,33 +407,19 @@ function handleBandMessage(parsed, data) {
                 }));
             }
             break;
-            
         case 'member-joined':
             var band = bands.find(b => b.id === parsed.bandId);
             if (band) {
-                if (!band.outlaws.includes(parsed.peerId)) {
-                    band.outlaws.push(parsed.peerId);
-                }
-                if (!band.sheriff && data.peerId) {
-                    band.sheriff = data.peerId;
-                }
+                if (!band.outlaws.includes(parsed.peerId)) { band.outlaws.push(parsed.peerId); }
+                if (!band.sheriff && data.peerId) { band.sheriff = data.peerId; }
                 rMsg('✅ Вы в шайке!', 3000);
             }
             break;
-            
         case 'band-message':
             var band = bands.find(b => b.id === parsed.bandId);
             if (band) {
-                band.blobs.push({
-                    text: parsed.text,
-                    from: parsed.from || data.peerId,
-                    nick: parsed.nick || 'Лучник',
-                    avatar: parsed.avatar || '001',
-                    time: Date.now()
-                });
-                if (activeBandId === band.id) {
-                    appendMessage(parsed.nick || 'Лучник', parsed.text, parsed.avatar || '001');
-                }
+                band.blobs.push({ text: parsed.text, from: parsed.from || data.peerId, nick: parsed.nick || 'Лучник', avatar: parsed.avatar || '001', time: Date.now() });
+                if (activeBandId === band.id) { appendMessage(parsed.nick || 'Лучник', parsed.text, parsed.avatar || '001'); }
             }
             break;
     }
@@ -476,11 +437,8 @@ window.addEventListener('visibilitychange', () => { if (document.hidden) { stopS
 function initLeaves() { const c = document.getElementById('leaves-container'); if (!c || c.children.length > 0) return; const emojis = ['🍁','🍂','🌿','🍃','🪶']; const fragment = document.createDocumentFragment(); for (let i = 0; i < 7; i++) { const el = document.createElement('span'); el.className = i % 3 == 0 ? 'feather' : 'leaf'; el.textContent = emojis[i % emojis.length]; el.style.left = Math.random() * 100 + '%'; el.style.animationDelay = Math.random() * 15 + 's'; el.style.animationDuration = (16 + Math.random() * 18) + 's'; fragment.appendChild(el); } c.appendChild(fragment); resetInactivityTimer(); }
 
 function initApp() {
-    // ✅ Разблокировка аудио при первом касании
     document.addEventListener('click', function unlockAudio() {
-        if (sharedAudioContext && sharedAudioContext.state === 'suspended') {
-            sharedAudioContext.resume().catch(() => {});
-        }
+        if (sharedAudioContext && sharedAudioContext.state === 'suspended') { sharedAudioContext.resume().catch(() => {}); }
     }, { once: true });
 
     initLeaves(); applyTheme(localStorage.getItem('robinhood_theme') || 'slate');
@@ -516,26 +474,10 @@ function initApp() {
         if (inputCode.length !== 7) { if (errEl) { errEl.textContent = 'Введи ровно 7 цифр'; errEl.style.display = 'block'; } return; } 
         if (inputCode === expectedCode) { 
             if (errEl) errEl.style.display = 'none'; 
-            if (pendingBandData) { 
-                const { bandId } = pendingBandData; 
-                pendingBandData = null; 
-                verificationModalShown = false; 
-                verificationDone = true; 
-                document.getElementById('verify-modal')?.classList.remove('active'); 
-                joinBand(bandId); 
-                rMsg('✅ Шайка подтверждена!', 3000); 
-                return; 
-            } 
-            verificationModalShown = false; 
-            verificationDone = true; 
-            document.getElementById('verify-modal')?.classList.remove('active'); 
-            await P2PPong.confirmVerification(); 
-            rMsg('✅ Подтверждено!', 3000); 
-        } else { 
-            if (errEl) { errEl.textContent = '❌ Неверный код. Попробуй снова.'; errEl.style.display = 'block'; } 
-            window._verifyInput = ''; 
-            document.getElementById('verify-code-display').textContent = '_______'; 
-        } 
+            if (pendingBandData) { const { bandId } = pendingBandData; pendingBandData = null; verificationModalShown = false; verificationDone = true; document.getElementById('verify-modal')?.classList.remove('active'); joinBand(bandId); rMsg('✅ Шайка подтверждена!', 3000); return; } 
+            verificationModalShown = false; verificationDone = true; document.getElementById('verify-modal')?.classList.remove('active'); 
+            await P2PPong.confirmVerification(); rMsg('✅ Подтверждено!', 3000); 
+        } else { if (errEl) { errEl.textContent = '❌ Неверный код. Попробуй снова.'; errEl.style.display = 'block'; } window._verifyInput = ''; document.getElementById('verify-code-display').textContent = '_______'; } 
     });
     document.getElementById('close-verify-modal')?.addEventListener('click', () => { document.getElementById('verify-modal')?.classList.remove('active'); verificationModalShown = false; });
     document.getElementById('verify-modal')?.addEventListener('click', function(e) { if (e.target === this) { this.classList.remove('active'); verificationModalShown = false; } });
@@ -558,7 +500,7 @@ function initApp() {
     document.getElementById('call-speaker')?.addEventListener('click', () => { speakerOn = !speakerOn; const s = document.getElementById('call-speaker'); if (s) { s.classList.toggle('active', speakerOn); s.textContent = speakerOn ? '🔊' : '🔇'; } });
     document.getElementById('call-mic')?.addEventListener('click', () => { if (!localStream) return; micOn = !micOn; localStream.getAudioTracks().forEach(t => t.enabled = micOn); const m = document.getElementById('call-mic'); if (m) { m.classList.toggle('muted', !micOn); m.textContent = micOn ? '🎤' : '🚫'; } });
     document.getElementById('mic-volume')?.addEventListener('input', function() { micVolume = this.value / 100; document.getElementById('mic-volume-value').textContent = this.value + '%'; if (window._micGain) window._micGain.gain.value = micVolume; });
-    document.getElementById('speaker-volume')?.addEventListener('input', function() { speakerVolume = this.value / 100; document.getElementById('speaker-volume-value').textContent = this.value + '%'; const ra = document.getElementById('remote-audio'); if (ra) ra.volume = speakerVolume; if (window._speakerGain) window._speakerGain.gain.value = speakerVolume; });
+    document.getElementById('speaker-volume')?.addEventListener('input', function() { speakerVolume = this.value / 100; document.getElementById('speaker-volume-value').textContent = this.value + '%'; if (window._speakerGain) window._speakerGain.gain.value = speakerVolume; });
     if (ts) ts.addEventListener('change', function() { toggleSoundState = this.checked; try { localStorage.setItem('robinhood_sound', toggleSoundState); } catch (e) {} });
     if (ta) ta.addEventListener('change', function() { toggleAnimations = this.checked; try { localStorage.setItem('robinhood_animations', toggleAnimations); } catch (e) {} });
     if (sd) sd.addEventListener('change', function() { selfDestructMode = this.checked; try { localStorage.setItem('robinhood_selfdestruct', selfDestructMode); } catch (e) {} if (selfDestructMode) { startSelfDestruct(); if (activeChannelId) P2PPong.sendMessage(activeChannelId, JSON.stringify({ d: '__SMOKE__' })); rMsg('🍁 Листопад включён! По 5 сообщений каждые 20 секунд.', 3000); } else { stopSelfDestruct(); rMsg('🍂 Листопад остановлен.', 3000); } });
@@ -568,22 +510,7 @@ function initApp() {
     const eg = document.getElementById('emoji-grid'); if (eg) emojis.forEach(e => { const span = document.createElement('span'); span.textContent = e; span.addEventListener('click', () => { const mi = document.getElementById('msg-input'); if (mi) { mi.value += e; mi.focus(); } }); eg.appendChild(span); });
     const be = document.getElementById('btn-emoji'); if (be) be.addEventListener('click', () => { const ep = document.getElementById('emoji-panel'); if (ep) ep.style.display = ep.style.display === 'block' ? 'none' : 'block'; });
     document.addEventListener('click', e => { const ep = document.getElementById('emoji-panel'); if (ep && !ep.contains(e.target) && e.target !== be) ep.style.display = 'none'; });
-    document.getElementById('send-btn')?.addEventListener('click', async () => { const mi = document.getElementById('msg-input'); const t = mi?.value.trim(); if (t) { if (activeBandId) { const band = bands.find(b => b.id === activeBandId); if (band) { band.blobs.push({ text: t, from: P2PPong._peerId, nick: document.getElementById('nick-label')?.textContent || 'Лучник', avatar: selectedAvatar, time: Date.now() }); appendMessage('Вы', t, selectedAvatar); if (mi) mi.value = ''; playArcherAnimation(); playBowAnimation(); if (toggleSoundState) playSound('shot.mp3');
-                    // ✅ Отправляем сообщение в шайку через канал
-                    if (activeChannelId) {
-                        P2PPong.sendMessage(activeChannelId, JSON.stringify({
-                            band: 'band-message',
-                            bandId: activeBandId,
-                            text: t,
-                            from: P2PPong._peerId,
-                            nick: document.getElementById('nick-label')?.textContent || 'Лучник',
-                            avatar: selectedAvatar
-                        }));
-                    }
-                    return; } }
-            if (!activeChannelId) { const chIds = Object.keys(P2PPong._channels); if (!chIds.length) return; activeChannelId = chIds[0]; }
-            const sent = await P2PPong.sendMessage(activeChannelId, t);
-            if (sent) { appendMessage('Вы', t, selectedAvatar); updateCupIndicator(); updateRatchetIndicator(); if (mi) mi.value = ''; playArcherAnimation(); playBowAnimation(); if (toggleSoundState) playSound('shot.mp3'); } } });
+    document.getElementById('send-btn')?.addEventListener('click', async () => { const mi = document.getElementById('msg-input'); const t = mi?.value.trim(); if (t) { if (activeBandId) { const band = bands.find(b => b.id === activeBandId); if (band) { band.blobs.push({ text: t, from: P2PPong._peerId, nick: document.getElementById('nick-label')?.textContent || 'Лучник', avatar: selectedAvatar, time: Date.now() }); appendMessage('Вы', t, selectedAvatar); if (mi) mi.value = ''; if (toggleSoundState) playSound('shot.mp3'); if (activeChannelId) { P2PPong.sendMessage(activeChannelId, JSON.stringify({ band: 'band-message', bandId: activeBandId, text: t, from: P2PPong._peerId, nick: document.getElementById('nick-label')?.textContent || 'Лучник', avatar: selectedAvatar })); } return; } } if (!activeChannelId) { const chIds = Object.keys(P2PPong._channels); if (!chIds.length) return; activeChannelId = chIds[0]; } const sent = await P2PPong.sendMessage(activeChannelId, t); if (sent) { appendMessage('Вы', t, selectedAvatar); updateCupIndicator(); updateRatchetIndicator(); if (mi) mi.value = ''; if (toggleSoundState) playSound('shot.mp3'); } } });
     document.getElementById('msg-input')?.addEventListener('keypress', e => { if (e.key == 'Enter') document.getElementById('send-btn')?.click(); });
     setConnectionStatus('online'); updateDateTime(); setInterval(updateDateTime, 60000);
 }
