@@ -149,7 +149,11 @@ function createBand(bandId, name, password = null) {
         blobs: []
     };
     bands.push(band);
-    
+    activeBandId = bandId;
+    activeChannelId = null;
+    showBandChat(bandId);
+    playQuiverAnimation();
+    rMsg('🏹 Шайка собрана в Шервуде! Вы — шериф.', 4000);
     // ✅ Отправляем приглашение через активный канал
     if (activeChannelId) {
         P2PPong.sendMessage(activeChannelId, JSON.stringify({
@@ -160,19 +164,12 @@ function createBand(bandId, name, password = null) {
             sheriff: P2PPong._peerId
         }));
     }
-    
-    activeBandId = bandId;
-    activeChannelId = null;
-    showBandChat(bandId);
-    playQuiverAnimation();
-    rMsg('🏹 Шайка собрана в Шервуде! Вы — шериф.', 4000);
     return bandId;
 }
 
 function joinBand(bandId, password = null) {
     let band = bands.find(b => b.id === bandId);
     if (!band) {
-        // Не нашли локально — создаём заглушку, ждём invite-сообщение
         band = {
             id: bandId,
             name: 'Шайка лучников',
@@ -186,7 +183,7 @@ function joinBand(bandId, password = null) {
             blobs: []
         };
         bands.push(band);
-        // Отправляем запрос на вступление
+        // ✅ Отправляем запрос на вступление
         if (activeChannelId) {
             P2PPong.sendMessage(activeChannelId, JSON.stringify({
                 band: 'join-request',
@@ -205,7 +202,6 @@ function joinBand(bandId, password = null) {
         }
         if (!band.outlaws.includes(P2PPong._peerId)) {
             band.outlaws.push(P2PPong._peerId);
-            // Уведомляем шерифа о новом участнике
             if (activeChannelId) {
                 P2PPong.sendMessage(activeChannelId, JSON.stringify({
                     band: 'member-joined',
@@ -257,12 +253,15 @@ function showBandsList() {
             if (band.outlaws.includes(P2PPong._peerId)) {
                 showBandChat(band.id);
                 document.getElementById('bands-modal')?.classList.remove('active');
-            } else if (band.password) {
-                showInput('Пароль шайки', 'Введи пароль').then(pass => {
-                    if (pass) joinBand(band.id, pass);
-                });
             } else {
-                joinBand(band.id);
+                // ✅ Проверяем пароль при входе в чужую шайку
+                if (band.password) {
+                    showInput('Пароль шайки', 'Введи пароль').then(pass => {
+                        if (pass) joinBand(band.id, pass);
+                    });
+                } else {
+                    joinBand(band.id);
+                }
             }
         });
         list.appendChild(item);
@@ -290,6 +289,7 @@ function unlockApp() { lockScreen.style.display = 'none'; appContainer.style.dis
 
 async function getMediaStream(video = false) { try { return await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, sampleRate: 16000 }, video: false }); } catch (e) { return null; } }
 function createPC() { if (pc) { pc.onconnectionstatechange = null; pc.ontrack = null; pc.onicecandidate = null; pc.close(); pc = null; } iceBuffer = []; if (iceFlushTimer) clearTimeout(iceFlushTimer); try { pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }, { urls: 'stun:stun.cloudflare.com:3478' }, { urls: 'turn:robinhoodp2p.metered.live:80?transport=tcp', username: '466624d8364bb4660ed45c7d', credential: 'mpODzmBDhwG/b+VL' }, { urls: 'turn:robinhoodp2p.metered.live:443?transport=tcp', username: '466624d8364bb4660ed45c7d', credential: 'mpODzmBDhwG/b+VL' }] }); } catch (e) { return null; } if (localStream) { localStream.getTracks().forEach(t => pc.addTrack(t, localStream)); } pc.ontrack = e => { if (e.streams[0]) { const oldAudio = document.getElementById('remote-audio'); if (oldAudio) { oldAudio.srcObject = null; oldAudio.remove(); } const audioContext = getAudioContext(); const source = audioContext.createMediaStreamSource(e.streams[0]); const gainNode = audioContext.createGain(); gainNode.gain.value = speakerVolume; window._speakerGain = gainNode; source.connect(gainNode); gainNode.connect(audioContext.destination); const a = new Audio(); a.id = 'remote-audio'; a.srcObject = e.streams[0]; a.autoplay = true; a.volume = speakerVolume; a.style.display = 'none'; document.body.appendChild(a);
+            // ✅ Звук: пробуем play, при блокировке ждём клик
             a.play().then(() => {
                 console.log('✅ Звук пошёл');
             }).catch(() => {
@@ -385,23 +385,22 @@ function handleIncomingMessage(data) {
         }
     } catch(e) {}
     
-    if (data.voiceData) { const ct = contacts.find(c => c.channelId === data.channelId); const nick = data.nick || ct?.name || 'Друг'; const avatar = data.avatar || ct?.avatar || '001'; if (data.channelId === activeChannelId) { appendMessage(nick, '🎤 Голосовое', avatar, data.voiceData, 'audio/webm'); } else { rMsg('🎤 Голосовое от ' + nick, 3000); playVoiceBlob(data.voiceData); } updateCupIndicator(); return; }
-    try { const parsed = JSON.parse(data.text); if (parsed.webrtc) { handleWebRTCSignal(parsed.webrtc, parsed.sdp, data.channelId); return; } if (parsed.voice) { const ct = contacts.find(c => c.channelId === data.channelId); const nick = ct?.name || 'Друг'; const avatar = ct?.avatar || '001'; if (data.channelId === activeChannelId) { appendMessage(nick, '🎤 Голосовое', avatar, parsed.data, 'audio/webm'); } else { rMsg('🎤 Голосовое от ' + nick, 3000); playVoiceBlob(parsed.data); } updateCupIndicator(); return; } if (parsed.d === '__SMOKE__') { selfDestructMode = true; const sd = document.getElementById('toggle-selfdestruct'); if (sd) sd.checked = true; startSelfDestruct(); rMsg('🍁 Собеседник включил листопад', 3000); return; } } catch (e) {}
-    const ct = contacts.find(c => c.channelId === data.channelId); const nick = data.nick || ct?.name || 'Лучник'; const avatar = data.avatar || ct?.avatar || '001'; if (data.channelId === activeChannelId) { appendMessage(nick, data.text, avatar); } else { rMsg('Новое от ' + nick, 3000); } updateCupIndicator(); updateRatchetIndicator(); playSound('arrow_hit.wav');
+    if (data.voiceData) { const ct = contacts.find(c => c.channelId === data.channelId); const nick = safeHtml(data.nick || ct?.name || 'Друг'); const avatar = data.avatar || ct?.avatar || '001'; if (data.channelId === activeChannelId) { appendMessage(nick, '🎤 Голосовое', avatar, data.voiceData, 'audio/webm'); } else { rMsg('🎤 Голосовое от ' + nick, 3000); playVoiceBlob(data.voiceData); } updateCupIndicator(); return; }
+    try { const parsed = JSON.parse(data.text); if (parsed.webrtc) { handleWebRTCSignal(parsed.webrtc, parsed.sdp, data.channelId); return; } if (parsed.voice) { const ct = contacts.find(c => c.channelId === data.channelId); const nick = safeHtml(ct?.name || 'Друг'); const avatar = ct?.avatar || '001'; if (data.channelId === activeChannelId) { appendMessage(nick, '🎤 Голосовое', avatar, parsed.data, 'audio/webm'); } else { rMsg('🎤 Голосовое от ' + nick, 3000); playVoiceBlob(parsed.data); } updateCupIndicator(); return; } if (parsed.d === '__SMOKE__') { selfDestructMode = true; const sd = document.getElementById('toggle-selfdestruct'); if (sd) sd.checked = true; startSelfDestruct(); rMsg('🍁 Собеседник включил листопад', 3000); return; } } catch (e) {}
+    const ct = contacts.find(c => c.channelId === data.channelId); const nick = safeHtml(data.nick || ct?.name || 'Лучник'); const avatar = data.avatar || ct?.avatar || '001'; if (data.channelId === activeChannelId) { appendMessage(nick, data.text, avatar); } else { rMsg('Новое от ' + nick, 3000); } updateCupIndicator(); updateRatchetIndicator(); playSound('arrow_hit.wav');
 }
 
 // ✅ Обработчик сообщений шаек
 function handleBandMessage(parsed, data) {
     switch (parsed.band) {
         case 'invite':
-            // Приглашение от шерифа
             if (!bands.find(b => b.id === parsed.bandId)) {
                 const band = {
                     id: parsed.bandId,
                     name: parsed.name || 'Шайка лучников',
                     sheriff: parsed.sheriff || data.peerId,
                     rangers: [],
-                    outlaws: [parsed.sheriff || data.peerId],
+                    outlaws: [parsed.sheriff || data.peerId, P2PPong._peerId],
                     strangers: [],
                     password: parsed.password,
                     created: Date.now(),
@@ -410,10 +409,6 @@ function handleBandMessage(parsed, data) {
                 };
                 bands.push(band);
                 rMsg('🏹 Приглашение в шайку «' + band.name + '»!', 4000);
-                // Автоприсоединение
-                if (!band.outlaws.includes(P2PPong._peerId)) {
-                    band.outlaws.push(P2PPong._peerId);
-                }
                 activeBandId = band.id;
                 activeChannelId = null;
                 showBandChat(band.id);
@@ -422,27 +417,28 @@ function handleBandMessage(parsed, data) {
             break;
             
         case 'join-request':
-            // Кто-то хочет вступить
             var band = bands.find(b => b.id === parsed.bandId);
+            // ✅ Добавляем участника в локальный список
             if (band && !band.outlaws.includes(parsed.peerId)) {
                 band.outlaws.push(parsed.peerId);
                 rMsg('🏹 Лучник присоединился к шайке!', 3000);
-                // Отправляем подтверждение
-                if (activeChannelId) {
-                    P2PPong.sendMessage(activeChannelId, JSON.stringify({
-                        band: 'member-joined',
-                        bandId: band.id,
-                        peerId: parsed.peerId
-                    }));
-                }
+            }
+            // Если мы создатель — отправляем подтверждение
+            if (band && band.sheriff === P2PPong._peerId && activeChannelId) {
+                P2PPong.sendMessage(activeChannelId, JSON.stringify({
+                    band: 'member-joined',
+                    bandId: band.id,
+                    peerId: parsed.peerId
+                }));
             }
             break;
             
         case 'member-joined':
-            // Подтверждение от шерифа
             var band = bands.find(b => b.id === parsed.bandId);
-            if (band && !band.outlaws.includes(parsed.peerId)) {
-                band.outlaws.push(parsed.peerId);
+            if (band) {
+                if (!band.outlaws.includes(parsed.peerId)) {
+                    band.outlaws.push(parsed.peerId);
+                }
                 if (!band.sheriff && data.peerId) {
                     band.sheriff = data.peerId;
                 }
@@ -451,7 +447,6 @@ function handleBandMessage(parsed, data) {
             break;
             
         case 'band-message':
-            // Сообщение в шайку
             var band = bands.find(b => b.id === parsed.bandId);
             if (band) {
                 band.blobs.push({
