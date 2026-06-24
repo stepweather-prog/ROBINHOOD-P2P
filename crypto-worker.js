@@ -45,7 +45,8 @@ self.onmessage = async function(e) {
             case 'generateKeyPair': result = await generateKeyPair(); break;
             case 'exportPublicKey': result = await exportPublicKey(payload); break;
             case 'importPublicKey': result = await importPublicKey(payload); break;
-            case 'deriveSecret': result = await deriveSecret(payload.kp, payload.remotePubKey); break;
+            // ✅ CVE-2: deriveSecret в воркере
+            case 'deriveSecret': result = await deriveSecret(payload.myPrivateKey, payload.theirPublicKey); break;
             case 'encryptAES': result = await encryptAES(payload.text, payload.secret); break;
             case 'decryptAES': result = await decryptAES(payload.enc, payload.secret); break;
             case 'computeHMAC': result = await computeHMAC(payload.data, payload.secret); break;
@@ -79,6 +80,18 @@ async function generateKeyPair() {
     };
 }
 
+// ✅ CVE-2: deriveSecret в crypto-worker, использует fromBase64
+async function deriveSecret(myPrivateKeyB64, theirPublicKeyB64) {
+    const myPrivKey = await crypto.subtle.importKey('pkcs8',
+        fromBase64(myPrivateKeyB64),
+        { name: 'ECDH', namedCurve: 'P-256' }, false, ['deriveBits']);
+    const theirPubKey = await crypto.subtle.importKey('raw',
+        fromBase64(theirPublicKeyB64),
+        { name: 'ECDH', namedCurve: 'P-256' }, false, []);
+    const bits = await crypto.subtle.deriveBits({ name: 'ECDH', public: theirPubKey }, myPrivKey, 256);
+    return Array.from(new Uint8Array(bits)).map(x => x.toString(16).padStart(2, '0')).join('');
+}
+
 async function exportPublicKey(kp) {
     const r = await crypto.subtle.exportKey('raw', kp);
     return toBase64(new Uint8Array(r));
@@ -87,11 +100,6 @@ async function exportPublicKey(kp) {
 async function importPublicKey(b64) {
     const r = fromBase64(b64);
     return await crypto.subtle.importKey('raw', r, { name: 'ECDH', namedCurve: 'P-256' }, false, []);
-}
-
-async function deriveSecret(kp, remotePubKey) {
-    const b = await crypto.subtle.deriveBits({ name: 'ECDH', public: remotePubKey }, kp, 256);
-    return Array.from(new Uint8Array(b)).map(x => x.toString(16).padStart(2, '0')).join('');
 }
 
 // ✅ Исправлено: секрет хешируется для получения ключа нужной длины
