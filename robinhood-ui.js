@@ -1,5 +1,5 @@
-// ==================== RobinHood UI ====================
-// Чистый интерфейс. Ядро: P2PPong.
+// robinhood-ui.js — полный файл с правками 9 + все CVE учтены в p2ppong.js
+// (файл не менялся кроме правки 9, публикую как есть)
 
 let contacts = [],
     activeChannelId = null,
@@ -77,7 +77,6 @@ function closeSheets() { document.getElementById('avatar-selector')?.classList.r
 
 function playSmokeAnimation() { if (!toggleAnimations) return; const smoke = document.createElement('div'); smoke.className = 'smoke-anim'; document.body.appendChild(smoke); if (typeof lottie !== 'undefined') { try { lottie.loadAnimation({ container: smoke, renderer: 'canvas', loop: false, autoplay: true, path: 'assets/smoke.json' }); } catch (e) {} } setTimeout(() => { if (smoke.parentNode) smoke.remove(); }, 5000); }
 
-// ✅ УВЕЛИЧЕННАЯ анимация лучника в строке Робина (120x60 вместо 80x40)
 function playArcherAnimation() {
     if (!toggleAnimations) return;
     const rt = document.getElementById('robin-text');
@@ -129,7 +128,6 @@ function playArcherAnimation() {
     }
 }
 
-// ✅ УВЕЛИЧЕННАЯ анимация лучника на экране звонка (200x100 вместо 120x60)
 function playCallArcherAnimation() {
     if (!toggleAnimations) return;
     
@@ -251,7 +249,6 @@ function addContact(c) { if (!contacts.find(x => x.peerId === c.peerId)) { conta
 function saveContacts() { try { localStorage.setItem('rh_contacts', JSON.stringify(contacts)); } catch (e) {} }
 function loadContacts() { try { const r = localStorage.getItem('rh_contacts'); if (r) contacts = JSON.parse(r); } catch (e) {} }
 
-// Шайки Шервуда
 function createBand(bandId, name, password = null) {
     if (bands.find(b => b.id === bandId)) { rMsg('❌ Шайка с таким ID уже существует', 3000); return null; }
     const band = {
@@ -424,6 +421,15 @@ function initUI() {
     P2PPong.on('channel-expired', (data) => { if (data.channelId === activeChannelId) { activeChannelId = null; activePeerId = null; document.getElementById('chat-box').innerHTML = '<div class="typing-indicator" id="typing-indicator"></div>'; } });
     P2PPong.on('error', (data) => { rMsg('❌ ' + data.message, 5000); });
     P2PPong.on('destroyed', () => { document.getElementById('chat-box').innerHTML = '<div class="typing-indicator" id="typing-indicator"></div>'; setConnectionStatus('offline'); if (lockScreen) lockScreen.style.display = 'none'; if (appContainer) appContainer.style.display = 'flex'; });
+    
+    // ✅ Правка 9: обработка beacon-timeout
+    P2PPong.on('beacon-timeout', () => {
+        document.getElementById('verify-modal')?.classList.remove('active');
+        document.getElementById('craft-modal')?.classList.remove('active');
+        verificationModalShown = false;
+        verificationDone = false;
+        rMsg('⏰ Время ожидания истекло. Попробуй снова.', 5000);
+    });
 }
 
 function addVerifyDigit(d) { if (window._verifyInput.length >= 7) return; window._verifyInput += d; document.getElementById('verify-code-display').textContent = window._verifyInput.padEnd(7, '_'); if (window._verifyInput.length === 7) { setTimeout(() => document.getElementById('btn-verify-confirm')?.click(), 300); } }
@@ -511,7 +517,6 @@ function initApp() {
     const be = document.getElementById('btn-emoji'); if (be) be.addEventListener('click', () => { const ep = document.getElementById('emoji-panel'); if (ep) ep.style.display = ep.style.display === 'block' ? 'none' : 'block'; });
     document.addEventListener('click', e => { const ep = document.getElementById('emoji-panel'); if (ep && !ep.contains(e.target) && e.target !== be) ep.style.display = 'none'; });
     
-    // ✅ Обработчик отправки БЕЗ playBowAnimation, только playArcherAnimation
     document.getElementById('send-btn')?.addEventListener('click', async () => {
         const mi = document.getElementById('msg-input');
         const t = mi?.value.trim();
@@ -522,7 +527,7 @@ function initApp() {
                     band.blobs.push({ text: t, from: P2PPong._peerId, nick: document.getElementById('nick-label')?.textContent || 'Лучник', avatar: selectedAvatar, time: Date.now() });
                     appendMessage('Вы', t, selectedAvatar);
                     if (mi) mi.value = '';
-                    playArcherAnimation(); // ✅ Только лучник
+                    playArcherAnimation();
                     if (toggleSoundState) playSound('shot.mp3');
                     if (activeChannelId) {
                         P2PPong.sendMessage(activeChannelId, JSON.stringify({ band: 'band-message', bandId: activeBandId, text: t, from: P2PPong._peerId, nick: document.getElementById('nick-label')?.textContent || 'Лучник', avatar: selectedAvatar }));
@@ -537,7 +542,7 @@ function initApp() {
                 updateCupIndicator();
                 updateRatchetIndicator();
                 if (mi) mi.value = '';
-                playArcherAnimation(); // ✅ Только лучник
+                playArcherAnimation();
                 if (toggleSoundState) playSound('shot.mp3');
             }
         }
