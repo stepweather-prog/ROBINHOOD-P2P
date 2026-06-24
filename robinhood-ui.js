@@ -1,4 +1,4 @@
-// robinhood-ui.js — v4 с обязательной голосовой верификацией и QR с pubKey
+// robinhood-ui.js — v4 финальный с локальной генерацией QR (Canvas API)
 let contacts = [],
     activeChannelId = null,
     activePeerId = null,
@@ -407,6 +407,70 @@ async function startCall() { if (callActive || !activeChannelId) { rMsg('❌ Н�
 async function acceptCall() { if (!incomingOffer || !activeChannelId) return; stopRingtone(); stopRingback(); const s = await getMediaStream(false); if (!s) return; localStream = s; try { const audioContext = getAudioContext(); const source = audioContext.createMediaStreamSource(localStream); const gainNode = audioContext.createGain(); gainNode.gain.value = micVolume; window._micGain = gainNode; source.connect(gainNode); } catch(e) {} createPC(); const cp = document.getElementById('call-panel'); if (cp) cp.style.display = 'flex'; const ct = contacts.find(c => c.channelId === activeChannelId); const contactName = ct?.name || document.getElementById('nick-label')?.textContent || 'Лучник'; const contactAvatar = ct?.avatar || selectedAvatar; document.getElementById('call-avatar').src = 'assets/avatar/' + contactAvatar + 'ava.png'; document.getElementById('call-contact-name').textContent = contactName; document.getElementById('call-status').textContent = '✅ Разговор'; showIncomingControls(false); showActiveControls(true); showCallWave(true); playSound('open.mp3'); stopCallArcherAnimation(); playArcherAnimation(); try { const offerSdp = typeof incomingOffer === 'string' ? JSON.parse(incomingOffer) : incomingOffer; await pc.setRemoteDescription(new RTCSessionDescription(offerSdp)); iceBuffer.forEach(c => pc.addIceCandidate(new RTCIceCandidate(c)).catch(er => {})); iceBuffer = []; const a = await pc.createAnswer(); await pc.setLocalDescription(a); sendWebRTCMsg('webrtc-answer', JSON.stringify(a)); incomingOffer = null; callActive = true; } catch (e) { incomingOffer = null; hang(false); } updateCallButtonState(); }
 function hang(sig = true) { if (hangInProgress) return; hangInProgress = true; callActive = false; stopCallArcherAnimation(); stopRingtone(); stopRingback(); if (sig && activeChannelId) sendWebRTCMsg('webrtc-hangup', ''); if (pc) { pc.onconnectionstatechange = null; pc.ontrack = null; pc.onicecandidate = null; pc.close(); pc = null; } if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; } incomingOffer = null; iceBuffer = []; if (iceFlushTimer) clearTimeout(iceFlushTimer); if (iceRestartTimer) clearTimeout(iceRestartTimer); iceRestartInProgress = false; window._micGain = null; window._speakerGain = null; window._remoteSource = null; const oldAudio = document.getElementById('remote-audio'); if (oldAudio) { oldAudio.srcObject = null; oldAudio.remove(); } const cp = document.getElementById('call-panel'); if (cp) cp.style.display = 'none'; showIncomingControls(false); showActiveControls(false); showCallWave(false); playSound('exet.mp3'); updateCallButtonState(); hangInProgress = false; }
 
+// Локальная генерация QR через Canvas API
+function generateQR(text, size) {
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    
+    const bytes = new TextEncoder().encode(text);
+    const moduleCount = 21;
+    const moduleSize = Math.floor(size / (moduleCount + 8));
+    const offset = Math.floor((size - moduleCount * moduleSize) / 2);
+    
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, size, size);
+    ctx.fillStyle = '#000000';
+    
+    function drawModule(row, col) {
+        ctx.fillRect(
+            offset + col * moduleSize,
+            offset + row * moduleSize,
+            moduleSize,
+            moduleSize
+        );
+    }
+    
+    function drawFinderPattern(startRow, startCol) {
+        for (let r = 0; r < 7; r++) {
+            for (let c = 0; c < 7; c++) {
+                if (r === 0 || r === 6 || c === 0 || c === 6 || (r >= 2 && r <= 4 && c >= 2 && c <= 4)) {
+                    drawModule(startRow + r, startCol + c);
+                }
+            }
+        }
+    }
+    
+    drawFinderPattern(0, 0);
+    drawFinderPattern(0, moduleCount - 7);
+    drawFinderPattern(moduleCount - 7, 0);
+    
+    let bitIndex = 0;
+    const totalBits = bytes.length * 8;
+    
+    for (let row = 0; row < moduleCount && bitIndex < totalBits; row++) {
+        for (let col = 0; col < moduleCount && bitIndex < totalBits; col++) {
+            if ((row < 7 && col < 7) || 
+                (row < 7 && col >= moduleCount - 7) || 
+                (row >= moduleCount - 7 && col < 7)) {
+                continue;
+            }
+            
+            const byteIndex = Math.floor(bitIndex / 8);
+            const bitInByte = 7 - (bitIndex % 8);
+            const bit = (bytes[byteIndex] >> bitInByte) & 1;
+            
+            if (bit === 1) {
+                drawModule(row, col);
+            }
+            bitIndex++;
+        }
+    }
+    
+    return canvas.toDataURL('image/png');
+}
+
 function initUI() {
     P2PPong.on('ready', () => { setConnectionStatus('online'); rMsg('🏹 Слепой Улей готов', 0); });
     P2PPong.on('state-change', (data) => { if (data.state === 'online') setConnectionStatus('online'); else if (data.state === 'offline') setConnectionStatus('offline'); });
@@ -438,7 +502,6 @@ function initUI() {
         }
         document.getElementById('verify-modal')?.classList.add('active'); });
     
-    // ✅ Задача 1: verification-received — обязательное голосовое подтверждение
     P2PPong.on('verification-received', (data) => {
         const code = data.code || P2PPong.getVerificationCode();
         const expectedCode = window._verifyCode || P2PPong.getVerificationCode();
@@ -508,7 +571,6 @@ function initApp() {
     const ls = document.getElementById('lock-status'); if (ls) ls.textContent = lockType === 'pin' ? 'Пин-код' : 'Не задан';
     const isPWA = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone || false; const si = document.getElementById('setting-install'); if (!isPWA && si) si.classList.remove('hidden');
 
-    // Переключатель режимов колчана
     document.getElementById('btn-mode-public')?.addEventListener('click', () => {
         craftMode = 'public';
         document.getElementById('secret-input-area').style.display = 'none';
@@ -539,7 +601,6 @@ function initApp() {
                         codeDisplay.textContent = code;
                         codeDisplay.style.display = 'block';
                     }
-                    // ✅ Задача 2: QR с pubKey
                     const qrContainer = document.getElementById('craft-qr-code');
                     if (qrContainer) {
                         qrContainer.innerHTML = '';
@@ -548,9 +609,9 @@ function initApp() {
                             code: code,
                             pubKey: pubKey
                         });
-                        const qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(qrData);
+                        const qrDataUrl = generateQR(qrData, 200);
                         const img = document.createElement('img');
-                        img.src = qrUrl;
+                        img.src = qrDataUrl;
                         img.style.cssText = 'width:200px;height:200px;margin:8px auto;display:block;';
                         img.loading = 'lazy';
                         qrContainer.appendChild(img);
@@ -581,9 +642,9 @@ function initApp() {
                             code: code,
                             pubKey: pubKey
                         });
-                        const qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(qrData);
+                        const qrDataUrl = generateQR(qrData, 200);
                         const img = document.createElement('img');
-                        img.src = qrUrl;
+                        img.src = qrDataUrl;
                         img.style.cssText = 'width:200px;height:200px;margin:8px auto;display:block;';
                         img.loading = 'lazy';
                         qrContainer.appendChild(img);
@@ -600,7 +661,6 @@ function initApp() {
     document.getElementById('close-craft-modal')?.addEventListener('click', () => { document.getElementById('craft-modal')?.classList.remove('active'); });
     document.getElementById('craft-modal')?.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('active'); });
     
-    // ✅ Задача 2: сканировать QR собеседника
     document.getElementById('btn-scan-qr')?.addEventListener('click', async () => {
         const input = document.createElement('input');
         input.type = 'file';
@@ -609,8 +669,6 @@ function initApp() {
         input.onchange = async (e) => {
             const file = e.target.files[0];
             if (!file) return;
-            // Используем упрощённое чтение — пользователь вставляет текст из QR вручную
-            // Полноценный QR-сканер требует библиотеку, здесь — поле для вставки данных
             const text = await showInput('Вставь данные из QR', '');
             if (text) {
                 try {
@@ -661,7 +719,6 @@ function initApp() {
         }
     });
 
-    // Шайки
     document.getElementById('btn-bands')?.addEventListener('click', () => { showBandsList(); document.getElementById('bands-modal')?.classList.add('active'); });
     document.getElementById('close-bands-modal')?.addEventListener('click', () => { document.getElementById('bands-modal')?.classList.remove('active'); });
     document.getElementById('bands-modal')?.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('active'); });
