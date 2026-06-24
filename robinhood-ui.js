@@ -1,4 +1,4 @@
-// robinhood-ui.js — v2 с правкой индикатора ratchet (sendIndex)
+// robinhood-ui.js — v3 с переключателем режимов колчана
 let contacts = [],
     activeChannelId = null,
     activePeerId = null,
@@ -45,6 +45,8 @@ let selfDestructIntervalId = null;
 let bands = [];
 let activeBandId = null;
 let pendingBandData = null;
+
+let craftMode = 'public'; // public | secret
 
 const MAX_CHAT_MESSAGES = 100;
 
@@ -414,7 +416,6 @@ function initUI() {
     P2PPong.on('beacon-taken', () => { rMsg('👀 Маяк забрали...', 3000); });
 
     P2PPong.on('verification-needed', (data) => { if (verificationModalShown) return; verificationModalShown = true; verificationDone = false; window._verifyCode = data.code || P2PPong.getVerificationCode(); window._verifyInput = ''; document.getElementById('verify-instruction').textContent = 'Введи 7-значный код'; document.getElementById('verify-error').style.display = 'none'; document.getElementById('verify-code-display').textContent = '_______'; const grid = document.getElementById('verify-code-grid'); grid.innerHTML = ''; grid.style.cssText = 'display:grid;grid-template-columns:repeat(3,1fr);gap:6px;max-width:240px;margin:12px auto;'; for (let i = 1; i <= 9; i++) { const btn = document.createElement('button'); btn.textContent = i; btn.className = 'lock-num'; btn.style.cssText = 'width:65px;height:65px;font-size:1.8em;'; btn.onclick = () => addVerifyDigit(i.toString()); grid.appendChild(btn); } const btn0 = document.createElement('button'); btn0.textContent = '0'; btn0.className = 'lock-num'; btn0.style.cssText = 'width:65px;height:65px;font-size:1.8em;'; btn0.onclick = () => addVerifyDigit('0'); grid.appendChild(btn0); const btnDel = document.createElement('button'); btnDel.textContent = '⌫'; btnDel.className = 'lock-num'; btnDel.style.cssText = 'width:65px;height:65px;font-size:1.5em;background:rgba(244,67,54,0.3);'; btnDel.onclick = () => { window._verifyInput = window._verifyInput.slice(0, -1); document.getElementById('verify-code-display').textContent = window._verifyInput.padEnd(7, '_'); }; grid.appendChild(btnDel); document.getElementById('btn-verify-reset').onclick = () => { window._verifyInput = ''; document.getElementById('verify-code-display').textContent = '_______'; };
-        // Задача 2: кнопка произнесения кода
         const modalDialog = document.getElementById('verify-modal')?.querySelector('.modal-dialog');
         if (modalDialog && !document.getElementById('speak-code-btn')) {
             const speakBtn = document.createElement('button');
@@ -437,7 +438,6 @@ function initUI() {
         }
         document.getElementById('verify-modal')?.classList.add('active'); });
     P2PPong.on('verification-received', (data) => { if (verificationModalShown) return; verificationModalShown = true; verificationDone = false; const code = data.code || P2PPong.getVerificationCode(); if (window._verifyCode && code === window._verifyCode) { document.getElementById('verify-modal')?.classList.add('active'); document.getElementById('verify-instruction').textContent = '✅ Код совпал! Канал открывается...'; document.getElementById('verify-code-display').textContent = code; document.getElementById('verify-error').style.display = 'none'; setTimeout(async () => { verificationModalShown = false; verificationDone = true; document.getElementById('verify-modal')?.classList.remove('active'); await P2PPong.confirmVerification(); }, 1500); return; } document.getElementById('verify-instruction').textContent = 'Введи 7-значный код'; document.getElementById('verify-error').style.display = 'none';
-        // Задача 2: кнопка произнесения кода
         const modalDialog = document.getElementById('verify-modal')?.querySelector('.modal-dialog');
         if (modalDialog && !document.getElementById('speak-code-btn')) {
             const speakBtn = document.createElement('button');
@@ -501,24 +501,105 @@ function initApp() {
     const ls = document.getElementById('lock-status'); if (ls) ls.textContent = lockType === 'pin' ? 'Пин-код' : 'Не задан';
     const isPWA = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone || false; const si = document.getElementById('setting-install'); if (!isPWA && si) si.classList.remove('hidden');
 
+    // Переключатель режимов колчана
+    document.getElementById('btn-mode-public')?.addEventListener('click', () => {
+        craftMode = 'public';
+        document.getElementById('secret-input-area').style.display = 'none';
+        document.getElementById('btn-mode-public').className = 'btn-primary';
+        document.getElementById('btn-mode-secret').className = 'btn-dark';
+    });
+
+    document.getElementById('btn-mode-secret')?.addEventListener('click', () => {
+        craftMode = 'secret';
+        document.getElementById('secret-input-area').style.display = 'block';
+        document.getElementById('btn-mode-public').className = 'btn-dark';
+        document.getElementById('btn-mode-secret').className = 'btn-primary';
+    });
+
     document.getElementById('btn-craft')?.addEventListener('click', () => { document.getElementById('craft-modal')?.classList.add('active'); const bid = P2PPong._beaconId; const display = document.getElementById('craft-peer-id-display'); if (display) display.textContent = bid || 'Не создана'; });
-    document.getElementById('btn-craft-arrow')?.addEventListener('click', async () => { try { const beaconId = await P2PPong.craftArrow(); const display = document.getElementById('craft-peer-id-display'); if (display) display.textContent = beaconId; const code = P2PPong.getVerificationCode(); if (code) { const codeDisplay = document.getElementById('craft-code-display'); if (codeDisplay) { codeDisplay.textContent = code; codeDisplay.style.display = 'block'; }
-            // Задача 2: QR-код
-            const qrContainer = document.getElementById('craft-qr-code');
-            if (qrContainer) {
-                qrContainer.innerHTML = '';
-                const qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=' + encodeURIComponent(code);
-                const img = document.createElement('img');
-                img.src = qrUrl;
-                img.style.cssText = 'width:150px;height:150px;margin:8px auto;display:block;';
-                img.loading = 'lazy';
-                qrContainer.appendChild(img);
-                qrContainer.style.display = 'block';
-            } } window._verifyCode = code; rMsg('🏹 Стрела изготовлена! Покажи QR собеседнику.', 4000); } catch(e) {} });
+    
+    document.getElementById('btn-craft-arrow')?.addEventListener('click', async () => {
+        try {
+            if (craftMode === 'public') {
+                const beaconId = await P2PPong.craftPublicArrow();
+                const display = document.getElementById('craft-peer-id-display');
+                if (display) display.textContent = beaconId;
+                const code = P2PPong.getVerificationCode();
+                if (code) {
+                    const codeDisplay = document.getElementById('craft-code-display');
+                    if (codeDisplay) {
+                        codeDisplay.textContent = code;
+                        codeDisplay.style.display = 'block';
+                    }
+                    const qrContainer = document.getElementById('craft-qr-code');
+                    if (qrContainer) {
+                        qrContainer.innerHTML = '';
+                        const qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=' + encodeURIComponent(code);
+                        const img = document.createElement('img');
+                        img.src = qrUrl;
+                        img.style.cssText = 'width:150px;height:150px;margin:8px auto;display:block;';
+                        img.loading = 'lazy';
+                        qrContainer.appendChild(img);
+                        qrContainer.style.display = 'block';
+                    }
+                }
+                window._verifyCode = code;
+                rMsg('🏹 Стрела в общем пуле! Жди лучника.', 4000);
+            } else {
+                const secret = document.getElementById('secret-input')?.value.trim();
+                if (!secret) { rMsg('❌ Введи секретное слово', 3000); return; }
+                const beaconId = await P2PPong.craftSecretArrow(secret);
+                const display = document.getElementById('craft-peer-id-display');
+                if (display) display.textContent = beaconId;
+                const code = P2PPong.getVerificationCode();
+                if (code) {
+                    const codeDisplay = document.getElementById('craft-code-display');
+                    if (codeDisplay) {
+                        codeDisplay.textContent = code;
+                        codeDisplay.style.display = 'block';
+                    }
+                }
+                window._verifyCode = code;
+                rMsg('🔐 Тайная стрела готова! Передай секрет и соль лучнику.', 4000);
+            }
+        } catch(e) {}
+    });
+    
     document.getElementById('btn-copy-peer-id')?.addEventListener('click', () => { const bid = P2PPong._beaconId; const code = P2PPong.getVerificationCode(); let copyText = bid || ''; if (code) copyText += '\n' + code; if (bid) { navigator.clipboard.writeText(copyText).then(() => rMsg('⎘ Стрела и код скопированы!')).catch(() => {}); } });
     document.getElementById('close-craft-modal')?.addEventListener('click', () => { document.getElementById('craft-modal')?.classList.remove('active'); });
     document.getElementById('craft-modal')?.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('active'); });
-    document.getElementById('btn-create-beacon')?.addEventListener('click', async () => { const targetId = document.getElementById('peer-id-input')?.value.trim(); if (targetId) { const ok = await P2PPong.joinBeacon(targetId); if (ok) { rMsg('🏹 Тетива натянута...', 3000); document.getElementById('craft-modal')?.classList.remove('active'); } } });
+    
+    document.getElementById('btn-create-beacon')?.addEventListener('click', async () => {
+        if (craftMode === 'public') {
+            const ok = await P2PPong.joinPublicPool();
+            if (ok) {
+                rMsg('🏹 Ищу стрелу в общем пуле...', 3000);
+                document.getElementById('craft-modal')?.classList.remove('active');
+            }
+        } else {
+            const input = document.getElementById('peer-id-input')?.value.trim();
+            if (!input) return;
+            const lines = input.split('\n');
+            const secret = document.getElementById('secret-input')?.value.trim();
+            const salt = lines[1]?.trim();
+            if (secret && salt) {
+                const ok = await P2PPong.joinSecretBeacon(secret, salt);
+                if (ok) {
+                    rMsg('🔐 Тайный колчан открывается...', 3000);
+                    document.getElementById('craft-modal')?.classList.remove('active');
+                }
+            } else {
+                const targetId = lines[0]?.trim();
+                if (targetId) {
+                    const ok = await P2PPong.joinBeacon(targetId);
+                    if (ok) {
+                        rMsg('🏹 Тетива натянута...', 3000);
+                        document.getElementById('craft-modal')?.classList.remove('active');
+                    }
+                }
+            }
+        }
+    });
 
     // Шайки
     document.getElementById('btn-bands')?.addEventListener('click', () => { showBandsList(); document.getElementById('bands-modal')?.classList.add('active'); });
