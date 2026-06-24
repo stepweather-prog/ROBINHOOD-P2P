@@ -1,4 +1,4 @@
-// sw.js — Service Worker для RobinHood P2P
+// sw.js — Service Worker для RobinHood P2P (правка 10)
 const CACHE_VERSION = 'v10';
 const CACHE_NAME = 'robinhood-' + CACHE_VERSION;
 const ASSETS = [
@@ -52,16 +52,12 @@ self.addEventListener('install', event => {
   self.skipWaiting();
 });
 
+// ✅ Правка 10: убрана принудительная перезагрузка вкладок
 self.addEventListener('activate', event => {
-  // Один waitUntil — очистка старых кешей + обновление клиентов
   event.waitUntil(
     caches.keys().then(keys => Promise.all(
       keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))
     )).then(() => self.clients.claim())
-    .then(() => self.clients.matchAll())
-    .then(clients => {
-      clients.forEach(client => client.navigate(client.url));
-    })
   );
 });
 
