@@ -1,4 +1,4 @@
-// p2ppong.js — Единое ядро. Все правки: 1-10 + CVE 1-4 + фикс стыка CVE-3
+// p2ppong.js — v2 с раздельными ratchet
 const DEBUG = true;
 function log(msg, data) { if (DEBUG) console.log(`[P2PPong] ${msg}`, data || ''); }
 
@@ -59,13 +59,7 @@ const workerVerifyHMAC = (data, sig, secret) => cryptoCall('verifyHMAC', { data,
 const workerPackBlob = (jsonString, ch) => cryptoCall('packBlob', { jsonString, ch });
 const workerUnpackBlob = (blob, ch) => cryptoCall('unpackBlob', { blob, ch });
 const workerDeriveSecret = (myPrivateKey, theirPublicKey) => cryptoCall('deriveSecret', { myPrivateKey, theirPublicKey });
-
-async function advanceRatchetLocal(ch) {
-    const oldKey = ch.ratchetKey || ch.secret;
-    const salt = (ch.ratchetIndex || 0).toString(16).padStart(16, '0');
-    const newKey = await SHA(oldKey + salt);
-    return { newKey, index: (ch.ratchetIndex || 0) + 1, oldKey };
-}
+const workerAdvanceRecvRatchet = (ch, targetRi) => cryptoCall('advanceRecvRatchet', { ch, targetRi });
 
 const P2PPong = {
     _peerId: null,
@@ -299,10 +293,11 @@ const P2PPong = {
         
         this._channels[this._chId] = {
             secret: this._secret,
-            ratchetKey: this._secret,
-            ratchetIndex: 0,
-            oldKeys: [],
-            lastReceivedRi: -1,
+            sendKey: this._secret,
+            sendIndex: 0,
+            recvKey: this._secret,
+            recvIndex: 0,
+            oldRecvKeys: [],
             peerId: peerId || 'unknown',
             type: 'cup',
             blobs: [],
@@ -412,14 +407,10 @@ const P2PPong = {
                     if (u.from === this._peerId) return;
                     if (u._ri !== undefined) {
                         const targetRi = parseInt(u._ri) || 0;
-                        while ((ch.ratchetIndex || 0) <= targetRi) {
-                            const r = await advanceRatchetLocal(ch);
-                            if (!ch.oldKeys) ch.oldKeys = [];
-                            ch.oldKeys.push({ index: ch.ratchetIndex || 0, key: r.oldKey });
-                            if (ch.oldKeys.length > CONFIG.MAX_OLD_KEYS) ch.oldKeys.shift();
-                            ch.ratchetKey = r.newKey; ch.ratchetIndex = r.index;
-                        }
-                        ch.lastReceivedRi = targetRi;
+                        const recvResult = await workerAdvanceRecvRatchet(ch, targetRi);
+                        ch.recvKey = recvResult.finalKey;
+                        ch.recvIndex = recvResult.index;
+                        ch.oldRecvKeys = recvResult.oldKeys.slice(-3);
                     }
                     const dedupKey = chId + '_' + (u.n || u._t || '');
                     if (this._dedupTimers[dedupKey]) return;
@@ -498,7 +489,7 @@ const P2PPong = {
             if (ch) {
                 try {
                     const ss = await workerDeriveSecret(this._kp?.privateKey || '', d.pubKey);
-                    ch.secret = ss; ch.ratchetKey = ss; ch.ratchetIndex = 0; ch.oldKeys = []; ch.lastReceivedRi = -1;
+                    ch.secret = ss; ch.sendKey = ss; ch.sendIndex = 0; ch.recvKey = ss; ch.recvIndex = 0; ch.oldRecvKeys = [];
                 } catch(e) { log('resync error', e.message); }
             }
             return;
@@ -528,11 +519,8 @@ const P2PPong = {
         
         if (rtc && rtc.dc && rtc.dc.readyState === 'open') {
             const result = await workerPackBlob(messageData, ch);
-            const oldKey = ch.ratchetKey;
-            ch.ratchetKey = result.newRatchetKey; ch.ratchetIndex = result.newRatchetIndex;
-            if (!ch.oldKeys) ch.oldKeys = [];
-            ch.oldKeys.push({ index: ch.ratchetIndex - 1, key: oldKey });
-            if (ch.oldKeys.length > CONFIG.MAX_OLD_KEYS) ch.oldKeys.shift();
+            ch.sendKey = result.newSendKey;
+            ch.sendIndex = result.newSendIndex;
             if (result.packed.length > 60000) { this._emit('error', { message: 'Сообщение слишком большое.' }); return false; }
             rtc.dc.send(result.packed);
             ch.blobs.push({ d: displayText, t: Date.now(), n: nonce, from: 'me', status: 'sent', nick: this._myNick, avatar: this._myAvatar });
@@ -541,14 +529,11 @@ const P2PPong = {
             return true;
         }
         
-        if (ch.ratchetKey) {
+        if (ch.sendKey) {
             const result = await workerPackBlob(messageData, ch);
             if (result.packed.length > 60000) { this._emit('error', { message: 'Сообщение слишком большое для сервера.' }); return false; }
-            const oldKey = ch.ratchetKey;
-            ch.ratchetKey = result.newRatchetKey; ch.ratchetIndex = result.newRatchetIndex;
-            if (!ch.oldKeys) ch.oldKeys = [];
-            ch.oldKeys.push({ index: ch.ratchetIndex - 1, key: oldKey });
-            if (ch.oldKeys.length > CONFIG.MAX_OLD_KEYS) ch.oldKeys.shift();
+            ch.sendKey = result.newSendKey;
+            ch.sendIndex = result.newSendIndex;
             await this._post('/beacon', { keyHash: 'msg_' + (chId || this._chId) + '_' + this._beaconId, packet: result.packed });
             ch.blobs.push({ d: displayText, t: Date.now(), n: nonce, from: 'me', status: 'sent', nick: this._myNick, avatar: this._myAvatar });
             ch.expires = Date.now() + CONFIG.CHANNEL_TTL; this._stats.messagesSent++;
@@ -617,7 +602,13 @@ const P2PPong = {
                 const u = await workerUnpackBlob(e.data, ch);
                 if (u) {
                     if (u.from === this._peerId) return;
-                    if (u._ri !== undefined) { const targetRi = parseInt(u._ri) || 0; while ((ch.ratchetIndex || 0) <= targetRi) { const r = await advanceRatchetLocal(ch); if (!ch.oldKeys) ch.oldKeys = []; ch.oldKeys.push({ index: ch.ratchetIndex || 0, key: r.oldKey }); if (ch.oldKeys.length > CONFIG.MAX_OLD_KEYS) ch.oldKeys.shift(); ch.ratchetKey = r.newKey; ch.ratchetIndex = r.index; } ch.lastReceivedRi = targetRi; }
+                    if (u._ri !== undefined) {
+                        const targetRi = parseInt(u._ri) || 0;
+                        const recvResult = await workerAdvanceRecvRatchet(ch, targetRi);
+                        ch.recvKey = recvResult.finalKey;
+                        ch.recvIndex = recvResult.index;
+                        ch.oldRecvKeys = recvResult.oldKeys.slice(-3);
+                    }
                     const dedupKey = chId + '_' + (u.n || u._t || ''); if (this._webRTC[chId]?.seenMessages?.has(u.n)) return; if (this._dedupTimers[dedupKey]) return;
                     this._dedupTimers[dedupKey] = setTimeout(() => delete this._dedupTimers[dedupKey], CONFIG.CHANNEL_TTL); this._webRTC[chId]?.seenMessages?.add(u.n);
                     if (u.nick) this._theirNick = u.nick;
