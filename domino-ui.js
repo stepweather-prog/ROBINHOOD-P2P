@@ -1,141 +1,196 @@
-// domino-ui.js — Отрисовка домино на Canvas
+// domino.js — Домино для RobinHood P2P
+// Тет-а-тет и шайки. Без сервера. Без зависимостей.
 
-const DominoUI = {
-    _canvas: null,
-    _ctx: null,
-
-    init(canvasId) {
-        this._canvas = document.getElementById(canvasId);
-        if (!this._canvas) return;
-        this._ctx = this._canvas.getContext('2d');
-        this._canvas.width = Math.min(window.innerWidth - 20, 800);
-        this._canvas.height = 400;
-    },
-
-    draw(state, myIndex) {
-        if (!this._ctx) return;
-        const ctx = this._ctx;
-        const w = this._canvas.width;
-        const h = this._canvas.height;
-
-        // Фон
-        ctx.fillStyle = '#1a2a1f';
-        ctx.fillRect(0, 0, w, h);
-
-        // Доска
-        const boardStartX = 40;
-        const boardY = h / 2 - 25;
-        const tileW = 50;
-        const tileH = 50;
-
-        for (let i = 0; i < state.board.length; i++) {
-            const tile = state.board[i];
-            const x = boardStartX + i * (tileW + 4);
-            this._drawTile(ctx, x, boardY, tileW, tileH, tile[0], tile[1]);
-        }
-
-        // Рука игрока
-        const myHand = Domino.getMyHand(state, myIndex);
-        const handStartX = 40;
-        const handY = h - 80;
-
-        for (let i = 0; i < myHand.length; i++) {
-            const tile = myHand[i];
-            const x = handStartX + i * (tileW + 4);
-            this._drawTile(ctx, x, handY, tileW, tileH, tile[0], tile[1], true);
-        }
-
-        // Индикатор хода
-        const turnText = state.ended 
-            ? `Игра окончена! Победитель: ${state.players[state.winner]?.name || '?'}`
-            : state.currentPlayer === myIndex 
-                ? 'Ваш ход' 
-                : `Ход: ${state.players[state.currentPlayer]?.name || '?'}`;
-        
-        ctx.fillStyle = state.currentPlayer === myIndex ? '#4caf50' : '#e8e2c7';
-        ctx.font = '16px sans-serif';
-        ctx.fillText(turnText, 40, 30);
-    },
-
-    _drawTile(ctx, x, y, w, h, left, right, clickable = false) {
-        // Тело костяшки
-        ctx.fillStyle = clickable ? '#e8d5a3' : '#c4a24b';
-        ctx.strokeStyle = '#1a1f0f';
-        ctx.lineWidth = 2;
-        
-        // Прямоугольник с закруглёнными углами
-        const r = 6;
-        ctx.beginPath();
-        ctx.moveTo(x + r, y);
-        ctx.lineTo(x + w - r, y);
-        ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-        ctx.lineTo(x + w, y + h - r);
-        ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-        ctx.lineTo(x + r, y + h);
-        ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-        ctx.lineTo(x, y + r);
-        ctx.quadraticCurveTo(x, y, x + r, y);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-
-        // Разделительная линия
-        ctx.beginPath();
-        ctx.moveTo(x + w/2, y);
-        ctx.lineTo(x + w/2, y + h);
-        ctx.stroke();
-
-        // Точки
-        ctx.fillStyle = '#1a1f0f';
-        this._drawDots(ctx, x, y, w/2, h, left);
-        this._drawDots(ctx, x + w/2, y, w/2, h, right);
-    },
-
-    _drawDots(ctx, x, y, w, h, value) {
-        const cx = x + w / 2;
-        const cy = y + h / 2;
-        const dotR = 4;
-        const offset = 10;
-
-        const positions = {
-            0: [],
-            1: [[0, 0]],
-            2: [[-offset, -offset], [offset, offset]],
-            3: [[-offset, -offset], [0, 0], [offset, offset]],
-            4: [[-offset, -offset], [offset, -offset], [-offset, offset], [offset, offset]],
-            5: [[-offset, -offset], [offset, -offset], [0, 0], [-offset, offset], [offset, offset]],
-            6: [[-offset, -offset], [offset, -offset], [-offset, 0], [offset, 0], [-offset, offset], [offset, offset]]
-        };
-
-        for (const [dx, dy] of (positions[value] || [])) {
-            ctx.beginPath();
-            ctx.arc(cx + dx, cy + dy, dotR, 0, Math.PI * 2);
-            ctx.fill();
-        }
-    },
-
-    // Получить костяшку по координатам клика (для выбора)
-    getTileAt(x, y, state, myIndex) {
-        const myHand = Domino.getMyHand(state, myIndex);
-        const tileW = 50;
-        const tileH = 50;
-        const handStartX = 40;
-        const handY = this._canvas.height - 80;
-
-        for (let i = 0; i < myHand.length; i++) {
-            const tx = handStartX + i * (tileW + 4);
-            if (x >= tx && x <= tx + tileW && y >= handY && y <= handY + tileH) {
-                return myHand[i];
+const Domino = {
+    // Генерация колоды: 28 костяшек [0,0]..[6,6]
+    generateDeck() {
+        const deck = [];
+        for (let i = 0; i <= 6; i++) {
+            for (let j = i; j <= 6; j++) {
+                deck.push([i, j]);
             }
         }
-        return null;
+        return deck;
     },
 
-    // Получить сторону по координатам клика (левая/правая половина доски)
-    getSideAt(x, state) {
-        const boardStartX = 40;
-        const tileW = 50;
-        const boardCenterX = boardStartX + state.board.length * (tileW + 4) / 2;
-        return x < boardCenterX ? 'left' : 'right';
+    // Перемешивание с использованием seed (детерминированное — одинаковый seed = одинаковая раздача)
+    shuffle(deck, seed) {
+        const rng = this._seededRandom(seed);
+        const shuffled = [...deck];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+            const j = Math.floor(rng() * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+        return shuffled;
+    },
+
+    // Простой линейный конгруэнтный генератор
+    _seededRandom(seed) {
+        let s = seed;
+        return function() {
+            s = (s * 1664525 + 1013904223) & 0xFFFFFFFF;
+            return (s >>> 0) / 0xFFFFFFFF;
+        };
+    },
+
+    // Создание новой игры
+    createGame(seed, players) {
+        const deck = this.shuffle(this.generateDeck(), seed);
+        const state = {
+            seed,
+            deck,
+            players: players.map((name, i) => ({
+                name,
+                hand: [],
+                index: i
+            })),
+            board: [],
+            turn: 0,
+            currentPlayer: 0,
+            passed: [],
+            scores: players.map(() => 0),
+            ended: false,
+            winner: null
+        };
+
+        // Раздача по 7 костяшек
+        for (const player of state.players) {
+            player.hand = state.deck.splice(0, 7);
+        }
+
+        // Первый ход: у кого дубль 6:6, или самый большой дубль, или первый игрок
+        state.currentPlayer = this._firstPlayer(state);
+        return state;
+    },
+
+    // Определение первого игрока (по наибольшему дублю)
+    _firstPlayer(state) {
+        let best = -1;
+        let playerIndex = 0;
+        for (let i = 0; i < state.players.length; i++) {
+            for (const tile of state.players[i].hand) {
+                if (tile[0] === tile[1] && tile[0] > best) {
+                    best = tile[0];
+                    playerIndex = i;
+                }
+            }
+        }
+        return playerIndex;
+    },
+
+    // Проверка: можно ли положить tile на указанную сторону
+    isValidMove(state, tile, side) {
+        if (state.board.length === 0) return true;
+        const leftEnd = state.board[0][0];
+        const rightEnd = state.board[state.board.length - 1][1];
+        const target = side === 'left' ? leftEnd : rightEnd;
+        return tile[0] === target || tile[1] === target;
+    },
+
+    // Размещение костяшки — мутирует state, возвращает true если успешно
+    placeTile(state, tile, side) {
+        if (!this.isValidMove(state, tile, side)) return false;
+
+        if (state.board.length === 0) {
+            // Первый ход — кладём как есть
+            state.board.push([tile[0], tile[1]]);
+        } else if (side === 'left') {
+            const target = state.board[0][0];
+            if (tile[1] === target) {
+                state.board.unshift([tile[0], tile[1]]);
+            } else {
+                state.board.unshift([tile[1], tile[0]]);
+            }
+        } else {
+            const target = state.board[state.board.length - 1][1];
+            if (tile[0] === target) {
+                state.board.push([tile[0], tile[1]]);
+            } else {
+                state.board.push([tile[1], tile[0]]);
+            }
+        }
+
+        // Убираем костяшку из руки игрока
+        const player = state.players[state.currentPlayer];
+        player.hand = player.hand.filter(t => !(t[0] === tile[0] && t[1] === tile[1]));
+
+        // Сбрасываем счётчик пасов
+        state.passed = [];
+        return true;
+    },
+
+    // Пропуск хода
+    pass(state) {
+        state.passed.push(state.currentPlayer);
+        this._nextTurn(state);
+    },
+
+    // Переход хода к следующему игроку
+    _nextTurn(state) {
+        const totalPlayers = state.players.length;
+        let next = (state.currentPlayer + 1) % totalPlayers;
+        state.currentPlayer = next;
+        state.turn++;
+    },
+
+    // Проверка окончания игры. Возвращает true если игра закончена.
+    checkEnd(state) {
+        // Рыба: все игроки пропустили ход подряд
+        if (state.passed.length >= state.players.length) {
+            state.ended = true;
+            state.winner = this._winnerByPoints(state);
+            return true;
+        }
+
+        // У кого-то кончились костяшки
+        for (const player of state.players) {
+            if (player.hand.length === 0) {
+                state.ended = true;
+                state.winner = player.index;
+                return true;
+            }
+        }
+
+        return false;
+    },
+
+    // Определение победителя по очкам (при рыбе — у кого меньше сумма на руке)
+    _winnerByPoints(state) {
+        let minSum = Infinity;
+        let winner = 0;
+        for (const player of state.players) {
+            const sum = player.hand.reduce((s, t) => s + t[0] + t[1], 0);
+            if (sum < minSum) {
+                minSum = sum;
+                winner = player.index;
+            }
+        }
+        return winner;
+    },
+
+    // Публичное состояние игры (без рук других игроков)
+    getPublicState(state) {
+        return {
+            board: state.board,
+            currentPlayer: state.currentPlayer,
+            players: state.players.map(p => ({
+                name: p.name,
+                handSize: p.hand.length,
+                index: p.index
+            })),
+            turn: state.turn,
+            ended: state.ended,
+            winner: state.winner,
+            passed: state.passed
+        };
+    },
+
+    // Рука конкретного игрока
+    getMyHand(state, playerIndex) {
+        return state.players[playerIndex]?.hand || [];
     }
 };
+
+if (typeof window !== 'undefined') {
+    window.Domino = Domino;
+}
