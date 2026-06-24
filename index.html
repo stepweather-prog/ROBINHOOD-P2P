@@ -234,7 +234,15 @@
 </div></div>
 
 <!-- Модалки крафта -->
-<div class="modal-overlay" id="craft-modal"><div class="modal-dialog"><h3>🏹 Открыть колчан</h3><button class="btn-primary" id="btn-craft-arrow">🏹 Крафт стрелы</button><div style="color:var(--text-dim);margin-bottom:6px;">Твоя стрела:</div><div class="code-display" id="craft-peer-id-display"></div><div style="color:var(--text-dim);margin:8px 0 4px;">Секретный код (7 цифр):</div>
+<div class="modal-overlay" id="craft-modal"><div class="modal-dialog"><h3>🏹 Открыть колчан</h3>
+    <div style="display:flex;gap:8px;margin:8px 0;">
+        <button class="btn-primary" id="btn-mode-public" style="flex:1;">🌐 Публичный</button>
+        <button class="btn-dark" id="btn-mode-secret" style="flex:1;">🔐 Тайный</button>
+    </div>
+    <div id="secret-input-area" style="display:none;">
+        <input type="text" id="secret-input" placeholder="Секретное слово..." style="width:100%;margin:8px 0;padding:8px;background:var(--input-bg);border:1px solid var(--border);color:var(--input-text);border-radius:8px;">
+    </div>
+    <button class="btn-primary" id="btn-craft-arrow">🏹 Крафт стрелы</button><div style="color:var(--text-dim);margin-bottom:6px;">Твоя стрела:</div><div class="code-display" id="craft-peer-id-display"></div><div style="color:var(--text-dim);margin:8px 0 4px;">Секретный код (7 цифр):</div>
 <div class="code-display" id="craft-code-display" style="display:none;font-size:1.5em;letter-spacing:6px;"></div>
 <div id="craft-qr-code" style="display:none;"></div>
 <button class="btn-dark" id="btn-copy-peer-id">📋 Скопировать стрелу и код</button><div style="color:var(--text-dim);margin:16px 0 6px;">Стрела друга:</div><input type="text" id="peer-id-input" placeholder="Peer ID друга..." style="width:100%;margin:0 0 12px;padding:8px;background:var(--input-bg);border:1px solid var(--border);color:var(--input-text);border-radius:8px;font-size:0.75em;font-family:monospace;"><button class="btn-primary" id="btn-create-beacon" style="background:linear-gradient(135deg,#6b7db3,#4a5a8a);">🏹 Натянуть тетиву</button><button class="btn-dark" id="close-craft-modal">Закрыть</button></div></div>
