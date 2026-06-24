@@ -1,6 +1,6 @@
-// crypto-worker.js — Web Worker для криптографии (чистый base64, без бинарного паддинга)
+// crypto-worker.js — v2 с раздельными ratchet
 const MAX_TIMEOUT = 30000;
-const MAX_DECOMPRESSED_SIZE = 1024 * 1024; // 1 МБ максимум после распаковки (защита от zip-бомбы)
+const MAX_DECOMPRESSED_SIZE = 1024 * 1024;
 let isProcessing = false;
 
 function toBase64(bytes) {
@@ -45,12 +45,13 @@ self.onmessage = async function(e) {
             case 'generateKeyPair': result = await generateKeyPair(); break;
             case 'exportPublicKey': result = await exportPublicKey(payload); break;
             case 'importPublicKey': result = await importPublicKey(payload); break;
-            // ✅ CVE-2: deriveSecret в воркере
             case 'deriveSecret': result = await deriveSecret(payload.myPrivateKey, payload.theirPublicKey); break;
             case 'encryptAES': result = await encryptAES(payload.text, payload.secret); break;
             case 'decryptAES': result = await decryptAES(payload.enc, payload.secret); break;
             case 'computeHMAC': result = await computeHMAC(payload.data, payload.secret); break;
             case 'verifyHMAC': result = await verifyHMAC(payload.data, payload.sig, payload.secret); break;
+            case 'advanceSendRatchet': result = await advanceSendRatchet(payload.ch); break;
+            case 'advanceRecvRatchet': result = await advanceRecvRatchet(payload.ch, payload.targetRi); break;
             case 'packBlob': result = await packBlob(payload.jsonString, payload.ch); break;
             case 'unpackBlob': result = await unpackBlob(payload.blob, payload.ch); break;
             default: throw new Error('Unknown: ' + action);
@@ -80,7 +81,6 @@ async function generateKeyPair() {
     };
 }
 
-// ✅ CVE-2: deriveSecret в crypto-worker, использует fromBase64
 async function deriveSecret(myPrivateKeyB64, theirPublicKeyB64) {
     const myPrivKey = await crypto.subtle.importKey('pkcs8',
         fromBase64(myPrivateKeyB64),
@@ -102,7 +102,6 @@ async function importPublicKey(b64) {
     return await crypto.subtle.importKey('raw', r, { name: 'ECDH', namedCurve: 'P-256' }, false, []);
 }
 
-// ✅ Исправлено: секрет хешируется для получения ключа нужной длины
 async function deriveKey(secret) {
     const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(secret));
     return await crypto.subtle.importKey('raw', hash, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
@@ -150,6 +149,32 @@ async function verifyHMAC(data, sig, secret) {
     }
 }
 
+async function advanceSendRatchet(ch) {
+    const oldKey = ch.sendKey || ch.secret;
+    const salt = 'send_' + (ch.sendIndex || 0).toString(16).padStart(16, '0');
+    const newKey = await SHA(oldKey + salt);
+    return { newKey, index: (ch.sendIndex || 0) + 1, oldKey };
+}
+
+async function advanceRecvRatchet(ch, targetRi) {
+    let currentKey = ch.recvKey || ch.secret;
+    let currentIndex = ch.recvIndex || 0;
+    const oldKeys = [];
+    while (currentIndex <= targetRi) {
+        const salt = 'recv_' + currentIndex.toString(16).padStart(16, '0');
+        const newKey = await SHA(currentKey + salt);
+        oldKeys.push({ index: currentIndex, key: currentKey });
+        currentKey = newKey;
+        currentIndex++;
+    }
+    return { 
+        newKey: oldKeys[oldKeys.length - 1]?.key || currentKey,
+        finalKey: currentKey,
+        index: currentIndex - 1,
+        oldKeys 
+    };
+}
+
 async function compressData(str) {
     const cs = new CompressionStream('gzip');
     const writer = cs.writable.getWriter();
@@ -164,7 +189,6 @@ async function compressData(str) {
     return toBase64(total);
 }
 
-// ✅ Исправлено: защита от zip-бомбы — проверка размера после распаковки
 async function decompressData(b64) {
     const bytes = fromBase64(b64);
     if (!bytes || bytes.length === 0) return null;
@@ -180,7 +204,6 @@ async function decompressData(b64) {
             const r = await reader.read(); 
             if (r.done) break; 
             totalSize += r.value.length;
-            // Защита от zip-бомбы
             if (totalSize > MAX_DECOMPRESSED_SIZE) {
                 reader.cancel();
                 return null;
@@ -196,44 +219,35 @@ async function decompressData(b64) {
     }
 }
 
-async function advanceRatchet(ch) {
-    const oldKey = ch.ratchetKey || ch.secret;
-    const salt = (ch.ratchetIndex || 0).toString(16).padStart(16, '0');
-    const newKey = await SHA(oldKey + salt);
-    return { newKey, index: (ch.ratchetIndex || 0) + 1, oldKey };
-}
-
-// ✅ Исправлено: разделитель | заменён на неиспользуемый в base64 символ
-const SEPARATOR = '\x00'; // Нулевой байт — не встречается в base64
+const SEPARATOR = '\x00';
 
 async function packBlob(jsonString, ch) {
     const compressed = await compressData(jsonString);
     const nonce = Array.from(crypto.getRandomValues(new Uint32Array(4))).map(x => x.toString(16).padStart(8, '0')).join('');
-    const ri = ch.ratchetIndex || 0;
+    const ri = ch.sendIndex || 0;
     const data = JSON.stringify({ z: compressed, t: Date.now(), n: nonce, ri });
-    const currentKey = ch.ratchetKey || ch.secret;
+    const currentKey = ch.sendKey || ch.secret;
     const hmac = await computeHMAC(data, currentKey);
     const payload = hmac + SEPARATOR + data;
-    const { newKey, index } = await advanceRatchet(ch);
+    const { newKey, index, oldKey } = await advanceSendRatchet(ch);
     const encrypted = await encryptAES(payload, ch.secret);
-    return { packed: encrypted, newRatchetKey: newKey, newRatchetIndex: index };
+    return { packed: encrypted, newSendKey: newKey, newSendIndex: index, oldSendKey: oldKey };
 }
 
 async function unpackBlob(blob, ch) {
     const dec = await decryptAES(blob, ch.secret);
     if (!dec) return null;
-    let result = await tryDecryptWithKey(dec, ch.ratchetKey || ch.secret);
+    let result = await tryDecryptWithKey(dec, ch.recvKey || ch.secret);
     if (result) return result;
-    if (ch.oldKeys) {
-        for (let i = ch.oldKeys.length - 1; i >= 0; i--) {
-            result = await tryDecryptWithKey(dec, ch.oldKeys[i].key);
+    if (ch.oldRecvKeys) {
+        for (let i = ch.oldRecvKeys.length - 1; i >= 0; i--) {
+            result = await tryDecryptWithKey(dec, ch.oldRecvKeys[i].key);
             if (result) return result;
         }
     }
     return null;
 }
 
-// ✅ Исправлено: поиск разделителя \x00 вместо |
 async function tryDecryptWithKey(decrypted, key) {
     const separatorIndex = decrypted.indexOf(SEPARATOR);
     if (separatorIndex === -1) return null;
