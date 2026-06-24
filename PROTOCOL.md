@@ -1,319 +1,83 @@
 # P2PPong Protocol Specification v1.0
 
+**Версия протокола: 1.0.** Кривая: P-256. Шифрование: AES-256-GCM. HMAC: SHA-256. При смене кривой или алгоритма шифрования — мажорное обновление версии протокола.
+
 ## 1. Введение
 
-P2PPong — распределённая P2P-платформа для защищённой коммуникации, построенная на принципах ОГАС академика В.М. Глушкова.
-
-Платформа обеспечивает:
-- Оконечное шифрование (E2EE) всех сообщений
-- Децентрализованную маршрутизацию через DHT (Kademlia)
-- Адресную доставку маяков (не broadcast)
-- Отказоустойчивость с тремя уровнями сигнальной сети
-- Защиту от replay-атак и анализа размера сообщений
-
----
+P2PPong — распределённая P2P-платформа для защищённой коммуникации, построенная на принципах ОГАС академика В.М. Глушкова. Платформа обеспечивает: оконечное шифрование (E2EE) всех сообщений, одноразовые сеансы (каждая встреча как первая, без сохранения ключей), три режима соединения (обычный маяк, публичный пул, тайный колчан), адресную доставку маяков (не broadcast), отказоустойчивость с тремя уровнями сигнальной сети, защиту от replay-атак.
 
 ## 2. Идентификация пиров
 
-### 2.1 Peer ID
+**Peer ID** = 32 случайных hex-символа, сгенерированных через `crypto.getRandomValues()`. Генерируется заново при каждом `craftArrow()`. Не привязан к устройству, не сохраняется между сессиями. Каждая сессия — новый Peer ID.
 
-Peer ID = первые 32 символа SHA-256 от конкатенации:
-
-WebGL_VENDOR + WebGL_RENDERER + AudioContext_SampleRate + AudioContext_MaxChannels
-
-Screen_Width + Screen_Height + ColorDepth + HardwareConcurrency + DeviceMemory + RandomSalt
-
-
-Где:
-- WebGL_VENDOR — gl.getParameter(ext.UNMASKED_VENDOR_WEBGL)
-- WebGL_RENDERER — gl.getParameter(ext.UNMASKED_RENDERER_WEBGL)
-- AudioContext_SampleRate — ctx.sampleRate.toString()
-- AudioContext_MaxChannels — ctx.destination.maxChannelCount.toString()
-- Screen_Width, Screen_Height — screen.width + 'x' + screen.height
-- ColorDepth — screen.colorDepth.toString()
-- HardwareConcurrency — navigator.hardwareConcurrency || ''
-- DeviceMemory — navigator.deviceMemory || ''
-- RandomSalt — crypto.getRandomValues(new Uint32Array(4)), сохраняется в localStorage однократно
-
-Свойства:
-- Стабильный для одного устройства (не меняется между сессиями)
-- Не привязан к личности пользователя
-- Не требует регистрации
-- Может быть сброшен очисткой localStorage
-
----
+**Beacon ID** = 32 случайных hex-символа, сгенерированных через `crypto.getRandomValues()`. Используется как ключ на сигнальном сервере (`waiting_<beaconId>`). Peer ID скрыт от сервера — он находится внутри зашифрованного inner-пакета. Beacon ID передаётся между пользователями для соединения.
 
 ## 3. Сигнальная сеть (три уровня)
 
-### 3.1 Уровень 1: WebSocket (Cloudflare Worker)
+**Уровень 1 — Cloudflare Worker:** HTTPS REST API по адресу `https://robincall.stephanclaps-491.workers.dev`. Назначение: быстрая адресная маршрутизация маяков, публичный пул `/pool`. Эндпоинты: `POST /beacon`, `GET /beacon?key=`, `DELETE /delete?key=`, `POST /pool`, `GET /pool`, `DELETE /pool?id=`, `GET /health`. Worker не читает содержимое сообщений, не хранит историю подключений дольше TTL маяка.
 
-Пир А ──WSS──► Cloudflare Worker ◄──WSS── Пир Б
+**Уровень 2 — Render Server:** HTTPS REST API по адресу `https://p2ppong-v2.onrender.com`. Назначение: резервный канал при недоступности Cloudflare Worker. Эндпоинты идентичны Уровню 1.
 
+**Уровень 3 — WebRTC DataChannel:** Прямые соединения через RTCPeerConnection без серверов. Используется для передачи сообщений после установки канала. Резервный канал: HTTP-поллинг через сигнальный сервер.
 
-- Протокол: WSS (WebSocket Secure)
-- Адрес: wss://robincall.stephanclaps-491.workers.dev/ws
-- Назначение: быстрая адресная маршрутизация маяков и DHT-сигналов
-- Worker не читает содержимое сообщений
-- Worker не хранит историю подключений дольше времени жизни WebSocket
-- Worker доставляет сообщения только целевому пиру (по targetPeerId), не делает broadcast
+## 4. Режимы соединения
 
-### 3.2 Уровень 2: HTTP Polling (Render)
+**Обычный маяк:** Beacon ID генерируется случайно. Маяк кладётся на сервер по ключу `waiting_<beaconId>`. Джойнер запрашивает маяк по тому же ключу. Peer ID скрыт внутри зашифрованного inner-пакета.
 
-Пир А ──HTTPS──► Render Server ◄──HTTPS── Пир Б
+**Публичный колчан (Blind Pool):** Маяк кладётся в общий пул `/pool` без ключа. Джойнер скачивает все маяки из пула и пытается расшифровать каждый. Сервер не знает, какой маяк кому принадлежит. Параметры пула: максимум 100 маяков, TTL 5 минут, маяк удаляется после успешного соединения.
 
+**Тайный колчан (Hash from Secret):** Beacon ID = SHA-256(секрет + соль). Только создатель и джойнер, знающие секрет, могут вычислить ключ маяка. Соль передаётся внутри зашифрованного inner-пакета. Требует обмена секретом вне полосы.
 
-- Протокол: HTTPS (REST API)
-- Адрес: https://p2ppong-v2.onrender.com
-- Назначение: резервный канал при блокировке WebSocket
+## 5. Рукопожатие (Handshake)
 
-Эндпоинты:
-- POST /beacon — создать маяк
-- POST /find — найти маяк по tempKeyHash
-- POST /message — отправить зашифрованное сообщение
-- GET /message?id=&since= — получить сообщения (long polling, 2 сек)
-- GET /ping — проверка здоровья сервера
+**Маяк (Beacon):** Пир А генерирует ephemeral-пару ECDH P-256 `(kp_A_priv, kp_A_pub)`, генерирует `peerId_A`, `beaconId`, `code` (7 цифр), вычисляет ключ маяка `bk = SHA-256(pubKey_A + "beacon")`, шифрует inner-сообщение `inner = AES-256-GCM(JSON.stringify({timestamp, peerId_A, beaconId, code, nick, avatar}), bk)`, формирует маяк `{ type: "beacon", pubKey: base64(kp_A_pub), peerId: peerId_A, inner: base64(iv + ciphertext), signalServer: url, sig: HMAC-SHA256(pubKey + peerId, bk) }`, отправляет на сервер `POST /beacon` с `keyHash: 'waiting_' + beaconId`.
 
-### 3.3 Уровень 3: Прямой DHT (WebRTC DataChannel)
+**Ответ (Beacon Response):** Пир Б получает маяк по `beaconId`, проверяет подпись `HMAC-SHA256(pubKey + peerId, sig, bk)` где `bk = SHA-256(pubKey + "beacon")`, расшифровывает inner, генерирует свою ephemeral-пару `(kp_B_priv, kp_B_pub)`, вычисляет общий секрет `sharedSecret = ECDH(kp_B_priv, kp_A_pub)`, отправляет beacon-response на сервер по ключу `waiting_<beaconId>`, отправляет verification-code на сервер по ключу `code_<beaconId>`.
 
+**Верификация:** Пир А получает verification-code, сверяет код. При совпадении канал открывается автоматически. Код: 7 цифр через `crypto.getRandomValues()`. Опционально: подтверждение через QR-код или голос (Web Speech API).
 
-Пир А ──WebRTC DataChannel──► Пир Б
+**Завершение:** Пир А получает beacon-response, вычисляет `sharedSecret = ECDH(kp_A_priv, kp_B_pub)`, создаёт канал `channelId = RND()`, `channel.secret = sharedSecret`. Канал установлен. Оба пира имеют одинаковый sharedSecret.
 
+## 6. Раздельные Ratchet
 
-- Без серверов вообще
-- Используется Kademlia-подобный DHT (256 корзин, k=20, α=3)
-- Прямые соединения через RTCPeerConnection
+**Инициализация канала:** `sendKey = sharedSecret`, `sendIndex = 0`, `recvKey = sharedSecret`, `recvIndex = 0`, `oldRecvKeys = []`.
 
----
+**Отправка (Sending Chain):** `salt = 'send_' + sendIndex.toString(16).padStart(16, '0')`, `newKey = SHA-256(sendKey + salt)`, `sendKey = newKey`, `sendIndex = sendIndex + 1`. Sending-ключи не сохраняются — старый ключ удаляется (forward secrecy).
 
-## 4. Рукопожатие (Handshake)
+**Получение (Receiving Chain):** При получении сообщения с индексом `ri`: если `ri > recvIndex`, прокрутить receiving chain до `ri`: `salt = 'recv_' + recvIndex.toString(16).padStart(16, '0')`, `newKey = SHA-256(recvKey + salt)`, `oldRecvKeys.push({ index: recvIndex, key: recvKey })`, `recvKey = newKey`, `recvIndex = recvIndex + 1`. Хранить последние 3 старых receiving-ключа. При расшифровке: сначала `recvKey`, затем `oldRecvKeys` в обратном порядке.
 
-### 4.1 Маяк (Beacon)
+**Ресинхронизация:** Сгенерировать новую ephemeral-пару ECDH, отправить `ratchet-resync` с новым публичным ключом, получатель вычисляет новый sharedSecret через ECDH, оба пира сбрасывают: `sendKey = recvKey = sharedSecret`, `sendIndex = recvIndex = 0`, `oldRecvKeys = []`.
 
-Цель: установить защищённый канал между двумя пирами без раскрытия их связи серверу.
+## 7. Формат сообщения (Blob)
 
-Процесс:
-1. Пир А генерирует ephemeral-пару ECDH P-256: (kp_A_priv, kp_A_pub)
-2. Вычисляет beaconKey = SHA-256(nonce + "beacon")
-3. Шифрует inner-сообщение: inner = AES-256-GCM(JSON.stringify({nonce, timestamp, peerId_A}), beaconKey)
-4. Формирует маяк:
+**Упаковка:** Исходные данные `JSON.stringify({ type: "text", d: "hello", t: timestamp, n: nonce, from: peerId, nick, avatar })` → GZIP-сжатие → случайный паддинг 20–70 байт → пакет `{ z: compressed_base64, t: timestamp, n: nonce, ri: sendIndex }` → HMAC-подпись `hmac = HMAC-SHA256(sendKey, data)` → сборка `payload = hmac + '\x00' + data` → шифрование `blob = AES-256-GCM(channel.secret, payload)`. Максимальный размер пакета: 65536 байт.
 
-{
-"type": "beacon",
-"pubKey": "base64(kp_A_pub)",
-"peerId": "peerId_A",
-"inner": "base64(iv + ciphertext)",
-"targetPeerId": "peerId_B",
-"nick": "Alice",
-"avatar": "042",
-"sig": "HMAC-SHA256(beaconKey, beacon_data)"
-}
-
-
-5. Отправляет маяк через сигнальный сервер только пиру Б (по targetPeerId)
-
-### 4.2 Ответ на маяк (Beacon Response)
-
-1. Пир Б получает маяк
-2. Проверяет подпись sig через HMAC-SHA256(SHA-256("beacon"), beacon_data)
-3. Если подпись верна — генерирует свою ephemeral-пару: (kp_B_priv, kp_B_pub)
-4. Вычисляет общий секрет: sharedSecret = ECDH(kp_B_priv, kp_A_pub)
-5. Создаёт канал: channelId = RND(), channel.secret = sharedSecret
-6. Отправляет ответ:
-
-{
-"type": "beacon-response",
-"pubKey": "base64(kp_B_pub)",
-"peerId": "peerId_B",
-"inner": "inner_from_beacon",
-"nick": "Bob",
-"avatar": "001"
-}
-
-
-### 4.3 Завершение рукопожатия
-
-1. Пир А получает beacon-response
-2. Вычисляет общий секрет: sharedSecret = ECDH(kp_A_priv, kp_B_pub)
-3. Создаёт канал: channelId = RND(), channel.secret = sharedSecret
-4. Канал установлен. Оба пира имеют одинаковый sharedSecret.
-
----
-
-## 5. Double Ratchet
-
-### 5.1 Инициализация
-
-ratchetKey = sharedSecret
-ratchetIndex = 0
-oldKeys = []
-
-
-### 5.2 Продвижение Ratchet (каждое сообщение)
-salt = ratchetIndex.toString(16).padStart(16, '0')
-newKey = SHA-256(ratchetKey + salt)
-
-oldKeys.push({ index: ratchetIndex, key: ratchetKey })
-if (oldKeys.length > 50) oldKeys.shift()
-
-ratchetKey = newKey
-ratchetIndex = ratchetIndex + 1
-
-
-### 5.3 Расшифровка сообщений
-
-При получении сообщения с индексом ri:
-1. Если ri > lastReceivedRi — использовать tryDecryptWithKey(decrypted, ratchetKey)
-2. Если не удалось — перебрать oldKeys в обратном порядке
-3. Если ни один ключ не подошёл — запросить ресинхронизацию
-
-### 5.4 Ресинхронизация
-
-При расхождении ratchet:
-1. Сгенерировать новую ephemeral-пару ECDH
-2. Отправить ratchet-resync сообщение с новым публичным ключом
-3. Получатель вычисляет новый sharedSecret через ECDH
-4. Оба пира сбрасывают ratchetIndex = 0, oldKeys = []
-5. Канал продолжает работу с новым секретом
-
----
-
-## 6. Формат сообщения (Blob)
-
-### 6.1 Упаковка (Pack)
-
-1. Исходные данные: JSON.stringify({ d: "hello", t: timestamp, n: nonce })
-2. GZIP-сжатие: compressData(jsonString)
-3. Случайный паддинг: padSize = random(20, 70) байт
-4. Формирование пакета:
-
-data = JSON.stringify({
-z: compressed_base64,
-t: timestamp,
-n: nonce,
-pad: random_pad_base64,
-ri: ratchetIndex
-})
-
-
-5. HMAC-подпись: hmac = HMAC-SHA256(currentRatchetKey, data)
-6. Сборка: packed = hmac + '|' + data
-7. Дополнение до 4096 байт:
-if (packed.length < 4096) {
-pad = crypto.getRandomValues(new Uint8Array(4096 - packed.length))
-packed += String.fromCharCode(...pad)
-}
-
-8. Шифрование: blob = AES-256-GCM(channel.secret, packed)
-
-### 6.2 Распаковка (Unpack)
-
-1. Расшифрование: decrypted = AES-256-GCM-Decrypt(channel.secret, blob)
-2. Поиск разделителя: separatorIndex = decrypted.indexOf('|')
-3. Извлечение HMAC: hmac = decrypted[0..separatorIndex]
-4. Извлечение данных: data = decrypted[separatorIndex+1..]
-5. Проверка HMAC: HMAC-SHA256-Verify(currentRatchetKey, data, hmac)
-6. Если не совпало — перебрать oldKeys
-7. Парсинг JSON, извлечение z (сжатые данные)
-8. GZIP-распаковка: decompressData(z)
-9. Парсинг итогового JSON с полями d, t, n
-10. Проверка на replay-атаку: ri > lastReceivedRi
-
----
-
-## 7. DHT (Kademlia)
-
-### 7.1 Параметры
-
-- Количество корзин: 256
-- Размер корзины (k): 20
-- Параллелизм поиска (α): 3
-- Метрика расстояния: XOR
-
-### 7.2 Маршрутизация
-
-distance = XOR(peerId_A, peerId_B)
-bucketIndex = getBucketIndex(distance)
-
-closestPeers = allPeers
-.map(peer => ({ ...peer, distance: XOR(targetId, peer.id) }))
-.sort((a, b) => a.distance < b.distance ? -1 : 1)
-.slice(0, k)
-
-
-### 7.3 Хранение данных
-
-DHT хранит произвольные пары key → value:
-DHT._storage[key] = {
-value: data,
-publisher: peerId,
-timestamp: Date.now()
-}
-
----
+**Распаковка:** Расшифрование `decrypted = AES-256-GCM-Decrypt(channel.secret, blob)` → поиск разделителя `\x00` → извлечение HMAC и данных → проверка HMAC через `recvKey` или `oldRecvKeys` → парсинг JSON → GZIP-распаковка с защитой от zip-бомбы (макс. 1 МБ) → проверка на replay-атаку: `ri > lastReceivedRi`.
 
 ## 8. Слепая ячейка (Blind Locker)
 
-### 8.1 Принцип
-
-Сервер не знает ни кто положил маяк, ни кто забрал, ни что внутри.
-
-Маяк кладётся в ячейку по ключу `keyHash = SHA-256(nonce + targetPeerId)`. Забрать маяк может любой кто знает `keyHash`. `keyHash` передаётся от отправителя к получателю вне канала.
-
-### 8.2 Процесс
-
-1. Пир А генерирует `nonce`, вычисляет `keyHash`
-2. Пир А отправляет `POST /beacon` с `keyHash` и зашифрованным пакетом
-3. Сервер сохраняет пакет в ячейке `keyHash`
-4. Пир Б опрашивает `GET /beacon?key=keyHash`
-5. Сервер отдаёт пакет и удаляет ячейку
-6. Если за 60 секунд никто не забрал — ячейка самоуничтожается
-
-### 8.3 Защита
-
-- Сервер не знает `targetPeerId` (он внутри зашифрованного пакета)
-- Сервер не знает кто положил (HTTP-запрос анонимный)
-- Сервер не знает кто забрал (ключ известен только А и Б)
-- Пакет защищён HMAC — невозможно подменить
-
----
+Сервер хранит маяки как key-value пары. Ключ — `beaconId`. Значение — зашифрованный пакет. Сервер не знает ни кто положил маяк, ни кто забрал, ни что внутри. Процесс: Пир А генерирует `beaconId`, вычисляет `bk = SHA-256(pubKey + "beacon")`, отправляет `POST /beacon` с `keyHash: 'waiting_' + beaconId`. Сервер сохраняет пакет. Пир Б запрашивает `GET /beacon?key=waiting_<beaconId>`. Для webrtc-пакетов ячейка помечается как `taken`. Для сообщений (`msg_`) ячейка остаётся доступной. Защита: сервер не знает `peerId` (внутри inner), не может вычислить `bk` без приватного ключа, пакет защищён HMAC. В режиме публичного пула сервер не знает, какой маяк кому принадлежит.
 
 ## 9. Защита от атак
 
-- Replay-атака: проверка ratchetIndex. Сообщения с ri <= lastReceivedRi отбрасываются
-- Анализ размера: все блобы дополняются до 4096 байт случайным паддингом
-- MITM на сигнальном сервере: сервер не может прочитать содержимое (AES-GCM), не может подменить (HMAC)
-- Sybil-атака на DHT: ограничение k=20 пиров на корзину
-- Перехват маяка: маяк зашифрован beaconKey, который известен только отправителю и целевому пиру
-
----
+- **Replay-атака:** проверка ratchetIndex, сообщения с `ri <= lastReceivedRi` отбрасываются
+- **Анализ размера:** случайный паддинг 20–70 байт
+- **MITM на сервере:** сервер не может прочитать содержимое (AES-GCM), не может подменить (HMAC)
+- **Перехват маяка:** маяк зашифрован bk = SHA-256(pubKey + "beacon"), сервер не может вычислить bk без приватного ключа
+- **Компрометация ключа:** sending-ключи не сохраняются (forward secrecy), история не расшифровывается задним числом
 
 ## 10. Ограничения и известные проблемы
 
-- Отсутствие независимого криптоаудита — требуется
-- Peer ID может использоваться как fingerprint устройства — добавить опцию "одноразовый Peer ID"
-- Зависимость от Cloudflare/Render для первоначального соединения — частично решено через DHT
-- Нет офлайн-режима — запланировано
-- Нет групповых чатов — запланировано
-
----
+Отсутствие независимого криптоаудита (требуется). Корреляция по IP и времени: сервер видит два IP у одного ключа (в публичном пуле ослаблена). Код верификации через сервер: MitM возможен при компрометации сервера (рекомендуется голосовое подтверждение). Рассинхрон ratchet при одновременной отправке. Зависимость от Cloudflare/Render для первоначального соединения. Нет офлайн-режима (маяк — 5 минут). Нет групповых чатов (только P2P).
 
 ## 11. Совместимость
 
-- Браузер: Chrome 80+, Firefox 75+, Safari 15+, Edge 80+
-- Web Crypto API: SubtleCrypto (ECDH, AES-GCM, HMAC)
-- WebRTC: RTCPeerConnection, DataChannel
-- Сжатие: CompressionStream / DecompressionStream
-- Сеть: HTTPS (обязательно), WebSocket
-
----
+Браузер: Chrome 80+, Firefox 75+, Safari 15+, Edge 80+. Web Crypto API: SubtleCrypto (ECDH, AES-GCM, HMAC). WebRTC: RTCPeerConnection, DataChannel (опционально). Сжатие: CompressionStream / DecompressionStream. Сеть: HTTPS (обязательно).
 
 ## 12. История версий
 
-- v1.0 (Июнь 2026): Первая публичная спецификация. Double Ratchet (50 ключей), адресная доставка, три уровня сети.
-
----
+**v1.0** (Июнь 2026): Первая публичная спецификация. Раздельные sending/receiving ratchet, три режима соединения, публичный пул маяков, beaconId для сокрытия Peer ID.
 
 ## 13. Лицензия
 
 MIT. Спецификация может свободно использоваться для реализации совместимых клиентов.
-
