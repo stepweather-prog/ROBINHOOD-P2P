@@ -1,4 +1,4 @@
-// p2ppong.js — Единое ядро. Правки: 1-10 + CVE 1-4
+// p2ppong.js — Единое ядро. Все правки: 1-10 + CVE 1-4 + фикс стыка CVE-3
 const DEBUG = true;
 function log(msg, data) { if (DEBUG) console.log(`[P2PPong] ${msg}`, data || ''); }
 
@@ -58,7 +58,6 @@ const workerComputeHMAC = (data, secret) => cryptoCall('computeHMAC', { data, se
 const workerVerifyHMAC = (data, sig, secret) => cryptoCall('verifyHMAC', { data, sig, secret });
 const workerPackBlob = (jsonString, ch) => cryptoCall('packBlob', { jsonString, ch });
 const workerUnpackBlob = (blob, ch) => cryptoCall('unpackBlob', { blob, ch });
-// ✅ CVE-2: deriveSecret в воркере
 const workerDeriveSecret = (myPrivateKey, theirPublicKey) => cryptoCall('deriveSecret', { myPrivateKey, theirPublicKey });
 
 async function advanceRatchetLocal(ch) {
@@ -89,7 +88,6 @@ const P2PPong = {
     _verificationCode: null,
     _beaconId: null,
     
-    // ✅ Правка 5: удалены несуществующие серверы Fly.io и Cyclic
     _signalServers: [
         { type: 'http', url: 'https://robincall.stephanclaps-491.workers.dev', name: 'Cloudflare', priority: 1 },
         { type: 'http', url: 'https://p2ppong-v2.onrender.com', name: 'Render', priority: 1 },
@@ -131,7 +129,6 @@ const P2PPong = {
 
     _genNonce() { const a = new Uint32Array(CONFIG.NONCE_LENGTH / 8); crypto.getRandomValues(a); return Array.from(a).map(x => x.toString(16).padStart(8, '0')).join(''); },
     
-    // ✅ CVE-1: crypto.getRandomValues вместо Math.random()
     _genCode() {
         const arr = new Uint32Array(1);
         crypto.getRandomValues(arr);
@@ -165,7 +162,6 @@ const P2PPong = {
                 } catch(e) {
                     this._serverHealth[server.url] = { healthy: false, failed: true, lastCheck: now };
                 }
-            // ✅ Правка 6: XMPP/Tor — пропускаем, не ломаем выбор сервера
             } else if (server.type === 'xmpp' || server.type === 'tor') {
                 continue;
             }
@@ -175,7 +171,6 @@ const P2PPong = {
         return this._signalServer;
     },
 
-    // ✅ CVE-3 + CVE-4: beaconId скрывает peerId, bk из pubKey, nonce убран
     async craftArrow() {
         this._peerId = RND();
         this._kp = await workerGenerateKeyPair();
@@ -188,11 +183,9 @@ const P2PPong = {
         const code = this._genCode();
         this._verificationCode = code;
         
-        // ✅ CVE-3: beaconId вместо peerId в ключах
         const beaconId = RND();
         this._beaconId = beaconId;
         
-        // ✅ CVE-4: bk из публичного ключа, nonce не передаётся
         const bk = await SHA(this._kp.publicKey + 'beacon');
         const inner = await workerEncryptAES(JSON.stringify({ 
             timestamp: Date.now(), 
@@ -210,14 +203,13 @@ const P2PPong = {
         
         await this._postWithRetry('/beacon', { keyHash: 'waiting_' + beaconId, packet: JSON.stringify(bd) });
         this.startPolling('waiting_' + beaconId);
-        this._emit('peer-id-generated', { peerId: this._peerId, code: code });
-        return this._peerId;
+        this._emit('peer-id-generated', { peerId: this._peerId, beaconId: this._beaconId, code: code });
+        return this._beaconId;
     },
 
-    // ✅ CVE-3 + CVE-4: joinBeacon с beaconId и bk из pubKey
-    async joinBeacon(targetPeerId) {
+    async joinBeacon(targetBeaconId) {
         await this._pickServer();
-        const d = await this._getWithRetry('/beacon?key=waiting_' + targetPeerId);
+        const d = await this._getWithRetry('/beacon?key=waiting_' + targetBeaconId);
         if (!d?.packet) { this._emit('error', { message: 'Маяк не найден' }); return false; }
         
         const bd = JSON.parse(d.packet);
@@ -228,7 +220,6 @@ const P2PPong = {
             if (srv) { this._signalServer = srv; log('signal-synced', srv.name); }
         }
         
-        // ✅ CVE-4: bk из публичного ключа маяка
         const bk = await SHA(bd.pubKey + 'beacon');
         const sigValid = await workerVerifyHMAC(bd.pubKey + bd.peerId, bd.sig, bk);
         if (!sigValid) { this._emit('error', { message: 'Подпись маяка недействительна' }); return false; }
@@ -243,7 +234,6 @@ const P2PPong = {
         this._theirNick = innerData.nick || 'Незнакомец';
         this._theirAvatar = innerData.avatar || '000';
         
-        // ✅ CVE-3: извлекаем beaconId
         const beaconId = innerData.beaconId;
         this._beaconId = beaconId;
         
@@ -252,12 +242,11 @@ const P2PPong = {
         this._remotePubKey = bd.pubKey;
         this._chId = RND();
         
-        // ✅ CVE-2: workerDeriveSecret
         this._secret = await workerDeriveSecret(this._kp.privateKey, bd.pubKey);
         const verificationHash = await SHA(this._secret + code);
         
         this._beacons[this._peerId] = { keyPair: this._kp, beaconKey: bk, expires: Date.now() + CONFIG.BEACON_TTL };
-        this._pending = { type: 'joiner', targetPeerId, verificationHash };
+        this._pending = { type: 'joiner', targetPeerId: innerData.peerId, verificationHash };
         
         const br = JSON.stringify({ 
             type: 'beacon-response', 
@@ -270,7 +259,6 @@ const P2PPong = {
             nick: this._myNick,
             avatar: this._myAvatar
         });
-        // ✅ CVE-3: ключи с beaconId
         await this._postWithRetry('/beacon', { keyHash: 'waiting_' + beaconId, packet: br });
         
         const ep = JSON.stringify({ type: 'verification-code', code: code, peerId: this._peerId, pubKey: this._kp.publicKey, inner: bd.inner });
@@ -292,9 +280,9 @@ const P2PPong = {
     
     getVerificationCode() { return this._verificationCode; },
     getPeerId() { return this._peerId; },
+    getBeaconId() { return this._beaconId; },
     getTheirProfile() { return { nick: this._theirNick, avatar: this._theirAvatar }; },
 
-    // ✅ Правка 8 (исправление): isCreator до обнуления _pending, _cleanupBeaconKeys с beaconId
     _openChannel(peerId, signalServerUrl, theirNick, theirAvatar) {
         if (!this._chId) this._chId = RND();
         if (!this._secret) return;
@@ -324,7 +312,6 @@ const P2PPong = {
         
         this._stopPolling();
         const me = this;
-        // ✅ CVE-3: cleanup с beaconId
         const beaconId = this._beaconId;
         setTimeout(() => me._cleanupBeaconKeys(beaconId), 10000);
         
@@ -465,13 +452,11 @@ const P2PPong = {
             return;
         }
         
-        // beacon-response от Боба → Алисе (creator)
         if (d.type === 'beacon-response' && d.pubKey && d.channelId) {
             if (this._pending?.type !== 'creator') return;
             this._remotePubKey = d.pubKey;
             this._remotePeerId = d.peerId;
             this._chId = d.channelId;
-            // ✅ CVE-2: workerDeriveSecret
             this._secret = await workerDeriveSecret(this._kp.privateKey, d.pubKey);
             if (d.nick) this._theirNick = d.nick;
             if (d.avatar) this._theirAvatar = d.avatar;
@@ -482,11 +467,9 @@ const P2PPong = {
             return;
         }
         
-        // beacon-ack от Алисы → Бобу (joiner)
         if (d.type === 'beacon-ack' && d.channelId) {
             if (this._pending?.type !== 'joiner') return;
             this._chId = d.channelId;
-            // ✅ CVE-2: workerDeriveSecret
             if (!this._secret && d.pubKey) { this._secret = await workerDeriveSecret(this._kp.privateKey, d.pubKey); }
             if (d.peerId) this._remotePeerId = d.peerId;
             if (d.nick) this._theirNick = d.nick;
@@ -495,12 +478,10 @@ const P2PPong = {
             return;
         }
         
-        // ✅ Правка 4: verification-code — автооткрытие канала при совпадении кода
         if (d.type === 'verification-code' && d.code) {
             if (this._pending?.type === 'creator' && this._verificationCode && d.code === this._verificationCode) {
                 this._remotePubKey = d.pubKey;
                 this._remotePeerId = d.peerId;
-                // ✅ CVE-2: workerDeriveSecret
                 this._secret = await workerDeriveSecret(this._kp.privateKey, d.pubKey);
                 await this._post('/beacon', { keyHash: 'waiting_' + this._beaconId, packet: JSON.stringify({
                     type: 'beacon-ack', peerId: this._peerId, channelId: this._chId, pubKey: this._kp.publicKey, signalServer: this._signalServer.url, nick: this._myNick, avatar: this._myAvatar
@@ -516,7 +497,6 @@ const P2PPong = {
         if (d.type === 'ratchet-resync' && d.pubKey) {
             if (ch) {
                 try {
-                    // ✅ CVE-2: workerDeriveSecret
                     const ss = await workerDeriveSecret(this._kp?.privateKey || '', d.pubKey);
                     ch.secret = ss; ch.ratchetKey = ss; ch.ratchetIndex = 0; ch.oldKeys = []; ch.lastReceivedRi = -1;
                 } catch(e) { log('resync error', e.message); }
@@ -569,7 +549,6 @@ const P2PPong = {
             if (!ch.oldKeys) ch.oldKeys = [];
             ch.oldKeys.push({ index: ch.ratchetIndex - 1, key: oldKey });
             if (ch.oldKeys.length > CONFIG.MAX_OLD_KEYS) ch.oldKeys.shift();
-            // ✅ CVE-3: keyHash с beaconId вместо peerId
             await this._post('/beacon', { keyHash: 'msg_' + (chId || this._chId) + '_' + this._beaconId, packet: result.packed });
             ch.blobs.push({ d: displayText, t: Date.now(), n: nonce, from: 'me', status: 'sent', nick: this._myNick, avatar: this._myAvatar });
             ch.expires = Date.now() + CONFIG.CHANNEL_TTL; this._stats.messagesSent++;
@@ -579,7 +558,6 @@ const P2PPong = {
         return false;
     },
 
-    // ✅ CVE-3: _cleanupBeaconKeys принимает beaconId
     _cleanupBeaconKeys(beaconId) {
         this._get('/delete?key=waiting_' + beaconId).catch(() => {});
         this._get('/delete?key=code_' + beaconId).catch(() => {});
@@ -594,7 +572,6 @@ const P2PPong = {
                 if (now > me._channels[id].expires) { delete me._channels[id]; delete me._webRTC[id]; me._stopMsgPoll(id); me._stopWebRTCPoll(id); me._emit('channel-expired', { channelId: id }); } 
             });
             Object.keys(me._beacons).forEach(function(id) { if (now > me._beacons[id].expires) delete me._beacons[id]; });
-            // ✅ CVE-3: проверка кода с beaconId
             if (me._peerId && me._beaconId && me._pending?.type === 'creator' && Object.keys(me._channels).length === 0) {
                 me._get('/beacon?key=code_' + me._beaconId).then(function(d) { if (d && d.packet) me._handleIn(d.packet); }).catch(() => {});
             }
@@ -608,7 +585,6 @@ const P2PPong = {
         function poll() {
             if (!me._channels[chId]) { me._stopMsgPoll(chId); return; }
             if (me._webRTC[chId] && me._webRTC[chId].connected) { me._stopMsgPoll(chId); return; }
-            // ✅ CVE-3: поллинг с beaconId
             me._get('/beacon?key=msg_' + chId + '_' + me._beaconId).then(function(d) {
                 if (d && d.packet) me._handleIn(d.packet);
                 me._msgPollTimers[chId] = setTimeout(poll, CONFIG.MSG_POLL_INTERVAL);
@@ -670,7 +646,6 @@ const P2PPong = {
         Object.keys(this._webRTCPolling).forEach(id => clearTimeout(this._webRTCPolling[id])); this._webRTCPolling = {};
         Object.keys(this._webRTC).forEach(id => { try { this._webRTC[id].pc.close(); } catch(e) {} }); this._webRTC = {};
         if (this._housekeepInterval) clearInterval(this._housekeepInterval);
-        // ✅ Правка 7: чистим _dedupTimers
         for (const k in this._dedupTimers) clearTimeout(this._dedupTimers[k]);
         this._dedupTimers = {};
         this._channels = {}; this._beacons = {}; this._listeners = {};
