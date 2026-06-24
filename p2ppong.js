@@ -1,4 +1,4 @@
-// p2ppong.js — v2 с раздельными ratchet
+// p2ppong.js — v2 с раздельными ratchet + исправление peerId в bd
 const DEBUG = true;
 function log(msg, data) { if (DEBUG) console.log(`[P2PPong] ${msg}`, data || ''); }
 
@@ -189,8 +189,16 @@ const P2PPong = {
             nick: this._myNick,
             avatar: this._myAvatar
         }), bk);
-        const bd = { type: 'beacon', pubKey: this._kp.publicKey, inner, signalServer: this._signalServer.url };
-        bd.sig = await workerComputeHMAC(bd.pubKey + this._peerId, bk);
+        
+        // ✅ peerId возвращён в bd для проверки подписи
+        const bd = { 
+            type: 'beacon', 
+            pubKey: this._kp.publicKey, 
+            peerId: this._peerId, 
+            inner, 
+            signalServer: this._signalServer.url 
+        };
+        bd.sig = await workerComputeHMAC(bd.pubKey + bd.peerId, bk);
         
         this._beacons[this._peerId] = { keyPair: this._kp, beaconKey: bk, expires: Date.now() + CONFIG.BEACON_TTL };
         this._pending = { type: 'creator' };
