@@ -1,4 +1,4 @@
-// robinhood-ui.js — v3 с переключателем режимов колчана
+// robinhood-ui.js — v4 с обязательной голосовой верификацией и QR с pubKey
 let contacts = [],
     activeChannelId = null,
     activePeerId = null,
@@ -46,7 +46,7 @@ let bands = [];
 let activeBandId = null;
 let pendingBandData = null;
 
-let craftMode = 'public'; // public | secret
+let craftMode = 'public';
 
 const MAX_CHAT_MESSAGES = 100;
 
@@ -437,28 +437,35 @@ function initUI() {
             modalDialog.appendChild(speakBtn);
         }
         document.getElementById('verify-modal')?.classList.add('active'); });
-    P2PPong.on('verification-received', (data) => { if (verificationModalShown) return; verificationModalShown = true; verificationDone = false; const code = data.code || P2PPong.getVerificationCode(); if (window._verifyCode && code === window._verifyCode) { document.getElementById('verify-modal')?.classList.add('active'); document.getElementById('verify-instruction').textContent = '✅ Код совпал! Канал открывается...'; document.getElementById('verify-code-display').textContent = code; document.getElementById('verify-error').style.display = 'none'; setTimeout(async () => { verificationModalShown = false; verificationDone = true; document.getElementById('verify-modal')?.classList.remove('active'); await P2PPong.confirmVerification(); }, 1500); return; } document.getElementById('verify-instruction').textContent = 'Введи 7-значный код'; document.getElementById('verify-error').style.display = 'none';
-        const modalDialog = document.getElementById('verify-modal')?.querySelector('.modal-dialog');
-        if (modalDialog && !document.getElementById('speak-code-btn')) {
-            const speakBtn = document.createElement('button');
-            speakBtn.id = 'speak-code-btn';
-            speakBtn.textContent = '🔊 Произнести код';
-            speakBtn.className = 'btn-dark';
-            speakBtn.style.cssText = 'width:auto;display:inline-block;margin:8px auto;';
-            speakBtn.onclick = () => {
-                const code = window._verifyCode || P2PPong.getVerificationCode();
-                if (code && 'speechSynthesis' in window) {
-                    const utterance = new SpeechSynthesisUtterance(
-                        code.split('').join(' ')
-                    );
-                    utterance.lang = 'ru-RU';
-                    utterance.rate = 0.8;
-                    speechSynthesis.speak(utterance);
-                }
-            };
-            modalDialog.appendChild(speakBtn);
+    
+    // ✅ Задача 1: verification-received — обязательное голосовое подтверждение
+    P2PPong.on('verification-received', (data) => {
+        const code = data.code || P2PPong.getVerificationCode();
+        const expectedCode = window._verifyCode || P2PPong.getVerificationCode();
+        
+        if (code === expectedCode) {
+            document.getElementById('verify-modal')?.classList.add('active');
+            document.getElementById('verify-instruction').textContent = 
+                '📞 Произнеси код собеседнику голосом: ' + code.split('').join(' ');
+            document.getElementById('verify-code-display').textContent = code;
+            
+            const modalDialog = document.getElementById('verify-modal')?.querySelector('.modal-dialog');
+            if (modalDialog && !document.getElementById('confirm-voice-btn')) {
+                const confirmVoiceBtn = document.createElement('button');
+                confirmVoiceBtn.id = 'confirm-voice-btn';
+                confirmVoiceBtn.textContent = '✅ Подтверждаю — коды совпали голосом';
+                confirmVoiceBtn.className = 'btn-primary';
+                confirmVoiceBtn.onclick = () => {
+                    P2PPong.verifyCodeOutOfBand(expectedCode, code);
+                    document.getElementById('verify-modal')?.classList.remove('active');
+                };
+                modalDialog.appendChild(confirmVoiceBtn);
+            }
+            
+            document.getElementById('btn-verify-confirm').style.display = 'none';
         }
-        document.getElementById('verify-modal')?.classList.add('active'); });
+    });
+    
     P2PPong.on('channel-opened', (data) => { if (verificationModalShown && !verificationDone) { window._pendingChannel = data; return; } document.getElementById('verify-modal')?.classList.remove('active'); verificationModalShown = false; verificationDone = false; playQuiverAnimation(); rMsg('✅ Колчан открыт! Тетива натянута!', 3000); addContact({ peerId: data.peerId, name: data.nick || 'Лучник', channelId: data.channelId, verified: false, avatar: data.avatar || '001' }); showChatForChannel(data.channelId); });
     P2PPong.on('channel-expired', (data) => { if (data.channelId === activeChannelId) { activeChannelId = null; activePeerId = null; document.getElementById('chat-box').innerHTML = '<div class="typing-indicator" id="typing-indicator"></div>'; } });
     P2PPong.on('error', (data) => { rMsg('❌ ' + data.message, 5000); });
@@ -525,19 +532,26 @@ function initApp() {
                 const display = document.getElementById('craft-peer-id-display');
                 if (display) display.textContent = beaconId;
                 const code = P2PPong.getVerificationCode();
+                const pubKey = P2PPong.getPubKey();
                 if (code) {
                     const codeDisplay = document.getElementById('craft-code-display');
                     if (codeDisplay) {
                         codeDisplay.textContent = code;
                         codeDisplay.style.display = 'block';
                     }
+                    // ✅ Задача 2: QR с pubKey
                     const qrContainer = document.getElementById('craft-qr-code');
                     if (qrContainer) {
                         qrContainer.innerHTML = '';
-                        const qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=' + encodeURIComponent(code);
+                        const qrData = JSON.stringify({
+                            beaconId: beaconId,
+                            code: code,
+                            pubKey: pubKey
+                        });
+                        const qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(qrData);
                         const img = document.createElement('img');
                         img.src = qrUrl;
-                        img.style.cssText = 'width:150px;height:150px;margin:8px auto;display:block;';
+                        img.style.cssText = 'width:200px;height:200px;margin:8px auto;display:block;';
                         img.loading = 'lazy';
                         qrContainer.appendChild(img);
                         qrContainer.style.display = 'block';
@@ -552,11 +566,28 @@ function initApp() {
                 const display = document.getElementById('craft-peer-id-display');
                 if (display) display.textContent = beaconId;
                 const code = P2PPong.getVerificationCode();
+                const pubKey = P2PPong.getPubKey();
                 if (code) {
                     const codeDisplay = document.getElementById('craft-code-display');
                     if (codeDisplay) {
                         codeDisplay.textContent = code;
                         codeDisplay.style.display = 'block';
+                    }
+                    const qrContainer = document.getElementById('craft-qr-code');
+                    if (qrContainer) {
+                        qrContainer.innerHTML = '';
+                        const qrData = JSON.stringify({
+                            beaconId: beaconId,
+                            code: code,
+                            pubKey: pubKey
+                        });
+                        const qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(qrData);
+                        const img = document.createElement('img');
+                        img.src = qrUrl;
+                        img.style.cssText = 'width:200px;height:200px;margin:8px auto;display:block;';
+                        img.loading = 'lazy';
+                        qrContainer.appendChild(img);
+                        qrContainer.style.display = 'block';
                     }
                 }
                 window._verifyCode = code;
@@ -568,6 +599,35 @@ function initApp() {
     document.getElementById('btn-copy-peer-id')?.addEventListener('click', () => { const bid = P2PPong._beaconId; const code = P2PPong.getVerificationCode(); let copyText = bid || ''; if (code) copyText += '\n' + code; if (bid) { navigator.clipboard.writeText(copyText).then(() => rMsg('⎘ Стрела и код скопированы!')).catch(() => {}); } });
     document.getElementById('close-craft-modal')?.addEventListener('click', () => { document.getElementById('craft-modal')?.classList.remove('active'); });
     document.getElementById('craft-modal')?.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('active'); });
+    
+    // ✅ Задача 2: сканировать QR собеседника
+    document.getElementById('btn-scan-qr')?.addEventListener('click', async () => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.capture = 'environment';
+        input.onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            // Используем упрощённое чтение — пользователь вставляет текст из QR вручную
+            // Полноценный QR-сканер требует библиотеку, здесь — поле для вставки данных
+            const text = await showInput('Вставь данные из QR', '');
+            if (text) {
+                try {
+                    const qrData = JSON.parse(text);
+                    window._expectedPubKey = qrData.pubKey;
+                    const ok = await P2PPong.joinBeacon(qrData.beaconId);
+                    if (ok) {
+                        rMsg('📷 QR принят! Сверяю ключи...', 3000);
+                        document.getElementById('craft-modal')?.classList.remove('active');
+                    }
+                } catch(e) {
+                    rMsg('❌ Неверный формат QR-данных', 3000);
+                }
+            }
+        };
+        input.click();
+    });
     
     document.getElementById('btn-create-beacon')?.addEventListener('click', async () => {
         if (craftMode === 'public') {
