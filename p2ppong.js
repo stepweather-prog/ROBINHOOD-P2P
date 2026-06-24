@@ -1,4 +1,4 @@
-// p2ppong.js — v4 с обязательной внеполосной верификацией, QR с pubKey, подготовкой к аудиту
+// p2ppong.js — v4 финальный
 const DEBUG = true;
 function log(msg, data) { if (DEBUG) console.log(`[P2PPong] ${msg}`, data || ''); }
 
@@ -168,7 +168,6 @@ const P2PPong = {
         return this._signalServer;
     },
 
-    // ✅ Задача 1: verifyCodeOutOfBand — обязательное голосовое подтверждение
     verifyCodeOutOfBand(expectedCode, actualCode) {
         if (expectedCode === actualCode) {
             this._codeVerified = true;
@@ -183,7 +182,7 @@ const P2PPong = {
         return false;
     },
 
-    craftArrow() {
+    async craftArrow() {
         this._secretMode = false;
         this._codeVerified = false;
         this._peerId = RND();
@@ -291,7 +290,6 @@ const P2PPong = {
                 const bd = JSON.parse(beacon.packet);
                 if (!bd?.pubKey || !bd?.inner) continue;
                 
-                // ✅ Задача 2: проверка публичного ключа при QR-соединении
                 if (window._expectedPubKey && bd.pubKey !== window._expectedPubKey) {
                     continue;
                 }
@@ -421,7 +419,6 @@ const P2PPong = {
         const bd = JSON.parse(d.packet);
         if (!bd?.pubKey || !bd?.inner) { this._emit('error', { message: 'Маяк повреждён' }); return false; }
         
-        // ✅ Задача 2: проверка публичного ключа при QR-соединении
         if (window._expectedPubKey && bd.pubKey !== window._expectedPubKey) {
             this._emit('error', { message: 'Публичный ключ не совпадает с QR! Возможна атака MitM.' });
             return false;
@@ -531,6 +528,7 @@ const P2PPong = {
         
         this._stats.channelsOpened++;
         
+        const isCreator = this._pending?.type === 'creator';
         this._pending = null;
         
         this._emit('channel-opened', { 
@@ -540,7 +538,7 @@ const P2PPong = {
             avatar: this._theirAvatar 
         });
         this._startMsgPoll(this._chId);
-        this._startWebRTC(this._chId, true);
+        this._startWebRTC(this._chId, isCreator);
     },
 
     async _postWithRetry(path, body, retryCount = 0) {
@@ -699,7 +697,6 @@ const P2PPong = {
             return;
         }
         
-        // ✅ Задача 1: verification-code НЕ открывает канал автоматически — ждёт verifyCodeOutOfBand
         if (d.type === 'verification-code' && d.code) {
             if (this._pending?.type === 'creator' && this._verificationCode && d.code === this._verificationCode) {
                 this._remotePubKey = d.pubKey;
@@ -709,7 +706,6 @@ const P2PPong = {
                     type: 'beacon-ack', peerId: this._peerId, channelId: this._chId, pubKey: this._kp.publicKey, signalServer: this._signalServer.url, nick: this._myNick, avatar: this._myAvatar
                 })});
                 this._pendingChannelData = { peerId: d.peerId, signalServer: d.signalServer, nick: d.nick, avatar: d.avatar };
-                // НЕ вызываем _openChannel — ждём verifyCodeOutOfBand
                 this._emit('verification-received', { code: d.code });
                 return;
             }
