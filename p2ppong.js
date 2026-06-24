@@ -1,4 +1,4 @@
-// p2ppong.js — v3 с общим пулом и тайным колчаном
+// p2ppong.js — v3 с общим пулом и тайным колчаном (исправлен DELETE)
 const DEBUG = true;
 function log(msg, data) { if (DEBUG) console.log(`[P2PPong] ${msg}`, data || ''); }
 
@@ -318,8 +318,9 @@ const P2PPong = {
                 this.startPolling('waiting_' + this._beaconId);
                 this._emit('verification-needed', { code: code });
                 
+                // ✅ Исправлено: DELETE вместо GET
                 if (beacon.id) {
-                    this._get('/pool/delete?id=' + beacon.id).catch(() => {});
+                    this._delete('/pool?id=' + beacon.id).catch(() => {});
                 }
                 
                 return true;
@@ -560,6 +561,20 @@ const P2PPong = {
             this._serverHealth[s.url] = { healthy: false, failed: true, lastCheck: Date.now() };
             await this._pickServer();
             return this._getWithRetry(path, retryCount + 1);
+        }
+        return null;
+    },
+
+    async _delete(path) {
+        const s = this._signalServer || this._signalServers[0];
+        try {
+            const r = await fetch(s.url + path, { 
+                method: 'DELETE', 
+                signal: AbortSignal.timeout(CONFIG.SERVER_FAIL_TIMEOUT) 
+            });
+            if (r.ok) return r.json();
+        } catch(e) {
+            // Игнорируем ошибки удаления
         }
         return null;
     },
