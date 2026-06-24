@@ -1,4 +1,4 @@
-// p2ppong.js — v3 с общим пулом и тайным колчаном (исправлен DELETE)
+// p2ppong.js — v4 с обязательной внеполосной верификацией, QR с pubKey, подготовкой к аудиту
 const DEBUG = true;
 function log(msg, data) { if (DEBUG) console.log(`[P2PPong] ${msg}`, data || ''); }
 
@@ -83,6 +83,7 @@ const P2PPong = {
     _beaconId: null,
     _poolBeaconId: null,
     _secretMode: false,
+    _codeVerified: false,
     
     _signalServers: [
         { type: 'http', url: 'https://robincall.stephanclaps-491.workers.dev', name: 'Cloudflare', priority: 1 },
@@ -167,9 +168,24 @@ const P2PPong = {
         return this._signalServer;
     },
 
-    // Обычный маяк (beaconId случаен)
-    async craftArrow() {
+    // ✅ Задача 1: verifyCodeOutOfBand — обязательное голосовое подтверждение
+    verifyCodeOutOfBand(expectedCode, actualCode) {
+        if (expectedCode === actualCode) {
+            this._codeVerified = true;
+            if (this._pendingChannelData) {
+                const data = this._pendingChannelData;
+                this._pendingChannelData = null;
+                this._openChannel(data.peerId, data.signalServer, data.nick, data.avatar);
+            }
+            return true;
+        }
+        this._emit('error', { message: 'Коды не совпадают. Возможна атака MitM.' });
+        return false;
+    },
+
+    craftArrow() {
         this._secretMode = false;
+        this._codeVerified = false;
         this._peerId = RND();
         this._kp = await workerGenerateKeyPair();
         this._remotePubKey = null;
@@ -208,13 +224,13 @@ const P2PPong = {
         
         await this._postWithRetry('/beacon', { keyHash: 'waiting_' + beaconId, packet: JSON.stringify(bd) });
         this.startPolling('waiting_' + beaconId);
-        this._emit('peer-id-generated', { peerId: this._peerId, beaconId: this._beaconId, code: code });
+        this._emit('peer-id-generated', { peerId: this._peerId, beaconId: this._beaconId, code: code, pubKey: this._kp.publicKey });
         return this._beaconId;
     },
 
-    // Публичный колчан — общий пул маяков
     async craftPublicArrow() {
         this._secretMode = false;
+        this._codeVerified = false;
         this._peerId = RND();
         this._kp = await workerGenerateKeyPair();
         this._remotePubKey = null;
@@ -254,7 +270,7 @@ const P2PPong = {
         const result = await this._postWithRetry('/pool', { packet: JSON.stringify(bd) });
         this._poolBeaconId = result?.id;
         
-        this._emit('peer-id-generated', { peerId: this._peerId, beaconId: this._beaconId, code: code });
+        this._emit('peer-id-generated', { peerId: this._peerId, beaconId: this._beaconId, code: code, pubKey: this._kp.publicKey });
         return this._beaconId;
     },
 
@@ -274,6 +290,11 @@ const P2PPong = {
             try {
                 const bd = JSON.parse(beacon.packet);
                 if (!bd?.pubKey || !bd?.inner) continue;
+                
+                // ✅ Задача 2: проверка публичного ключа при QR-соединении
+                if (window._expectedPubKey && bd.pubKey !== window._expectedPubKey) {
+                    continue;
+                }
                 
                 const bk = await SHA(bd.pubKey + 'beacon');
                 const sigValid = await workerVerifyHMAC(bd.pubKey + bd.peerId, bd.sig, bk);
@@ -318,7 +339,6 @@ const P2PPong = {
                 this.startPolling('waiting_' + this._beaconId);
                 this._emit('verification-needed', { code: code });
                 
-                // ✅ Исправлено: DELETE вместо GET
                 if (beacon.id) {
                     this._delete('/pool?id=' + beacon.id).catch(() => {});
                 }
@@ -333,9 +353,9 @@ const P2PPong = {
         return false;
     },
 
-    // Тайный колчан — хэш от секрета
     async craftSecretArrow(secret) {
         this._secretMode = true;
+        this._codeVerified = false;
         this._peerId = RND();
         this._kp = await workerGenerateKeyPair();
         this._remotePubKey = null;
@@ -381,7 +401,8 @@ const P2PPong = {
             peerId: this._peerId, 
             beaconId: this._beaconId,
             salt: salt,
-            code: code 
+            code: code,
+            pubKey: this._kp.publicKey
         });
         return this._beaconId;
     },
@@ -399,6 +420,12 @@ const P2PPong = {
         
         const bd = JSON.parse(d.packet);
         if (!bd?.pubKey || !bd?.inner) { this._emit('error', { message: 'Маяк повреждён' }); return false; }
+        
+        // ✅ Задача 2: проверка публичного ключа при QR-соединении
+        if (window._expectedPubKey && bd.pubKey !== window._expectedPubKey) {
+            this._emit('error', { message: 'Публичный ключ не совпадает с QR! Возможна атака MitM.' });
+            return false;
+        }
         
         if (bd.signalServer) {
             const srv = this._signalServers.find(s => s.url === bd.signalServer);
@@ -455,7 +482,7 @@ const P2PPong = {
     },
 
     confirmVerification() { 
-        if (this._pendingChannelData) {
+        if (this._pendingChannelData && this._codeVerified) {
             const data = this._pendingChannelData;
             this._pendingChannelData = null;
             this._openChannel(data.peerId, data.signalServer, data.nick, data.avatar);
@@ -466,6 +493,7 @@ const P2PPong = {
     getVerificationCode() { return this._verificationCode; },
     getPeerId() { return this._peerId; },
     getBeaconId() { return this._beaconId; },
+    getPubKey() { return this._kp?.publicKey; },
     getTheirProfile() { return { nick: this._theirNick, avatar: this._theirAvatar }; },
 
     _openChannel(peerId, signalServerUrl, theirNick, theirAvatar) {
@@ -503,7 +531,6 @@ const P2PPong = {
         
         this._stats.channelsOpened++;
         
-        const isCreator = this._pending?.type === 'creator';
         this._pending = null;
         
         this._emit('channel-opened', { 
@@ -513,7 +540,7 @@ const P2PPong = {
             avatar: this._theirAvatar 
         });
         this._startMsgPoll(this._chId);
-        this._startWebRTC(this._chId, isCreator);
+        this._startWebRTC(this._chId, true);
     },
 
     async _postWithRetry(path, body, retryCount = 0) {
@@ -573,9 +600,7 @@ const P2PPong = {
                 signal: AbortSignal.timeout(CONFIG.SERVER_FAIL_TIMEOUT) 
             });
             if (r.ok) return r.json();
-        } catch(e) {
-            // Игнорируем ошибки удаления
-        }
+        } catch(e) {}
         return null;
     },
 
@@ -674,6 +699,7 @@ const P2PPong = {
             return;
         }
         
+        // ✅ Задача 1: verification-code НЕ открывает канал автоматически — ждёт verifyCodeOutOfBand
         if (d.type === 'verification-code' && d.code) {
             if (this._pending?.type === 'creator' && this._verificationCode && d.code === this._verificationCode) {
                 this._remotePubKey = d.pubKey;
@@ -682,8 +708,9 @@ const P2PPong = {
                 await this._post('/beacon', { keyHash: 'waiting_' + this._beaconId, packet: JSON.stringify({
                     type: 'beacon-ack', peerId: this._peerId, channelId: this._chId, pubKey: this._kp.publicKey, signalServer: this._signalServer.url, nick: this._myNick, avatar: this._myAvatar
                 })});
+                this._pendingChannelData = { peerId: d.peerId, signalServer: d.signalServer, nick: d.nick, avatar: d.avatar };
+                // НЕ вызываем _openChannel — ждём verifyCodeOutOfBand
                 this._emit('verification-received', { code: d.code });
-                this._openChannel(d.peerId, d.signalServer, d.nick, d.avatar);
                 return;
             }
             this._emit('verification-received', { code: d.code });
@@ -849,7 +876,7 @@ const P2PPong = {
         this._remotePubKey = null; this._secret = null; this._chId = null;
         this._pending = null; this._pendingChannelData = null; this._verificationCode = null; this._signalServer = null;
         this._webRTCSignalBuffer = {}; this._remotePeerId = null; this._serverHealth = {};
-        this._beaconId = null; this._poolBeaconId = null;
+        this._beaconId = null; this._poolBeaconId = null; this._codeVerified = false;
         this._emit('destroyed');
     }
 };
