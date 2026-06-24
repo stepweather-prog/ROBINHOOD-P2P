@@ -1,5 +1,4 @@
-// robinhood-ui.js — полный файл с правками 9 + все CVE учтены в p2ppong.js
-// (файл не менялся кроме правки 9, публикую как есть)
+// robinhood-ui.js — полный файл с правкой 9 + фикс стыка CVE-3
 
 let contacts = [],
     activeChannelId = null,
@@ -460,9 +459,10 @@ function initApp() {
     const ls = document.getElementById('lock-status'); if (ls) ls.textContent = lockType === 'pin' ? 'Пин-код' : 'Не задан';
     const isPWA = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone || false; const si = document.getElementById('setting-install'); if (!isPWA && si) si.classList.remove('hidden');
 
-    document.getElementById('btn-craft')?.addEventListener('click', () => { document.getElementById('craft-modal')?.classList.add('active'); const pid = P2PPong._peerId; const display = document.getElementById('craft-peer-id-display'); if (display) display.textContent = pid || 'Не создана'; });
-    document.getElementById('btn-craft-arrow')?.addEventListener('click', async () => { try { const peerId = await P2PPong.craftArrow(); const display = document.getElementById('craft-peer-id-display'); if (display) display.textContent = peerId; const code = P2PPong.getVerificationCode(); if (code) { const codeDisplay = document.getElementById('craft-code-display'); if (codeDisplay) { codeDisplay.textContent = code; codeDisplay.style.display = 'block'; } window._verifyCode = code; } rMsg('🏹 Стрела изготовлена!', 3000); } catch(e) {} });
-    document.getElementById('btn-copy-peer-id')?.addEventListener('click', () => { const pid = P2PPong._peerId; const code = P2PPong.getVerificationCode(); let copyText = pid || ''; if (code) copyText += '\n' + code; if (pid) { navigator.clipboard.writeText(copyText).then(() => rMsg('⎘ Стрела и код скопированы!')).catch(() => {}); } });
+    // ✅ CVE-3: UI использует beaconId
+    document.getElementById('btn-craft')?.addEventListener('click', () => { document.getElementById('craft-modal')?.classList.add('active'); const bid = P2PPong._beaconId; const display = document.getElementById('craft-peer-id-display'); if (display) display.textContent = bid || 'Не создана'; });
+    document.getElementById('btn-craft-arrow')?.addEventListener('click', async () => { try { const beaconId = await P2PPong.craftArrow(); const display = document.getElementById('craft-peer-id-display'); if (display) display.textContent = beaconId; const code = P2PPong.getVerificationCode(); if (code) { const codeDisplay = document.getElementById('craft-code-display'); if (codeDisplay) { codeDisplay.textContent = code; codeDisplay.style.display = 'block'; } window._verifyCode = code; } rMsg('🏹 Стрела изготовлена!', 3000); } catch(e) {} });
+    document.getElementById('btn-copy-peer-id')?.addEventListener('click', () => { const bid = P2PPong._beaconId; const code = P2PPong.getVerificationCode(); let copyText = bid || ''; if (code) copyText += '\n' + code; if (bid) { navigator.clipboard.writeText(copyText).then(() => rMsg('⎘ Стрела и код скопированы!')).catch(() => {}); } });
     document.getElementById('close-craft-modal')?.addEventListener('click', () => { document.getElementById('craft-modal')?.classList.remove('active'); });
     document.getElementById('craft-modal')?.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('active'); });
     document.getElementById('btn-create-beacon')?.addEventListener('click', async () => { const targetId = document.getElementById('peer-id-input')?.value.trim(); if (targetId) { const ok = await P2PPong.joinBeacon(targetId); if (ok) { rMsg('🏹 Тетива натянута...', 3000); document.getElementById('craft-modal')?.classList.remove('active'); } } });
