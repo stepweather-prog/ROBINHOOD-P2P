@@ -1,4 +1,4 @@
-// robinhood-ui.js — v5 чистый: без домино, без переключателя режимов, чат работает, анимация у обоих
+// robinhood-ui.js — v5 исправленный: анимация колчана у обоих, флаги верификации сбрасываются до setTimeout
 let contacts = [],
     activeChannelId = null,
     activePeerId = null,
@@ -176,7 +176,18 @@ function initUI() {
         if (modalDialog && !document.getElementById('speak-code-btn')) { const speakBtn = document.createElement('button'); speakBtn.id = 'speak-code-btn'; speakBtn.textContent = '🔊 Произнести код'; speakBtn.className = 'btn-dark'; speakBtn.style.cssText = 'width:auto;display:inline-block;margin:8px auto;'; speakBtn.onclick = () => { const code = window._verifyCode || P2PPong.getVerificationCode(); if (code && 'speechSynthesis' in window) { const utterance = new SpeechSynthesisUtterance(code.split('').join(' ')); utterance.lang = 'ru-RU'; utterance.rate = 0.8; speechSynthesis.speak(utterance); } }; modalDialog.appendChild(speakBtn); }
         document.getElementById('verify-modal')?.classList.add('active'); });
     
-    P2PPong.on('verification-received', (data) => { const code = data.code || P2PPong.getVerificationCode(); document.getElementById('verify-instruction').textContent = '✅ Код совпал! Канал открывается...'; document.getElementById('verify-code-display').textContent = code; document.getElementById('verify-error').style.display = 'none'; setTimeout(() => { verificationModalShown = false; verificationDone = true; document.getElementById('verify-modal')?.classList.remove('active'); }, 1500); });
+    // ✅ ИСПРАВЛЕНО: флаги сбрасываются ДО setTimeout
+    P2PPong.on('verification-received', (data) => { 
+        const code = data.code || P2PPong.getVerificationCode(); 
+        document.getElementById('verify-instruction').textContent = '✅ Код совпал! Канал открывается...'; 
+        document.getElementById('verify-code-display').textContent = code; 
+        document.getElementById('verify-error').style.display = 'none'; 
+        verificationModalShown = false; 
+        verificationDone = true; 
+        setTimeout(() => { 
+            document.getElementById('verify-modal')?.classList.remove('active'); 
+        }, 1500); 
+    });
     
     P2PPong.on('channel-opened', (data) => { if (verificationModalShown && !verificationDone) { window._pendingChannel = data; return; } document.getElementById('verify-modal')?.classList.remove('active'); verificationModalShown = false; verificationDone = false; playQuiverAnimation(); rMsg('✅ Колчан открыт! Тетива натянута!', 3000); addContact({ peerId: data.peerId, name: data.nick || 'Лучник', channelId: data.channelId, verified: false, avatar: data.avatar || '001' }); showChatForChannel(data.channelId); });
     P2PPong.on('channel-expired', (data) => { if (data.channelId === activeChannelId) { activeChannelId = null; activePeerId = null; document.getElementById('chat-box').innerHTML = '<div class="typing-indicator" id="typing-indicator"></div>'; } });
