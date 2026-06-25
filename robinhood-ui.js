@@ -1,4 +1,4 @@
-// robinhood-ui.js — v5 финал: анимация у обоих, канал открывается без проверки флагов
+// robinhood-ui.js — v5 финал исправленный: канал открывается, анимация у обоих
 let contacts = [],
     activeChannelId = null,
     activePeerId = null,
@@ -186,7 +186,6 @@ function initUI() {
         setTimeout(() => { document.getElementById('verify-modal')?.classList.remove('active'); }, 1500); 
     });
     
-    // ✅ ИСПРАВЛЕНО: убрана проверка verificationModalShown — анимация играет у обоих
     P2PPong.on('channel-opened', (data) => { 
         document.getElementById('verify-modal')?.classList.remove('active'); 
         verificationModalShown = false; 
