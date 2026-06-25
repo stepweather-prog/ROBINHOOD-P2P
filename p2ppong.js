@@ -1,4 +1,4 @@
-// p2ppong.js — v4 финальный
+// p2ppong.js — v5 исправленный: убран переключатель режимов, починен verification-code для Боба, channel-opened у обеих сторон
 const DEBUG = true;
 function log(msg, data) { if (DEBUG) console.log(`[P2PPong] ${msg}`, data || ''); }
 
@@ -82,7 +82,6 @@ const P2PPong = {
     _verificationCode: null,
     _beaconId: null,
     _poolBeaconId: null,
-    _secretMode: false,
     _codeVerified: false,
     
     _signalServers: [
@@ -168,22 +167,8 @@ const P2PPong = {
         return this._signalServer;
     },
 
-    verifyCodeOutOfBand(expectedCode, actualCode) {
-        if (expectedCode === actualCode) {
-            this._codeVerified = true;
-            if (this._pendingChannelData) {
-                const data = this._pendingChannelData;
-                this._pendingChannelData = null;
-                this._openChannel(data.peerId, data.signalServer, data.nick, data.avatar);
-            }
-            return true;
-        }
-        this._emit('error', { message: 'Коды не совпадают. Возможна атака MitM.' });
-        return false;
-    },
-
+    // Единый метод создания маяка (без публичного/тайного)
     async craftArrow() {
-        this._secretMode = false;
         this._codeVerified = false;
         this._peerId = RND();
         this._kp = await workerGenerateKeyPair();
@@ -227,8 +212,8 @@ const P2PPong = {
         return this._beaconId;
     },
 
+    // Публичный пул — оставлен но не основной
     async craftPublicArrow() {
-        this._secretMode = false;
         this._codeVerified = false;
         this._peerId = RND();
         this._kp = await workerGenerateKeyPair();
@@ -271,144 +256,6 @@ const P2PPong = {
         
         this._emit('peer-id-generated', { peerId: this._peerId, beaconId: this._beaconId, code: code, pubKey: this._kp.publicKey });
         return this._beaconId;
-    },
-
-    async joinPublicPool() {
-        await this._pickServer();
-        
-        const data = await this._getWithRetry('/pool');
-        if (!data?.beacons?.length) {
-            this._emit('error', { message: 'Нет маяков в пуле' });
-            return false;
-        }
-        
-        this._peerId = RND();
-        this._kp = await workerGenerateKeyPair();
-        
-        for (const beacon of data.beacons) {
-            try {
-                const bd = JSON.parse(beacon.packet);
-                if (!bd?.pubKey || !bd?.inner) continue;
-                
-                if (window._expectedPubKey && bd.pubKey !== window._expectedPubKey) {
-                    continue;
-                }
-                
-                const bk = await SHA(bd.pubKey + 'beacon');
-                const sigValid = await workerVerifyHMAC(bd.pubKey + bd.peerId, bd.sig, bk);
-                if (!sigValid) continue;
-                
-                const decrypted = await workerDecryptAES(bd.inner, bk);
-                if (!decrypted) continue;
-                
-                const innerData = JSON.parse(decrypted);
-                const code = innerData.code || '';
-                
-                this._verificationCode = code;
-                this._remotePeerId = innerData.peerId;
-                this._theirNick = innerData.nick || 'Незнакомец';
-                this._theirAvatar = innerData.avatar || '000';
-                this._beaconId = innerData.beaconId;
-                this._remotePubKey = bd.pubKey;
-                this._chId = RND();
-                
-                this._secret = await workerDeriveSecret(this._kp.privateKey, bd.pubKey);
-                const verificationHash = await SHA(this._secret + code);
-                
-                this._beacons[this._peerId] = { keyPair: this._kp, beaconKey: bk, expires: Date.now() + CONFIG.BEACON_TTL };
-                this._pending = { type: 'joiner', targetPeerId: innerData.peerId, verificationHash };
-                
-                const br = JSON.stringify({ 
-                    type: 'beacon-response', 
-                    pubKey: this._kp.publicKey, 
-                    peerId: this._peerId, 
-                    inner: bd.inner, 
-                    channelId: this._chId, 
-                    verificationHash, 
-                    signalServer: this._signalServer.url,
-                    nick: this._myNick,
-                    avatar: this._myAvatar
-                });
-                await this._postWithRetry('/beacon', { keyHash: 'waiting_' + this._beaconId, packet: br });
-                
-                const ep = JSON.stringify({ type: 'verification-code', code: code, peerId: this._peerId, pubKey: this._kp.publicKey, inner: bd.inner });
-                await this._postWithRetry('/beacon', { keyHash: 'code_' + this._beaconId, packet: ep });
-                
-                this.startPolling('waiting_' + this._beaconId);
-                this._emit('verification-needed', { code: code });
-                
-                if (beacon.id) {
-                    this._delete('/pool?id=' + beacon.id).catch(() => {});
-                }
-                
-                return true;
-            } catch(e) {
-                continue;
-            }
-        }
-        
-        this._emit('error', { message: 'Не удалось найти подходящий маяк в пуле' });
-        return false;
-    },
-
-    async craftSecretArrow(secret) {
-        this._secretMode = true;
-        this._codeVerified = false;
-        this._peerId = RND();
-        this._kp = await workerGenerateKeyPair();
-        this._remotePubKey = null;
-        this._remotePeerId = null;
-        this._secret = null;
-        this._chId = null;
-        await this._pickServer();
-        
-        const code = this._genCode();
-        this._verificationCode = code;
-        
-        const salt = RND();
-        const beaconId = await SHA(secret + salt);
-        this._beaconId = beaconId;
-        
-        const bk = await SHA(this._kp.publicKey + 'beacon');
-        const inner = await workerEncryptAES(JSON.stringify({ 
-            timestamp: Date.now(), 
-            peerId: this._peerId,
-            beaconId: beaconId,
-            salt: salt,
-            code: code,
-            nick: this._myNick,
-            avatar: this._myAvatar
-        }), bk);
-        
-        const bd = { 
-            type: 'beacon', 
-            pubKey: this._kp.publicKey, 
-            peerId: this._peerId, 
-            inner, 
-            signalServer: this._signalServer.url 
-        };
-        bd.sig = await workerComputeHMAC(bd.pubKey + bd.peerId, bk);
-        
-        this._beacons[this._peerId] = { keyPair: this._kp, beaconKey: bk, expires: Date.now() + CONFIG.BEACON_TTL };
-        this._pending = { type: 'creator' };
-        
-        await this._postWithRetry('/beacon', { keyHash: 'waiting_' + beaconId, packet: JSON.stringify(bd) });
-        this.startPolling('waiting_' + beaconId);
-        
-        this._emit('peer-id-generated', { 
-            peerId: this._peerId, 
-            beaconId: this._beaconId,
-            salt: salt,
-            code: code,
-            pubKey: this._kp.publicKey
-        });
-        return this._beaconId;
-    },
-
-    async joinSecretBeacon(secret, salt) {
-        await this._pickServer();
-        const beaconId = await SHA(secret + salt);
-        return this.joinBeacon(beaconId);
     },
 
     async joinBeacon(targetBeaconId) {
@@ -479,7 +326,7 @@ const P2PPong = {
     },
 
     confirmVerification() { 
-        if (this._pendingChannelData && this._codeVerified) {
+        if (this._pendingChannelData) {
             const data = this._pendingChannelData;
             this._pendingChannelData = null;
             this._openChannel(data.peerId, data.signalServer, data.nick, data.avatar);
@@ -671,6 +518,7 @@ const P2PPong = {
             return;
         }
         
+        // beacon-response от Боба → Алисе (creator)
         if (d.type === 'beacon-response' && d.pubKey && d.channelId) {
             if (this._pending?.type !== 'creator') return;
             this._remotePubKey = d.pubKey;
@@ -686,6 +534,7 @@ const P2PPong = {
             return;
         }
         
+        // beacon-ack от Алисы → Бобу (joiner) — теперь Боб тоже открывает канал
         if (d.type === 'beacon-ack' && d.channelId) {
             if (this._pending?.type !== 'joiner') return;
             this._chId = d.channelId;
@@ -693,10 +542,12 @@ const P2PPong = {
             if (d.peerId) this._remotePeerId = d.peerId;
             if (d.nick) this._theirNick = d.nick;
             if (d.avatar) this._theirAvatar = d.avatar;
-            this._pendingChannelData = { peerId: d.peerId, signalServer: d.signalServer, nick: d.nick, avatar: d.avatar };
+            // Открываем канал у Боба
+            this._openChannel(d.peerId, this._signalServer?.url, d.nick, d.avatar);
             return;
         }
         
+        // verification-code — открывает канал у создателя автоматически
         if (d.type === 'verification-code' && d.code) {
             if (this._pending?.type === 'creator' && this._verificationCode && d.code === this._verificationCode) {
                 this._remotePubKey = d.pubKey;
@@ -705,8 +556,8 @@ const P2PPong = {
                 await this._post('/beacon', { keyHash: 'waiting_' + this._beaconId, packet: JSON.stringify({
                     type: 'beacon-ack', peerId: this._peerId, channelId: this._chId, pubKey: this._kp.publicKey, signalServer: this._signalServer.url, nick: this._myNick, avatar: this._myAvatar
                 })});
-                this._pendingChannelData = { peerId: d.peerId, signalServer: d.signalServer, nick: d.nick, avatar: d.avatar };
                 this._emit('verification-received', { code: d.code });
+                this._openChannel(d.peerId, d.signalServer, d.nick, d.avatar);
                 return;
             }
             this._emit('verification-received', { code: d.code });
