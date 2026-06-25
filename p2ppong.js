@@ -1,4 +1,4 @@
-// p2ppong.js — v5 исправленный: убран переключатель режимов, починен verification-code для Боба, channel-opened у обеих сторон
+// p2ppong.js — v5.1 fix: beacon-ack только после verification-code
 const DEBUG = true;
 function log(msg, data) { if (DEBUG) console.log(`[P2PPong] ${msg}`, data || ''); }
 
@@ -167,7 +167,6 @@ const P2PPong = {
         return this._signalServer;
     },
 
-    // Единый метод создания маяка (без публичного/тайного)
     async craftArrow() {
         this._codeVerified = false;
         this._peerId = RND();
@@ -212,7 +211,6 @@ const P2PPong = {
         return this._beaconId;
     },
 
-    // Публичный пул — оставлен но не основной
     async craftPublicArrow() {
         this._codeVerified = false;
         this._peerId = RND();
@@ -518,7 +516,7 @@ const P2PPong = {
             return;
         }
         
-        // beacon-response от Боба → Алисе (creator)
+        // ✅ beacon-response от Боба → Алисе (creator). НЕ отправляем ack, ждём verification-code
         if (d.type === 'beacon-response' && d.pubKey && d.channelId) {
             if (this._pending?.type !== 'creator') return;
             this._remotePubKey = d.pubKey;
@@ -527,14 +525,13 @@ const P2PPong = {
             this._secret = await workerDeriveSecret(this._kp.privateKey, d.pubKey);
             if (d.nick) this._theirNick = d.nick;
             if (d.avatar) this._theirAvatar = d.avatar;
-            await this._post('/beacon', { keyHash: 'waiting_' + this._beaconId, packet: JSON.stringify({
-                type: 'beacon-ack', peerId: this._peerId, channelId: this._chId, pubKey: this._kp.publicKey, signalServer: this._signalServer.url, nick: this._myNick, avatar: this._myAvatar
-            })});
+            // Сохраняем данные, но НЕ отправляем beacon-ack и НЕ открываем канал
             this._pendingChannelData = { peerId: d.peerId, signalServer: d.signalServer, nick: d.nick, avatar: d.avatar };
+            log('beacon-response received, waiting for verification-code');
             return;
         }
         
-        // beacon-ack от Алисы → Бобу (joiner) — теперь Боб тоже открывает канал
+        // ✅ beacon-ack от Алисы → Бобу (joiner). Вот теперь открываем канал
         if (d.type === 'beacon-ack' && d.channelId) {
             if (this._pending?.type !== 'joiner') return;
             this._chId = d.channelId;
@@ -542,25 +539,27 @@ const P2PPong = {
             if (d.peerId) this._remotePeerId = d.peerId;
             if (d.nick) this._theirNick = d.nick;
             if (d.avatar) this._theirAvatar = d.avatar;
-            // Открываем канал у Боба
+            log('beacon-ack received, opening channel for Bob');
             this._openChannel(d.peerId, this._signalServer?.url, d.nick, d.avatar);
             return;
         }
         
-        // verification-code — открывает канал у создателя автоматически
+        // ✅ verification-code от Боба → Алисе. Проверяем код и отправляем ack
         if (d.type === 'verification-code' && d.code) {
             if (this._pending?.type === 'creator' && this._verificationCode && d.code === this._verificationCode) {
                 this._remotePubKey = d.pubKey;
                 this._remotePeerId = d.peerId;
                 this._secret = await workerDeriveSecret(this._kp.privateKey, d.pubKey);
+                
+                // ✅ Отправляем beacon-ack только сейчас — после проверки кода
                 await this._post('/beacon', { keyHash: 'waiting_' + this._beaconId, packet: JSON.stringify({
                     type: 'beacon-ack', peerId: this._peerId, channelId: this._chId, pubKey: this._kp.publicKey, signalServer: this._signalServer.url, nick: this._myNick, avatar: this._myAvatar
                 })});
-                this._emit('verification-received', { code: d.code });
+                
+                log('verification-code valid, sent beacon-ack, opening channel for Alice');
                 this._openChannel(d.peerId, d.signalServer, d.nick, d.avatar);
                 return;
             }
-            this._emit('verification-received', { code: d.code });
             return;
         }
         
