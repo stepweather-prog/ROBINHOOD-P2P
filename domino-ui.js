@@ -8,40 +8,50 @@ const DominoUI = {
         this._canvas = document.getElementById(canvasId);
         if (!this._canvas) return;
         this._ctx = this._canvas.getContext('2d');
-        this._canvas.width = Math.min(window.innerWidth - 20, 800);
-        this._canvas.height = 400;
+        this._resize();
+        window.addEventListener('resize', () => this._resize());
+    },
+
+    _resize() {
+        if (!this._canvas) return;
+        const container = this._canvas.parentElement;
+        const w = Math.min(container.clientWidth - 20, 800);
+        const h = Math.min(window.innerHeight * 0.55, 400);
+        this._canvas.width = w;
+        this._canvas.height = h;
     },
 
     draw(state, myIndex) {
         if (!this._ctx) return;
+        this._resize();
         const ctx = this._ctx;
         const w = this._canvas.width;
         const h = this._canvas.height;
 
-        // Фон
         ctx.fillStyle = '#1a2a1f';
         ctx.fillRect(0, 0, w, h);
 
-        // Доска
-        const boardStartX = 40;
-        const boardY = h / 2 - 25;
-        const tileW = 50;
-        const tileH = 50;
+        const tileW = Math.min(50, Math.floor(w / 16));
+        const tileH = tileW;
+        const boardStartX = 10;
+        const boardY = 10;
+        const handY = h - tileH - 15;
 
+        // Доска
         for (let i = 0; i < state.board.length; i++) {
             const tile = state.board[i];
-            const x = boardStartX + i * (tileW + 4);
+            const x = boardStartX + i * (tileW + 2);
+            if (x + tileW > w) break;
             this._drawTile(ctx, x, boardY, tileW, tileH, tile[0], tile[1]);
         }
 
         // Рука игрока
         const myHand = Domino.getMyHand(state, myIndex);
-        const handStartX = 40;
-        const handY = h - 80;
-
+        const handStartX = 10;
         for (let i = 0; i < myHand.length; i++) {
             const tile = myHand[i];
-            const x = handStartX + i * (tileW + 4);
+            const x = handStartX + i * (tileW + 2);
+            if (x + tileW > w) break;
             this._drawTile(ctx, x, handY, tileW, tileH, tile[0], tile[1], true);
         }
 
@@ -53,16 +63,16 @@ const DominoUI = {
                 : `Ход: ${state.players[state.currentPlayer]?.name || '?'}`;
         
         ctx.fillStyle = state.currentPlayer === myIndex ? '#4caf50' : '#e8e2c7';
-        ctx.font = '16px sans-serif';
-        ctx.fillText(turnText, 40, 30);
+        ctx.font = `${Math.max(12, Math.floor(tileW / 4))}px sans-serif`;
+        ctx.fillText(turnText, 10, boardY + tileH + 20);
     },
 
     _drawTile(ctx, x, y, w, h, left, right, clickable = false) {
         ctx.fillStyle = clickable ? '#e8d5a3' : '#c4a24b';
         ctx.strokeStyle = '#1a1f0f';
-        ctx.lineWidth = 2;
+        ctx.lineWidth = Math.max(1, Math.floor(w / 25));
         
-        const r = 6;
+        const r = Math.max(2, Math.floor(w / 8));
         ctx.beginPath();
         ctx.moveTo(x + r, y);
         ctx.lineTo(x + w - r, y);
@@ -90,8 +100,8 @@ const DominoUI = {
     _drawDots(ctx, x, y, w, h, value) {
         const cx = x + w / 2;
         const cy = y + h / 2;
-        const dotR = 4;
-        const offset = 10;
+        const dotR = Math.max(2, Math.floor(w / 12));
+        const offset = Math.max(4, Math.floor(w / 5));
 
         const positions = {
             0: [],
@@ -112,13 +122,13 @@ const DominoUI = {
 
     getTileAt(x, y, state, myIndex) {
         const myHand = Domino.getMyHand(state, myIndex);
-        const tileW = 50;
-        const tileH = 50;
-        const handStartX = 40;
-        const handY = this._canvas.height - 80;
+        const tileW = Math.min(50, Math.floor(this._canvas.width / 16));
+        const tileH = tileW;
+        const handStartX = 10;
+        const handY = this._canvas.height - tileH - 15;
 
         for (let i = 0; i < myHand.length; i++) {
-            const tx = handStartX + i * (tileW + 4);
+            const tx = handStartX + i * (tileW + 2);
             if (x >= tx && x <= tx + tileW && y >= handY && y <= handY + tileH) {
                 return myHand[i];
             }
@@ -127,9 +137,9 @@ const DominoUI = {
     },
 
     getSideAt(x, state) {
-        const boardStartX = 40;
-        const tileW = 50;
-        const boardCenterX = boardStartX + state.board.length * (tileW + 4) / 2;
+        const boardStartX = 10;
+        const tileW = Math.min(50, Math.floor(this._canvas.width / 16));
+        const boardCenterX = boardStartX + state.board.length * (tileW + 2) / 2;
         return x < boardCenterX ? 'left' : 'right';
     }
 };
