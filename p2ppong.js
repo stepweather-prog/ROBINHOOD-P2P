@@ -1,4 +1,4 @@
-// p2ppong.js — v5.2 fix: поллинг code_ + beacon-ack только после verification-code
+// p2ppong.js — v5.3 fix: verification-code отправляется только при confirmVerification
 const DEBUG = true;
 function log(msg, data) { if (DEBUG) console.log(`[P2PPong] ${msg}`, data || ''); }
 
@@ -317,21 +317,31 @@ const P2PPong = {
         });
         await this._postWithRetry('/beacon', { keyHash: 'waiting_' + beaconId, packet: br });
         
-        const ep = JSON.stringify({ type: 'verification-code', code: code, peerId: this._peerId, pubKey: this._kp.publicKey, inner: bd.inner });
-        await this._postWithRetry('/beacon', { keyHash: 'code_' + beaconId, packet: ep });
-        
+        // ✅ НЕ отправляем verification-code здесь! Боб должен сначала ввести код в модалке
         this.startPolling('waiting_' + beaconId);
         this._emit('verification-needed', { code: code });
         return true;
     },
 
-    confirmVerification() { 
+    confirmVerification() {
+        // ✅ Отправляем verification-code ТОЛЬКО когда Боб нажал Подтвердить
+        if (this._pending?.type === 'joiner' && this._beaconId && this._verificationCode) {
+            const ep = JSON.stringify({ 
+                type: 'verification-code', 
+                code: this._verificationCode, 
+                peerId: this._peerId, 
+                pubKey: this._kp.publicKey
+            });
+            this._postWithRetry('/beacon', { keyHash: 'code_' + this._beaconId, packet: ep });
+            log('verification-code sent to server');
+        }
+        
         if (this._pendingChannelData) {
             const data = this._pendingChannelData;
             this._pendingChannelData = null;
             this._openChannel(data.peerId, data.signalServer, data.nick, data.avatar);
         }
-        return true; 
+        return true;
     },
     
     getVerificationCode() { return this._verificationCode; },
@@ -377,7 +387,6 @@ const P2PPong = {
         
         this._stats.channelsOpened++;
         
-        const isCreator = this._pending?.type === 'creator';
         this._pending = null;
         
         this._emit('channel-opened', { 
@@ -387,7 +396,7 @@ const P2PPong = {
             avatar: this._theirAvatar 
         });
         this._startMsgPoll(this._chId);
-        this._startWebRTC(this._chId, isCreator);
+        this._startWebRTC(this._chId, true);
     },
 
     _startCodePoll() {
@@ -555,7 +564,7 @@ const P2PPong = {
             return;
         }
         
-        // beacon-response от Боба → Алисе. НЕ отправляем ack, ждём verification-code
+        // beacon-response от Боба → Алисе
         if (d.type === 'beacon-response' && d.pubKey && d.channelId) {
             if (this._pending?.type !== 'creator') return;
             this._remotePubKey = d.pubKey;
@@ -566,14 +575,13 @@ const P2PPong = {
             if (d.avatar) this._theirAvatar = d.avatar;
             this._pendingChannelData = { peerId: d.peerId, signalServer: d.signalServer, nick: d.nick, avatar: d.avatar };
             
-            // ✅ Сразу начинаем поллить code_ ключ
             this._startCodePoll();
             
             log('beacon-response received, polling code_ for verification');
             return;
         }
         
-        // beacon-ack от Алисы → Бобу. Вот теперь открываем канал
+        // beacon-ack от Алисы → Бобу
         if (d.type === 'beacon-ack' && d.channelId) {
             if (this._pending?.type !== 'joiner') return;
             this._chId = d.channelId;
@@ -586,14 +594,13 @@ const P2PPong = {
             return;
         }
         
-        // verification-code от Боба → Алисе. Проверяем код и отправляем ack
+        // verification-code от Боба → Алисе
         if (d.type === 'verification-code' && d.code) {
             if (this._pending?.type === 'creator' && this._verificationCode && d.code === this._verificationCode) {
                 this._remotePubKey = d.pubKey;
                 this._remotePeerId = d.peerId;
                 this._secret = await workerDeriveSecret(this._kp.privateKey, d.pubKey);
                 
-                // Отправляем beacon-ack только после проверки кода
                 await this._post('/beacon', { keyHash: 'waiting_' + this._beaconId, packet: JSON.stringify({
                     type: 'beacon-ack', peerId: this._peerId, channelId: this._chId, pubKey: this._kp.publicKey, signalServer: this._signalServer.url, nick: this._myNick, avatar: this._myAvatar
                 })});
