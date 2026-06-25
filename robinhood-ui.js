@@ -1,4 +1,4 @@
-// robinhood-ui.js — v5 исправленный: убран переключатель режимов, голосовая верификация — рекомендация, канал открывается у обеих сторон
+// robinhood-ui.js — v5 финал: чат под доской, Боб — игрок 1, анимация у обоих
 let contacts = [],
     activeChannelId = null,
     activePeerId = null,
@@ -142,7 +142,7 @@ function loadContacts() { try { const r = localStorage.getItem('rh_contacts'); i
 
 function createBand(bandId, name, password = null) { if (bands.find(b => b.id === bandId)) { rMsg('❌ Шайка с таким ID уже существует', 3000); return null; } const band = { id: bandId, name: name || 'Шайка лучников', sheriff: P2PPong._peerId, rangers: [], outlaws: [P2PPong._peerId], strangers: [], password: password, created: Date.now(), maxMembers: 12, blobs: [], gameState: null }; bands.push(band); activeBandId = bandId; activeChannelId = null; showBandChat(bandId); playQuiverAnimation(); rMsg('🏹 Шайка собрана в Шервуде! Вы — шериф.', 4000); if (activeChannelId) { P2PPong.sendMessage(activeChannelId, JSON.stringify({ band: 'invite', bandId: bandId, name: name || 'Шайка лучников', password: password, sheriff: P2PPong._peerId })); } return bandId; }
 function joinBand(bandId, password = null) { let band = bands.find(b => b.id === bandId); if (!band) { band = { id: bandId, name: 'Шайка лучников', sheriff: null, rangers: [], outlaws: [P2PPong._peerId], strangers: [], password: password, created: Date.now(), maxMembers: 12, blobs: [], gameState: null }; bands.push(band); if (activeChannelId) { P2PPong.sendMessage(activeChannelId, JSON.stringify({ band: 'join-request', bandId: bandId, peerId: P2PPong._peerId })); } } else { if (band.password && band.password !== password) { rMsg('❌ Неверный пароль шайки', 3000); return false; } if (band.outlaws.length >= band.maxMembers) { rMsg('❌ Шайка полна (макс 12 лучников)', 3000); return false; } if (!band.outlaws.includes(P2PPong._peerId)) { band.outlaws.push(P2PPong._peerId); if (activeChannelId) { P2PPong.sendMessage(activeChannelId, JSON.stringify({ band: 'member-joined', bandId: bandId, peerId: P2PPong._peerId })); } } } activeBandId = bandId; activeChannelId = null; showBandChat(bandId); playQuiverAnimation(); rMsg('🏹 Вы вступили в шайку!', 4000); return true; }
-function showBandChat(bandId) { const band = bands.find(b => b.id === bandId); if (!band) return; activeBandId = bandId; activeChannelId = null; const role = band.sheriff === P2PPong._peerId ? '⭐Шериф' : '🏹Разбойник'; document.getElementById('robin-bar-sender').textContent = role + ' ' + (band.name || 'Шайка'); const box = document.getElementById('chat-box'); box.innerHTML = '<div class="typing-indicator" id="typing-indicator"></div>'; if (band.blobs) { band.blobs.forEach(b => { const im = b.from === P2PPong._peerId; appendMessage(im ? 'Вы' : (b.nick || 'Лучник'), b.text || '', im ? selectedAvatar : (b.avatar || '001')); }); } if (band.gameState) { dominoInBand = true; dominoState = band.gameState; dominoMyIndex = band.outlaws.indexOf(P2PPong._peerId); DominoUI.init('domino-canvas'); DominoUI.draw(Domino.getPublicState(dominoState), dominoMyIndex); updateDominoPlayers(); showDominoBoard(); } }
+function showBandChat(bandId) { const band = bands.find(b => b.id === bandId); if (!band) return; activeBandId = bandId; activeChannelId = null; const role = band.sheriff === P2PPong._peerId ? '⭐Шериф' : '🏹Разбойник'; document.getElementById('robin-bar-sender').textContent = role + ' ' + (band.name || 'Шайка'); const box = document.getElementById('chat-box'); box.innerHTML = '<div class="typing-indicator" id="typing-indicator"></div>'; if (band.blobs) { band.blobs.forEach(b => { const im = b.from === P2PPong._peerId; appendMessage(im ? 'Вы' : (b.nick || 'Лучник'), b.text || '', im ? selectedAvatar : (b.avatar || '001')); }); } if (band.gameState) { dominoInBand = true; dominoState = band.gameState; dominoMyIndex = band.outlaws.indexOf(P2PPong._peerId); if (dominoMyIndex < 0) dominoMyIndex = 0; DominoUI.init('domino-canvas'); setTimeout(() => { DominoUI.draw(Domino.getPublicState(dominoState), dominoMyIndex); updateDominoPlayers(); }, 200); document.getElementById('domino-board').style.display = 'flex'; } }
 
 function showBandsList() { const list = document.getElementById('bands-list'); if (!list) return; list.innerHTML = ''; if (bands.length === 0) { list.innerHTML = '<div style="color:var(--text-dim);text-align:center;padding:20px;">Нет шаек. Создайте первую!</div>'; return; } bands.forEach(band => { const item = document.createElement('div'); item.className = 'contact-item'; const role = band.sheriff === P2PPong._peerId ? '⭐Шериф' : '🏹Разбойник'; item.innerHTML = `<div style="display:flex;align-items:center;gap:8px;width:100%;"><img src="assets/icons/10icon.png" style="width:28px;height:28px;"><div><div class="contact-name">${band.name || 'Шайка'}</div><div style="font-size:0.65em;color:var(--text-dim);">${role} · ${band.outlaws.length}/12 ${band.password ? '🔐' : ''} ${band.gameState ? '🎲' : ''}</div></div></div>`; item.addEventListener('click', () => { if (band.outlaws.includes(P2PPong._peerId)) { showBandChat(band.id); document.getElementById('bands-modal')?.classList.remove('active'); } else { if (band.password) { showInput('Пароль шайки', 'Введи пароль').then(pass => { if (pass) joinBand(band.id, pass); }); } else { joinBand(band.id); } } }); list.appendChild(item); }); }
 
@@ -174,22 +174,166 @@ async function acceptCall() { if (!incomingOffer || !activeChannelId) return; st
 function hang(sig = true) { if (hangInProgress) return; hangInProgress = true; callActive = false; stopCallArcherAnimation(); stopRingtone(); stopRingback(); if (sig && activeChannelId) sendWebRTCMsg('webrtc-hangup', ''); if (pc) { pc.onconnectionstatechange = null; pc.ontrack = null; pc.onicecandidate = null; pc.close(); pc = null; } if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; } incomingOffer = null; iceBuffer = []; if (iceFlushTimer) clearTimeout(iceFlushTimer); if (iceRestartTimer) clearTimeout(iceRestartTimer); iceRestartInProgress = false; window._micGain = null; window._speakerGain = null; window._remoteSource = null; const oldAudio = document.getElementById('remote-audio'); if (oldAudio) { oldAudio.srcObject = null; oldAudio.remove(); } const cp = document.getElementById('call-panel'); if (cp) cp.style.display = 'none'; showIncomingControls(false); showActiveControls(false); showCallWave(false); playSound('exet.mp3'); updateCallButtonState(); hangInProgress = false; }
 
 // ======= ДОМИНО: UI =======
-function showDominoBoard() { document.getElementById('domino-board').style.display = 'flex'; document.getElementById('chat-box').style.display = 'none'; updateDominoPlayers(); }
-function showDominoChat() { document.getElementById('domino-board').style.display = 'none'; document.getElementById('chat-box').style.display = 'flex'; }
-
 function updateDominoPlayers() { const container = document.getElementById('domino-players'); const scoresEl = document.getElementById('domino-scores'); if (!dominoState || !container) return; const players = dominoInBand ? (bands.find(b => b.id === activeBandId)?.outlaws || []) : dominoState.players.map(p => p.name); container.innerHTML = players.map((p, i) => { const name = typeof p === 'string' ? p : (p.nick || p); const isActive = i === dominoState.currentPlayer; const isMe = dominoInBand ? (p === P2PPong._peerId) : (i === dominoMyIndex); const isWinner = dominoState.ended && i === dominoState.winner; const score = dominoScores[name] || 0; return `<span class="domino-player ${isActive ? 'active' : ''} ${isWinner ? 'winner' : ''}">${isMe ? '⭐' : ''} ${name} ${score > 0 ? '(' + score + ')' : ''}</span>`; }).join(''); if (scoresEl) { scoresEl.textContent = dominoState.ended ? `🏆 Победитель: ${players[dominoState.winner] || '?'}` : ''; } }
 
-function startDominoGame(seed, playersList) { dominoSeed = seed; dominoState = Domino.createGame(dominoSeed, playersList); if (dominoInBand) { const band = bands.find(b => b.id === activeBandId); if (band) { dominoMyIndex = band.outlaws.indexOf(P2PPong._peerId); band.gameState = dominoState; } } else { dominoMyIndex = 0; } DominoUI.init('domino-canvas'); DominoUI.draw(Domino.getPublicState(dominoState), dominoMyIndex); updateDominoPlayers(); showDominoBoard(); dominoGameActive = true; selectedDominoTile = null; selectedDominoSide = null; }
+function startDominoGame(seed, playersList) {
+    dominoSeed = seed;
+    dominoState = Domino.createGame(dominoSeed, playersList);
+    
+    if (dominoInBand) {
+        const band = bands.find(b => b.id === activeBandId);
+        if (band) {
+            dominoMyIndex = band.outlaws.indexOf(P2PPong._peerId);
+            if (dominoMyIndex < 0) dominoMyIndex = 0;
+            band.gameState = dominoState;
+        }
+    } else {
+        dominoMyIndex = 0;
+    }
+    
+    document.getElementById('domino-board').style.display = 'flex';
+    // Чат не скрываем — сообщения видны под доской
+    
+    setTimeout(() => {
+        DominoUI.init('domino-canvas');
+        DominoUI.draw(Domino.getPublicState(dominoState), dominoMyIndex);
+        updateDominoPlayers();
+    }, 200);
+    
+    dominoGameActive = true;
+    selectedDominoTile = null;
+    selectedDominoSide = null;
+}
 
-function doDominoMove() { if (!dominoState || dominoState.ended) return; if (dominoState.currentPlayer !== dominoMyIndex) { rMsg('⏳ Сейчас не ваш ход', 2000); return; } if (!selectedDominoTile) { rMsg('🎯 Выберите костяшку кликом по руке', 2000); return; } const success = Domino.placeTile(dominoState, selectedDominoTile, selectedDominoSide); if (!success) { rMsg('❌ Сюда нельзя положить', 2000); return; } selectedDominoTile = null; Domino._nextTurn(dominoState); DominoUI.draw(Domino.getPublicState(dominoState), dominoMyIndex); updateDominoPlayers(); Domino.checkEnd(dominoState); if (dominoState.ended) { const band = bands.find(b => b.id === activeBandId); const winnerName = dominoInBand ? (band?.outlaws[dominoState.winner] || '?') : dominoState.players[dominoState.winner]?.name; if (!dominoScores[winnerName]) dominoScores[winnerName] = 0; dominoScores[winnerName]++; updateDominoPlayers(); rMsg('🏆 Победитель: ' + winnerName, 5000); } const msg = { type: 'domino', action: 'move', tile: selectedDominoTile || [0, 0], side: selectedDominoSide, gameState: Domino.getPublicState(dominoState) }; if (dominoInBand) { P2PPong.sendMessage(activeChannelId, JSON.stringify({ band: 'domino-move', bandId: activeBandId, ...msg })); } else { P2PPong.sendMessage(activeChannelId, JSON.stringify(msg)); } }
+function doDominoMove() {
+    if (!dominoState || dominoState.ended) return;
+    if (dominoState.currentPlayer !== dominoMyIndex) { rMsg('⏳ Сейчас не ваш ход', 2000); return; }
+    if (!selectedDominoTile) { rMsg('🎯 Выберите костяшку кликом по руке', 2000); return; }
+    const success = Domino.placeTile(dominoState, selectedDominoTile, selectedDominoSide);
+    if (!success) { rMsg('❌ Сюда нельзя положить', 2000); return; }
+    selectedDominoTile = null;
+    Domino._nextTurn(dominoState);
+    DominoUI.draw(Domino.getPublicState(dominoState), dominoMyIndex);
+    updateDominoPlayers();
+    Domino.checkEnd(dominoState);
+    if (dominoState.ended) {
+        const band = bands.find(b => b.id === activeBandId);
+        const winnerName = dominoInBand ? (band?.outlaws[dominoState.winner] || '?') : dominoState.players[dominoState.winner]?.name;
+        if (!dominoScores[winnerName]) dominoScores[winnerName] = 0;
+        dominoScores[winnerName]++;
+        updateDominoPlayers();
+        rMsg('🏆 Победитель: ' + winnerName, 5000);
+    }
+    const msg = { type: 'domino', action: 'move', tile: selectedDominoTile || [0, 0], side: selectedDominoSide, gameState: Domino.getPublicState(dominoState) };
+    if (dominoInBand) { P2PPong.sendMessage(activeChannelId, JSON.stringify({ band: 'domino-move', bandId: activeBandId, ...msg })); }
+    else { P2PPong.sendMessage(activeChannelId, JSON.stringify(msg)); }
+}
 
-function doDominoPass() { if (!dominoState || dominoState.ended) return; if (dominoState.currentPlayer !== dominoMyIndex) return; Domino.pass(dominoState); DominoUI.draw(Domino.getPublicState(dominoState), dominoMyIndex); updateDominoPlayers(); Domino.checkEnd(dominoState); if (dominoState.ended) { const band = bands.find(b => b.id === activeBandId); const winnerName = dominoInBand ? (band?.outlaws[dominoState.winner] || '?') : dominoState.players[dominoState.winner]?.name; if (!dominoScores[winnerName]) dominoScores[winnerName] = 0; dominoScores[winnerName]++; updateDominoPlayers(); } const msg = { type: 'domino', action: 'pass', gameState: Domino.getPublicState(dominoState) }; if (dominoInBand) { P2PPong.sendMessage(activeChannelId, JSON.stringify({ band: 'domino-move', bandId: activeBandId, ...msg })); } else { P2PPong.sendMessage(activeChannelId, JSON.stringify(msg)); } rMsg('😔 Ход пропущен', 2000); }
+function doDominoPass() {
+    if (!dominoState || dominoState.ended) return;
+    if (dominoState.currentPlayer !== dominoMyIndex) return;
+    Domino.pass(dominoState);
+    DominoUI.draw(Domino.getPublicState(dominoState), dominoMyIndex);
+    updateDominoPlayers();
+    Domino.checkEnd(dominoState);
+    if (dominoState.ended) {
+        const band = bands.find(b => b.id === activeBandId);
+        const winnerName = dominoInBand ? (band?.outlaws[dominoState.winner] || '?') : dominoState.players[dominoState.winner]?.name;
+        if (!dominoScores[winnerName]) dominoScores[winnerName] = 0;
+        dominoScores[winnerName]++;
+        updateDominoPlayers();
+    }
+    const msg = { type: 'domino', action: 'pass', gameState: Domino.getPublicState(dominoState) };
+    if (dominoInBand) { P2PPong.sendMessage(activeChannelId, JSON.stringify({ band: 'domino-move', bandId: activeBandId, ...msg })); }
+    else { P2PPong.sendMessage(activeChannelId, JSON.stringify(msg)); }
+    rMsg('😔 Ход пропущен', 2000);
+}
 
-function leaveDomino() { dominoState = null; dominoGameActive = false; dominoInBand = false; selectedDominoTile = null; selectedDominoSide = null; showDominoChat(); rMsg('🚪 Вы вышли из игры', 2000); }
+function leaveDomino() {
+    dominoState = null;
+    dominoGameActive = false;
+    dominoInBand = false;
+    selectedDominoTile = null;
+    selectedDominoSide = null;
+    document.getElementById('domino-board').style.display = 'none';
+    rMsg('🚪 Вы вышли из игры', 2000);
+}
 
-function handleDominoMessage(msg) { switch (msg.action) { case 'start': dominoInBand = false; startDominoGame(msg.seed, msg.players); rMsg('🎲 Соперник предлагает домино!', 4000); break; case 'move': if (!dominoState) return; Domino.placeTile(dominoState, msg.tile, msg.side); Domino._nextTurn(dominoState); Object.assign(dominoState, msg.gameState); DominoUI.draw(Domino.getPublicState(dominoState), dominoMyIndex); updateDominoPlayers(); Domino.checkEnd(dominoState); if (dominoState.ended) { const winnerName = dominoState.players[dominoState.winner]?.name || '?'; if (!dominoScores[winnerName]) dominoScores[winnerName] = 0; dominoScores[winnerName]++; updateDominoPlayers(); rMsg(dominoState.winner === dominoMyIndex ? '🏆 Вы победили!' : '😔 Вы проиграли', 5000); } break; case 'pass': if (!dominoState) return; Domino.pass(dominoState); Object.assign(dominoState, msg.gameState); DominoUI.draw(Domino.getPublicState(dominoState), dominoMyIndex); updateDominoPlayers(); Domino.checkEnd(dominoState); break; } }
+function handleDominoMessage(msg) {
+    switch (msg.action) {
+        case 'start':
+            dominoInBand = false;
+            startDominoGame(msg.seed, msg.players);
+            dominoMyIndex = 1; // Боб — второй игрок
+            DominoUI.draw(Domino.getPublicState(dominoState), dominoMyIndex);
+            updateDominoPlayers();
+            rMsg('🎲 Соперник предлагает домино!', 4000);
+            break;
+        case 'move':
+            if (!dominoState) return;
+            Domino.placeTile(dominoState, msg.tile, msg.side);
+            Domino._nextTurn(dominoState);
+            Object.assign(dominoState, msg.gameState);
+            DominoUI.draw(Domino.getPublicState(dominoState), dominoMyIndex);
+            updateDominoPlayers();
+            Domino.checkEnd(dominoState);
+            if (dominoState.ended) {
+                const winnerName = dominoState.players[dominoState.winner]?.name || '?';
+                if (!dominoScores[winnerName]) dominoScores[winnerName] = 0;
+                dominoScores[winnerName]++;
+                updateDominoPlayers();
+                rMsg(dominoState.winner === dominoMyIndex ? '🏆 Вы победили!' : '😔 Вы проиграли', 5000);
+            }
+            break;
+        case 'pass':
+            if (!dominoState) return;
+            Domino.pass(dominoState);
+            Object.assign(dominoState, msg.gameState);
+            DominoUI.draw(Domino.getPublicState(dominoState), dominoMyIndex);
+            updateDominoPlayers();
+            Domino.checkEnd(dominoState);
+            break;
+    }
+}
 
-function handleBandDominoMessage(parsed) { switch (parsed.action) { case 'start': dominoInBand = true; startDominoGame(parsed.seed, parsed.players); rMsg('🎲 Домино началось в шайке!', 4000); break; case 'move': if (!dominoState) return; Domino.placeTile(dominoState, parsed.tile, parsed.side); Domino._nextTurn(dominoState); Object.assign(dominoState, parsed.gameState); const band = bands.find(b => b.id === activeBandId); if (band) band.gameState = dominoState; DominoUI.draw(Domino.getPublicState(dominoState), dominoMyIndex); updateDominoPlayers(); Domino.checkEnd(dominoState); if (dominoState.ended) { const b = bands.find(b2 => b2.id === activeBandId); const winnerName = b?.outlaws[dominoState.winner] || '?'; if (!dominoScores[winnerName]) dominoScores[winnerName] = 0; dominoScores[winnerName]++; updateDominoPlayers(); rMsg('🏆 Победитель: ' + winnerName, 5000); } break; case 'pass': if (!dominoState) return; Domino.pass(dominoState); Object.assign(dominoState, parsed.gameState); const b2 = bands.find(b3 => b3.id === activeBandId); if (b2) b2.gameState = dominoState; DominoUI.draw(Domino.getPublicState(dominoState), dominoMyIndex); updateDominoPlayers(); Domino.checkEnd(dominoState); break; } }
+function handleBandDominoMessage(parsed) {
+    switch (parsed.action) {
+        case 'start':
+            dominoInBand = true;
+            startDominoGame(parsed.seed, parsed.players);
+            rMsg('🎲 Домино началось в шайке!', 4000);
+            break;
+        case 'move':
+            if (!dominoState) return;
+            Domino.placeTile(dominoState, parsed.tile, parsed.side);
+            Domino._nextTurn(dominoState);
+            Object.assign(dominoState, parsed.gameState);
+            const band = bands.find(b => b.id === activeBandId);
+            if (band) band.gameState = dominoState;
+            DominoUI.draw(Domino.getPublicState(dominoState), dominoMyIndex);
+            updateDominoPlayers();
+            Domino.checkEnd(dominoState);
+            if (dominoState.ended) {
+                const b = bands.find(b2 => b2.id === activeBandId);
+                const winnerName = b?.outlaws[dominoState.winner] || '?';
+                if (!dominoScores[winnerName]) dominoScores[winnerName] = 0;
+                dominoScores[winnerName]++;
+                updateDominoPlayers();
+                rMsg('🏆 Победитель: ' + winnerName, 5000);
+            }
+            break;
+        case 'pass':
+            if (!dominoState) return;
+            Domino.pass(dominoState);
+            Object.assign(dominoState, parsed.gameState);
+            const b2 = bands.find(b3 => b3.id === activeBandId);
+            if (b2) b2.gameState = dominoState;
+            DominoUI.draw(Domino.getPublicState(dominoState), dominoMyIndex);
+            updateDominoPlayers();
+            Domino.checkEnd(dominoState);
+            break;
+    }
+}
 
 function initUI() {
     P2PPong.on('ready', () => { setConnectionStatus('online'); rMsg('🏹 Слепой Улей готов', 0); });
@@ -229,7 +373,6 @@ window.addEventListener('focus', () => { clearTimeout(inactivityTimer); const lc
 window.addEventListener('visibilitychange', () => { if (document.hidden) { stopSelfDestruct(); if (ringtoneAudio) ringtoneAudio.pause(); if (ringbackAudio) ringbackAudio.pause(); } else { if (selfDestructMode) startSelfDestruct(); } });
 function initLeaves() { const c = document.getElementById('leaves-container'); if (!c || c.children.length > 0) return; const emojis = ['🍁','🍂','🌿','🍃','🪶']; const fragment = document.createDocumentFragment(); for (let i = 0; i < 7; i++) { const el = document.createElement('span'); el.className = i % 3 == 0 ? 'feather' : 'leaf'; el.textContent = emojis[i % emojis.length]; el.style.left = Math.random() * 100 + '%'; el.style.animationDelay = Math.random() * 15 + 's'; el.style.animationDuration = (16 + Math.random() * 18) + 's'; fragment.appendChild(el); } c.appendChild(fragment); resetInactivityTimer(); }
 
-// Локальная генерация QR
 function generateQR(text, size) { const canvas = document.createElement('canvas'); canvas.width = size; canvas.height = size; const ctx = canvas.getContext('2d'); const bytes = new TextEncoder().encode(text); const moduleCount = 21; const moduleSize = Math.floor(size / (moduleCount + 8)); const offset = Math.floor((size - moduleCount * moduleSize) / 2); ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, size, size); ctx.fillStyle = '#000000'; function drawModule(row, col) { ctx.fillRect(offset + col * moduleSize, offset + row * moduleSize, moduleSize, moduleSize); } function drawFinderPattern(startRow, startCol) { for (let r = 0; r < 7; r++) { for (let c = 0; c < 7; c++) { if (r === 0 || r === 6 || c === 0 || c === 6 || (r >= 2 && r <= 4 && c >= 2 && c <= 4)) { drawModule(startRow + r, startCol + c); } } } } drawFinderPattern(0, 0); drawFinderPattern(0, moduleCount - 7); drawFinderPattern(moduleCount - 7, 0); let bitIndex = 0; const totalBits = bytes.length * 8; for (let row = 0; row < moduleCount && bitIndex < totalBits; row++) { for (let col = 0; col < moduleCount && bitIndex < totalBits; col++) { if ((row < 7 && col < 7) || (row < 7 && col >= moduleCount - 7) || (row >= moduleCount - 7 && col < 7)) continue; const byteIndex = Math.floor(bitIndex / 8); const bitInByte = 7 - (bitIndex % 8); const bit = (bytes[byteIndex] >> bitInByte) & 1; if (bit === 1) drawModule(row, col); bitIndex++; } } return canvas.toDataURL('image/png'); }
 
 function initApp() {
@@ -330,7 +473,7 @@ function initApp() {
     // Домино: переключатель чат/игра
     document.getElementById('btn-domino-toggle')?.addEventListener('click', () => {
         if (!activeChannelId && !activeBandId) { rMsg('❌ Нет активного канала', 2000); return; }
-        if (dominoGameActive) { document.getElementById('domino-board').style.display === 'flex' ? showDominoChat() : showDominoBoard(); }
+        if (dominoGameActive) { leaveDomino(); }
         else {
             dominoSeed = Date.now();
             const myNick = document.getElementById('nick-label')?.textContent || 'Вы';
