@@ -1,4 +1,4 @@
-// ==================== RobinHood UI v5.2 — fix: верификация + колчан у обоих ====================
+// ==================== RobinHood UI v5.3 — fix: канал после кода + голосовые ====================
 // Чистый интерфейс. Ядро: P2PPong.
 
 let contacts = [],
@@ -185,7 +185,7 @@ function initUI() {
     P2PPong.on('message-sent', () => { updateCupIndicator(); updateRatchetIndicator(); });
     P2PPong.on('beacon-taken', () => { rMsg('👀 Маяк забрали...', 3000); });
 
-    // ✅ Боб (тот кто вводит чужой маяк): получает модалку для ввода кода
+    // Боб: получает модалку для ввода кода
     P2PPong.on('verification-needed', (data) => {
         if (verificationModalShown) return;
         verificationModalShown = true;
@@ -211,8 +211,14 @@ function initUI() {
         document.getElementById('verify-modal')?.classList.add('active');
     });
 
-    // ✅ У ОБОИХ: канал открылся — колчан и вход в чат
+    // У ОБОИХ: канал открылся. Боб ждёт confirmVerification, Алиса сразу заходит
     P2PPong.on('channel-opened', (data) => {
+        // Если модалка ещё открыта и код не подтверждён — Боб ждёт
+        if (verificationModalShown && !verificationDone) {
+            console.log('⏳ Канал создан, ждём ввода кода');
+            return;
+        }
+        
         document.getElementById('verify-modal')?.classList.remove('active');
         verificationModalShown = false;
         verificationDone = false;
@@ -234,7 +240,61 @@ function initUI() {
 
 function addVerifyDigit(d) { if (window._verifyInput.length >= 7) return; window._verifyInput += d; document.getElementById('verify-code-display').textContent = window._verifyInput.padEnd(7, '_'); if (window._verifyInput.length === 7) { setTimeout(() => document.getElementById('btn-verify-confirm')?.click(), 300); } }
 
-function handleIncomingMessage(data) { if (!data || !data.text) return; try { const parsed = JSON.parse(data.text); if (parsed.band) { handleBandMessage(parsed, data); return; } } catch(e) {} if (data.voiceData) { const ct = contacts.find(c => c.channelId === data.channelId); const nick = safeHtml(data.nick || ct?.name || 'Друг'); const avatar = data.avatar || ct?.avatar || '001'; if (data.channelId === activeChannelId) { appendMessage(nick, '🎤 Голосовое', avatar, data.voiceData, 'audio/webm'); } else { rMsg('🎤 Голосовое от ' + nick, 3000); playVoiceBlob(data.voiceData); } updateCupIndicator(); return; } try { const parsed = JSON.parse(data.text); if (parsed.webrtc) { handleWebRTCSignal(parsed.webrtc, parsed.sdp, data.channelId); return; } if (parsed.voice) { const ct = contacts.find(c => c.channelId === data.channelId); const nick = safeHtml(ct?.name || 'Друг'); const avatar = ct?.avatar || '001'; if (data.channelId === activeChannelId) { appendMessage(nick, '🎤 Голосовое', avatar, parsed.data, 'audio/webm'); } else { rMsg('🎤 Голосовое от ' + nick, 3000); playVoiceBlob(parsed.data); } updateCupIndicator(); return; } if (parsed.d === '__SMOKE__') { selfDestructMode = true; const sd = document.getElementById('toggle-selfdestruct'); if (sd) sd.checked = true; startSelfDestruct(); rMsg('🍁 Собеседник включил листопад', 3000); return; } } catch (e) {} const ct = contacts.find(c => c.channelId === data.channelId); const nick = safeHtml(data.nick || ct?.name || 'Лучник'); const avatar = data.avatar || ct?.avatar || '001'; if (data.channelId === activeChannelId) { appendMessage(nick, data.text, avatar); } else { rMsg('Новое от ' + nick, 3000); } updateCupIndicator(); updateRatchetIndicator(); playSound('arrow_hit.wav'); }
+// ✅ Добавлены логи для отладки голосовых
+function handleIncomingMessage(data) {
+    console.log('📨 Входящее сообщение:', data?.text?.substring(0, 100) || '(нет текста)', 'voiceData:', !!data?.voiceData);
+    
+    if (!data || !data.text) return;
+    
+    try { const parsed = JSON.parse(data.text); if (parsed.band) { handleBandMessage(parsed, data); return; } } catch(e) {}
+    
+    if (data.voiceData) {
+        console.log('🎤 Голосовое (voiceData) от:', data.nick, 'длина:', data.voiceData?.length);
+        const ct = contacts.find(c => c.channelId === data.channelId);
+        const nick = safeHtml(data.nick || ct?.name || 'Друг');
+        const avatar = data.avatar || ct?.avatar || '001';
+        if (data.channelId === activeChannelId) {
+            appendMessage(nick, '🎤 Голосовое', avatar, data.voiceData, 'audio/webm');
+        } else {
+            rMsg('🎤 Голосовое от ' + nick, 3000);
+            playVoiceBlob(data.voiceData);
+        }
+        updateCupIndicator();
+        return;
+    }
+    
+    try {
+        const parsed = JSON.parse(data.text);
+        if (parsed.webrtc) { handleWebRTCSignal(parsed.webrtc, parsed.sdp, data.channelId); return; }
+        if (parsed.voice) {
+            console.log('🎤 Голосовое (parsed.voice) от:', data.nick, 'длина:', parsed.data?.length);
+            const ct = contacts.find(c => c.channelId === data.channelId);
+            const nick = safeHtml(ct?.name || 'Друг');
+            const avatar = ct?.avatar || '001';
+            if (data.channelId === activeChannelId) {
+                appendMessage(nick, '🎤 Голосовое', avatar, parsed.data, 'audio/webm');
+            } else {
+                rMsg('🎤 Голосовое от ' + nick, 3000);
+                playVoiceBlob(parsed.data);
+            }
+            updateCupIndicator();
+            return;
+        }
+        if (parsed.d === '__SMOKE__') { selfDestructMode = true; const sd = document.getElementById('toggle-selfdestruct'); if (sd) sd.checked = true; startSelfDestruct(); rMsg('🍁 Собеседник включил листопад', 3000); return; }
+    } catch (e) {}
+    
+    const ct = contacts.find(c => c.channelId === data.channelId);
+    const nick = safeHtml(data.nick || ct?.name || 'Лучник');
+    const avatar = data.avatar || ct?.avatar || '001';
+    if (data.channelId === activeChannelId) {
+        appendMessage(nick, data.text, avatar);
+    } else {
+        rMsg('Новое от ' + nick, 3000);
+    }
+    updateCupIndicator();
+    updateRatchetIndicator();
+    playSound('arrow_hit.wav');
+}
 
 function handleBandMessage(parsed, data) { switch (parsed.band) { case 'invite': if (!bands.find(b => b.id === parsed.bandId)) { const band = { id: parsed.bandId, name: parsed.name || 'Шайка лучников', sheriff: parsed.sheriff || data.peerId, rangers: [], outlaws: [parsed.sheriff || data.peerId, P2PPong._peerId], strangers: [], password: parsed.password, created: Date.now(), maxMembers: 12, blobs: [] }; bands.push(band); rMsg('🏹 Приглашение в шайку «' + band.name + '»!', 4000); activeBandId = band.id; activeChannelId = null; showBandChat(band.id); playQuiverAnimation(); } break; case 'join-request': var band = bands.find(b => b.id === parsed.bandId); if (band && !band.outlaws.includes(parsed.peerId)) { band.outlaws.push(parsed.peerId); rMsg('🏹 Лучник присоединился к шайке!', 3000); } if (band && band.sheriff === P2PPong._peerId && activeChannelId) { P2PPong.sendMessage(activeChannelId, JSON.stringify({ band: 'member-joined', bandId: band.id, peerId: parsed.peerId })); } break; case 'member-joined': var band = bands.find(b => b.id === parsed.bandId); if (band) { if (!band.outlaws.includes(parsed.peerId)) { band.outlaws.push(parsed.peerId); } if (!band.sheriff && data.peerId) { band.sheriff = data.peerId; } rMsg('✅ Вы в шайке!', 3000); } break; case 'band-message': var band = bands.find(b => b.id === parsed.bandId); if (band) { band.blobs.push({ text: parsed.text, from: parsed.from || data.peerId, nick: parsed.nick || 'Лучник', avatar: parsed.avatar || '001', time: Date.now() }); if (activeBandId === band.id) { appendMessage(parsed.nick || 'Лучник', parsed.text, parsed.avatar || '001'); } } break; } }
 
@@ -246,7 +306,7 @@ document.addEventListener('pointermove', throttle(resetInactivityTimer, 5000)); 
 window.addEventListener('blur', () => { clearTimeout(inactivityTimer); inactivityTimer = setTimeout(() => { const lc = document.getElementById('leaves-container'); if (lc) lc.classList.add('sleeping'); }, 5000); });
 window.addEventListener('focus', () => { clearTimeout(inactivityTimer); const lc = document.getElementById('leaves-container'); if (lc) { lc.classList.remove('sleeping'); lc.style.opacity = '1'; } resetInactivityTimer(); });
 window.addEventListener('visibilitychange', () => { if (document.hidden) { stopSelfDestruct(); if (ringtoneAudio) ringtoneAudio.pause(); if (ringbackAudio) ringbackAudio.pause(); } else { if (selfDestructMode) startSelfDestruct(); } });
-function initLeaves() { const c = document.getElementById('leaves-container'); if (!c || c.children.length > 0) return; const emojis = ['🍁','🍂','🌿','🍃','🪶']; const fragment = document.createDocumentFragment(); for (let i = 0; i < 7; i++) { const el = document.createElement('span'); el.className = i % 3 == 0 ? 'feather' : 'leaf'; el.textContent = emojis[i % emojis.length]; el.style.left = Math.random() * 100 + '%'; el.style.animationDelay = Math.random() * 15 + 's'; el.style.animationDuration = (16 + Math.random() * 18) + 's'; fragment.appendChild(el); } c.appendChild(fragment); resetInactivityTimer(); }
+function initLeaves() { const c = document.getElementById('leaves-container'); if (!c || c.children.length > 0) return; const emojis = ['🏹','🍁','🐝','🍂','🍄','🌿','🍃','🪶']; const fragment = document.createDocumentFragment(); for (let i = 0; i < 7; i++) { const el = document.createElement('span'); el.className = i % 3 == 0 ? 'feather' : 'leaf'; el.textContent = emojis[i % emojis.length]; el.style.left = Math.random() * 100 + '%'; el.style.animationDelay = Math.random() * 15 + 's'; el.style.animationDuration = (16 + Math.random() * 18) + 's'; fragment.appendChild(el); } c.appendChild(fragment); resetInactivityTimer(); }
 
 function generateQR(text, size) { const canvas = document.createElement('canvas'); canvas.width = size; canvas.height = size; const ctx = canvas.getContext('2d'); const bytes = new TextEncoder().encode(text); const moduleCount = 21; const moduleSize = Math.floor(size / (moduleCount + 8)); const offset = Math.floor((size - moduleCount * moduleSize) / 2); ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, size, size); ctx.fillStyle = '#000000'; function drawModule(row, col) { ctx.fillRect(offset + col * moduleSize, offset + row * moduleSize, moduleSize, moduleSize); } function drawFinderPattern(startRow, startCol) { for (let r = 0; r < 7; r++) { for (let c = 0; c < 7; c++) { if (r === 0 || r === 6 || c === 0 || c === 6 || (r >= 2 && r <= 4 && c >= 2 && c <= 4)) { drawModule(startRow + r, startCol + c); } } } } drawFinderPattern(0, 0); drawFinderPattern(0, moduleCount - 7); drawFinderPattern(moduleCount - 7, 0); let bitIndex = 0; const totalBits = bytes.length * 8; for (let row = 0; row < moduleCount && bitIndex < totalBits; row++) { for (let col = 0; col < moduleCount && bitIndex < totalBits; col++) { if ((row < 7 && col < 7) || (row < 7 && col >= moduleCount - 7) || (row >= moduleCount - 7 && col < 7)) continue; const byteIndex = Math.floor(bitIndex / 8); const bitInByte = 7 - (bitIndex % 8); const bit = (bytes[byteIndex] >> bitInByte) & 1; if (bit === 1) drawModule(row, col); bitIndex++; } } return canvas.toDataURL('image/png'); }
 
