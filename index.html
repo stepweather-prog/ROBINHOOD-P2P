@@ -261,13 +261,6 @@
 
 <!-- Модалки крафта -->
 <div class="modal-overlay" id="craft-modal"><div class="modal-dialog"><h3>🏹 Открыть колчан</h3>
-    <div style="display:flex;gap:8px;margin:8px 0;">
-        <button class="btn-primary" id="btn-mode-public" style="flex:1;">🌐 Публичный</button>
-        <button class="btn-dark" id="btn-mode-secret" style="flex:1;">🔐 Тайный</button>
-    </div>
-    <div id="secret-input-area" style="display:none;">
-        <input type="text" id="secret-input" placeholder="Секретное слово..." style="width:100%;margin:8px 0;padding:8px;background:var(--input-bg);border:1px solid var(--border);color:var(--input-text);border-radius:8px;">
-    </div>
     <button class="btn-primary" id="btn-craft-arrow">🏹 Крафт стрелы</button>
     <button class="btn-dark" id="btn-scan-qr">📷 Сканировать QR собеседника</button>
     <div style="color:var(--text-dim);margin-bottom:6px;">Твоя стрела:</div><div class="code-display" id="craft-peer-id-display"></div><div style="color:var(--text-dim);margin:8px 0 4px;">Секретный код (7 цифр):</div>
@@ -276,9 +269,8 @@
 <button class="btn-dark" id="btn-copy-peer-id">📋 Скопировать стрелу и код</button><div style="color:var(--text-dim);margin:16px 0 6px;">Стрела друга:</div><input type="text" id="peer-id-input" placeholder="Peer ID друга..." style="width:100%;margin:0 0 12px;padding:8px;background:var(--input-bg);border:1px solid var(--border);color:var(--input-text);border-radius:8px;font-size:0.75em;font-family:monospace;"><button class="btn-primary" id="btn-create-beacon" style="background:linear-gradient(135deg,#6b7db3,#4a5a8a);">🏹 Натянуть тетиву</button><button class="btn-dark" id="close-craft-modal">Закрыть</button></div></div>
 
 <div class="modal-overlay" id="verify-modal"><div class="modal-dialog"><h3>🔐 Подтверждение</h3><div id="verify-instruction" style="color:var(--text-dim);margin-bottom:12px;">Введи 7-значный код</div>
-<div style="color:var(--danger);font-size:0.8em;margin:8px 0;text-align:center;">
-⚠️ ОБЯЗАТЕЛЬНО: произнеси код голосом и убедись что собеседник подтвердил совпадение.
-Без голосового подтверждения канал не откроется.
+<div style="color:var(--danger);font-size:0.7em;margin:4px 0 12px;text-align:center;">
+⚠️ Рекомендуется сравнить код с собеседником голосом или при встрече.
 </div>
 <div id="verify-code-display" style="font-size:2em;font-family:monospace;letter-spacing:8px;margin:12px 0;color:var(--accent-light);min-height:40px;">_______</div><div id="verify-code-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;max-width:240px;margin:12px auto;"></div><div id="verify-error" style="color:var(--danger);font-size:0.8em;margin-top:6px;display:none;"></div><button class="btn-dark" id="btn-verify-reset" style="width:auto;display:inline-block;margin:8px auto;">↩ Сбросить</button><button class="btn-primary" id="btn-verify-confirm">✅ Подтвердить</button><button class="btn-dark" id="close-verify-modal">Закрыть</button></div></div>
 
