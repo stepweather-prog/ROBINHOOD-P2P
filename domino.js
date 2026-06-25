@@ -92,7 +92,6 @@ const Domino = {
         if (!this.isValidMove(state, tile, side)) return false;
 
         if (state.board.length === 0) {
-            // Первый ход — кладём как есть
             state.board.push([tile[0], tile[1]]);
         } else if (side === 'left') {
             const target = state.board[0][0];
@@ -135,14 +134,12 @@ const Domino = {
 
     // Проверка окончания игры. Возвращает true если игра закончена.
     checkEnd(state) {
-        // Рыба: все игроки пропустили ход подряд
         if (state.passed.length >= state.players.length) {
             state.ended = true;
             state.winner = this._winnerByPoints(state);
             return true;
         }
 
-        // У кого-то кончились костяшки
         for (const player of state.players) {
             if (player.hand.length === 0) {
                 state.ended = true;
