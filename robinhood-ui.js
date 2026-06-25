@@ -1,4 +1,4 @@
-// ==================== RobinHood UI v5.1 — fix: дыра verification-received + колчан у Боба ====================
+// ==================== RobinHood UI v5.2 — fix: верификация + колчан у обоих ====================
 // Чистый интерфейс. Ядро: P2PPong.
 
 let contacts = [],
@@ -185,9 +185,11 @@ function initUI() {
     P2PPong.on('message-sent', () => { updateCupIndicator(); updateRatchetIndicator(); });
     P2PPong.on('beacon-taken', () => { rMsg('👀 Маяк забрали...', 3000); });
 
+    // ✅ Боб (тот кто вводит чужой маяк): получает модалку для ввода кода
     P2PPong.on('verification-needed', (data) => {
         if (verificationModalShown) return;
-        verificationModalShown = true; verificationDone = false;
+        verificationModalShown = true;
+        verificationDone = false;
         window._verifyCode = data.code || P2PPong.getVerificationCode();
         window._verifyInput = '';
         document.getElementById('verify-instruction').textContent = 'Введи 7-значный код';
@@ -209,43 +211,14 @@ function initUI() {
         document.getElementById('verify-modal')?.classList.add('active');
     });
 
-    // ✅ ИСПРАВЛЕНО: проверка кода + анимация колчана
-    P2PPong.on('verification-received', (data) => {
-        const code = data.code || P2PPong.getVerificationCode();
-        const myCode = window._verifyCode || P2PPong.getVerificationCode();
-        
-        // ✅ Проверяем что коды совпадают
-        if (code !== myCode) {
-            const errEl = document.getElementById('verify-error');
-            if (errEl) {
-                errEl.textContent = '❌ Коды не совпадают! Возможна атака.';
-                errEl.style.display = 'block';
-            }
-            return;
-        }
-        
-        // ✅ Коды совпали — показываем успех и анимацию
-        document.getElementById('verify-instruction').textContent = '✅ Код совпал! Канал открывается...';
-        document.getElementById('verify-code-display').textContent = code;
-        document.getElementById('verify-error').style.display = 'none';
-        verificationModalShown = false;
-        verificationDone = true;
-        
-        setTimeout(() => {
-            document.getElementById('verify-modal')?.classList.remove('active');
-            playQuiverAnimation(); // ✅ Колчан для Боба
-            rMsg('✅ Код подтверждён! Колчан открыт!', 3000);
-        }, 1500);
-    });
-
-    // ✅ ИСПРАВЛЕНО: задержка перед анимацией чтобы модалка закрылась
+    // ✅ У ОБОИХ: канал открылся — колчан и вход в чат
     P2PPong.on('channel-opened', (data) => {
         document.getElementById('verify-modal')?.classList.remove('active');
         verificationModalShown = false;
         verificationDone = false;
         
         setTimeout(() => {
-            playQuiverAnimation(); // ✅ Гарантированно после закрытия модалки
+            playQuiverAnimation();
         }, 300);
         
         rMsg('✅ Колчан открыт! Тетива натянута!', 3000);
