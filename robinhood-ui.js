@@ -1,4 +1,4 @@
-// robinhood-ui.js — v5 финал: чат под доской, Боб — игрок 1, анимация у обоих
+// robinhood-ui.js — v5 чистый: без домино, без переключателя режимов, чат работает, анимация у обоих
 let contacts = [],
     activeChannelId = null,
     activePeerId = null,
@@ -45,16 +45,6 @@ let selfDestructIntervalId = null;
 let bands = [];
 let activeBandId = null;
 let pendingBandData = null;
-
-// ======= ДОМИНО =======
-let dominoState = null;
-let dominoMyIndex = 0;
-let dominoSeed = null;
-let selectedDominoTile = null;
-let selectedDominoSide = null;
-let dominoInBand = false;
-let dominoScores = {};
-let dominoGameActive = false;
 
 const MAX_CHAT_MESSAGES = 100;
 
@@ -140,11 +130,11 @@ function addContact(c) { if (!contacts.find(x => x.peerId === c.peerId)) { conta
 function saveContacts() { try { localStorage.setItem('rh_contacts', JSON.stringify(contacts)); } catch (e) {} }
 function loadContacts() { try { const r = localStorage.getItem('rh_contacts'); if (r) contacts = JSON.parse(r); } catch (e) {} }
 
-function createBand(bandId, name, password = null) { if (bands.find(b => b.id === bandId)) { rMsg('❌ Шайка с таким ID уже существует', 3000); return null; } const band = { id: bandId, name: name || 'Шайка лучников', sheriff: P2PPong._peerId, rangers: [], outlaws: [P2PPong._peerId], strangers: [], password: password, created: Date.now(), maxMembers: 12, blobs: [], gameState: null }; bands.push(band); activeBandId = bandId; activeChannelId = null; showBandChat(bandId); playQuiverAnimation(); rMsg('🏹 Шайка собрана в Шервуде! Вы — шериф.', 4000); if (activeChannelId) { P2PPong.sendMessage(activeChannelId, JSON.stringify({ band: 'invite', bandId: bandId, name: name || 'Шайка лучников', password: password, sheriff: P2PPong._peerId })); } return bandId; }
-function joinBand(bandId, password = null) { let band = bands.find(b => b.id === bandId); if (!band) { band = { id: bandId, name: 'Шайка лучников', sheriff: null, rangers: [], outlaws: [P2PPong._peerId], strangers: [], password: password, created: Date.now(), maxMembers: 12, blobs: [], gameState: null }; bands.push(band); if (activeChannelId) { P2PPong.sendMessage(activeChannelId, JSON.stringify({ band: 'join-request', bandId: bandId, peerId: P2PPong._peerId })); } } else { if (band.password && band.password !== password) { rMsg('❌ Неверный пароль шайки', 3000); return false; } if (band.outlaws.length >= band.maxMembers) { rMsg('❌ Шайка полна (макс 12 лучников)', 3000); return false; } if (!band.outlaws.includes(P2PPong._peerId)) { band.outlaws.push(P2PPong._peerId); if (activeChannelId) { P2PPong.sendMessage(activeChannelId, JSON.stringify({ band: 'member-joined', bandId: bandId, peerId: P2PPong._peerId })); } } } activeBandId = bandId; activeChannelId = null; showBandChat(bandId); playQuiverAnimation(); rMsg('🏹 Вы вступили в шайку!', 4000); return true; }
-function showBandChat(bandId) { const band = bands.find(b => b.id === bandId); if (!band) return; activeBandId = bandId; activeChannelId = null; const role = band.sheriff === P2PPong._peerId ? '⭐Шериф' : '🏹Разбойник'; document.getElementById('robin-bar-sender').textContent = role + ' ' + (band.name || 'Шайка'); const box = document.getElementById('chat-box'); box.innerHTML = '<div class="typing-indicator" id="typing-indicator"></div>'; if (band.blobs) { band.blobs.forEach(b => { const im = b.from === P2PPong._peerId; appendMessage(im ? 'Вы' : (b.nick || 'Лучник'), b.text || '', im ? selectedAvatar : (b.avatar || '001')); }); } if (band.gameState) { dominoInBand = true; dominoState = band.gameState; dominoMyIndex = band.outlaws.indexOf(P2PPong._peerId); if (dominoMyIndex < 0) dominoMyIndex = 0; DominoUI.init('domino-canvas'); setTimeout(() => { DominoUI.draw(Domino.getPublicState(dominoState), dominoMyIndex); updateDominoPlayers(); }, 200); document.getElementById('domino-board').style.display = 'flex'; } }
+function createBand(bandId, name, password = null) { if (bands.find(b => b.id === bandId)) { rMsg('❌ Шайка с таким ID уже существует', 3000); return null; } const band = { id: bandId, name: name || 'Шайка лучников', sheriff: P2PPong._peerId, rangers: [], outlaws: [P2PPong._peerId], strangers: [], password: password, created: Date.now(), maxMembers: 12, blobs: [] }; bands.push(band); activeBandId = bandId; activeChannelId = null; showBandChat(bandId); playQuiverAnimation(); rMsg('🏹 Шайка собрана в Шервуде! Вы — шериф.', 4000); if (activeChannelId) { P2PPong.sendMessage(activeChannelId, JSON.stringify({ band: 'invite', bandId: bandId, name: name || 'Шайка лучников', password: password, sheriff: P2PPong._peerId })); } return bandId; }
+function joinBand(bandId, password = null) { let band = bands.find(b => b.id === bandId); if (!band) { band = { id: bandId, name: 'Шайка лучников', sheriff: null, rangers: [], outlaws: [P2PPong._peerId], strangers: [], password: password, created: Date.now(), maxMembers: 12, blobs: [] }; bands.push(band); if (activeChannelId) { P2PPong.sendMessage(activeChannelId, JSON.stringify({ band: 'join-request', bandId: bandId, peerId: P2PPong._peerId })); } } else { if (band.password && band.password !== password) { rMsg('❌ Неверный пароль шайки', 3000); return false; } if (band.outlaws.length >= band.maxMembers) { rMsg('❌ Шайка полна (макс 12 лучников)', 3000); return false; } if (!band.outlaws.includes(P2PPong._peerId)) { band.outlaws.push(P2PPong._peerId); if (activeChannelId) { P2PPong.sendMessage(activeChannelId, JSON.stringify({ band: 'member-joined', bandId: bandId, peerId: P2PPong._peerId })); } } } activeBandId = bandId; activeChannelId = null; showBandChat(bandId); playQuiverAnimation(); rMsg('🏹 Вы вступили в шайку!', 4000); return true; }
+function showBandChat(bandId) { const band = bands.find(b => b.id === bandId); if (!band) return; activeBandId = bandId; activeChannelId = null; const role = band.sheriff === P2PPong._peerId ? '⭐Шериф' : '🏹Разбойник'; document.getElementById('robin-bar-sender').textContent = role + ' ' + (band.name || 'Шайка'); const box = document.getElementById('chat-box'); box.innerHTML = '<div class="typing-indicator" id="typing-indicator"></div>'; if (band.blobs) { band.blobs.forEach(b => { const im = b.from === P2PPong._peerId; appendMessage(im ? 'Вы' : (b.nick || 'Лучник'), b.text || '', im ? selectedAvatar : (b.avatar || '001')); }); } }
 
-function showBandsList() { const list = document.getElementById('bands-list'); if (!list) return; list.innerHTML = ''; if (bands.length === 0) { list.innerHTML = '<div style="color:var(--text-dim);text-align:center;padding:20px;">Нет шаек. Создайте первую!</div>'; return; } bands.forEach(band => { const item = document.createElement('div'); item.className = 'contact-item'; const role = band.sheriff === P2PPong._peerId ? '⭐Шериф' : '🏹Разбойник'; item.innerHTML = `<div style="display:flex;align-items:center;gap:8px;width:100%;"><img src="assets/icons/10icon.png" style="width:28px;height:28px;"><div><div class="contact-name">${band.name || 'Шайка'}</div><div style="font-size:0.65em;color:var(--text-dim);">${role} · ${band.outlaws.length}/12 ${band.password ? '🔐' : ''} ${band.gameState ? '🎲' : ''}</div></div></div>`; item.addEventListener('click', () => { if (band.outlaws.includes(P2PPong._peerId)) { showBandChat(band.id); document.getElementById('bands-modal')?.classList.remove('active'); } else { if (band.password) { showInput('Пароль шайки', 'Введи пароль').then(pass => { if (pass) joinBand(band.id, pass); }); } else { joinBand(band.id); } } }); list.appendChild(item); }); }
+function showBandsList() { const list = document.getElementById('bands-list'); if (!list) return; list.innerHTML = ''; if (bands.length === 0) { list.innerHTML = '<div style="color:var(--text-dim);text-align:center;padding:20px;">Нет шаек. Создайте первую!</div>'; return; } bands.forEach(band => { const item = document.createElement('div'); item.className = 'contact-item'; const role = band.sheriff === P2PPong._peerId ? '⭐Шериф' : '🏹Разбойник'; item.innerHTML = `<div style="display:flex;align-items:center;gap:8px;width:100%;"><img src="assets/icons/10icon.png" style="width:28px;height:28px;"><div><div class="contact-name">${band.name || 'Шайка'}</div><div style="font-size:0.65em;color:var(--text-dim);">${role} · ${band.outlaws.length}/12 ${band.password ? '🔐' : ''}</div></div></div>`; item.addEventListener('click', () => { if (band.outlaws.includes(P2PPong._peerId)) { showBandChat(band.id); document.getElementById('bands-modal')?.classList.remove('active'); } else { if (band.password) { showInput('Пароль шайки', 'Введи пароль').then(pass => { if (pass) joinBand(band.id, pass); }); } else { joinBand(band.id); } } }); list.appendChild(item); }); }
 
 function updateCupIndicator() { const chId = activeChannelId || Object.keys(P2PPong._channels)[0]; const ch = chId ? P2PPong._channels[chId] : null; const ind = document.getElementById('cup-indicator'); if (!ch || !ind) { if (ind) ind.style.display = 'none'; return; } ind.style.display = 'inline-flex'; const bc = ch.blobs ? ch.blobs.length : 0; const be = document.getElementById('cup-blobs'); if (be) { be.textContent = bc + '/10'; be.className = bc >= 10 ? 'full' : bc >= 7 ? 'ok' : ''; } const totalSec = Math.max(0, Math.round((ch.expires - Date.now()) / 1000)); const min = Math.floor(totalSec / 60); const sec = totalSec % 60; const te = document.getElementById('cup-timer'); if (te) { te.textContent = min + ':' + sec.toString().padStart(2, '0'); te.className = min <= 2 ? 'low' : min <= 5 ? 'ok' : ''; } }
 function updateRatchetIndicator() { const chId = activeChannelId || Object.keys(P2PPong._channels)[0]; const ch = chId ? P2PPong._channels[chId] : null; const indicator = document.getElementById('ratchet-indicator'); if (!indicator) return; if (!ch || !ch.sendKey) { indicator.style.display = 'none'; return; } indicator.style.display = 'inline'; const ri = ch.sendIndex || 0; let color, icon; if (ri === 0) { color = 'var(--danger)'; icon = '⚠️'; } else if (ri < 10) { color = 'orange'; icon = '🔄'; } else if (ri < 50) { color = 'var(--accent)'; icon = '🔒'; } else { color = 'var(--seeding-color)'; icon = '🔐'; } indicator.style.color = color; indicator.style.background = 'rgba(0,0,0,0.3)'; indicator.textContent = icon + ' ' + ri; indicator.title = 'Ratchet (send): ' + ri + ' сообщений отправлено'; }
@@ -173,168 +163,6 @@ async function startCall() { if (callActive || !activeChannelId) { rMsg('❌ Н�
 async function acceptCall() { if (!incomingOffer || !activeChannelId) return; stopRingtone(); stopRingback(); const s = await getMediaStream(false); if (!s) return; localStream = s; try { const audioContext = getAudioContext(); const source = audioContext.createMediaStreamSource(localStream); const gainNode = audioContext.createGain(); gainNode.gain.value = micVolume; window._micGain = gainNode; source.connect(gainNode); } catch(e) {} createPC(); const cp = document.getElementById('call-panel'); if (cp) cp.style.display = 'flex'; const ct = contacts.find(c => c.channelId === activeChannelId); const contactName = ct?.name || document.getElementById('nick-label')?.textContent || 'Лучник'; const contactAvatar = ct?.avatar || selectedAvatar; document.getElementById('call-avatar').src = 'assets/avatar/' + contactAvatar + 'ava.png'; document.getElementById('call-contact-name').textContent = contactName; document.getElementById('call-status').textContent = '✅ Разговор'; showIncomingControls(false); showActiveControls(true); showCallWave(true); playSound('open.mp3'); stopCallArcherAnimation(); playArcherAnimation(); try { const offerSdp = typeof incomingOffer === 'string' ? JSON.parse(incomingOffer) : incomingOffer; await pc.setRemoteDescription(new RTCSessionDescription(offerSdp)); iceBuffer.forEach(c => pc.addIceCandidate(new RTCIceCandidate(c)).catch(er => {})); iceBuffer = []; const a = await pc.createAnswer(); await pc.setLocalDescription(a); sendWebRTCMsg('webrtc-answer', JSON.stringify(a)); incomingOffer = null; callActive = true; } catch (e) { incomingOffer = null; hang(false); } updateCallButtonState(); }
 function hang(sig = true) { if (hangInProgress) return; hangInProgress = true; callActive = false; stopCallArcherAnimation(); stopRingtone(); stopRingback(); if (sig && activeChannelId) sendWebRTCMsg('webrtc-hangup', ''); if (pc) { pc.onconnectionstatechange = null; pc.ontrack = null; pc.onicecandidate = null; pc.close(); pc = null; } if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; } incomingOffer = null; iceBuffer = []; if (iceFlushTimer) clearTimeout(iceFlushTimer); if (iceRestartTimer) clearTimeout(iceRestartTimer); iceRestartInProgress = false; window._micGain = null; window._speakerGain = null; window._remoteSource = null; const oldAudio = document.getElementById('remote-audio'); if (oldAudio) { oldAudio.srcObject = null; oldAudio.remove(); } const cp = document.getElementById('call-panel'); if (cp) cp.style.display = 'none'; showIncomingControls(false); showActiveControls(false); showCallWave(false); playSound('exet.mp3'); updateCallButtonState(); hangInProgress = false; }
 
-// ======= ДОМИНО: UI =======
-function updateDominoPlayers() { const container = document.getElementById('domino-players'); const scoresEl = document.getElementById('domino-scores'); if (!dominoState || !container) return; const players = dominoInBand ? (bands.find(b => b.id === activeBandId)?.outlaws || []) : dominoState.players.map(p => p.name); container.innerHTML = players.map((p, i) => { const name = typeof p === 'string' ? p : (p.nick || p); const isActive = i === dominoState.currentPlayer; const isMe = dominoInBand ? (p === P2PPong._peerId) : (i === dominoMyIndex); const isWinner = dominoState.ended && i === dominoState.winner; const score = dominoScores[name] || 0; return `<span class="domino-player ${isActive ? 'active' : ''} ${isWinner ? 'winner' : ''}">${isMe ? '⭐' : ''} ${name} ${score > 0 ? '(' + score + ')' : ''}</span>`; }).join(''); if (scoresEl) { scoresEl.textContent = dominoState.ended ? `🏆 Победитель: ${players[dominoState.winner] || '?'}` : ''; } }
-
-function startDominoGame(seed, playersList) {
-    dominoSeed = seed;
-    dominoState = Domino.createGame(dominoSeed, playersList);
-    
-    if (dominoInBand) {
-        const band = bands.find(b => b.id === activeBandId);
-        if (band) {
-            dominoMyIndex = band.outlaws.indexOf(P2PPong._peerId);
-            if (dominoMyIndex < 0) dominoMyIndex = 0;
-            band.gameState = dominoState;
-        }
-    } else {
-        dominoMyIndex = 0;
-    }
-    
-    document.getElementById('domino-board').style.display = 'flex';
-    // Чат не скрываем — сообщения видны под доской
-    
-    setTimeout(() => {
-        DominoUI.init('domino-canvas');
-        DominoUI.draw(Domino.getPublicState(dominoState), dominoMyIndex);
-        updateDominoPlayers();
-    }, 200);
-    
-    dominoGameActive = true;
-    selectedDominoTile = null;
-    selectedDominoSide = null;
-}
-
-function doDominoMove() {
-    if (!dominoState || dominoState.ended) return;
-    if (dominoState.currentPlayer !== dominoMyIndex) { rMsg('⏳ Сейчас не ваш ход', 2000); return; }
-    if (!selectedDominoTile) { rMsg('🎯 Выберите костяшку кликом по руке', 2000); return; }
-    const success = Domino.placeTile(dominoState, selectedDominoTile, selectedDominoSide);
-    if (!success) { rMsg('❌ Сюда нельзя положить', 2000); return; }
-    selectedDominoTile = null;
-    Domino._nextTurn(dominoState);
-    DominoUI.draw(Domino.getPublicState(dominoState), dominoMyIndex);
-    updateDominoPlayers();
-    Domino.checkEnd(dominoState);
-    if (dominoState.ended) {
-        const band = bands.find(b => b.id === activeBandId);
-        const winnerName = dominoInBand ? (band?.outlaws[dominoState.winner] || '?') : dominoState.players[dominoState.winner]?.name;
-        if (!dominoScores[winnerName]) dominoScores[winnerName] = 0;
-        dominoScores[winnerName]++;
-        updateDominoPlayers();
-        rMsg('🏆 Победитель: ' + winnerName, 5000);
-    }
-    const msg = { type: 'domino', action: 'move', tile: selectedDominoTile || [0, 0], side: selectedDominoSide, gameState: Domino.getPublicState(dominoState) };
-    if (dominoInBand) { P2PPong.sendMessage(activeChannelId, JSON.stringify({ band: 'domino-move', bandId: activeBandId, ...msg })); }
-    else { P2PPong.sendMessage(activeChannelId, JSON.stringify(msg)); }
-}
-
-function doDominoPass() {
-    if (!dominoState || dominoState.ended) return;
-    if (dominoState.currentPlayer !== dominoMyIndex) return;
-    Domino.pass(dominoState);
-    DominoUI.draw(Domino.getPublicState(dominoState), dominoMyIndex);
-    updateDominoPlayers();
-    Domino.checkEnd(dominoState);
-    if (dominoState.ended) {
-        const band = bands.find(b => b.id === activeBandId);
-        const winnerName = dominoInBand ? (band?.outlaws[dominoState.winner] || '?') : dominoState.players[dominoState.winner]?.name;
-        if (!dominoScores[winnerName]) dominoScores[winnerName] = 0;
-        dominoScores[winnerName]++;
-        updateDominoPlayers();
-    }
-    const msg = { type: 'domino', action: 'pass', gameState: Domino.getPublicState(dominoState) };
-    if (dominoInBand) { P2PPong.sendMessage(activeChannelId, JSON.stringify({ band: 'domino-move', bandId: activeBandId, ...msg })); }
-    else { P2PPong.sendMessage(activeChannelId, JSON.stringify(msg)); }
-    rMsg('😔 Ход пропущен', 2000);
-}
-
-function leaveDomino() {
-    dominoState = null;
-    dominoGameActive = false;
-    dominoInBand = false;
-    selectedDominoTile = null;
-    selectedDominoSide = null;
-    document.getElementById('domino-board').style.display = 'none';
-    rMsg('🚪 Вы вышли из игры', 2000);
-}
-
-function handleDominoMessage(msg) {
-    switch (msg.action) {
-        case 'start':
-            dominoInBand = false;
-            startDominoGame(msg.seed, msg.players);
-            dominoMyIndex = 1; // Боб — второй игрок
-            DominoUI.draw(Domino.getPublicState(dominoState), dominoMyIndex);
-            updateDominoPlayers();
-            rMsg('🎲 Соперник предлагает домино!', 4000);
-            break;
-        case 'move':
-            if (!dominoState) return;
-            Domino.placeTile(dominoState, msg.tile, msg.side);
-            Domino._nextTurn(dominoState);
-            Object.assign(dominoState, msg.gameState);
-            DominoUI.draw(Domino.getPublicState(dominoState), dominoMyIndex);
-            updateDominoPlayers();
-            Domino.checkEnd(dominoState);
-            if (dominoState.ended) {
-                const winnerName = dominoState.players[dominoState.winner]?.name || '?';
-                if (!dominoScores[winnerName]) dominoScores[winnerName] = 0;
-                dominoScores[winnerName]++;
-                updateDominoPlayers();
-                rMsg(dominoState.winner === dominoMyIndex ? '🏆 Вы победили!' : '😔 Вы проиграли', 5000);
-            }
-            break;
-        case 'pass':
-            if (!dominoState) return;
-            Domino.pass(dominoState);
-            Object.assign(dominoState, msg.gameState);
-            DominoUI.draw(Domino.getPublicState(dominoState), dominoMyIndex);
-            updateDominoPlayers();
-            Domino.checkEnd(dominoState);
-            break;
-    }
-}
-
-function handleBandDominoMessage(parsed) {
-    switch (parsed.action) {
-        case 'start':
-            dominoInBand = true;
-            startDominoGame(parsed.seed, parsed.players);
-            rMsg('🎲 Домино началось в шайке!', 4000);
-            break;
-        case 'move':
-            if (!dominoState) return;
-            Domino.placeTile(dominoState, parsed.tile, parsed.side);
-            Domino._nextTurn(dominoState);
-            Object.assign(dominoState, parsed.gameState);
-            const band = bands.find(b => b.id === activeBandId);
-            if (band) band.gameState = dominoState;
-            DominoUI.draw(Domino.getPublicState(dominoState), dominoMyIndex);
-            updateDominoPlayers();
-            Domino.checkEnd(dominoState);
-            if (dominoState.ended) {
-                const b = bands.find(b2 => b2.id === activeBandId);
-                const winnerName = b?.outlaws[dominoState.winner] || '?';
-                if (!dominoScores[winnerName]) dominoScores[winnerName] = 0;
-                dominoScores[winnerName]++;
-                updateDominoPlayers();
-                rMsg('🏆 Победитель: ' + winnerName, 5000);
-            }
-            break;
-        case 'pass':
-            if (!dominoState) return;
-            Domino.pass(dominoState);
-            Object.assign(dominoState, parsed.gameState);
-            const b2 = bands.find(b3 => b3.id === activeBandId);
-            if (b2) b2.gameState = dominoState;
-            DominoUI.draw(Domino.getPublicState(dominoState), dominoMyIndex);
-            updateDominoPlayers();
-            Domino.checkEnd(dominoState);
-            break;
-    }
-}
-
 function initUI() {
     P2PPong.on('ready', () => { setConnectionStatus('online'); rMsg('🏹 Слепой Улей готов', 0); });
     P2PPong.on('state-change', (data) => { if (data.state === 'online') setConnectionStatus('online'); else if (data.state === 'offline') setConnectionStatus('offline'); });
@@ -359,9 +187,9 @@ function initUI() {
 
 function addVerifyDigit(d) { if (window._verifyInput.length >= 7) return; window._verifyInput += d; document.getElementById('verify-code-display').textContent = window._verifyInput.padEnd(7, '_'); if (window._verifyInput.length === 7) { setTimeout(() => document.getElementById('btn-verify-confirm')?.click(), 300); } }
 
-function handleIncomingMessage(data) { if (!data || !data.text) return; try { const parsed = JSON.parse(data.text); if (parsed.type === 'domino') { handleDominoMessage(parsed); return; } if (parsed.band === 'domino-move') { handleBandDominoMessage(parsed); return; } if (parsed.band) { handleBandMessage(parsed, data); return; } } catch(e) {} if (data.voiceData) { const ct = contacts.find(c => c.channelId === data.channelId); const nick = safeHtml(data.nick || ct?.name || 'Друг'); const avatar = data.avatar || ct?.avatar || '001'; if (data.channelId === activeChannelId) { appendMessage(nick, '🎤 Голосовое', avatar, data.voiceData, 'audio/webm'); } else { rMsg('🎤 Голосовое от ' + nick, 3000); playVoiceBlob(data.voiceData); } updateCupIndicator(); return; } try { const parsed = JSON.parse(data.text); if (parsed.webrtc) { handleWebRTCSignal(parsed.webrtc, parsed.sdp, data.channelId); return; } if (parsed.voice) { const ct = contacts.find(c => c.channelId === data.channelId); const nick = safeHtml(ct?.name || 'Друг'); const avatar = ct?.avatar || '001'; if (data.channelId === activeChannelId) { appendMessage(nick, '🎤 Голосовое', avatar, parsed.data, 'audio/webm'); } else { rMsg('🎤 Голосовое от ' + nick, 3000); playVoiceBlob(parsed.data); } updateCupIndicator(); return; } if (parsed.d === '__SMOKE__') { selfDestructMode = true; const sd = document.getElementById('toggle-selfdestruct'); if (sd) sd.checked = true; startSelfDestruct(); rMsg('🍁 Собеседник включил листопад', 3000); return; } } catch (e) {} const ct = contacts.find(c => c.channelId === data.channelId); const nick = safeHtml(data.nick || ct?.name || 'Лучник'); const avatar = data.avatar || ct?.avatar || '001'; if (data.channelId === activeChannelId) { appendMessage(nick, data.text, avatar); } else { rMsg('Новое от ' + nick, 3000); } updateCupIndicator(); updateRatchetIndicator(); playSound('arrow_hit.wav'); }
+function handleIncomingMessage(data) { if (!data || !data.text) return; try { const parsed = JSON.parse(data.text); if (parsed.band) { handleBandMessage(parsed, data); return; } } catch(e) {} if (data.voiceData) { const ct = contacts.find(c => c.channelId === data.channelId); const nick = safeHtml(data.nick || ct?.name || 'Друг'); const avatar = data.avatar || ct?.avatar || '001'; if (data.channelId === activeChannelId) { appendMessage(nick, '🎤 Голосовое', avatar, data.voiceData, 'audio/webm'); } else { rMsg('🎤 Голосовое от ' + nick, 3000); playVoiceBlob(data.voiceData); } updateCupIndicator(); return; } try { const parsed = JSON.parse(data.text); if (parsed.webrtc) { handleWebRTCSignal(parsed.webrtc, parsed.sdp, data.channelId); return; } if (parsed.voice) { const ct = contacts.find(c => c.channelId === data.channelId); const nick = safeHtml(ct?.name || 'Друг'); const avatar = ct?.avatar || '001'; if (data.channelId === activeChannelId) { appendMessage(nick, '🎤 Голосовое', avatar, parsed.data, 'audio/webm'); } else { rMsg('🎤 Голосовое от ' + nick, 3000); playVoiceBlob(parsed.data); } updateCupIndicator(); return; } if (parsed.d === '__SMOKE__') { selfDestructMode = true; const sd = document.getElementById('toggle-selfdestruct'); if (sd) sd.checked = true; startSelfDestruct(); rMsg('🍁 Собеседник включил листопад', 3000); return; } } catch (e) {} const ct = contacts.find(c => c.channelId === data.channelId); const nick = safeHtml(data.nick || ct?.name || 'Лучник'); const avatar = data.avatar || ct?.avatar || '001'; if (data.channelId === activeChannelId) { appendMessage(nick, data.text, avatar); } else { rMsg('Новое от ' + nick, 3000); } updateCupIndicator(); updateRatchetIndicator(); playSound('arrow_hit.wav'); }
 
-function handleBandMessage(parsed, data) { if (parsed.band === 'domino-move') { handleBandDominoMessage(parsed); return; } switch (parsed.band) { case 'invite': if (!bands.find(b => b.id === parsed.bandId)) { const band = { id: parsed.bandId, name: parsed.name || 'Шайка лучников', sheriff: parsed.sheriff || data.peerId, rangers: [], outlaws: [parsed.sheriff || data.peerId, P2PPong._peerId], strangers: [], password: parsed.password, created: Date.now(), maxMembers: 12, blobs: [], gameState: null }; bands.push(band); rMsg('🏹 Приглашение в шайку «' + band.name + '»!', 4000); activeBandId = band.id; activeChannelId = null; showBandChat(band.id); playQuiverAnimation(); } break; case 'join-request': var band = bands.find(b => b.id === parsed.bandId); if (band && !band.outlaws.includes(parsed.peerId)) { band.outlaws.push(parsed.peerId); rMsg('🏹 Лучник присоединился к шайке!', 3000); } if (band && band.sheriff === P2PPong._peerId && activeChannelId) { P2PPong.sendMessage(activeChannelId, JSON.stringify({ band: 'member-joined', bandId: band.id, peerId: parsed.peerId })); } break; case 'member-joined': var band = bands.find(b => b.id === parsed.bandId); if (band) { if (!band.outlaws.includes(parsed.peerId)) { band.outlaws.push(parsed.peerId); } if (!band.sheriff && data.peerId) { band.sheriff = data.peerId; } rMsg('✅ Вы в шайке!', 3000); } break; case 'band-message': var band = bands.find(b => b.id === parsed.bandId); if (band) { band.blobs.push({ text: parsed.text, from: parsed.from || data.peerId, nick: parsed.nick || 'Лучник', avatar: parsed.avatar || '001', time: Date.now() }); if (activeBandId === band.id) { appendMessage(parsed.nick || 'Лучник', parsed.text, parsed.avatar || '001'); } } break; } }
+function handleBandMessage(parsed, data) { switch (parsed.band) { case 'invite': if (!bands.find(b => b.id === parsed.bandId)) { const band = { id: parsed.bandId, name: parsed.name || 'Шайка лучников', sheriff: parsed.sheriff || data.peerId, rangers: [], outlaws: [parsed.sheriff || data.peerId, P2PPong._peerId], strangers: [], password: parsed.password, created: Date.now(), maxMembers: 12, blobs: [] }; bands.push(band); rMsg('🏹 Приглашение в шайку «' + band.name + '»!', 4000); activeBandId = band.id; activeChannelId = null; showBandChat(band.id); playQuiverAnimation(); } break; case 'join-request': var band = bands.find(b => b.id === parsed.bandId); if (band && !band.outlaws.includes(parsed.peerId)) { band.outlaws.push(parsed.peerId); rMsg('🏹 Лучник присоединился к шайке!', 3000); } if (band && band.sheriff === P2PPong._peerId && activeChannelId) { P2PPong.sendMessage(activeChannelId, JSON.stringify({ band: 'member-joined', bandId: band.id, peerId: parsed.peerId })); } break; case 'member-joined': var band = bands.find(b => b.id === parsed.bandId); if (band) { if (!band.outlaws.includes(parsed.peerId)) { band.outlaws.push(parsed.peerId); } if (!band.sheriff && data.peerId) { band.sheriff = data.peerId; } rMsg('✅ Вы в шайке!', 3000); } break; case 'band-message': var band = bands.find(b => b.id === parsed.bandId); if (band) { band.blobs.push({ text: parsed.text, from: parsed.from || data.peerId, nick: parsed.nick || 'Лучник', avatar: parsed.avatar || '001', time: Date.now() }); if (activeBandId === band.id) { appendMessage(parsed.nick || 'Лучник', parsed.text, parsed.avatar || '001'); } } break; } }
 
 function handleWebRTCSignal(type, sdp, channelId) { if (channelId && activeChannelId && channelId !== activeChannelId) return; if (type === 'webrtc-offer' && !callActive) { try { incomingOffer = typeof sdp === 'string' ? JSON.parse(sdp) : sdp; } catch(e) { incomingOffer = sdp; } playRingtone(); const cp = document.getElementById('call-panel'); if (cp) cp.style.display = 'flex'; const ct = contacts.find(c => c.channelId === activeChannelId); document.getElementById('call-avatar').src = 'assets/avatar/' + (ct?.avatar || selectedAvatar) + 'ava.png'; document.getElementById('call-contact-name').textContent = ct?.name || 'Лучник'; document.getElementById('call-status').textContent = '📞 Входящий...'; showIncomingControls(true); showActiveControls(false); updateCallButtonState(); playCallArcherAnimation(); return; } if (!pc) return; try { if (type === 'webrtc-answer') { if (pc.signalingState === 'have-local-offer') { const answerSdp = typeof sdp === 'string' ? JSON.parse(sdp) : sdp; pc.setRemoteDescription(new RTCSessionDescription(answerSdp)).then(() => { callActive = true; stopRingback(); document.getElementById('call-status').textContent = '✅ Разговор'; showIncomingControls(false); showActiveControls(true); showCallWave(true); playSound('open.mp3'); updateCallButtonState(); stopCallArcherAnimation(); playArcherAnimation(); }).catch(e => {}); } } else if (type === 'webrtc-ice') { if (pc.remoteDescription) { const candidate = typeof sdp === 'string' ? JSON.parse(sdp) : sdp; pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(e => {}); } } else if (type === 'webrtc-hangup') { hang(false); } } catch (e) {} }
 
@@ -453,44 +281,6 @@ function initApp() {
     const eg = document.getElementById('emoji-grid'); if (eg) emojis.forEach(e => { const span = document.createElement('span'); span.textContent = e; span.addEventListener('click', () => { const mi = document.getElementById('msg-input'); if (mi) { mi.value += e; mi.focus(); } }); eg.appendChild(span); });
     const be = document.getElementById('btn-emoji'); if (be) be.addEventListener('click', () => { const ep = document.getElementById('emoji-panel'); if (ep) ep.style.display = ep.style.display === 'block' ? 'none' : 'block'; });
     document.addEventListener('click', e => { const ep = document.getElementById('emoji-panel'); if (ep && !ep.contains(e.target) && e.target !== be) ep.style.display = 'none'; });
-
-    // Домино: кнопки
-    document.getElementById('btn-domino-move')?.addEventListener('click', doDominoMove);
-    document.getElementById('btn-domino-pass')?.addEventListener('click', doDominoPass);
-    document.getElementById('btn-domino-leave')?.addEventListener('click', leaveDomino);
-    
-    // Домино: клик по Canvas
-    document.getElementById('domino-canvas')?.addEventListener('click', (e) => {
-        if (!dominoState || dominoState.ended) return;
-        if (dominoState.currentPlayer !== dominoMyIndex) return;
-        const rect = e.target.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-        const tile = DominoUI.getTileAt(x, y, dominoState, dominoMyIndex);
-        if (tile) { selectedDominoTile = tile; selectedDominoSide = DominoUI.getSideAt(x, dominoState); rMsg(`🎯 [${tile[0]}|${tile[1]}] — ${selectedDominoSide}`, 2000); }
-    });
-
-    // Домино: переключатель чат/игра
-    document.getElementById('btn-domino-toggle')?.addEventListener('click', () => {
-        if (!activeChannelId && !activeBandId) { rMsg('❌ Нет активного канала', 2000); return; }
-        if (dominoGameActive) { leaveDomino(); }
-        else {
-            dominoSeed = Date.now();
-            const myNick = document.getElementById('nick-label')?.textContent || 'Вы';
-            if (activeBandId) {
-                const band = bands.find(b => b.id === activeBandId); if (!band) return;
-                dominoInBand = true;
-                const players = band.outlaws.map(pid => pid === P2PPong._peerId ? myNick : 'Лучник');
-                startDominoGame(dominoSeed, players);
-                P2PPong.sendMessage(activeChannelId, JSON.stringify({ band: 'domino-move', bandId: activeBandId, action: 'start', seed: dominoSeed, players }));
-            } else {
-                dominoInBand = false;
-                startDominoGame(dominoSeed, [myNick, P2PPong.getTheirProfile().nick || 'Соперник']);
-                P2PPong.sendMessage(activeChannelId, JSON.stringify({ type: 'domino', action: 'start', seed: dominoSeed, players: [myNick, P2PPong.getTheirProfile().nick || 'Соперник'] }));
-            }
-            rMsg('🎲 Домино!', 3000);
-        }
-    });
 
     document.getElementById('send-btn')?.addEventListener('click', async () => {
         const mi = document.getElementById('msg-input'); const t = mi?.value.trim();
