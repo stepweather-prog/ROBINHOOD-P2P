@@ -165,19 +165,76 @@
         .hidden { display: none !important; }
         
         /* Домино */
-        #domino-board { flex:1; flex-direction:column; align-items:center; padding:10px; z-index:1; overflow-y:auto; }
-        #domino-canvas { width:100%; max-width:800px; border:2px solid var(--border); border-radius:12px; background:var(--domino-bg); }
-        .domino-controls { display:flex; gap:8px; margin-top:8px; flex-wrap:wrap; justify-content:center; }
-        .domino-controls button { width:auto; padding:8px 16px; }
-        .domino-players { display:flex; gap:16px; margin:8px 0; font-size:0.85em; color:var(--text-dim); flex-wrap:wrap; justify-content:center; }
-        .domino-player { padding:4px 12px; border-radius:8px; background:var(--btn-bg); border:1px solid var(--btn-border); }
-        .domino-player.active { border-color:var(--accent); color:var(--accent-light); font-weight:bold; }
-        .domino-player.winner { border-color:var(--seeding-color); color:var(--seeding-color); }
-        .domino-scores { font-size:0.75em; color:var(--text-dim); text-align:center; margin-top:4px; }
+        #domino-board { 
+            flex: 0 0 auto;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            padding: 6px;
+            z-index: 1;
+            background: var(--bg-primary);
+            border-bottom: 2px solid var(--border);
+        }
+        #domino-canvas { 
+            width: 100%;
+            max-width: 800px;
+            height: 200px;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            background: var(--domino-bg);
+        }
+        #chat-box {
+            flex: 1;
+            overflow-y: auto;
+            display: flex !important;
+            flex-direction: column;
+        }
+        .domino-controls { 
+            display: flex;
+            gap: 6px;
+            margin-top: 4px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .domino-controls button { 
+            width: auto;
+            padding: 6px 12px;
+            font-size: 0.8em;
+        }
+        .domino-players { 
+            display: flex;
+            gap: 8px;
+            margin: 4px 0;
+            font-size: 0.75em;
+            color: var(--text-dim);
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .domino-player { 
+            padding: 2px 8px;
+            border-radius: 8px;
+            background: var(--btn-bg);
+            border: 1px solid var(--btn-border);
+        }
+        .domino-player.active { 
+            border-color: var(--accent);
+            color: var(--accent-light);
+            font-weight: bold;
+        }
+        .domino-player.winner { 
+            border-color: var(--seeding-color);
+            color: var(--seeding-color);
+        }
+        .domino-scores { 
+            font-size: 0.7em;
+            color: var(--text-dim);
+            text-align: center;
+            margin-top: 2px;
+        }
         @media (max-width: 400px) {
             .modal-dialog { max-width: 95%; padding: 12px; font-size: 0.85em; }
             .modal-dialog button { padding: 10px; font-size: 0.9em; }
-            #domino-canvas { max-width:100%; height:250px; }
+            #domino-canvas { height: 160px; }
         }
     </style>
 </head>
@@ -208,7 +265,7 @@
 </div>
 
 <!-- Домино-доска -->
-<div id="domino-board" style="display:none;">
+<div id="domino-board">
     <div class="domino-players" id="domino-players"></div>
     <canvas id="domino-canvas"></canvas>
     <div class="domino-controls">
@@ -259,7 +316,6 @@
     <div class="contact-item setting-install-btn hidden" id="setting-install"><div class="contact-info"><img src="assets/avatar/001ava.png" style="width:28px;height:28px;border-radius:6px;"><div><div class="contact-name">RobinHood P2P</div><div style="font-size:0.6em;color:var(--text-dim);">Установить приложение</div></div></div><span>📲</span></div>
 </div></div>
 
-<!-- Модалки крафта -->
 <div class="modal-overlay" id="craft-modal"><div class="modal-dialog"><h3>🏹 Открыть колчан</h3>
     <button class="btn-primary" id="btn-craft-arrow">🏹 Крафт стрелы</button>
     <button class="btn-dark" id="btn-scan-qr">📷 Сканировать QR собеседника</button>
@@ -276,7 +332,6 @@
 
 <div class="modal-overlay" id="nick-modal"><div class="modal-dialog"><h3>🏷 Придумай ник</h3><input type="text" id="nick-input" placeholder="Введи ник (макс 12 символов)..." style="width:100%;margin:8px 0;padding:8px;background:var(--input-bg);border:1px solid var(--border);color:var(--input-text);border-radius:8px;font-size:0.9em;font-family:monospace;"><button class="btn-primary" id="btn-save-nick">💾 Сохранить</button><button class="btn-dark" id="close-nick-modal">Закрыть</button></div></div>
 
-<!-- Шайки: главная модалка -->
 <div class="modal-overlay" id="bands-modal"><div class="modal-dialog"><h3>🏹 Обитатели Шервуда</h3>
     <button class="btn-primary" id="btn-open-create-band">🏹 Создать шайку</button>
     <button class="btn-dark" id="btn-open-join-band">🔗 Войти в шайку</button>
@@ -285,7 +340,6 @@
     <button class="btn-dark" id="close-bands-modal">Закрыть</button>
 </div></div>
 
-<!-- Шайки: создание -->
 <div class="modal-overlay" id="create-band-modal"><div class="modal-dialog"><h3>🏹 Создать шайку</h3>
     <div style="color:var(--text-dim);margin:8px 0 4px;">Название шайки:</div>
     <input type="text" id="band-name-input" placeholder="Шайка лучников..." style="width:100%;margin:0 0 8px;padding:8px;background:var(--input-bg);border:1px solid var(--border);color:var(--input-text);border-radius:8px;font-size:0.9em;">
@@ -299,7 +353,6 @@
     <button class="btn-dark" id="close-create-band-modal">Назад</button>
 </div></div>
 
-<!-- Шайки: вход -->
 <div class="modal-overlay" id="join-band-modal"><div class="modal-dialog"><h3>🔗 Войти в шайку</h3>
     <div style="color:var(--text-dim);margin:8px 0 4px;">Вставь стрелу шайки:</div>
     <input type="text" id="band-join-input" placeholder="Вставь ID шайки и код..." style="width:100%;margin:0 0 8px;padding:8px;background:var(--input-bg);border:1px solid var(--border);color:var(--input-text);border-radius:8px;font-size:0.75em;font-family:monospace;">
