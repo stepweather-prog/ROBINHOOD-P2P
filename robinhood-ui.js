@@ -1,4 +1,6 @@
-// robinhood-ui.js — v5 финал исправленный: канал открывается, анимация у обоих
+// ==================== RobinHood UI v5.1 — fix: дыра verification-received + колчан у Боба ====================
+// Чистый интерфейс. Ядро: P2PPong.
+
 let contacts = [],
     activeChannelId = null,
     activePeerId = null,
@@ -97,7 +99,19 @@ function playArcherAnimation() {
 function playCallArcherAnimation() { if (!toggleAnimations) return; const callPanel = document.getElementById('call-panel'); if (!callPanel) return; stopCallArcherAnimation(); const wrapper = document.createElement('div'); wrapper.style.cssText = 'width:200px;height:100px;margin:0 auto;position:relative;z-index:1;'; callArrowContainer = wrapper; const statusEl = document.getElementById('call-status'); if (statusEl) { statusEl.parentNode.insertBefore(wrapper, statusEl); } else { callPanel.appendChild(wrapper); } if (typeof lottie !== 'undefined') { try { callArcherAnimation = lottie.loadAnimation({ container: wrapper, renderer: 'canvas', loop: true, autoplay: true, path: 'assets/Archer.json' }); } catch (e) { wrapper.textContent = '🏹'; wrapper.style.cssText += 'font-size:60px;display:flex;align-items:center;justify-content:center;'; } } else { wrapper.textContent = '🏹'; wrapper.style.cssText += 'font-size:60px;display:flex;align-items:center;justify-content:center;'; } }
 function stopCallArcherAnimation() { if (callArrowContainer?.parentNode) callArrowContainer.remove(); callArrowContainer = null; if (callArcherAnimation) { callArcherAnimation.destroy(); callArcherAnimation = null; } }
 
-function playQuiverAnimation() { if (!toggleAnimations) return; const quiver = document.createElement('div'); quiver.className = 'quiver-anim'; const img = document.createElement('img'); img.src = 'assets/docking.gif?t=' + Date.now(); img.style.cssText = 'width:min(200px,40vw);height:min(200px,40vw);object-fit:contain;filter:drop-shadow(0 0 20px rgba(255,215,0,0.8));'; img.loading = 'lazy'; img.onerror = () => { quiver.innerHTML = '<div style="font-size:min(120px,25vw);animation:quiverPulse 0.5s ease-in-out 7;">🏹</div>'; }; quiver.appendChild(img); document.body.appendChild(quiver); setTimeout(() => { quiver.style.opacity = '0'; quiver.style.transition = 'opacity 0.5s ease'; setTimeout(() => quiver.remove(), 500); }, 3500); }
+function playQuiverAnimation() { 
+    if (!toggleAnimations) return; 
+    const quiver = document.createElement('div'); 
+    quiver.className = 'quiver-anim'; 
+    const img = document.createElement('img'); 
+    img.src = 'assets/docking.gif?t=' + Date.now(); 
+    img.style.cssText = 'width:min(200px,40vw);height:min(200px,40vw);object-fit:contain;filter:drop-shadow(0 0 20px rgba(255,215,0,0.8));'; 
+    img.loading = 'lazy'; 
+    img.onerror = () => { quiver.innerHTML = '<div style="font-size:min(120px,25vw);animation:quiverPulse 0.5s ease-in-out 7;">🏹</div>'; }; 
+    quiver.appendChild(img); 
+    document.body.appendChild(quiver); 
+    setTimeout(() => { quiver.style.opacity = '0'; quiver.style.transition = 'opacity 0.5s ease'; setTimeout(() => quiver.remove(), 500); }, 3500); 
+}
 
 function showInput(title, placeholder = '') { return new Promise((resolve) => { document.getElementById('input-modal-title').textContent = title; document.getElementById('input-modal-field').value = ''; document.getElementById('input-modal-field').placeholder = placeholder; document.getElementById('input-modal-error').style.display = 'none'; document.getElementById('input-modal')?.classList.add('active'); const ok = () => { const val = document.getElementById('input-modal-field').value.trim(); document.getElementById('input-modal')?.classList.remove('active'); cleanup(); resolve(val); }; const cancel = () => { document.getElementById('input-modal')?.classList.remove('active'); cleanup(); resolve(null); }; const cleanup = () => { document.getElementById('input-modal-ok').removeEventListener('click', ok); document.getElementById('input-modal-cancel').removeEventListener('click', cancel); document.getElementById('input-modal-field').removeEventListener('keypress', onKey); }; const onKey = (e) => { if (e.key === 'Enter') ok(); }; document.getElementById('input-modal-ok').addEventListener('click', ok); document.getElementById('input-modal-cancel').addEventListener('click', cancel); document.getElementById('input-modal-field').addEventListener('keypress', onKey); document.getElementById('input-modal-field').focus(); }); }
 function showConfirm(title, text) { return new Promise((resolve) => { document.getElementById('confirm-modal-title').textContent = title; document.getElementById('confirm-modal-text').textContent = text; document.getElementById('confirm-modal')?.classList.add('active'); const yes = () => { document.getElementById('confirm-modal')?.classList.remove('active'); cleanup(); resolve(true); }; const no = () => { document.getElementById('confirm-modal')?.classList.remove('active'); cleanup(); resolve(false); }; const cleanup = () => { document.getElementById('confirm-modal-yes').removeEventListener('click', yes); document.getElementById('confirm-modal-no').removeEventListener('click', no); }; document.getElementById('confirm-modal-yes').addEventListener('click', yes); document.getElementById('confirm-modal-no').addEventListener('click', no); }); }
@@ -171,30 +185,74 @@ function initUI() {
     P2PPong.on('message-sent', () => { updateCupIndicator(); updateRatchetIndicator(); });
     P2PPong.on('beacon-taken', () => { rMsg('👀 Маяк забрали...', 3000); });
 
-    P2PPong.on('verification-needed', (data) => { if (verificationModalShown) return; verificationModalShown = true; verificationDone = false; window._verifyCode = data.code || P2PPong.getVerificationCode(); window._verifyInput = ''; document.getElementById('verify-instruction').textContent = 'Введи 7-значный код'; document.getElementById('verify-error').style.display = 'none'; document.getElementById('verify-code-display').textContent = '_______'; const grid = document.getElementById('verify-code-grid'); grid.innerHTML = ''; grid.style.cssText = 'display:grid;grid-template-columns:repeat(3,1fr);gap:6px;max-width:240px;margin:12px auto;'; for (let i = 1; i <= 9; i++) { const btn = document.createElement('button'); btn.textContent = i; btn.className = 'lock-num'; btn.style.cssText = 'width:65px;height:65px;font-size:1.8em;'; btn.onclick = () => addVerifyDigit(i.toString()); grid.appendChild(btn); } const btn0 = document.createElement('button'); btn0.textContent = '0'; btn0.className = 'lock-num'; btn0.style.cssText = 'width:65px;height:65px;font-size:1.8em;'; btn0.onclick = () => addVerifyDigit('0'); grid.appendChild(btn0); const btnDel = document.createElement('button'); btnDel.textContent = '⌫'; btnDel.className = 'lock-num'; btnDel.style.cssText = 'width:65px;height:65px;font-size:1.5em;background:rgba(244,67,54,0.3);'; btnDel.onclick = () => { window._verifyInput = window._verifyInput.slice(0, -1); document.getElementById('verify-code-display').textContent = window._verifyInput.padEnd(7, '_'); }; grid.appendChild(btnDel); document.getElementById('btn-verify-reset').onclick = () => { window._verifyInput = ''; document.getElementById('verify-code-display').textContent = '_______'; };
+    P2PPong.on('verification-needed', (data) => {
+        if (verificationModalShown) return;
+        verificationModalShown = true; verificationDone = false;
+        window._verifyCode = data.code || P2PPong.getVerificationCode();
+        window._verifyInput = '';
+        document.getElementById('verify-instruction').textContent = 'Введи 7-значный код';
+        document.getElementById('verify-error').style.display = 'none';
+        document.getElementById('verify-code-display').textContent = '_______';
+        const grid = document.getElementById('verify-code-grid'); grid.innerHTML = '';
+        grid.style.cssText = 'display:grid;grid-template-columns:repeat(3,1fr);gap:6px;max-width:240px;margin:12px auto;';
+        for (let i = 1; i <= 9; i++) { const btn = document.createElement('button'); btn.textContent = i; btn.className = 'lock-num'; btn.style.cssText = 'width:65px;height:65px;font-size:1.8em;'; btn.onclick = () => addVerifyDigit(i.toString()); grid.appendChild(btn); }
+        const btn0 = document.createElement('button'); btn0.textContent = '0'; btn0.className = 'lock-num'; btn0.style.cssText = 'width:65px;height:65px;font-size:1.8em;'; btn0.onclick = () => addVerifyDigit('0'); grid.appendChild(btn0);
+        const btnDel = document.createElement('button'); btnDel.textContent = '⌫'; btnDel.className = 'lock-num'; btnDel.style.cssText = 'width:65px;height:65px;font-size:1.5em;background:rgba(244,67,54,0.3);'; btnDel.onclick = () => { window._verifyInput = window._verifyInput.slice(0, -1); document.getElementById('verify-code-display').textContent = window._verifyInput.padEnd(7, '_'); }; grid.appendChild(btnDel);
+        document.getElementById('btn-verify-reset').onclick = () => { window._verifyInput = ''; document.getElementById('verify-code-display').textContent = '_______'; };
         const modalDialog = document.getElementById('verify-modal')?.querySelector('.modal-dialog');
-        if (modalDialog && !document.getElementById('speak-code-btn')) { const speakBtn = document.createElement('button'); speakBtn.id = 'speak-code-btn'; speakBtn.textContent = '🔊 Произнести код'; speakBtn.className = 'btn-dark'; speakBtn.style.cssText = 'width:auto;display:inline-block;margin:8px auto;'; speakBtn.onclick = () => { const code = window._verifyCode || P2PPong.getVerificationCode(); if (code && 'speechSynthesis' in window) { const utterance = new SpeechSynthesisUtterance(code.split('').join(' ')); utterance.lang = 'ru-RU'; utterance.rate = 0.8; speechSynthesis.speak(utterance); } }; modalDialog.appendChild(speakBtn); }
-        document.getElementById('verify-modal')?.classList.add('active'); });
-    
-    P2PPong.on('verification-received', (data) => { 
-        const code = data.code || P2PPong.getVerificationCode(); 
-        document.getElementById('verify-instruction').textContent = '✅ Код совпал! Канал открывается...'; 
-        document.getElementById('verify-code-display').textContent = code; 
-        document.getElementById('verify-error').style.display = 'none'; 
-        verificationModalShown = false; 
-        verificationDone = true; 
-        setTimeout(() => { document.getElementById('verify-modal')?.classList.remove('active'); }, 1500); 
+        if (modalDialog && !document.getElementById('speak-code-btn')) {
+            const speakBtn = document.createElement('button'); speakBtn.id = 'speak-code-btn'; speakBtn.textContent = '🔊 Произнести код'; speakBtn.className = 'btn-dark';
+            speakBtn.style.cssText = 'width:auto;display:inline-block;margin:8px auto;';
+            speakBtn.onclick = () => { const code = window._verifyCode || P2PPong.getVerificationCode(); if (code && 'speechSynthesis' in window) { const utterance = new SpeechSynthesisUtterance(code.split('').join(' ')); utterance.lang = 'ru-RU'; utterance.rate = 0.8; speechSynthesis.speak(utterance); } };
+            modalDialog.appendChild(speakBtn);
+        }
+        document.getElementById('verify-modal')?.classList.add('active');
+    });
+
+    // ✅ ИСПРАВЛЕНО: проверка кода + анимация колчана
+    P2PPong.on('verification-received', (data) => {
+        const code = data.code || P2PPong.getVerificationCode();
+        const myCode = window._verifyCode || P2PPong.getVerificationCode();
+        
+        // ✅ Проверяем что коды совпадают
+        if (code !== myCode) {
+            const errEl = document.getElementById('verify-error');
+            if (errEl) {
+                errEl.textContent = '❌ Коды не совпадают! Возможна атака.';
+                errEl.style.display = 'block';
+            }
+            return;
+        }
+        
+        // ✅ Коды совпали — показываем успех и анимацию
+        document.getElementById('verify-instruction').textContent = '✅ Код совпал! Канал открывается...';
+        document.getElementById('verify-code-display').textContent = code;
+        document.getElementById('verify-error').style.display = 'none';
+        verificationModalShown = false;
+        verificationDone = true;
+        
+        setTimeout(() => {
+            document.getElementById('verify-modal')?.classList.remove('active');
+            playQuiverAnimation(); // ✅ Колчан для Боба
+            rMsg('✅ Код подтверждён! Колчан открыт!', 3000);
+        }, 1500);
+    });
+
+    // ✅ ИСПРАВЛЕНО: задержка перед анимацией чтобы модалка закрылась
+    P2PPong.on('channel-opened', (data) => {
+        document.getElementById('verify-modal')?.classList.remove('active');
+        verificationModalShown = false;
+        verificationDone = false;
+        
+        setTimeout(() => {
+            playQuiverAnimation(); // ✅ Гарантированно после закрытия модалки
+        }, 300);
+        
+        rMsg('✅ Колчан открыт! Тетива натянута!', 3000);
+        addContact({ peerId: data.peerId, name: data.nick || 'Лучник', channelId: data.channelId, verified: false, avatar: data.avatar || '001' });
+        showChatForChannel(data.channelId);
     });
     
-    P2PPong.on('channel-opened', (data) => { 
-        document.getElementById('verify-modal')?.classList.remove('active'); 
-        verificationModalShown = false; 
-        verificationDone = false; 
-        playQuiverAnimation(); 
-        rMsg('✅ Колчан открыт! Тетива натянута!', 3000); 
-        addContact({ peerId: data.peerId, name: data.nick || 'Лучник', channelId: data.channelId, verified: false, avatar: data.avatar || '001' }); 
-        showChatForChannel(data.channelId); 
-    });
     P2PPong.on('channel-expired', (data) => { if (data.channelId === activeChannelId) { activeChannelId = null; activePeerId = null; document.getElementById('chat-box').innerHTML = '<div class="typing-indicator" id="typing-indicator"></div>'; } });
     P2PPong.on('error', (data) => { rMsg('❌ ' + data.message, 5000); });
     P2PPong.on('destroyed', () => { document.getElementById('chat-box').innerHTML = '<div class="typing-indicator" id="typing-indicator"></div>'; setConnectionStatus('offline'); if (lockScreen) lockScreen.style.display = 'none'; if (appContainer) appContainer.style.display = 'flex'; });
