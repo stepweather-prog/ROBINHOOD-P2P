@@ -1,4 +1,4 @@
-// p2ppong.js — v6.0 DH Ratchet + Firebase Transport
+// p2ppong.js — v6.1 fix: ratchet расхождение при быстрой отправке
 const DEBUG = true;
 function log(msg, data) { if (DEBUG) console.log(`[P2PPong] ${msg}`, data || ''); }
 
@@ -687,40 +687,52 @@ const P2PPong = {
         const ch = this._channels[chId];
         
         if (ch && ch.secret && typeof blobData === 'string') {
-            try {
-                const unpackResult = await workerUnpackBlob(blobData, ch);
-                if (unpackResult) {
-                    const u = unpackResult.data;
-                    if (u.from === this._peerId) return;
-                    
-                    if (u.dhPubKey && ch.dhKeyPair) {
-                        await this._dhRatchetReceive(ch, u.dhPubKey);
-                        log('DH Ratchet: получен новый ключ');
+            // Пробуем распаковать как есть
+            let unpackResult = await workerUnpackBlob(blobData, ch);
+            
+            // Если не получилось — пробуем продвинуть ratchet
+            if (!unpackResult) {
+                try {
+                    const raw = JSON.parse(blobData);
+                    if (raw._ri !== undefined) {
+                        const targetRi = parseInt(raw._ri) || 0;
+                        if (targetRi > (ch.recvIndex || 0)) {
+                            log('ratchet advance', 'текущий: ' + (ch.recvIndex || 0) + ' целевой: ' + targetRi);
+                            const recvResult = await workerAdvanceRecvRatchet(ch, targetRi);
+                            ch.recvKey = recvResult.finalKey;
+                            ch.recvIndex = recvResult.index;
+                            ch.oldRecvKeys = recvResult.oldKeys.slice(-3);
+                            // Пробуем снова с продвинутым ключом
+                            unpackResult = await workerUnpackBlob(blobData, ch);
+                        }
                     }
-                    
-                    if (u._ri !== undefined) {
-                        const targetRi = parseInt(u._ri) || 0;
-                        const recvResult = await workerAdvanceRecvRatchet(ch, targetRi);
-                        ch.recvKey = recvResult.finalKey;
-                        ch.recvIndex = recvResult.index;
-                        ch.oldRecvKeys = recvResult.oldKeys.slice(-3);
-                    }
-                    ch.dhRecvCount = (ch.dhRecvCount || 0) + 1;
-                    
-                    const dedupKey = chId + '_' + (u.n || u._t || '');
-                    if (this._dedupTimers[dedupKey]) return;
-                    this._dedupTimers[dedupKey] = setTimeout(() => delete this._dedupTimers[dedupKey], CONFIG.CHANNEL_TTL);
-                    
-                    if (u.nick) this._theirNick = u.nick;
-                    if (u.avatar) this._theirAvatar = u.avatar;
-                    
-                    const displayText = u.type === 'voice' ? '[Голосовое сообщение]' : (u.d || u.text || '');
-                    ch.blobs.push({ d: displayText, voiceData: u.type === 'voice' ? u.d : null, t: u._t || Date.now(), n: u.n || '', from: 'them', status: 'delivered', nick: this._theirNick, avatar: this._theirAvatar });
-                    ch.expires = Date.now() + CONFIG.CHANNEL_TTL; this._stats.messagesReceived++;
-                    this._emit('message-received', { channelId: chId, text: displayText, voiceData: u.type === 'voice' ? u.d : null, type: u.type || 'text', from: 'them', timestamp: u._t || Date.now(), nick: this._theirNick, avatar: this._theirAvatar });
-                    return;
+                } catch(e) {}
+            }
+            
+            if (unpackResult) {
+                const u = unpackResult.data;
+                if (u.from === this._peerId) return;
+                
+                if (u.dhPubKey && ch.dhKeyPair) {
+                    await this._dhRatchetReceive(ch, u.dhPubKey);
+                    log('DH Ratchet: получен новый ключ');
                 }
-            } catch(e) { log('unpack error', e.message); }
+                
+                ch.dhRecvCount = (ch.dhRecvCount || 0) + 1;
+                
+                const dedupKey = chId + '_' + (u.n || u._t || '');
+                if (this._dedupTimers[dedupKey]) return;
+                this._dedupTimers[dedupKey] = setTimeout(() => delete this._dedupTimers[dedupKey], CONFIG.CHANNEL_TTL);
+                
+                if (u.nick) this._theirNick = u.nick;
+                if (u.avatar) this._theirAvatar = u.avatar;
+                
+                const displayText = u.type === 'voice' ? '[Голосовое сообщение]' : (u.d || u.text || '');
+                ch.blobs.push({ d: displayText, voiceData: u.type === 'voice' ? u.d : null, t: u._t || Date.now(), n: u.n || '', from: 'them', status: 'delivered', nick: this._theirNick, avatar: this._theirAvatar });
+                ch.expires = Date.now() + CONFIG.CHANNEL_TTL; this._stats.messagesReceived++;
+                this._emit('message-received', { channelId: chId, text: displayText, voiceData: u.type === 'voice' ? u.d : null, type: u.type || 'text', from: 'them', timestamp: u._t || Date.now(), nick: this._theirNick, avatar: this._theirAvatar });
+                return;
+            }
         }
         
         let d;
@@ -917,36 +929,44 @@ const P2PPong = {
     
     async _handleDCMessage(chId, ch, e) {
         if (typeof e.data === 'string' && e.data.length > 50) {
-            try {
-                const unpackResult = await workerUnpackBlob(e.data, ch);
-                if (unpackResult) {
-                    const u = unpackResult.data;
-                    if (u.from === this._peerId) return;
-                    
-                    if (u.dhPubKey && ch.dhKeyPair) {
-                        await this._dhRatchetReceive(ch, u.dhPubKey);
+            let unpackResult = await workerUnpackBlob(e.data, ch);
+            
+            if (!unpackResult) {
+                try {
+                    const raw = JSON.parse(e.data);
+                    if (raw._ri !== undefined) {
+                        const targetRi = parseInt(raw._ri) || 0;
+                        if (targetRi > (ch.recvIndex || 0)) {
+                            const recvResult = await workerAdvanceRecvRatchet(ch, targetRi);
+                            ch.recvKey = recvResult.finalKey;
+                            ch.recvIndex = recvResult.index;
+                            ch.oldRecvKeys = recvResult.oldKeys.slice(-3);
+                            unpackResult = await workerUnpackBlob(e.data, ch);
+                        }
                     }
-                    
-                    if (u._ri !== undefined) {
-                        const targetRi = parseInt(u._ri) || 0;
-                        const recvResult = await workerAdvanceRecvRatchet(ch, targetRi);
-                        ch.recvKey = recvResult.finalKey;
-                        ch.recvIndex = recvResult.index;
-                        ch.oldRecvKeys = recvResult.oldKeys.slice(-3);
-                    }
-                    ch.dhRecvCount = (ch.dhRecvCount || 0) + 1;
-                    
-                    const dedupKey = chId + '_' + (u.n || u._t || ''); if (this._webRTC[chId]?.seenMessages?.has(u.n)) return; if (this._dedupTimers[dedupKey]) return;
-                    this._dedupTimers[dedupKey] = setTimeout(() => delete this._dedupTimers[dedupKey], CONFIG.CHANNEL_TTL); this._webRTC[chId]?.seenMessages?.add(u.n);
-                    if (u.nick) this._theirNick = u.nick;
-                    if (u.avatar) this._theirAvatar = u.avatar;
-                    const displayText = u.type === 'voice' ? '[Голосовое сообщение]' : (u.d || u.text || '');
-                    ch.blobs.push({ d: displayText, voiceData: u.type === 'voice' ? u.d : null, t: u._t || Date.now(), n: u.n || '', from: 'them', status: 'delivered', nick: this._theirNick, avatar: this._theirAvatar });
-                    ch.expires = Date.now() + CONFIG.CHANNEL_TTL; this._stats.messagesReceived++;
-                    this._emit('message-received', { channelId: chId, text: displayText, voiceData: u.type === 'voice' ? u.d : null, type: u.type || 'text', from: 'them', timestamp: u._t || Date.now(), nick: this._theirNick, avatar: this._theirAvatar });
-                    return;
+                } catch(er) {}
+            }
+            
+            if (unpackResult) {
+                const u = unpackResult.data;
+                if (u.from === this._peerId) return;
+                
+                if (u.dhPubKey && ch.dhKeyPair) {
+                    await this._dhRatchetReceive(ch, u.dhPubKey);
                 }
-            } catch(er) {}
+                
+                ch.dhRecvCount = (ch.dhRecvCount || 0) + 1;
+                
+                const dedupKey = chId + '_' + (u.n || u._t || ''); if (this._webRTC[chId]?.seenMessages?.has(u.n)) return; if (this._dedupTimers[dedupKey]) return;
+                this._dedupTimers[dedupKey] = setTimeout(() => delete this._dedupTimers[dedupKey], CONFIG.CHANNEL_TTL); this._webRTC[chId]?.seenMessages?.add(u.n);
+                if (u.nick) this._theirNick = u.nick;
+                if (u.avatar) this._theirAvatar = u.avatar;
+                const displayText = u.type === 'voice' ? '[Голосовое сообщение]' : (u.d || u.text || '');
+                ch.blobs.push({ d: displayText, voiceData: u.type === 'voice' ? u.d : null, t: u._t || Date.now(), n: u.n || '', from: 'them', status: 'delivered', nick: this._theirNick, avatar: this._theirAvatar });
+                ch.expires = Date.now() + CONFIG.CHANNEL_TTL; this._stats.messagesReceived++;
+                this._emit('message-received', { channelId: chId, text: displayText, voiceData: u.type === 'voice' ? u.d : null, type: u.type || 'text', from: 'them', timestamp: u._t || Date.now(), nick: this._theirNick, avatar: this._theirAvatar });
+                return;
+            }
         }
         try { const m = JSON.parse(e.data); if (m.type === 'message' && m.text) { const dedupKey = chId + '_' + (m.nonce || ''); if (this._dedupTimers[dedupKey]) return; this._dedupTimers[dedupKey] = setTimeout(() => delete this._dedupTimers[dedupKey], CONFIG.CHANNEL_TTL); ch.blobs.push({ d: m.text, t: m.time, n: m.nonce, from: 'them', status: 'delivered', nick: this._theirNick, avatar: this._theirAvatar }); ch.expires = Date.now() + CONFIG.CHANNEL_TTL; this._stats.messagesReceived++; this._emit('message-received', { channelId: chId, text: m.text, from: 'them', timestamp: m.time, nick: this._theirNick, avatar: this._theirAvatar }); } } catch(er) {}
     },
