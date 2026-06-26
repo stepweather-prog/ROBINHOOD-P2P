@@ -1,4 +1,4 @@
-// robinhood-ui.js — v6.0 с кнопкой "Скурить" для создателя/Соколиного глаза
+// robinhood-ui.js — v6.1 fix: листопад не ломает сообщения
 let contacts = [],
     activeChannelId = null,
     activePeerId = null,
@@ -13,7 +13,7 @@ let pc = null,
     ringtoneAudio = null,
     ringbackAudio = null;
 let audioPool = {},
-    robinDefaultText = 'Святые сокеты стабильны!',
+    robinDefaultText = 'Слепой Улей активирован! Святые сокеты стабильны!',
     robinTimer = null;
 let voiceRecorder = null,
     voiceChunks = [],
@@ -113,8 +113,57 @@ function playQuiverAnimation() {
 
 function showInput(title, placeholder = '') { return new Promise((resolve) => { document.getElementById('input-modal-title').textContent = title; document.getElementById('input-modal-field').value = ''; document.getElementById('input-modal-field').placeholder = placeholder; document.getElementById('input-modal-error').style.display = 'none'; document.getElementById('input-modal')?.classList.add('active'); const ok = () => { const val = document.getElementById('input-modal-field').value.trim(); document.getElementById('input-modal')?.classList.remove('active'); cleanup(); resolve(val); }; const cancel = () => { document.getElementById('input-modal')?.classList.remove('active'); cleanup(); resolve(null); }; const cleanup = () => { document.getElementById('input-modal-ok').removeEventListener('click', ok); document.getElementById('input-modal-cancel').removeEventListener('click', cancel); document.getElementById('input-modal-field').removeEventListener('keypress', onKey); }; const onKey = (e) => { if (e.key === 'Enter') ok(); }; document.getElementById('input-modal-ok').addEventListener('click', ok); document.getElementById('input-modal-cancel').addEventListener('click', cancel); document.getElementById('input-modal-field').addEventListener('keypress', onKey); document.getElementById('input-modal-field').focus(); }); }
 function showConfirm(title, text) { return new Promise((resolve) => { document.getElementById('confirm-modal-title').textContent = title; document.getElementById('confirm-modal-text').textContent = text; document.getElementById('confirm-modal')?.classList.add('active'); const yes = () => { document.getElementById('confirm-modal')?.classList.remove('active'); cleanup(); resolve(true); }; const no = () => { document.getElementById('confirm-modal')?.classList.remove('active'); cleanup(); resolve(false); }; const cleanup = () => { document.getElementById('confirm-modal-yes').removeEventListener('click', yes); document.getElementById('confirm-modal-no').removeEventListener('click', no); }; document.getElementById('confirm-modal-yes').addEventListener('click', yes); document.getElementById('confirm-modal-no').addEventListener('click', no); }); }
-function startSelfDestruct() { stopSelfDestruct(); selfDestructIntervalId = setInterval(() => { const box = document.getElementById('chat-box'); if (!box) return; const allMessages = box.querySelectorAll('.message-row'); const totalMessages = allMessages.length; if (totalMessages === 0) { stopSelfDestruct(); return; } const deleteCount = Math.min(selfDestructBatchSize, totalMessages); const startIndex = totalMessages - deleteCount; for (let i = startIndex; i < totalMessages; i++) { const el = allMessages[i]; if (el && el.parentNode) { el.style.transition = 'opacity 0.5s'; el.style.opacity = '0'; setTimeout(() => { if (el.parentNode) el.remove(); }, 500); } } if (box.querySelectorAll('.message-row').length === 0) stopSelfDestruct(); }, selfDestructIntervalTime); }
-function stopSelfDestruct() { if (selfDestructIntervalId) { clearInterval(selfDestructIntervalId); selfDestructIntervalId = null; } }
+
+// 🔥 Исправленный листопад — чистит dedup таймеры
+function startSelfDestruct() {
+    stopSelfDestruct();
+    selfDestructIntervalId = setInterval(() => {
+        const box = document.getElementById('chat-box');
+        if (!box) return;
+        const allMessages = box.querySelectorAll('.message-row');
+        const totalMessages = allMessages.length;
+        if (totalMessages === 0) { stopSelfDestruct(); return; }
+        const deleteCount = Math.min(selfDestructBatchSize, totalMessages);
+        const startIndex = totalMessages - deleteCount;
+        for (let i = startIndex; i < totalMessages; i++) {
+            const el = allMessages[i];
+            if (el && el.parentNode) {
+                const msgId = el.dataset.msgId;
+                // Чистим dedup таймеры для удаляемых сообщений
+                if (msgId && P2PPong._dedupTimers) {
+                    for (const key in P2PPong._dedupTimers) {
+                        if (key.includes(msgId)) {
+                            clearTimeout(P2PPong._dedupTimers[key]);
+                            delete P2PPong._dedupTimers[key];
+                        }
+                    }
+                }
+                el.style.transition = 'opacity 0.5s';
+                el.style.opacity = '0';
+                setTimeout(() => { if (el.parentNode) el.remove(); }, 500);
+            }
+        }
+        if (box.querySelectorAll('.message-row').length === 0) stopSelfDestruct();
+    }, selfDestructIntervalTime);
+}
+
+function stopSelfDestruct() {
+    if (selfDestructIntervalId) {
+        clearInterval(selfDestructIntervalId);
+        selfDestructIntervalId = null;
+    }
+    // Чистим все dedup таймеры при остановке листопада
+    if (P2PPong._dedupTimers) {
+        for (const key in P2PPong._dedupTimers) {
+            clearTimeout(P2PPong._dedupTimers[key]);
+        }
+        P2PPong._dedupTimers = {};
+    }
+    // Чистим blobs в канале
+    if (activeChannelId && P2PPong._channels[activeChannelId]) {
+        P2PPong._channels[activeChannelId].blobs = [];
+    }
+}
 
 function showCallWave(show) { const cw = document.getElementById('call-wave'); if (!cw) return; if (show) { cw.innerHTML = ''; cw.style.display = 'flex'; for (let i = 0; i < 4; i++) { const bar = document.createElement('div'); bar.className = 'voice-wave-bar'; bar.style.cssText = `animation:voiceWaveAnim 0.5s ease-in-out infinite;animation-delay:${i * 0.15}s;`; cw.appendChild(bar); } } else { cw.style.display = 'none'; cw.innerHTML = ''; } }
 function showVoiceRecordingUI(show) { const old = document.getElementById('voice-recording-indicator'); if (old) old.remove(); if (!show) return; const btn = document.getElementById('btn-voice-input'); if (!btn) return; const container = document.createElement('div'); container.id = 'voice-recording-indicator'; container.className = 'voice-recording-indicator'; const timer = document.createElement('span'); timer.className = 'voice-timer-text'; timer.id = 'voice-timer-text'; timer.textContent = '🎤 0:00'; const wave = document.createElement('div'); wave.style.cssText = 'display:flex;align-items:flex-end;gap:2px;height:18px;'; for (let i = 0; i < 4; i++) { const bar = document.createElement('div'); bar.className = 'voice-wave-bar'; bar.style.cssText = `width:3px;animation:voiceWaveAnim 0.5s ease-in-out infinite;animation-delay:${i * 0.1}s;height:${6 + i * 3}px;`; wave.appendChild(bar); } container.appendChild(timer); container.appendChild(wave); btn.parentNode.insertBefore(container, btn); }
@@ -142,11 +191,11 @@ function addContact(c) { if (!contacts.find(x => x.peerId === c.peerId)) { conta
 function saveContacts() { try { localStorage.setItem('rh_contacts', JSON.stringify(contacts)); } catch (e) {} }
 function loadContacts() { try { const r = localStorage.getItem('rh_contacts'); if (r) contacts = JSON.parse(r); } catch (e) {} }
 
-function createBand(bandId, name, password = null) { if (bands.find(b => b.id === bandId)) { rMsg('❌ Шайка с таким ID уже существует', 3000); return null; } const band = { id: bandId, name: name || 'Шайка лучников', sheriff: P2PPong._peerId, rangers: [], outlaws: [P2PPong._peerId], strangers: [], password: password, created: Date.now(), maxMembers: 12, blobs: [] }; bands.push(band); activeBandId = bandId; activeChannelId = null; showBandChat(bandId); playQuiverAnimation(); rMsg('🏹 Шайка собрана в Шервуде! Вы — Соколиный глаз.', 4000); if (activeChannelId) { P2PPong.sendMessage(activeChannelId, JSON.stringify({ band: 'invite', bandId: bandId, name: name || 'Шайка лучников', password: password, sheriff: P2PPong._peerId })); } return bandId; }
-function joinBand(bandId, password = null) { let band = bands.find(b => b.id === bandId); if (!band) { band = { id: bandId, name: 'Шайка лучников', sheriff: null, rangers: [], outlaws: [P2PPong._peerId], strangers: [], password: password, created: Date.now(), maxMembers: 12, blobs: [] }; bands.push(band); if (activeChannelId) { P2PPong.sendMessage(activeChannelId, JSON.stringify({ band: 'join-request', bandId: bandId, peerId: P2PPong._peerId })); } } else { if (band.password && band.password !== password) { rMsg('❌ Неверный пароль шайки', 3000); return false; } if (band.outlaws.length >= band.maxMembers) { rMsg('❌ Шайка полна (макс 12 лучников)', 3000); return false; } if (!band.outlaws.includes(P2PPong._peerId)) { band.outlaws.push(P2PPong._peerId); if (activeChannelId) { P2PPong.sendMessage(activeChannelId, JSON.stringify({ band: 'member-joined', bandId: bandId, peerId: P2PPong._peerId })); } } } activeBandId = bandId; activeChannelId = null; showBandChat(bandId); playQuiverAnimation(); rMsg('🏹 Вы вступили в шайку!', 4000); return true; }
-function showBandChat(bandId) { const band = bands.find(b => b.id === bandId); if (!band) return; activeBandId = bandId; activeChannelId = null; const role = band.sheriff === P2PPong._peerId ? '⭐Соколиный глаз' : '🏹Разбойник'; document.getElementById('robin-bar-sender').textContent = role + ' ' + (band.name || 'Шайка'); const box = document.getElementById('chat-box'); box.innerHTML = '<div class="typing-indicator" id="typing-indicator"></div>'; if (band.blobs) { band.blobs.forEach(b => { const im = b.from === P2PPong._peerId; appendMessage(im ? 'Вы' : (b.nick || 'Лучник'), b.text || '', im ? selectedAvatar : (b.avatar || '001')); }); } }
+function createBand(bandId, name, password = null) { if (bands.find(b => b.id === bandId)) { rMsg('❌ Шайка с таким ID уже существует', 3000); return null; } const band = { id: bandId, name: name || 'Шайка лучников', sheriff: P2PPong._peerId, rangers: [], outlaws: [P2PPong._peerId], strangers: [], password: password, created: Date.now(), maxMembers: 12, blobs: [] }; bands.push(band); activeBandId = bandId; activeChannelId = null; showBandChat(bandId); playQuiverAnimation(); rMsg('🏹 Шайка собрана в Шервуде! Вы — Соколиный Глаз.', 4000); if (activeChannelId) { P2PPong.sendMessage(activeChannelId, JSON.stringify({ band: 'invite', bandId: bandId, name: name || 'Шайка лучников', password: password, sheriff: P2PPong._peerId })); } return bandId; }
+function joinBand(bandId, password = null) { let band = bands.find(b => b.id === bandId); if (!band) { band = { id: bandId, name: 'Шайка лучников', sheriff: null, rangers: [], outlaws: [P2PPong._peerId], strangers: [], password: password, created: Date.now(), maxMembers: 12, blobs: [] }; bands.push(band); if (activeChannelId) { P2PPong.sendMessage(activeChannelId, JSON.stringify({ band: 'join-request', bandId: bandId, peerId: P2PPong._peerId })); } } else { if (band.password && band.password !== password) { rMsg('❌ Неверный пароль шайки', 3000); return false; } if (band.outlaws.length >= band.maxMembers) { rMsg('❌ Шайка полна (макс 12 Вольных Стрелков)', 3000); return false; } if (!band.outlaws.includes(P2PPong._peerId)) { band.outlaws.push(P2PPong._peerId); if (activeChannelId) { P2PPong.sendMessage(activeChannelId, JSON.stringify({ band: 'member-joined', bandId: bandId, peerId: P2PPong._peerId })); } } } activeBandId = bandId; activeChannelId = null; showBandChat(bandId); playQuiverAnimation(); rMsg('🏹 Вы вступили в шайку!', 4000); return true; }
+function showBandChat(bandId) { const band = bands.find(b => b.id === bandId); if (!band) return; activeBandId = bandId; activeChannelId = null; const role = band.sheriff === P2PPong._peerId ? '🦅 Соколиный Глаз' : '🏹 Вольный Стрелок'; document.getElementById('robin-bar-sender').textContent = role + ' ' + (band.name || 'Шайка'); const box = document.getElementById('chat-box'); box.innerHTML = '<div class="typing-indicator" id="typing-indicator"></div>'; if (band.blobs) { band.blobs.forEach(b => { const im = b.from === P2PPong._peerId; appendMessage(im ? 'Вы' : (b.nick || 'Лучник'), b.text || '', im ? selectedAvatar : (b.avatar || '001')); }); } }
 
-function showBandsList() { const list = document.getElementById('bands-list'); if (!list) return; list.innerHTML = ''; if (bands.length === 0) { list.innerHTML = '<div style="color:var(--text-dim);text-align:center;padding:20px;">Нет шаек. Создайте первую!</div>'; return; } bands.forEach(band => { const item = document.createElement('div'); item.className = 'contact-item'; const role = band.sheriff === P2PPong._peerId ? '⭐Соколиный глаз' : '🏹Разбойник'; item.innerHTML = `<div style="display:flex;align-items:center;gap:8px;width:100%;"><img src="assets/icons/10icon.png" style="width:28px;height:28px;"><div><div class="contact-name">${band.name || 'Шайка'}</div><div style="font-size:0.65em;color:var(--text-dim);">${role} · ${band.outlaws.length}/12 ${band.password ? '🔐' : ''}</div></div></div>`; item.addEventListener('click', () => { if (band.outlaws.includes(P2PPong._peerId)) { showBandChat(band.id); document.getElementById('bands-modal')?.classList.remove('active'); } else { if (band.password) { showInput('Пароль шайки', 'Введи пароль').then(pass => { if (pass) joinBand(band.id, pass); }); } else { joinBand(band.id); } } }); list.appendChild(item); }); }
+function showBandsList() { const list = document.getElementById('bands-list'); if (!list) return; list.innerHTML = ''; if (bands.length === 0) { list.innerHTML = '<div style="color:var(--text-dim);text-align:center;padding:20px;">Нет шаек. Создайте первую!</div>'; return; } bands.forEach(band => { const item = document.createElement('div'); item.className = 'contact-item'; const role = band.sheriff === P2PPong._peerId ? '🦅 Соколиный Глаз' : '🏹 Вольный Стрелок'; item.innerHTML = `<div style="display:flex;align-items:center;gap:8px;width:100%;"><img src="assets/icons/10icon.png" style="width:28px;height:28px;"><div><div class="contact-name">${band.name || 'Шайка'}</div><div style="font-size:0.65em;color:var(--text-dim);">${role} · ${band.outlaws.length}/12 ${band.password ? '🔐' : ''}</div></div></div>`; item.addEventListener('click', () => { if (band.outlaws.includes(P2PPong._peerId)) { showBandChat(band.id); document.getElementById('bands-modal')?.classList.remove('active'); } else { if (band.password) { showInput('Пароль шайки', 'Введи пароль').then(pass => { if (pass) joinBand(band.id, pass); }); } else { joinBand(band.id); } } }); list.appendChild(item); }); }
 
 function updateCupIndicator() { const chId = activeChannelId || Object.keys(P2PPong._channels)[0]; const ch = chId ? P2PPong._channels[chId] : null; const ind = document.getElementById('cup-indicator'); if (!ch || !ind) { if (ind) ind.style.display = 'none'; return; } ind.style.display = 'inline-flex'; const bc = ch.blobs ? ch.blobs.length : 0; const be = document.getElementById('cup-blobs'); if (be) { be.textContent = bc + '/10'; be.className = bc >= 10 ? 'full' : bc >= 7 ? 'ok' : ''; } const totalSec = Math.max(0, Math.round((ch.expires - Date.now()) / 1000)); const min = Math.floor(totalSec / 60); const sec = totalSec % 60; const te = document.getElementById('cup-timer'); if (te) { te.textContent = min + ':' + sec.toString().padStart(2, '0'); te.className = min <= 2 ? 'low' : min <= 5 ? 'ok' : ''; } }
 function updateRatchetIndicator() { const chId = activeChannelId || Object.keys(P2PPong._channels)[0]; const ch = chId ? P2PPong._channels[chId] : null; const indicator = document.getElementById('ratchet-indicator'); if (!indicator) return; if (!ch || !ch.sendKey) { indicator.style.display = 'none'; return; } indicator.style.display = 'inline'; const ri = ch.sendIndex || 0; let color, icon; if (ri === 0) { color = 'var(--danger)'; icon = '⚠️'; } else if (ri < 10) { color = 'orange'; icon = '🔄'; } else if (ri < 50) { color = 'var(--accent)'; icon = '🔒'; } else { color = 'var(--seeding-color)'; icon = '🔐'; } indicator.style.color = color; indicator.style.background = 'rgba(0,0,0,0.3)'; indicator.textContent = icon + ' ' + ri; indicator.title = 'Ratchet (send): ' + ri + ' сообщений отправлено'; }
@@ -236,11 +285,10 @@ function handleIncomingMessage(data) {
     try {
         const parsed = JSON.parse(data.text);
         
-        // Колчан скурен создателем
         if (parsed.type === 'channel-destroyed') {
             playSmokeAnimation();
             playSound('clear cache.mp3');
-            rMsg('🔥 Создатель скурил монускрипты! Связь потеряна.', 5000);
+            rMsg('🔥 Создатель скурил колчан! Связь потеряна.', 5000);
             if (parsed.channelId) delete P2PPong._channels[parsed.channelId];
             activeChannelId = null;
             activePeerId = null;
@@ -251,11 +299,10 @@ function handleIncomingMessage(data) {
             return;
         }
         
-        // Шайка скурена Соколиным глазом
         if (parsed.band === 'band-destroyed') {
             playSmokeAnimation();
             playSound('clear cache.mp3');
-            rMsg('🔥 Соколиный глаз скурил переписку шайки! Все разбежались!', 5000);
+            rMsg('🔥 Соколиный Глаз скурил шайку! Все разбежались!', 5000);
             bands = bands.filter(b => b.id !== parsed.bandId);
             activeBandId = null;
             document.getElementById('robin-bar-sender').textContent = 'RobinHood P2P';
@@ -284,7 +331,7 @@ function handleBandMessage(parsed, data) {
             break;
         case 'join-request':
             var band = bands.find(b => b.id === parsed.bandId);
-            if (band && !band.outlaws.includes(parsed.peerId)) { band.outlaws.push(parsed.peerId); rMsg('🏹 Лучник присоединился к шайке!', 3000); }
+            if (band && !band.outlaws.includes(parsed.peerId)) { band.outlaws.push(parsed.peerId); rMsg('🏹 Вольный Стрелок присоединился к шайке!', 3000); }
             if (band && band.sheriff === P2PPong._peerId && activeChannelId) {
                 P2PPong.sendMessage(activeChannelId, JSON.stringify({ band: 'member-joined', bandId: band.id, peerId: parsed.peerId }));
             }
@@ -307,7 +354,7 @@ function handleBandMessage(parsed, data) {
         case 'band-destroyed':
             playSmokeAnimation();
             playSound('clear cache.mp3');
-            rMsg('🔥 Соколиный глаз скурил переписку шайки! Все разбежались!', 5000);
+            rMsg('🔥 Соколиный Глаз скурил шайку! Все разбежались!', 5000);
             bands = bands.filter(b => b.id !== parsed.bandId);
             activeBandId = null;
             document.getElementById('robin-bar-sender').textContent = 'RobinHood P2P';
@@ -388,13 +435,13 @@ function initApp() {
     document.getElementById('close-verify-modal')?.addEventListener('click', () => { document.getElementById('verify-modal')?.classList.remove('active'); verificationModalShown = false; });
     document.getElementById('verify-modal')?.addEventListener('click', function(e) { if (e.target === this) { this.classList.remove('active'); verificationModalShown = false; } });
     
-    // 🔥 Кнопка "Скурить" — уничтожение колчана или шайки
+    // Кнопка "Скурить"
     document.getElementById('btn-clear')?.addEventListener('click', async () => {
         const mode = activeBandId ? 'шайку' : 'колчан';
         
         const confirmed = await showConfirm(
-            `🔥 Скурить монускрипты${mode}?`,
-            `Вся переписка будет уничтожена безвозвратно. ${activeBandId ? 'Все лучники потеряют доступ.' : 'Собеседник потеряет доступ.'}`
+            `🔥 Скурить ${mode}?`,
+            `Вся переписка будет уничтожена безвозвратно. ${activeBandId ? 'Все участники потеряют доступ.' : 'Собеседник потеряет доступ.'}`
         );
         
         if (!confirmed) return;
@@ -418,14 +465,14 @@ function initApp() {
                 });
                 bands = bands.filter(b => b.id !== activeBandId);
             }
-            rMsg('🔥 Все разбойники разбежались!', 5000);
+            rMsg('🔥 Шайка скурена! Все разбежались!', 5000);
         } else if (activeChannelId) {
             P2PPong.sendMessage(activeChannelId, JSON.stringify({
                 type: 'channel-destroyed',
                 channelId: activeChannelId
             }));
             delete P2PPong._channels[activeChannelId];
-            rMsg('🔥 Колчан уничтожен! Связь разорвана!', 5000);
+            rMsg('🔥 Колчан скурен! Связь разорвана!', 5000);
         }
         
         resetChatUI();
@@ -455,7 +502,7 @@ function initApp() {
     if (sd) sd.addEventListener('change', function() { selfDestructMode = this.checked; try { localStorage.setItem('robinhood_selfdestruct', selfDestructMode); } catch (e) {} if (selfDestructMode) { startSelfDestruct(); if (activeChannelId) P2PPong.sendMessage(activeChannelId, JSON.stringify({ d: '__SMOKE__' })); rMsg('🍁 Листопад включён!', 3000); } else { stopSelfDestruct(); rMsg('🍂 Листопад остановлен.', 3000); } });
     document.getElementById('btn-voice-input')?.addEventListener('click', toggleVoiceRecording);
     document.getElementById('setting-lock')?.addEventListener('click', async () => { if (lockType) { if (await showConfirm('Сброс', 'Сбросить блокировку?')) { try { localStorage.removeItem(LOCK_KEY); } catch (e) {} lockType = null; lockPinHash = ''; const ls3 = document.getElementById('lock-status'); if (ls3) ls3.textContent = 'Не задан'; } } else { isSettingLock = true; lockPinHash = ''; pinInput = ''; lockScreen.style.display = 'flex'; appContainer.style.display = 'none'; setupLockUI(); } });
-    const emojis = ['😀','😂','🤣','😍','😘','😜','😎','🤩','🥳','😢','😡','👍','👎','❤️','🔥','🎉','💀','🏹','🌲','🏰','🦊','🐺','✨','⚔️','🛡️','🍺','🍗','🏕️','🌙','🌟','💪','🤝','🙏','👑','💰','🎯','📞','💬','🔔','❌','✅','🎵','📜','⚜️'];
+    const emojis = ['😀','😂','🤣','😍','😘','😜','😎','🤩','🥳','😢','😡','👍','👎','❤️','🔥','🎉','💀','🏹','🌲','🏰','🦊','🐺','✨','⚔️','🛡️','🍺','🍗','🏕️','🌙','☀️','🌟','💪','🤝','🙏','👑','💰','🎯','📞','💬','🔔','❌','✅','🎵','📜','⚜️'];
     const eg = document.getElementById('emoji-grid'); if (eg) emojis.forEach(e => { const span = document.createElement('span'); span.textContent = e; span.addEventListener('click', () => { const mi = document.getElementById('msg-input'); if (mi) { mi.value += e; mi.focus(); } }); eg.appendChild(span); });
     const be = document.getElementById('btn-emoji'); if (be) be.addEventListener('click', () => { const ep = document.getElementById('emoji-panel'); if (ep) ep.style.display = ep.style.display === 'block' ? 'none' : 'block'; });
     document.addEventListener('click', e => { const ep = document.getElementById('emoji-panel'); if (ep && !ep.contains(e.target) && e.target !== be) ep.style.display = 'none'; });
