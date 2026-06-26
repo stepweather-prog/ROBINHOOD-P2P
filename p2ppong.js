@@ -1,4 +1,4 @@
-// p2ppong.js — v5.3 fix: verification-code отправляется только при confirmVerification
+// p2ppong.js — v5.4 Firebase Transport
 const DEBUG = true;
 function log(msg, data) { if (DEBUG) console.log(`[P2PPong] ${msg}`, data || ''); }
 
@@ -103,6 +103,11 @@ const P2PPong = {
     _dedupTimers: {},
     _retryCount: {},
 
+    // Firebase
+    _firebaseActive: false,
+    _firebaseDB: null,
+    _firebaseListeners: {},
+
     on(event, callback) {
         if (!this._listeners[event]) this._listeners[event] = [];
         this._listeners[event].push(callback);
@@ -118,6 +123,7 @@ const P2PPong = {
         if (this._state === 'online') { this._emit('ready', {}); return; }
         this._state = 'connecting'; this._emit('state-change', { state: 'connecting' });
         try {
+            this._initFirebase();
             this._startHousekeeping();
             this._state = 'online'; this._emit('state-change', { state: 'online' }); this._emit('ready', {});
         } catch(e) {
@@ -160,13 +166,90 @@ const P2PPong = {
                 } catch(e) {
                     this._serverHealth[server.url] = { healthy: false, failed: true, lastCheck: now };
                 }
-            } else if (server.type === 'xmpp' || server.type === 'tor') {
-                continue;
             }
         }
         
         this._signalServer = this._signalServers[0];
         return this._signalServer;
+    },
+
+    // ===== Firebase Transport =====
+    _initFirebase() {
+        if (window.firebaseDB && !this._firebaseActive) {
+            this._firebaseDB = window.firebaseDB;
+            this._firebaseActive = true;
+            log('firebase', 'Transport активен');
+        }
+    },
+
+    async _firebasePost(keyHash, packet) {
+        const db = this._firebaseDB;
+        if (!db) return false;
+        
+        try {
+            await window.firebaseSet(window.firebaseRef(db, 'beacons/' + keyHash), {
+                packet: packet,
+                timestamp: Date.now(),
+                peerId: this._peerId
+            });
+            
+            setTimeout(() => {
+                window.firebaseSet(window.firebaseRef(db, 'beacons/' + keyHash), null).catch(() => {});
+            }, 300000);
+            
+            return true;
+        } catch(e) {
+            return false;
+        }
+    },
+
+    async _firebaseGet(keyHash) {
+        const db = this._firebaseDB;
+        if (!db) return null;
+        
+        try {
+            const snapshot = await window.firebaseGet(window.firebaseRef(db, 'beacons/' + keyHash));
+            const data = snapshot.val();
+            
+            if (data && data.packet && data.peerId !== this._peerId) {
+                return { packet: data.packet, status: 'found' };
+            }
+            return { status: 'waiting' };
+        } catch(e) {
+            return null;
+        }
+    },
+
+    _firebaseListen(keyHash, callback) {
+        const db = this._firebaseDB;
+        if (!db) return;
+        
+        this._firebaseUnlisten(keyHash);
+        
+        const beaconRef = window.firebaseRef(db, 'beacons/' + keyHash);
+        
+        window.firebaseOnValue(beaconRef, (snapshot) => {
+            const data = snapshot.val();
+            if (data && data.packet && data.peerId !== this._peerId) {
+                callback({ packet: data.packet, status: 'found' });
+            }
+        });
+        
+        this._firebaseListeners[keyHash] = beaconRef;
+    },
+
+    _firebaseUnlisten(keyHash) {
+        if (this._firebaseListeners[keyHash]) {
+            window.firebaseOff(this._firebaseListeners[keyHash]);
+            delete this._firebaseListeners[keyHash];
+        }
+    },
+
+    _firebaseUnlistenAll() {
+        Object.keys(this._firebaseListeners).forEach(keyHash => {
+            this._firebaseUnlisten(keyHash);
+        });
+        this._firebaseListeners = {};
     },
 
     async craftArrow() {
@@ -207,7 +290,7 @@ const P2PPong = {
         this._beacons[this._peerId] = { keyPair: this._kp, beaconKey: bk, expires: Date.now() + CONFIG.BEACON_TTL };
         this._pending = { type: 'creator' };
         
-        await this._postWithRetry('/beacon', { keyHash: 'waiting_' + beaconId, packet: JSON.stringify(bd) });
+        await this._post('/beacon', { keyHash: 'waiting_' + beaconId, packet: JSON.stringify(bd) });
         this.startPolling('waiting_' + beaconId);
         this._emit('peer-id-generated', { peerId: this._peerId, beaconId: this._beaconId, code: code, pubKey: this._kp.publicKey });
         return this._beaconId;
@@ -315,16 +398,14 @@ const P2PPong = {
             nick: this._myNick,
             avatar: this._myAvatar
         });
-        await this._postWithRetry('/beacon', { keyHash: 'waiting_' + beaconId, packet: br });
+        await this._post('/beacon', { keyHash: 'waiting_' + beaconId, packet: br });
         
-        // ✅ НЕ отправляем verification-code здесь! Боб должен сначала ввести код в модалке
         this.startPolling('waiting_' + beaconId);
         this._emit('verification-needed', { code: code });
         return true;
     },
 
     confirmVerification() {
-        // ✅ Отправляем verification-code ТОЛЬКО когда Боб нажал Подтвердить
         if (this._pending?.type === 'joiner' && this._beaconId && this._verificationCode) {
             const ep = JSON.stringify({ 
                 type: 'verification-code', 
@@ -332,8 +413,8 @@ const P2PPong = {
                 peerId: this._peerId, 
                 pubKey: this._kp.publicKey
             });
-            this._postWithRetry('/beacon', { keyHash: 'code_' + this._beaconId, packet: ep });
-            log('verification-code sent to server');
+            this._post('/beacon', { keyHash: 'code_' + this._beaconId, packet: ep });
+            log('verification-code sent');
         }
         
         if (this._pendingChannelData) {
@@ -386,7 +467,6 @@ const P2PPong = {
         setTimeout(() => me._cleanupBeaconKeys(beaconId), 10000);
         
         this._stats.channelsOpened++;
-        
         this._pending = null;
         
         this._emit('channel-opened', { 
@@ -495,10 +575,45 @@ const P2PPong = {
         return null;
     },
 
-    async _post(path, body) { return this._postWithRetry(path, body); },
-    async _get(path) { return this._getWithRetry(path); },
+    async _post(path, body) {
+        // Firebase параллельно
+        const keyHash = body?.keyHash;
+        if (this._firebaseActive && keyHash) {
+            this._firebasePost(keyHash, body.packet || JSON.stringify(body)).catch(() => {});
+        }
+        return this._postWithRetry(path, body);
+    },
+    
+    async _get(path) {
+        // Пробуем Firebase сначала
+        const keyHash = new URLSearchParams(path.split('?')[1])?.get('key');
+        if (this._firebaseActive && keyHash) {
+            const fbResult = await this._firebaseGet(keyHash);
+            if (fbResult && fbResult.status === 'found') return fbResult;
+        }
+        return this._getWithRetry(path);
+    },
 
-    startPolling(keyHash) { if (!keyHash) return; this._stopPolling(); this._pollKey = keyHash; this._pollStart = Date.now(); this._doPoll(); },
+    startPolling(keyHash) {
+        if (!keyHash) return;
+        this._stopPolling();
+        this._pollKey = keyHash;
+        this._pollStart = Date.now();
+        
+        // Firebase — мгновенный слушатель
+        if (this._firebaseActive) {
+            this._firebaseListen(keyHash, (data) => {
+                if (data && data.packet) {
+                    this._stopPolling();
+                    this._handleIn(data.packet);
+                }
+            });
+        }
+        
+        // HTTP — резервный поллинг
+        this._doPoll();
+    },
+    
     _doPoll() {
         if (!this._pollKey) return;
         const me = this;
@@ -515,7 +630,11 @@ const P2PPong = {
             else { me._pollTimer = setTimeout(() => me._doPoll(), 1000); }
         }).catch(() => { me._pollTimer = setTimeout(() => me._doPoll(), 1000); });
     },
-    _stopPolling() { if (this._pollTimer) { clearTimeout(this._pollTimer); this._pollTimer = null; } },
+    
+    _stopPolling() {
+        if (this._pollTimer) { clearTimeout(this._pollTimer); this._pollTimer = null; }
+        if (this._pollKey) this._firebaseUnlisten(this._pollKey);
+    },
 
     async _handleIn(blobData) {
         const chId = this._chId || Object.keys(this._channels)[0];
@@ -564,7 +683,6 @@ const P2PPong = {
             return;
         }
         
-        // beacon-response от Боба → Алисе
         if (d.type === 'beacon-response' && d.pubKey && d.channelId) {
             if (this._pending?.type !== 'creator') return;
             this._remotePubKey = d.pubKey;
@@ -574,14 +692,11 @@ const P2PPong = {
             if (d.nick) this._theirNick = d.nick;
             if (d.avatar) this._theirAvatar = d.avatar;
             this._pendingChannelData = { peerId: d.peerId, signalServer: d.signalServer, nick: d.nick, avatar: d.avatar };
-            
             this._startCodePoll();
-            
-            log('beacon-response received, polling code_ for verification');
+            log('beacon-response received, polling code_');
             return;
         }
         
-        // beacon-ack от Алисы → Бобу
         if (d.type === 'beacon-ack' && d.channelId) {
             if (this._pending?.type !== 'joiner') return;
             this._chId = d.channelId;
@@ -589,12 +704,11 @@ const P2PPong = {
             if (d.peerId) this._remotePeerId = d.peerId;
             if (d.nick) this._theirNick = d.nick;
             if (d.avatar) this._theirAvatar = d.avatar;
-            log('beacon-ack received, opening channel for Bob');
+            log('beacon-ack received, opening channel');
             this._openChannel(d.peerId, this._signalServer?.url, d.nick, d.avatar);
             return;
         }
         
-        // verification-code от Боба → Алисе
         if (d.type === 'verification-code' && d.code) {
             if (this._pending?.type === 'creator' && this._verificationCode && d.code === this._verificationCode) {
                 this._remotePubKey = d.pubKey;
@@ -605,7 +719,7 @@ const P2PPong = {
                     type: 'beacon-ack', peerId: this._peerId, channelId: this._chId, pubKey: this._kp.publicKey, signalServer: this._signalServer.url, nick: this._myNick, avatar: this._myAvatar
                 })});
                 
-                log('verification-code valid, sent beacon-ack, opening channel for Alice');
+                log('verification-code valid, opening channel');
                 this._openChannel(d.peerId, d.signalServer, d.nick, d.avatar);
                 return;
             }
@@ -661,7 +775,13 @@ const P2PPong = {
             if (result.packed.length > 60000) { this._emit('error', { message: 'Сообщение слишком большое для сервера.' }); return false; }
             ch.sendKey = result.newSendKey;
             ch.sendIndex = result.newSendIndex;
-            await this._post('/beacon', { keyHash: 'msg_' + (chId || this._chId) + '_' + this._beaconId, packet: result.packed });
+            
+            // Firebase + HTTP параллельно
+            const msgPacket = result.packed;
+            const keyHash = 'msg_' + (chId || this._chId) + '_' + this._beaconId;
+            
+            this._post('/beacon', { keyHash: keyHash, packet: msgPacket });
+            
             ch.blobs.push({ d: displayText, t: Date.now(), n: nonce, from: 'me', status: 'sent', nick: this._myNick, avatar: this._myAvatar });
             ch.expires = Date.now() + CONFIG.CHANNEL_TTL; this._stats.messagesSent++;
             this._emit('message-sent', { channelId: chId || this._chId, data: displayText, status: 'sent', nick: this._myNick, avatar: this._myAvatar }); 
@@ -694,7 +814,17 @@ const P2PPong = {
         function poll() {
             if (!me._channels[chId]) { me._stopMsgPoll(chId); return; }
             if (me._webRTC[chId] && me._webRTC[chId].connected) { me._stopMsgPoll(chId); return; }
-            me._get('/beacon?key=msg_' + chId + '_' + me._beaconId).then(function(d) {
+            const keyHash = 'msg_' + chId + '_' + me._beaconId;
+            
+            // Firebase слушатель для сообщений
+            if (me._firebaseActive) {
+                me._firebaseListen(keyHash, (data) => {
+                    if (data && data.packet) me._handleIn(data.packet);
+                });
+            }
+            
+            // HTTP резерв
+            me._get('/beacon?key=' + keyHash).then(function(d) {
                 if (d && d.packet) me._handleIn(d.packet);
                 me._msgPollTimers[chId] = setTimeout(poll, CONFIG.MSG_POLL_INTERVAL);
             }).catch(() => { me._msgPollTimers[chId] = setTimeout(poll, CONFIG.MSG_POLL_INTERVAL); });
@@ -758,6 +888,7 @@ const P2PPong = {
     async destroy() {
         this._stopPolling();
         this._stopCodePoll();
+        this._firebaseUnlistenAll();
         Object.keys(this._msgPollTimers).forEach(id => clearTimeout(this._msgPollTimers[id])); this._msgPollTimers = {};
         Object.keys(this._webRTCPolling).forEach(id => clearTimeout(this._webRTCPolling[id])); this._webRTCPolling = {};
         Object.keys(this._webRTC).forEach(id => { try { this._webRTC[id].pc.close(); } catch(e) {} }); this._webRTC = {};
@@ -770,6 +901,7 @@ const P2PPong = {
         this._pending = null; this._pendingChannelData = null; this._verificationCode = null; this._signalServer = null;
         this._webRTCSignalBuffer = {}; this._remotePeerId = null; this._serverHealth = {};
         this._beaconId = null; this._poolBeaconId = null; this._codeVerified = false;
+        this._firebaseActive = false; this._firebaseDB = null;
         this._emit('destroyed');
     }
 };
