@@ -290,7 +290,8 @@
     import { getDatabase, ref, set, get, onValue, off, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-database.js";
     import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-auth.js";
 
-    const firebaseConfig = {
+    // Конфиг загружается из внешнего файла (в .gitignore)
+    const firebaseConfig = window.FIREBASE_CONFIG || {
         apiKey: "AIzaSyDP-8Jpt3t-VQL9fOIlMGD4kpZtUdoW41Q",
         authDomain: "robinhood-p2p-a59e1.firebaseapp.com",
         databaseURL: "https://robinhood-p2p-a59e1-default-rtdb.europe-west1.firebasedatabase.app",
