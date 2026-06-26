@@ -1,271 +1,346 @@
-// crypto-worker.js — v2 с раздельными ratchet
-const MAX_TIMEOUT = 30000;
-const MAX_DECOMPRESSED_SIZE = 1024 * 1024;
-let isProcessing = false;
-
-function toBase64(bytes) {
-    let binary = '';
-    for (let i = 0; i < bytes.length; i++) {
-        binary += String.fromCharCode(bytes[i] & 0xFF);
-    }
-    return btoa(binary);
+// crypto-worker.js — v2.0 с DH Ratchet
+function bufferToHex(buffer) {
+    return Array.from(new Uint8Array(buffer)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-function fromBase64(b64) {
-    const clean = (b64 || '').replace(/[^A-Za-z0-9+/=]/g, '');
-    if (!clean) return new Uint8Array(0);
-    try {
-        const binary = atob(clean);
-        const bytes = new Uint8Array(binary.length);
-        for (let i = 0; i < binary.length; i++) {
-            bytes[i] = binary.charCodeAt(i) & 0xFF;
-        }
-        return bytes;
-    } catch(e) {
-        return new Uint8Array(0);
-    }
-}
-
-self.onmessage = async function(e) {
-    if (isProcessing) {
-        self.postMessage({ id: e.data.id, error: 'Worker busy' });
-        return;
-    }
-    isProcessing = true;
-    const { id, action, payload } = e.data;
-    const timeout = setTimeout(() => {
-        isProcessing = false;
-        self.postMessage({ id, error: 'Timeout' });
-    }, MAX_TIMEOUT);
-
-    try {
-        let result;
-        switch (action) {
-            case 'SHA': result = await SHA(payload); break;
-            case 'generateKeyPair': result = await generateKeyPair(); break;
-            case 'exportPublicKey': result = await exportPublicKey(payload); break;
-            case 'importPublicKey': result = await importPublicKey(payload); break;
-            case 'deriveSecret': result = await deriveSecret(payload.myPrivateKey, payload.theirPublicKey); break;
-            case 'encryptAES': result = await encryptAES(payload.text, payload.secret); break;
-            case 'decryptAES': result = await decryptAES(payload.enc, payload.secret); break;
-            case 'computeHMAC': result = await computeHMAC(payload.data, payload.secret); break;
-            case 'verifyHMAC': result = await verifyHMAC(payload.data, payload.sig, payload.secret); break;
-            case 'advanceSendRatchet': result = await advanceSendRatchet(payload.ch); break;
-            case 'advanceRecvRatchet': result = await advanceRecvRatchet(payload.ch, payload.targetRi); break;
-            case 'packBlob': result = await packBlob(payload.jsonString, payload.ch); break;
-            case 'unpackBlob': result = await unpackBlob(payload.blob, payload.ch); break;
-            default: throw new Error('Unknown: ' + action);
-        }
-        clearTimeout(timeout);
-        self.postMessage({ id, result });
-    } catch(error) {
-        clearTimeout(timeout);
-        self.postMessage({ id, error: error.message });
-    } finally {
-        isProcessing = false;
-    }
-};
-
-async function SHA(t) {
-    const h = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t));
-    return Array.from(new Uint8Array(h)).map(b => b.toString(16).padStart(2, '0')).join('');
+function hexToBuffer(hex) {
+    return new Uint8Array(hex.match(/.{1,2}/g).map(byte => parseInt(byte, 16))).buffer;
 }
 
 async function generateKeyPair() {
-    const kp = await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveBits']);
+    const kp = await crypto.subtle.generateKey(
+        { name: 'ECDH', namedCurve: 'P-256' },
+        true,
+        ['deriveBits']
+    );
     const pubKey = await crypto.subtle.exportKey('raw', kp.publicKey);
     const privKey = await crypto.subtle.exportKey('pkcs8', kp.privateKey);
     return {
-        publicKey: toBase64(new Uint8Array(pubKey)),
-        privateKey: toBase64(new Uint8Array(privKey))
+        publicKey: bufferToHex(pubKey),
+        privateKey: bufferToHex(privKey)
     };
 }
 
-async function deriveSecret(myPrivateKeyB64, theirPublicKeyB64) {
-    const myPrivKey = await crypto.subtle.importKey('pkcs8',
-        fromBase64(myPrivateKeyB64),
-        { name: 'ECDH', namedCurve: 'P-256' }, false, ['deriveBits']);
-    const theirPubKey = await crypto.subtle.importKey('raw',
-        fromBase64(theirPublicKeyB64),
-        { name: 'ECDH', namedCurve: 'P-256' }, false, []);
-    const bits = await crypto.subtle.deriveBits({ name: 'ECDH', public: theirPubKey }, myPrivKey, 256);
-    return Array.from(new Uint8Array(bits)).map(x => x.toString(16).padStart(2, '0')).join('');
+async function deriveSecret(privateKeyHex, publicKeyHex) {
+    const privateKey = await crypto.subtle.importKey(
+        'pkcs8',
+        hexToBuffer(privateKeyHex),
+        { name: 'ECDH', namedCurve: 'P-256' },
+        false,
+        ['deriveBits']
+    );
+    const publicKey = await crypto.subtle.importKey(
+        'raw',
+        hexToBuffer(publicKeyHex),
+        { name: 'ECDH', namedCurve: 'P-256' },
+        true,
+        []
+    );
+    const bits = await crypto.subtle.deriveBits(
+        { name: 'ECDH', public: publicKey },
+        privateKey,
+        256
+    );
+    return bufferToHex(bits);
 }
 
-async function exportPublicKey(kp) {
-    const r = await crypto.subtle.exportKey('raw', kp);
-    return toBase64(new Uint8Array(r));
+async function SHA(text) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(text);
+    const hash = await crypto.subtle.digest('SHA-256', data);
+    return bufferToHex(hash);
 }
 
-async function importPublicKey(b64) {
-    const r = fromBase64(b64);
-    return await crypto.subtle.importKey('raw', r, { name: 'ECDH', namedCurve: 'P-256' }, false, []);
+async function HKDF(secret, salt, info) {
+    const secretKey = await crypto.subtle.importKey(
+        'raw',
+        hexToBuffer(secret),
+        { name: 'HKDF' },
+        false,
+        ['deriveBits']
+    );
+    const infoBuffer = new TextEncoder().encode(info);
+    const saltBuffer = salt ? hexToBuffer(salt) : new Uint8Array(32);
+    const bits = await crypto.subtle.deriveBits(
+        { name: 'HKDF', hash: 'SHA-256', salt: saltBuffer, info: infoBuffer },
+        secretKey,
+        256
+    );
+    return bufferToHex(bits);
 }
 
-async function deriveKey(secret) {
-    const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(secret));
-    return await crypto.subtle.importKey('raw', hash, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
-}
-
-async function deriveHMACKey(secret) {
-    const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(secret));
-    return await crypto.subtle.importKey('raw', hash, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign', 'verify']);
-}
-
-async function encryptAES(text, secret) {
-    const k = await deriveKey(secret);
+async function encryptAES(plaintext, keyHex) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(plaintext);
     const iv = crypto.getRandomValues(new Uint8Array(12));
-    const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, k, new TextEncoder().encode(text));
-    const combined = new Uint8Array(iv.length + new Uint8Array(ct).length);
+    const key = await crypto.subtle.importKey(
+        'raw',
+        hexToBuffer(keyHex),
+        { name: 'AES-GCM' },
+        false,
+        ['encrypt']
+    );
+    const encrypted = await crypto.subtle.encrypt(
+        { name: 'AES-GCM', iv: iv },
+        key,
+        data
+    );
+    const combined = new Uint8Array(iv.length + encrypted.byteLength);
     combined.set(iv);
-    combined.set(new Uint8Array(ct), iv.length);
-    return toBase64(combined);
+    combined.set(new Uint8Array(encrypted), iv.length);
+    return bufferToHex(combined.buffer);
 }
 
-async function decryptAES(enc, secret) {
-    const k = await deriveKey(secret);
-    const c = fromBase64(enc);
-    if (!c || c.length === 0) return null;
+async function decryptAES(encryptedHex, keyHex) {
+    const combined = new Uint8Array(hexToBuffer(encryptedHex));
+    const iv = combined.slice(0, 12);
+    const data = combined.slice(12);
+    const key = await crypto.subtle.importKey(
+        'raw',
+        hexToBuffer(keyHex),
+        { name: 'AES-GCM' },
+        false,
+        ['decrypt']
+    );
     try {
-        return new TextDecoder().decode(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: c.slice(0, 12) }, k, c.slice(12)));
+        const decrypted = await crypto.subtle.decrypt(
+            { name: 'AES-GCM', iv: iv },
+            key,
+            data
+        );
+        return new TextDecoder().decode(decrypted);
     } catch(e) {
         return null;
     }
 }
 
-async function computeHMAC(data, secret) {
-    const k = await deriveHMACKey(secret);
-    const sig = await crypto.subtle.sign('HMAC', k, new TextEncoder().encode(data));
-    return toBase64(new Uint8Array(sig));
+async function computeHMAC(data, keyHex) {
+    const key = await crypto.subtle.importKey(
+        'raw',
+        hexToBuffer(keyHex),
+        { name: 'HMAC', hash: 'SHA-256' },
+        false,
+        ['sign']
+    );
+    const signature = await crypto.subtle.sign(
+        'HMAC',
+        key,
+        new TextEncoder().encode(data)
+    );
+    return bufferToHex(signature);
 }
 
-async function verifyHMAC(data, sig, secret) {
-    try {
-        const k = await deriveHMACKey(secret);
-        const sigBytes = fromBase64(sig);
-        return await crypto.subtle.verify('HMAC', k, sigBytes, new TextEncoder().encode(data));
-    } catch(e) {
-        return false;
-    }
+async function verifyHMAC(data, sigHex, keyHex) {
+    const key = await crypto.subtle.importKey(
+        'raw',
+        hexToBuffer(keyHex),
+        { name: 'HMAC', hash: 'SHA-256' },
+        false,
+        ['verify']
+    );
+    return await crypto.subtle.verify(
+        'HMAC',
+        key,
+        hexToBuffer(sigHex),
+        new TextEncoder().encode(data)
+    );
 }
-
-async function advanceSendRatchet(ch) {
-    const oldKey = ch.sendKey || ch.secret;
-    const salt = 'send_' + (ch.sendIndex || 0).toString(16).padStart(16, '0');
-    const newKey = await SHA(oldKey + salt);
-    return { newKey, index: (ch.sendIndex || 0) + 1, oldKey };
-}
-
-async function advanceRecvRatchet(ch, targetRi) {
-    let currentKey = ch.recvKey || ch.secret;
-    let currentIndex = ch.recvIndex || 0;
-    const oldKeys = [];
-    while (currentIndex <= targetRi) {
-        const salt = 'recv_' + currentIndex.toString(16).padStart(16, '0');
-        const newKey = await SHA(currentKey + salt);
-        oldKeys.push({ index: currentIndex, key: currentKey });
-        currentKey = newKey;
-        currentIndex++;
-    }
-    return { 
-        newKey: oldKeys[oldKeys.length - 1]?.key || currentKey,
-        finalKey: currentKey,
-        index: currentIndex - 1,
-        oldKeys 
-    };
-}
-
-async function compressData(str) {
-    const cs = new CompressionStream('gzip');
-    const writer = cs.writable.getWriter();
-    writer.write(new TextEncoder().encode(str));
-    writer.close();
-    const reader = cs.readable.getReader();
-    const chunks = [];
-    while (true) { const r = await reader.read(); if (r.done) break; chunks.push(r.value); }
-    const total = new Uint8Array(chunks.reduce((s, c) => s + c.length, 0));
-    let offset = 0;
-    chunks.forEach(chunk => { total.set(chunk, offset); offset += chunk.length; });
-    return toBase64(total);
-}
-
-async function decompressData(b64) {
-    const bytes = fromBase64(b64);
-    if (!bytes || bytes.length === 0) return null;
-    try {
-        const ds = new DecompressionStream('gzip');
-        const writer = ds.writable.getWriter();
-        writer.write(bytes);
-        writer.close();
-        const reader = ds.readable.getReader();
-        const chunks = [];
-        let totalSize = 0;
-        while (true) { 
-            const r = await reader.read(); 
-            if (r.done) break; 
-            totalSize += r.value.length;
-            if (totalSize > MAX_DECOMPRESSED_SIZE) {
-                reader.cancel();
-                return null;
-            }
-            chunks.push(r.value); 
-        }
-        const total = new Uint8Array(totalSize);
-        let offset = 0;
-        chunks.forEach(chunk => { total.set(chunk, offset); offset += chunk.length; });
-        return new TextDecoder().decode(total);
-    } catch(e) {
-        return null;
-    }
-}
-
-const SEPARATOR = '\x00';
 
 async function packBlob(jsonString, ch) {
-    const compressed = await compressData(jsonString);
-    const nonce = Array.from(crypto.getRandomValues(new Uint32Array(4))).map(x => x.toString(16).padStart(8, '0')).join('');
-    const ri = ch.sendIndex || 0;
-    const data = JSON.stringify({ z: compressed, t: Date.now(), n: nonce, ri });
-    const currentKey = ch.sendKey || ch.secret;
-    const hmac = await computeHMAC(data, currentKey);
-    const payload = hmac + SEPARATOR + data;
-    const { newKey, index, oldKey } = await advanceSendRatchet(ch);
-    const encrypted = await encryptAES(payload, ch.secret);
-    return { packed: encrypted, newSendKey: newKey, newSendIndex: index, oldSendKey: oldKey };
+    const messageKey = await HKDF(ch.sendKey, null, 'message-key-' + ch.sendIndex);
+    const encrypted = await encryptAES(jsonString, messageKey);
+    const hmac = await computeHMAC(encrypted, ch.sendKey);
+    
+    const newSendKey = await HKDF(ch.sendKey, null, 'chain-key-' + ch.sendIndex);
+    const newSendIndex = ch.sendIndex + 1;
+    
+    const blob = JSON.stringify({
+        d: encrypted,
+        h: hmac,
+        _ri: ch.sendIndex,
+        _t: Date.now()
+    });
+    
+    return {
+        packed: blob,
+        newSendKey: newSendKey,
+        newSendIndex: newSendIndex,
+        messageKey: messageKey
+    };
 }
 
 async function unpackBlob(blob, ch) {
-    const dec = await decryptAES(blob, ch.secret);
-    if (!dec) return null;
-    let result = await tryDecryptWithKey(dec, ch.recvKey || ch.secret);
-    if (result) return result;
-    if (ch.oldRecvKeys) {
-        for (let i = ch.oldRecvKeys.length - 1; i >= 0; i--) {
-            result = await tryDecryptWithKey(dec, ch.oldRecvKeys[i].key);
-            if (result) return result;
-        }
-    }
-    return null;
-}
-
-async function tryDecryptWithKey(decrypted, key) {
-    const separatorIndex = decrypted.indexOf(SEPARATOR);
-    if (separatorIndex === -1) return null;
-    const hmac = decrypted.substring(0, separatorIndex);
-    const data = decrypted.substring(separatorIndex + 1);
-    if (!await verifyHMAC(data, hmac, key)) return null;
     try {
-        const parsed = JSON.parse(data);
-        if (parsed.z) {
-            const inner = JSON.parse(await decompressData(parsed.z));
-            if (inner) {
-                inner._t = parsed.t;
-                inner._ri = parsed.ri;
-                return inner;
-            }
-        }
-        return parsed;
+        const parsed = JSON.parse(blob);
+        if (!parsed.d || !parsed.h) return null;
+        
+        const hmacValid = await verifyHMAC(parsed.d, parsed.h, ch.recvKey);
+        if (!hmacValid) return null;
+        
+        const ri = parseInt(parsed._ri) || 0;
+        const messageKey = await HKDF(ch.recvKey, null, 'message-key-' + ri);
+        const decrypted = await decryptAES(parsed.d, messageKey);
+        
+        if (!decrypted) return null;
+        
+        const newRecvKey = await HKDF(ch.recvKey, null, 'chain-key-' + ri);
+        const newRecvIndex = ri + 1;
+        
+        const result = JSON.parse(decrypted);
+        result._ri = parsed._ri;
+        result._t = parsed._t;
+        
+        return {
+            data: result,
+            newRecvKey: newRecvKey,
+            newRecvIndex: newRecvIndex
+        };
     } catch(e) {
         return null;
     }
 }
+
+async function advanceRecvRatchet(ch, targetRi) {
+    let currentKey = ch.recvKey;
+    let currentIndex = ch.recvIndex || 0;
+    const oldKeys = [];
+    
+    while (currentIndex < targetRi) {
+        oldKeys.push({ key: currentKey, index: currentIndex });
+        currentKey = await HKDF(currentKey, null, 'chain-key-' + currentIndex);
+        currentIndex++;
+        
+        if (oldKeys.length > 10) oldKeys.shift();
+    }
+    
+    if (currentIndex === targetRi) {
+        oldKeys.push({ key: currentKey, index: currentIndex });
+        currentKey = await HKDF(currentKey, null, 'chain-key-' + currentIndex);
+        currentIndex++;
+    }
+    
+    return {
+        finalKey: currentKey,
+        index: currentIndex,
+        oldKeys: oldKeys.slice(-10)
+    };
+}
+
+// ===== DH Ratchet =====
+
+async function dhRatchetStep(rootKey, myPrivKey, theirPubKey) {
+    // Генерируем новую DH пару
+    const newKp = await generateKeyPair();
+    
+    // Вычисляем новый общий секрет
+    const dhSecret = await deriveSecret(myPrivKey, theirPubKey);
+    
+    // Новый корневой ключ = HKDF(старый корень, новый DH секрет)
+    const newRootKey = await HKDF(rootKey, dhSecret, 'osprp-dh-ratchet');
+    
+    // Новые цепочки из корневого ключа
+    const newSendKey = await HKDF(newRootKey, null, 'send-chain');
+    const newRecvKey = await HKDF(newRootKey, null, 'recv-chain');
+    
+    return {
+        newRootKey: newRootKey,
+        newSendKey: newSendKey,
+        newRecvKey: newRecvKey,
+        newPubKey: newKp.publicKey,
+        newPrivKey: newKp.privateKey,
+        sendIndex: 0,
+        recvIndex: 0
+    };
+}
+
+async function dhRatchetReceive(rootKey, myPrivKey, theirNewPubKey) {
+    // Вычисляем новый общий секрет с новым ключом собеседника
+    const dhSecret = await deriveSecret(myPrivKey, theirNewPubKey);
+    
+    // Новый корневой ключ
+    const newRootKey = await HKDF(rootKey, dhSecret, 'osprp-dh-ratchet');
+    
+    // Новые цепочки
+    const newSendKey = await HKDF(newRootKey, null, 'send-chain');
+    const newRecvKey = await HKDF(newRootKey, null, 'recv-chain');
+    
+    return {
+        newRootKey: newRootKey,
+        newSendKey: newSendKey,
+        newRecvKey: newRecvKey,
+        sendIndex: 0,
+        recvIndex: 0
+    };
+}
+
+// ===== Обработчик сообщений =====
+
+self.onmessage = async function(e) {
+    const { id, action, payload } = e.data;
+    
+    try {
+        let result;
+        
+        switch (action) {
+            case 'SHA':
+                result = await SHA(payload);
+                break;
+                
+            case 'generateKeyPair':
+                result = await generateKeyPair();
+                break;
+                
+            case 'deriveSecret':
+                result = await deriveSecret(payload.myPrivateKey, payload.theirPublicKey);
+                break;
+                
+            case 'encryptAES':
+                result = await encryptAES(payload.text, payload.secret);
+                break;
+                
+            case 'decryptAES':
+                result = await decryptAES(payload.enc, payload.secret);
+                break;
+                
+            case 'computeHMAC':
+                result = await computeHMAC(payload.data, payload.secret);
+                break;
+                
+            case 'verifyHMAC':
+                result = await verifyHMAC(payload.data, payload.sig, payload.secret);
+                break;
+                
+            case 'packBlob':
+                const packResult = await packBlob(payload.jsonString, payload.ch);
+                result = {
+                    packed: packResult.packed,
+                    newSendKey: packResult.newSendKey,
+                    newSendIndex: packResult.newSendIndex
+                };
+                break;
+                
+            case 'unpackBlob':
+                result = await unpackBlob(payload.blob, payload.ch);
+                break;
+                
+            case 'advanceRecvRatchet':
+                result = await advanceRecvRatchet(payload.ch, payload.targetRi);
+                break;
+                
+            case 'dhRatchetStep':
+                result = await dhRatchetStep(payload.rootKey, payload.myPrivKey, payload.theirPubKey);
+                break;
+                
+            case 'dhRatchetReceive':
+                result = await dhRatchetReceive(payload.rootKey, payload.myPrivKey, payload.theirNewPubKey);
+                break;
+                
+            default:
+                throw new Error('Unknown action: ' + action);
+        }
+        
+        self.postMessage({ id, result });
+    } catch(e) {
+        self.postMessage({ id, error: e.message });
+    }
+};
