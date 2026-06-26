@@ -1,4 +1,4 @@
-// crypto-worker.js — v2.0 с DH Ratchet
+// crypto-worker.js — v3.0 Triple Ratchet (Signal Protocol)
 function bufferToHex(buffer) {
     return Array.from(new Uint8Array(buffer)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
@@ -146,13 +146,24 @@ async function verifyHMAC(data, sigHex, keyHex) {
     );
 }
 
+// ===== Symmetric Ratchet =====
+
 async function packBlob(jsonString, ch) {
-    const messageKey = await HKDF(ch.sendKey, null, 'message-key-' + ch.sendIndex);
+    // Message Key = HKDF(Chain Key, message-index)
+    const messageKey = await HKDF(ch.sendKey, null, 'osprp-message-key-' + ch.sendIndex);
+    
+    // Шифруем сообщение
     const encrypted = await encryptAES(jsonString, messageKey);
+    
+    // HMAC для целостности
     const hmac = await computeHMAC(encrypted, ch.sendKey);
     
-    const newSendKey = await HKDF(ch.sendKey, null, 'chain-key-' + ch.sendIndex);
+    // Продвигаем цепочку: новый Chain Key = HKDF(старый Chain Key, chain-index)
+    const newSendKey = await HKDF(ch.sendKey, null, 'osprp-chain-key-' + ch.sendIndex);
     const newSendIndex = ch.sendIndex + 1;
+    
+    // Message Key уничтожается (не сохраняется)
+    // Старый Chain Key будет заменён новым
     
     const blob = JSON.stringify({
         d: encrypted,
@@ -164,8 +175,7 @@ async function packBlob(jsonString, ch) {
     return {
         packed: blob,
         newSendKey: newSendKey,
-        newSendIndex: newSendIndex,
-        messageKey: messageKey
+        newSendIndex: newSendIndex
     };
 }
 
@@ -174,17 +184,23 @@ async function unpackBlob(blob, ch) {
         const parsed = JSON.parse(blob);
         if (!parsed.d || !parsed.h) return null;
         
+        // Проверяем целостность
         const hmacValid = await verifyHMAC(parsed.d, parsed.h, ch.recvKey);
         if (!hmacValid) return null;
         
+        // Message Key для расшифровки
         const ri = parseInt(parsed._ri) || 0;
-        const messageKey = await HKDF(ch.recvKey, null, 'message-key-' + ri);
-        const decrypted = await decryptAES(parsed.d, messageKey);
+        const messageKey = await HKDF(ch.recvKey, null, 'osprp-message-key-' + ri);
         
+        // Расшифровываем
+        const decrypted = await decryptAES(parsed.d, messageKey);
         if (!decrypted) return null;
         
-        const newRecvKey = await HKDF(ch.recvKey, null, 'chain-key-' + ri);
+        // Продвигаем цепочку получения
+        const newRecvKey = await HKDF(ch.recvKey, null, 'osprp-chain-key-' + ri);
         const newRecvIndex = ri + 1;
+        
+        // Message Key уничтожается
         
         const result = JSON.parse(decrypted);
         result._ri = parsed._ri;
@@ -205,17 +221,20 @@ async function advanceRecvRatchet(ch, targetRi) {
     let currentIndex = ch.recvIndex || 0;
     const oldKeys = [];
     
+    // Пропускаем потерянные сообщения
     while (currentIndex < targetRi) {
         oldKeys.push({ key: currentKey, index: currentIndex });
-        currentKey = await HKDF(currentKey, null, 'chain-key-' + currentIndex);
+        currentKey = await HKDF(currentKey, null, 'osprp-chain-key-' + currentIndex);
         currentIndex++;
         
+        // Храним только последние 10 ключей
         if (oldKeys.length > 10) oldKeys.shift();
     }
     
+    // Достигли целевого индекса
     if (currentIndex === targetRi) {
         oldKeys.push({ key: currentKey, index: currentIndex });
-        currentKey = await HKDF(currentKey, null, 'chain-key-' + currentIndex);
+        currentKey = await HKDF(currentKey, null, 'osprp-chain-key-' + currentIndex);
         currentIndex++;
     }
     
@@ -226,21 +245,25 @@ async function advanceRecvRatchet(ch, targetRi) {
     };
 }
 
-// ===== DH Ratchet =====
+// ===== DH Ratchet (асимметричный) =====
 
 async function dhRatchetStep(rootKey, myPrivKey, theirPubKey) {
-    // Генерируем новую DH пару
+    // 1. Генерируем новую DH пару
     const newKp = await generateKeyPair();
     
-    // Вычисляем новый общий секрет
+    // 2. Вычисляем новый общий секрет
     const dhSecret = await deriveSecret(myPrivKey, theirPubKey);
     
-    // Новый корневой ключ = HKDF(старый корень, новый DH секрет)
-    const newRootKey = await HKDF(rootKey, dhSecret, 'osprp-dh-ratchet');
+    // 3. Новый корневой ключ = HKDF(старый корень, новый DH секрет)
+    const newRootKey = await HKDF(rootKey, dhSecret, 'osprp-dh-root');
     
-    // Новые цепочки из корневого ключа
-    const newSendKey = await HKDF(newRootKey, null, 'send-chain');
-    const newRecvKey = await HKDF(newRootKey, null, 'recv-chain');
+    // 4. Новая цепочка отправки (я начинаю слать)
+    const newSendKey = await HKDF(newRootKey, null, 'osprp-send-chain');
+    
+    // 5. Новая цепочка получения (будет использована при ответе)
+    const newRecvKey = await HKDF(newRootKey, null, 'osprp-recv-chain');
+    
+    // 6. Старый корневой ключ будет перезаписан (уничтожен)
     
     return {
         newRootKey: newRootKey,
@@ -254,15 +277,19 @@ async function dhRatchetStep(rootKey, myPrivKey, theirPubKey) {
 }
 
 async function dhRatchetReceive(rootKey, myPrivKey, theirNewPubKey) {
-    // Вычисляем новый общий секрет с новым ключом собеседника
+    // 1. Вычисляем новый общий секрет (собеседник прислал новый DH ключ)
     const dhSecret = await deriveSecret(myPrivKey, theirNewPubKey);
     
-    // Новый корневой ключ
-    const newRootKey = await HKDF(rootKey, dhSecret, 'osprp-dh-ratchet');
+    // 2. Новый корневой ключ
+    const newRootKey = await HKDF(rootKey, dhSecret, 'osprp-dh-root');
     
-    // Новые цепочки
-    const newSendKey = await HKDF(newRootKey, null, 'send-chain');
-    const newRecvKey = await HKDF(newRootKey, null, 'recv-chain');
+    // 3. Новая цепочка получения (собеседник начал слать)
+    const newRecvKey = await HKDF(newRootKey, null, 'osprp-recv-chain');
+    
+    // 4. Новая цепочка отправки (будет использована при моём ответе)
+    const newSendKey = await HKDF(newRootKey, null, 'osprp-send-chain');
+    
+    // 5. Старый корневой ключ будет перезаписан (уничтожен)
     
     return {
         newRootKey: newRootKey,
