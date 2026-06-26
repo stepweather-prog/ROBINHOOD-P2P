@@ -1,4 +1,4 @@
-// robinhood-ui.js — v6.1 fix: листопад не ломает сообщения
+// robinhood-ui.js — v6.2 fix: листопад + скурить с очисткой кеша
 let contacts = [],
     activeChannelId = null,
     activePeerId = null,
@@ -114,7 +114,6 @@ function playQuiverAnimation() {
 function showInput(title, placeholder = '') { return new Promise((resolve) => { document.getElementById('input-modal-title').textContent = title; document.getElementById('input-modal-field').value = ''; document.getElementById('input-modal-field').placeholder = placeholder; document.getElementById('input-modal-error').style.display = 'none'; document.getElementById('input-modal')?.classList.add('active'); const ok = () => { const val = document.getElementById('input-modal-field').value.trim(); document.getElementById('input-modal')?.classList.remove('active'); cleanup(); resolve(val); }; const cancel = () => { document.getElementById('input-modal')?.classList.remove('active'); cleanup(); resolve(null); }; const cleanup = () => { document.getElementById('input-modal-ok').removeEventListener('click', ok); document.getElementById('input-modal-cancel').removeEventListener('click', cancel); document.getElementById('input-modal-field').removeEventListener('keypress', onKey); }; const onKey = (e) => { if (e.key === 'Enter') ok(); }; document.getElementById('input-modal-ok').addEventListener('click', ok); document.getElementById('input-modal-cancel').addEventListener('click', cancel); document.getElementById('input-modal-field').addEventListener('keypress', onKey); document.getElementById('input-modal-field').focus(); }); }
 function showConfirm(title, text) { return new Promise((resolve) => { document.getElementById('confirm-modal-title').textContent = title; document.getElementById('confirm-modal-text').textContent = text; document.getElementById('confirm-modal')?.classList.add('active'); const yes = () => { document.getElementById('confirm-modal')?.classList.remove('active'); cleanup(); resolve(true); }; const no = () => { document.getElementById('confirm-modal')?.classList.remove('active'); cleanup(); resolve(false); }; const cleanup = () => { document.getElementById('confirm-modal-yes').removeEventListener('click', yes); document.getElementById('confirm-modal-no').removeEventListener('click', no); }; document.getElementById('confirm-modal-yes').addEventListener('click', yes); document.getElementById('confirm-modal-no').addEventListener('click', no); }); }
 
-// 🔥 Исправленный листопад — чистит dedup таймеры
 function startSelfDestruct() {
     stopSelfDestruct();
     selfDestructIntervalId = setInterval(() => {
@@ -129,7 +128,6 @@ function startSelfDestruct() {
             const el = allMessages[i];
             if (el && el.parentNode) {
                 const msgId = el.dataset.msgId;
-                // Чистим dedup таймеры для удаляемых сообщений
                 if (msgId && P2PPong._dedupTimers) {
                     for (const key in P2PPong._dedupTimers) {
                         if (key.includes(msgId)) {
@@ -152,14 +150,12 @@ function stopSelfDestruct() {
         clearInterval(selfDestructIntervalId);
         selfDestructIntervalId = null;
     }
-    // Чистим все dedup таймеры при остановке листопада
     if (P2PPong._dedupTimers) {
         for (const key in P2PPong._dedupTimers) {
             clearTimeout(P2PPong._dedupTimers[key]);
         }
         P2PPong._dedupTimers = {};
     }
-    // Чистим blobs в канале
     if (activeChannelId && P2PPong._channels[activeChannelId]) {
         P2PPong._channels[activeChannelId].blobs = [];
     }
@@ -290,12 +286,7 @@ function handleIncomingMessage(data) {
             playSound('clear cache.mp3');
             rMsg('🔥 Создатель скурил колчан! Связь потеряна.', 5000);
             if (parsed.channelId) delete P2PPong._channels[parsed.channelId];
-            activeChannelId = null;
-            activePeerId = null;
-            document.getElementById('robin-bar-sender').textContent = 'RobinHood P2P';
-            document.getElementById('chat-box').innerHTML = '<div class="typing-indicator" id="typing-indicator"></div>';
-            contacts = [];
-            saveContacts();
+            resetChatUI();
             return;
         }
         
@@ -304,9 +295,7 @@ function handleIncomingMessage(data) {
             playSound('clear cache.mp3');
             rMsg('🔥 Соколиный Глаз скурил шайку! Все разбежались!', 5000);
             bands = bands.filter(b => b.id !== parsed.bandId);
-            activeBandId = null;
-            document.getElementById('robin-bar-sender').textContent = 'RobinHood P2P';
-            document.getElementById('chat-box').innerHTML = '<div class="typing-indicator" id="typing-indicator"></div>';
+            resetChatUI();
             return;
         }
         
@@ -356,9 +345,7 @@ function handleBandMessage(parsed, data) {
             playSound('clear cache.mp3');
             rMsg('🔥 Соколиный Глаз скурил шайку! Все разбежались!', 5000);
             bands = bands.filter(b => b.id !== parsed.bandId);
-            activeBandId = null;
-            document.getElementById('robin-bar-sender').textContent = 'RobinHood P2P';
-            document.getElementById('chat-box').innerHTML = '<div class="typing-indicator" id="typing-indicator"></div>';
+            resetChatUI();
             break;
     }
 }
@@ -435,7 +422,7 @@ function initApp() {
     document.getElementById('close-verify-modal')?.addEventListener('click', () => { document.getElementById('verify-modal')?.classList.remove('active'); verificationModalShown = false; });
     document.getElementById('verify-modal')?.addEventListener('click', function(e) { if (e.target === this) { this.classList.remove('active'); verificationModalShown = false; } });
     
-    // Кнопка "Скурить"
+    // Кнопка "Скурить" — с полной очисткой кеша
     document.getElementById('btn-clear')?.addEventListener('click', async () => {
         const mode = activeBandId ? 'шайку' : 'колчан';
         
@@ -476,6 +463,28 @@ function initApp() {
         }
         
         resetChatUI();
+        
+        // Полная очистка кеша
+        localStorage.clear();
+        sessionStorage.clear();
+        
+        if ('caches' in window) {
+            caches.keys().then(names => {
+                names.forEach(name => caches.delete(name));
+            });
+        }
+        
+        if (window.indexedDB) {
+            indexedDB.databases().then(dbs => {
+                dbs.forEach(db => { indexedDB.deleteDatabase(db.name); });
+            }).catch(() => {});
+        }
+        
+        setTimeout(() => {
+            P2PPong.destroy().then(() => {
+                window.location.reload(true);
+            });
+        }, 3000);
     });
     
     document.getElementById('btn-settings')?.addEventListener('click', () => { closeSheets(); document.getElementById('settings-sheet')?.classList.add('open'); document.getElementById('overlay')?.classList.add('show'); });
