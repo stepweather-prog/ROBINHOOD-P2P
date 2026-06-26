@@ -1,4 +1,4 @@
-// p2ppong.js — v5.4 Firebase Transport
+// p2ppong.js — v6.0 DH Ratchet + Firebase Transport
 const DEBUG = true;
 function log(msg, data) { if (DEBUG) console.log(`[P2PPong] ${msg}`, data || ''); }
 
@@ -17,7 +17,8 @@ const CONFIG = {
     RATCHET_RESYNC_INTERVAL: 60000,
     SERVER_HEALTH_TTL: 300000,
     SERVER_FAIL_TIMEOUT: 5000,
-    MAX_RETRIES: 3
+    MAX_RETRIES: 3,
+    DH_RATCHET_THRESHOLD: 10
 };
 
 function arraysEqual(a, b) {
@@ -60,6 +61,8 @@ const workerPackBlob = (jsonString, ch) => cryptoCall('packBlob', { jsonString, 
 const workerUnpackBlob = (blob, ch) => cryptoCall('unpackBlob', { blob, ch });
 const workerDeriveSecret = (myPrivateKey, theirPublicKey) => cryptoCall('deriveSecret', { myPrivateKey, theirPublicKey });
 const workerAdvanceRecvRatchet = (ch, targetRi) => cryptoCall('advanceRecvRatchet', { ch, targetRi });
+const workerDHRatchetStep = (rootKey, myPrivKey, theirPubKey) => cryptoCall('dhRatchetStep', { rootKey, myPrivKey, theirPubKey });
+const workerDHRatchetReceive = (rootKey, myPrivKey, theirNewPubKey) => cryptoCall('dhRatchetReceive', { rootKey, myPrivKey, theirNewPubKey });
 
 const P2PPong = {
     _peerId: null,
@@ -103,7 +106,6 @@ const P2PPong = {
     _dedupTimers: {},
     _retryCount: {},
 
-    // Firebase
     _firebaseActive: false,
     _firebaseDB: null,
     _firebaseListeners: {},
@@ -173,7 +175,6 @@ const P2PPong = {
         return this._signalServer;
     },
 
-    // ===== Firebase Transport =====
     _initFirebase() {
         if (window.firebaseDB && !this._firebaseActive) {
             this._firebaseDB = window.firebaseDB;
@@ -442,21 +443,27 @@ const P2PPong = {
         
         if (theirNick) this._theirNick = theirNick;
         if (theirAvatar) this._theirAvatar = theirAvatar;
-        
         if (peerId) this._remotePeerId = peerId;
+        
+        const rootKey = this._secret;
         
         this._channels[this._chId] = {
             secret: this._secret,
-            sendKey: this._secret,
+            sendKey: rootKey,
             sendIndex: 0,
-            recvKey: this._secret,
+            recvKey: rootKey,
             recvIndex: 0,
             oldRecvKeys: [],
             peerId: peerId || 'unknown',
             type: 'cup',
             blobs: [],
             expires: Date.now() + CONFIG.CHANNEL_TTL,
-            createdAt: Date.now()
+            createdAt: Date.now(),
+            rootKey: rootKey,
+            dhKeyPair: { publicKey: this._kp.publicKey, privateKey: this._kp.privateKey },
+            dhRemotePubKey: this._remotePubKey,
+            dhSendCount: 0,
+            dhRecvCount: 0
         };
         
         this._stopPolling();
@@ -477,6 +484,49 @@ const P2PPong = {
         });
         this._startMsgPoll(this._chId);
         this._startWebRTC(this._chId, true);
+    },
+
+    async _dhRatchetStep(ch) {
+        if (!ch || !ch.rootKey || !ch.dhKeyPair || !ch.dhRemotePubKey) return null;
+        
+        const result = await workerDHRatchetStep(
+            ch.rootKey,
+            ch.dhKeyPair.privateKey,
+            ch.dhRemotePubKey
+        );
+        
+        ch.rootKey = result.newRootKey;
+        ch.dhKeyPair = { publicKey: result.newPubKey, privateKey: result.newPrivKey };
+        ch.sendKey = result.newSendKey;
+        ch.sendIndex = 0;
+        ch.recvKey = result.newRecvKey;
+        ch.recvIndex = 0;
+        ch.dhSendCount = 0;
+        ch.oldRecvKeys = [];
+        
+        return result;
+    },
+
+    async _dhRatchetReceive(ch, theirNewPubKey) {
+        if (!ch || !ch.rootKey || !ch.dhKeyPair) return null;
+        
+        ch.dhRemotePubKey = theirNewPubKey;
+        
+        const result = await workerDHRatchetReceive(
+            ch.rootKey,
+            ch.dhKeyPair.privateKey,
+            theirNewPubKey
+        );
+        
+        ch.rootKey = result.newRootKey;
+        ch.recvKey = result.newRecvKey;
+        ch.recvIndex = 0;
+        ch.sendKey = result.newSendKey;
+        ch.sendIndex = 0;
+        ch.dhRecvCount = 0;
+        ch.oldRecvKeys = [];
+        
+        return result;
     },
 
     _startCodePoll() {
@@ -576,7 +626,6 @@ const P2PPong = {
     },
 
     async _post(path, body) {
-        // Firebase параллельно
         const keyHash = body?.keyHash;
         if (this._firebaseActive && keyHash) {
             this._firebasePost(keyHash, body.packet || JSON.stringify(body)).catch(() => {});
@@ -585,7 +634,6 @@ const P2PPong = {
     },
     
     async _get(path) {
-        // Пробуем Firebase сначала
         const keyHash = new URLSearchParams(path.split('?')[1])?.get('key');
         if (this._firebaseActive && keyHash) {
             const fbResult = await this._firebaseGet(keyHash);
@@ -600,7 +648,6 @@ const P2PPong = {
         this._pollKey = keyHash;
         this._pollStart = Date.now();
         
-        // Firebase — мгновенный слушатель
         if (this._firebaseActive) {
             this._firebaseListen(keyHash, (data) => {
                 if (data && data.packet) {
@@ -610,7 +657,6 @@ const P2PPong = {
             });
         }
         
-        // HTTP — резервный поллинг
         this._doPoll();
     },
     
@@ -642,9 +688,16 @@ const P2PPong = {
         
         if (ch && ch.secret && typeof blobData === 'string') {
             try {
-                const u = await workerUnpackBlob(blobData, ch);
-                if (u) {
+                const unpackResult = await workerUnpackBlob(blobData, ch);
+                if (unpackResult) {
+                    const u = unpackResult.data;
                     if (u.from === this._peerId) return;
+                    
+                    if (u.dhPubKey && ch.dhKeyPair) {
+                        await this._dhRatchetReceive(ch, u.dhPubKey);
+                        log('DH Ratchet: получен новый ключ');
+                    }
+                    
                     if (u._ri !== undefined) {
                         const targetRi = parseInt(u._ri) || 0;
                         const recvResult = await workerAdvanceRecvRatchet(ch, targetRi);
@@ -652,6 +705,8 @@ const P2PPong = {
                         ch.recvIndex = recvResult.index;
                         ch.oldRecvKeys = recvResult.oldKeys.slice(-3);
                     }
+                    ch.dhRecvCount = (ch.dhRecvCount || 0) + 1;
+                    
                     const dedupKey = chId + '_' + (u.n || u._t || '');
                     if (this._dedupTimers[dedupKey]) return;
                     this._dedupTimers[dedupKey] = setTimeout(() => delete this._dedupTimers[dedupKey], CONFIG.CHANNEL_TTL);
@@ -758,10 +813,22 @@ const P2PPong = {
     async _sendEncrypted(ch, chId, messageData, displayText, nonce) {
         const rtc = this._webRTC[chId || this._chId];
         
+        let dhPubKey = null;
+        if (ch.dhSendCount >= CONFIG.DH_RATCHET_THRESHOLD && ch.dhKeyPair && ch.dhRemotePubKey) {
+            const dhResult = await this._dhRatchetStep(ch);
+            if (dhResult) {
+                dhPubKey = dhResult.newPubKey;
+                const parsed = JSON.parse(messageData);
+                parsed.dhPubKey = dhPubKey;
+                messageData = JSON.stringify(parsed);
+            }
+        }
+        
         if (rtc && rtc.dc && rtc.dc.readyState === 'open') {
             const result = await workerPackBlob(messageData, ch);
             ch.sendKey = result.newSendKey;
             ch.sendIndex = result.newSendIndex;
+            ch.dhSendCount = (ch.dhSendCount || 0) + 1;
             if (result.packed.length > 60000) { this._emit('error', { message: 'Сообщение слишком большое.' }); return false; }
             rtc.dc.send(result.packed);
             ch.blobs.push({ d: displayText, t: Date.now(), n: nonce, from: 'me', status: 'sent', nick: this._myNick, avatar: this._myAvatar });
@@ -775,8 +842,8 @@ const P2PPong = {
             if (result.packed.length > 60000) { this._emit('error', { message: 'Сообщение слишком большое для сервера.' }); return false; }
             ch.sendKey = result.newSendKey;
             ch.sendIndex = result.newSendIndex;
+            ch.dhSendCount = (ch.dhSendCount || 0) + 1;
             
-            // Firebase + HTTP параллельно
             const msgPacket = result.packed;
             const keyHash = 'msg_' + (chId || this._chId) + '_' + this._beaconId;
             
@@ -816,14 +883,12 @@ const P2PPong = {
             if (me._webRTC[chId] && me._webRTC[chId].connected) { me._stopMsgPoll(chId); return; }
             const keyHash = 'msg_' + chId + '_' + me._beaconId;
             
-            // Firebase слушатель для сообщений
             if (me._firebaseActive) {
                 me._firebaseListen(keyHash, (data) => {
                     if (data && data.packet) me._handleIn(data.packet);
                 });
             }
             
-            // HTTP резерв
             me._get('/beacon?key=' + keyHash).then(function(d) {
                 if (d && d.packet) me._handleIn(d.packet);
                 me._msgPollTimers[chId] = setTimeout(poll, CONFIG.MSG_POLL_INTERVAL);
@@ -853,9 +918,15 @@ const P2PPong = {
     async _handleDCMessage(chId, ch, e) {
         if (typeof e.data === 'string' && e.data.length > 50) {
             try {
-                const u = await workerUnpackBlob(e.data, ch);
-                if (u) {
+                const unpackResult = await workerUnpackBlob(e.data, ch);
+                if (unpackResult) {
+                    const u = unpackResult.data;
                     if (u.from === this._peerId) return;
+                    
+                    if (u.dhPubKey && ch.dhKeyPair) {
+                        await this._dhRatchetReceive(ch, u.dhPubKey);
+                    }
+                    
                     if (u._ri !== undefined) {
                         const targetRi = parseInt(u._ri) || 0;
                         const recvResult = await workerAdvanceRecvRatchet(ch, targetRi);
@@ -863,6 +934,8 @@ const P2PPong = {
                         ch.recvIndex = recvResult.index;
                         ch.oldRecvKeys = recvResult.oldKeys.slice(-3);
                     }
+                    ch.dhRecvCount = (ch.dhRecvCount || 0) + 1;
+                    
                     const dedupKey = chId + '_' + (u.n || u._t || ''); if (this._webRTC[chId]?.seenMessages?.has(u.n)) return; if (this._dedupTimers[dedupKey]) return;
                     this._dedupTimers[dedupKey] = setTimeout(() => delete this._dedupTimers[dedupKey], CONFIG.CHANNEL_TTL); this._webRTC[chId]?.seenMessages?.add(u.n);
                     if (u.nick) this._theirNick = u.nick;
