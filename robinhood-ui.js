@@ -526,18 +526,28 @@ function initApp() {
     });
     document.getElementById('msg-input')?.addEventListener('keypress', e => { if (e.key == 'Enter') document.getElementById('send-btn')?.click(); });
     setConnectionStatus('online');
+}
+window.addEventListener('beforeunload', () => { if (callActive) hang(false); if (voiceTimerInterval) clearInterval(voiceTimerInterval); stopSelfDestruct(); bands = []; P2PPong.destroy(); });
+
+// 🌉 Активация HTTPR моста — выполняется после загрузки всех скриптов
+(function activateHTTPRBridge() {
+    if (typeof HTTPRCore === 'undefined' || typeof P2PPongOverHTTPR === 'undefined') {
+        console.warn('[HTTPR] Ядро или мост не загружены');
+        return;
+    }
     
-    // 🌉 Активация HTTPR моста
-    (async function activateBridge() {
-        if (typeof HTTPRCore === 'undefined') {
-            console.warn('[HTTPR] Ядро не загружено, мост не активирован');
-            return;
-        }
-        
+    if (typeof P2PPong === 'undefined') {
+        console.warn('[HTTPR] P2PPong не загружен');
+        return;
+    }
+    
+    // Ждём когда P2PPong будет готов
+    P2PPong.on('ready', async () => {
         try {
             const httpr = new HTTPRCore();
+            const relayTransport = new HTTPRelayTransport();
             
-            await httpr.registerTransport(new HTTPRelayTransport(), {
+            await httpr.registerTransport(relayTransport, {
                 servers: [
                     'https://robincall.stephanclaps-491.workers.dev',
                     'https://p2ppong-v2.onrender.com'
@@ -545,12 +555,18 @@ function initApp() {
             });
             
             await P2PPongOverHTTPR.bridge(P2PPong, httpr);
-            console.log('🌉 HTTPR мост активен, транспорт:', P2PPongOverHTTPR.getActiveTransport());
+            
+            const activeTransport = P2PPongOverHTTPR.getActiveTransport();
+            console.log('🌉 HTTPR мост активен, транспорт:', activeTransport);
+            
+            if (activeTransport) {
+                setTimeout(() => rMsg('🌉 Мост HTTPR: ' + activeTransport, 4000), 1000);
+            }
         } catch(e) {
             console.warn('[HTTPR] Ошибка активации моста:', e.message);
         }
-    })();
-}
-window.addEventListener('beforeunload', () => { if (callActive) hang(false); if (voiceTimerInterval) clearInterval(voiceTimerInterval); stopSelfDestruct(); bands = []; P2PPong.destroy(); });
+    });
+})();
+
 P2PPong.on('ready', () => { initUI(); initApp(); });
 loadLockSettings();
