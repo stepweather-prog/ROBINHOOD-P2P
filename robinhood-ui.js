@@ -1,4 +1,4 @@
-// robinhood-ui.js — v6.3 с активированным HTTPR мостом
+// robinhood-ui.js — v7.0 чистый, без HTTPR моста
 let contacts = [],
     activeChannelId = null,
     activePeerId = null,
@@ -428,7 +428,7 @@ function initApp() {
         
         const confirmed = await showConfirm(
             `🔥 Скурить ${mode}?`,
-            `Вся переписка будет уничтожена безвозвратно. ${activeBandId ? 'Все участники потеряют доступ.' : 'Собеседник потеряет доступ.'}`
+            `Вся переписка будет уничтожена безвозвратно. ${activeBandId ? 'Все участники потеряют access.' : 'Собеседник потеряет доступ.'}`
         );
         
         if (!confirmed) return;
@@ -528,45 +528,5 @@ function initApp() {
     setConnectionStatus('online');
 }
 window.addEventListener('beforeunload', () => { if (callActive) hang(false); if (voiceTimerInterval) clearInterval(voiceTimerInterval); stopSelfDestruct(); bands = []; P2PPong.destroy(); });
-
-// 🌉 Активация HTTPR моста — выполняется после загрузки всех скриптов
-(function activateHTTPRBridge() {
-    if (typeof HTTPRCore === 'undefined' || typeof P2PPongOverHTTPR === 'undefined') {
-        console.warn('[HTTPR] Ядро или мост не загружены');
-        return;
-    }
-    
-    if (typeof P2PPong === 'undefined') {
-        console.warn('[HTTPR] P2PPong не загружен');
-        return;
-    }
-    
-    // Ждём когда P2PPong будет готов
-    P2PPong.on('ready', async () => {
-        try {
-            const httpr = new HTTPRCore();
-            const relayTransport = new HTTPRelayTransport();
-            
-            await httpr.registerTransport(relayTransport, {
-                servers: [
-                    'https://robincall.stephanclaps-491.workers.dev',
-                    'https://p2ppong-v2.onrender.com'
-                ]
-            });
-            
-            await P2PPongOverHTTPR.bridge(P2PPong, httpr);
-            
-            const activeTransport = P2PPongOverHTTPR.getActiveTransport();
-            console.log('🌉 HTTPR мост активен, транспорт:', activeTransport);
-            
-            if (activeTransport) {
-                setTimeout(() => rMsg('🌉 Мост HTTPR: ' + activeTransport, 4000), 1000);
-            }
-        } catch(e) {
-            console.warn('[HTTPR] Ошибка активации моста:', e.message);
-        }
-    });
-})();
-
 P2PPong.on('ready', () => { initUI(); initApp(); });
 loadLockSettings();
