@@ -1,4 +1,4 @@
-// p2ppong.js — v6.4 fix: дедупликация verification-code
+// p2ppong.js — v6.5 fix: joinBeacon обрабатывает HTTPR конверты
 const DEBUG = true;
 function log(msg, data) { if (DEBUG) console.log(`[P2PPong] ${msg}`, data || ''); }
 
@@ -20,7 +20,13 @@ const CONFIG = {
     MAX_RETRIES: 3,
     DH_RATCHET_THRESHOLD: 10
 };
-
+function httprDecodeBase64(b64) {
+    if (typeof window !== 'undefined' && window.httprDecodeBase64) {
+        return window.httprDecodeBase64(b64);
+    }
+    // Локальный fallback
+    return decodeURIComponent(escape(atob(b64)));
+}
 const cryptoWorker = new Worker('crypto-worker.js');
 const cryptoCallbacks = {};
 let cryptoMsgId = 0;
@@ -293,8 +299,44 @@ const P2PPong = {
         const d = await this._get('/beacon?key=waiting_' + targetBeaconId);
         if (!d?.packet) { this._emit('error', { message: 'Маяк не найден' }); return false; }
         
-        const bd = JSON.parse(d.packet);
-        if (!bd?.pubKey || !bd?.inner) { this._emit('error', { message: 'Маяк повреждён' }); return false; }
+        // Извлекаем данные маяка, поддерживая HTTPR конверты
+        let bd;
+        try {
+            const raw = JSON.parse(d.packet);
+            
+            if (raw.v && raw.pl) {
+                // Это HTTPR конверт — извлекаем payload
+                let payload;
+                try {
+                    // Пробуем base64 декодировать
+                    const decoded = httprDecodeBase64(raw.pl);
+                    payload = JSON.parse(decoded);
+                } catch(e) {
+                    // Не получилось — может внутри JSON-строка
+                    try {
+                        payload = JSON.parse(raw.pl);
+                    } catch(e2) {
+                        this._emit('error', { message: 'Не удалось распарсить HTTPR конверт' });
+                        return false;
+                    }
+                }
+                
+                if (payload && payload.data) {
+                    bd = JSON.parse(payload.data);
+                } else {
+                    this._emit('error', { message: 'HTTPR конверт не содержит данных маяка' });
+                    return false;
+                }
+            } else {
+                // Старый формат маяка
+                bd = raw;
+            }
+        } catch(e) {
+            this._emit('error', { message: 'Маяк повреждён — не удалось распарсить' });
+            return false;
+        }
+        
+        if (!bd?.pubKey || !bd?.inner) { this._emit('error', { message: 'Маяк повреждён — нет ключей' }); return false; }
         
         if (window._expectedPubKey && bd.pubKey !== window._expectedPubKey) {
             this._emit('error', { message: 'Публичный ключ не совпадает с QR! Возможна атака MitM.' });
@@ -715,7 +757,6 @@ const P2PPong = {
             return;
         }
         
-        // ✅ Дедупликация: канал уже открыт — игнорируем повторные verification-code
         if (d.type === 'verification-code' && d.code) {
             if (Object.keys(this._channels).length > 0) {
                 return;
