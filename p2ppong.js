@@ -1,4 +1,4 @@
-// p2ppong.js — v6.1 fix: ratchet расхождение при быстрой отправке
+// p2ppong.js — v6.2 с HTTPR мостом и быстрой отправкой
 const DEBUG = true;
 function log(msg, data) { if (DEBUG) console.log(`[P2PPong] ${msg}`, data || ''); }
 
@@ -297,51 +297,6 @@ const P2PPong = {
         return this._beaconId;
     },
 
-    async craftPublicArrow() {
-        this._codeVerified = false;
-        this._peerId = RND();
-        this._kp = await workerGenerateKeyPair();
-        this._remotePubKey = null;
-        this._remotePeerId = null;
-        this._secret = null;
-        this._chId = null;
-        await this._pickServer();
-        
-        const code = this._genCode();
-        this._verificationCode = code;
-        
-        const beaconId = RND();
-        this._beaconId = beaconId;
-        
-        const bk = await SHA(this._kp.publicKey + 'beacon');
-        const inner = await workerEncryptAES(JSON.stringify({ 
-            timestamp: Date.now(), 
-            peerId: this._peerId,
-            beaconId: beaconId,
-            code: code,
-            nick: this._myNick,
-            avatar: this._myAvatar
-        }), bk);
-        
-        const bd = { 
-            type: 'beacon', 
-            pubKey: this._kp.publicKey, 
-            peerId: this._peerId, 
-            inner, 
-            signalServer: this._signalServer.url 
-        };
-        bd.sig = await workerComputeHMAC(bd.pubKey + bd.peerId, bk);
-        
-        this._beacons[this._peerId] = { keyPair: this._kp, beaconKey: bk, expires: Date.now() + CONFIG.BEACON_TTL };
-        this._pending = { type: 'creator' };
-        
-        const result = await this._postWithRetry('/pool', { packet: JSON.stringify(bd) });
-        this._poolBeaconId = result?.id;
-        
-        this._emit('peer-id-generated', { peerId: this._peerId, beaconId: this._beaconId, code: code, pubKey: this._kp.publicKey });
-        return this._beaconId;
-    },
-
     async joinBeacon(targetBeaconId) {
         await this._pickServer();
         const d = await this._getWithRetry('/beacon?key=waiting_' + targetBeaconId);
@@ -484,6 +439,15 @@ const P2PPong = {
         });
         this._startMsgPoll(this._chId);
         this._startWebRTC(this._chId, true);
+        
+        // HTTPR: установка транспортного ключа
+        if (window.P2PPongOverHTTPR && window.P2PPongOverHTTPR._bridged) {
+            SHA(this._secret + 'transport').then(transportKey => {
+                window.P2PPongOverHTTPR.setTransportKey(transportKey).then(kid => {
+                    log('httpr', 'Транспортный ключ установлен: ' + kid);
+                });
+            });
+        }
     },
 
     async _dhRatchetStep(ch) {
@@ -613,18 +577,6 @@ const P2PPong = {
         return null;
     },
 
-    async _delete(path) {
-        const s = this._signalServer || this._signalServers[0];
-        try {
-            const r = await fetch(s.url + path, { 
-                method: 'DELETE', 
-                signal: AbortSignal.timeout(CONFIG.SERVER_FAIL_TIMEOUT) 
-            });
-            if (r.ok) return r.json();
-        } catch(e) {}
-        return null;
-    },
-
     async _post(path, body) {
         const keyHash = body?.keyHash;
         if (this._firebaseActive && keyHash) {
@@ -687,10 +639,8 @@ const P2PPong = {
         const ch = this._channels[chId];
         
         if (ch && ch.secret && typeof blobData === 'string') {
-            // Пробуем распаковать как есть
             let unpackResult = await workerUnpackBlob(blobData, ch);
             
-            // Если не получилось — пробуем продвинуть ratchet
             if (!unpackResult) {
                 try {
                     const raw = JSON.parse(blobData);
@@ -702,7 +652,6 @@ const P2PPong = {
                             ch.recvKey = recvResult.finalKey;
                             ch.recvIndex = recvResult.index;
                             ch.oldRecvKeys = recvResult.oldKeys.slice(-3);
-                            // Пробуем снова с продвинутым ключом
                             unpackResult = await workerUnpackBlob(blobData, ch);
                         }
                     }
