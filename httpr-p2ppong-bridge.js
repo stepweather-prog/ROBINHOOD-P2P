@@ -1,4 +1,4 @@
-// httpr-p2ppong-bridge.js — v1.2 fix: _post всегда возвращает объект
+// httpr-p2ppong-bridge.js — v1.3 fix: _get не подменяется
 const P2PPongOverHTTPR = {
     _p2ppong: null,
     _httpr: null,
@@ -29,7 +29,6 @@ const P2PPongOverHTTPR = {
         this._originalHandleIn = p2ppong._handleIn.bind(p2ppong);
 
         this._patchPost(p2ppong);
-        this._patchGet(p2ppong);
         this._patchPolling(p2ppong);
         this._patchHandleIn(p2ppong);
 
@@ -109,7 +108,6 @@ const P2PPongOverHTTPR = {
             const keyHash = body?.keyHash;
             const packet = body?.packet || JSON.stringify(body);
 
-            // Пробуем через HTTPR
             if (self._httpr && keyHash) {
                 const oldType = self._detectPacketType(packet);
                 const newType = self._mapTypeToHTTPR(oldType);
@@ -134,61 +132,11 @@ const P2PPongOverHTTPR = {
                 }
             }
 
-            // Fallback: оригинальный _postWithRetry
             try {
                 const result = await self._originalPostWithRetry(path, body);
                 return result || { ok: false, error: 'no response' };
             } catch (e) {
                 return { ok: false, error: e.message };
-            }
-        };
-    },
-
-    _patchGet(p2ppong) {
-        const self = this;
-
-        p2ppong._get = async function (path) {
-            const keyHash = new URLSearchParams(path.split('?')[1])?.get('key');
-
-            // Пробуем через HTTPR
-            if (self._httpr && keyHash) {
-                try {
-                    return new Promise((resolve) => {
-                        let resolved = false;
-                        const timeout = setTimeout(() => {
-                            if (!resolved) {
-                                resolved = true;
-                                self._httpr.unsubscribe(keyHash, tempCallback).catch(() => {});
-                                // Fallback
-                                self._originalGetWithRetry(path).then(resolve).catch(() => resolve(null));
-                            }
-                        }, 2000);
-
-                        const tempCallback = (payload) => {
-                            if (!resolved) {
-                                resolved = true;
-                                clearTimeout(timeout);
-                                self._httpr.unsubscribe(keyHash, tempCallback).catch(() => {});
-                                resolve({ packet: payload.data, status: 'found' });
-                            }
-                        };
-
-                        self._httpr.subscribe(keyHash, tempCallback).catch(() => {
-                            if (!resolved) {
-                                resolved = true;
-                                clearTimeout(timeout);
-                                self._originalGetWithRetry(path).then(resolve).catch(() => resolve(null));
-                            }
-                        });
-                    });
-                } catch (e) {}
-            }
-
-            // Fallback: оригинальный _getWithRetry
-            try {
-                return await self._originalGetWithRetry(path);
-            } catch (e) {
-                return null;
             }
         };
     },
@@ -204,7 +152,6 @@ const P2PPongOverHTTPR = {
             p2ppong._pollKey = keyHash;
             p2ppong._pollStart = Date.now();
 
-            // Подписываемся через HTTPR
             if (self._httpr) {
                 self._httpr.subscribe(keyHash, (payload, meta) => {
                     if (payload && payload.data) {
@@ -214,7 +161,6 @@ const P2PPongOverHTTPR = {
                 }).catch(() => {});
             }
 
-            // Firebase слушатель
             if (p2ppong._firebaseActive) {
                 p2ppong._firebaseListen(keyHash, (data) => {
                     if (data && data.packet) {
@@ -224,7 +170,6 @@ const P2PPongOverHTTPR = {
                 });
             }
 
-            // HTTP fallback поллинг
             p2ppong._doPoll();
         };
 
@@ -248,7 +193,6 @@ const P2PPongOverHTTPR = {
         const self = this;
 
         p2ppong._handleIn = async function (blobData) {
-            // Пробуем распарсить как HTTPR конверт
             try {
                 const env = JSON.parse(blobData);
 
