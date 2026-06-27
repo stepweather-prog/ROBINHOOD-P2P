@@ -1,4 +1,4 @@
-// p2ppong.js — v6.2 fix: SHA → p2pSHA (конфликт с httpr-core.js)
+// p2ppong.js — v6.3 fix: joinBeacon использует _get вместо _getWithRetry
 const DEBUG = true;
 function log(msg, data) { if (DEBUG) console.log(`[P2PPong] ${msg}`, data || ''); }
 
@@ -290,7 +290,8 @@ const P2PPong = {
 
     async joinBeacon(targetBeaconId) {
         await this._pickServer();
-        const d = await this._getWithRetry('/beacon?key=waiting_' + targetBeaconId);
+        // ✅ Используем _get (с Firebase + HTTPR + fallback) вместо _getWithRetry
+        const d = await this._get('/beacon?key=waiting_' + targetBeaconId);
         if (!d?.packet) { this._emit('error', { message: 'Маяк не найден' }); return false; }
         
         const bd = JSON.parse(d.packet);
@@ -431,7 +432,6 @@ const P2PPong = {
         this._startMsgPoll(this._chId);
         this._startWebRTC(this._chId, true);
         
-        // HTTPR: установка транспортного ключа
         if (window.P2PPongOverHTTPR && window.P2PPongOverHTTPR._bridged) {
             p2pSHA(this._secret + 'transport').then(transportKey => {
                 window.P2PPongOverHTTPR.setTransportKey(transportKey).then(kid => {
