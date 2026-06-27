@@ -1,4 +1,4 @@
-// httpr-p2ppong-bridge.js — v1.6 fix: очистка подписок в _patchGet
+// httpr-p2ppong-bridge.js — v1.7 fix: гонка подписок, анонимный коллбэк, band-destroyed
 const P2PPongOverHTTPR = {
     _p2ppong: null,
     _httpr: null,
@@ -10,6 +10,9 @@ const P2PPongOverHTTPR = {
     _originalStartPolling: null,
     _originalStopPolling: null,
     _originalHandleIn: null,
+    
+    // Кеш подписок для _patchGet (защита от двойного unsubscribe)
+    _getSubscriptions: {},
 
     async bridge(p2ppong, httpr) {
         if (this._bridged) {
@@ -50,6 +53,14 @@ const P2PPongOverHTTPR = {
         p._stopPolling = this._originalStopPolling;
         p._handleIn = this._originalHandleIn;
 
+        // Чистим все подписки _patchGet
+        for (const keyHash of Object.keys(this._getSubscriptions)) {
+            if (this._httpr && this._getSubscriptions[keyHash]) {
+                this._httpr.unsubscribe(keyHash, this._getSubscriptions[keyHash]).catch(() => {});
+            }
+        }
+        this._getSubscriptions = {};
+
         this._p2ppong = null;
         this._httpr = null;
         this._bridged = false;
@@ -72,6 +83,7 @@ const P2PPongOverHTTPR = {
         return map[oldType] || 'system';
     },
 
+    // ✅ Исправлено: band-destroyed маппится в channel-close (был пропущен)
     _mapTypeToOld(newType) {
         const map = {
             'beacon': 'beacon',
@@ -102,6 +114,7 @@ const P2PPongOverHTTPR = {
         }
     },
 
+    // ✅ _post маяков: Firebase и HTTPR запускаются но мы не ждём их (fire-and-forget)
     _patchPost(p2ppong) {
         const self = this;
 
@@ -109,12 +122,11 @@ const P2PPongOverHTTPR = {
             const keyHash = body?.keyHash;
             const packet = body?.packet || JSON.stringify(body);
 
-            // Маяки и коды: отправляем на ВСЕ серверы параллельно
             if (keyHash && (keyHash.startsWith('waiting_') || keyHash.startsWith('code_'))) {
+                // Firebase и HTTPR — fire-and-forget
                 if (p2ppong._firebaseActive) {
                     p2ppong._firebasePost(keyHash, packet).catch(() => {});
                 }
-
                 if (self._httpr) {
                     const payload = {
                         type: 'beacon',
@@ -128,6 +140,7 @@ const P2PPongOverHTTPR = {
                     self._httpr.send(payload, keyHash).catch(() => {});
                 }
 
+                // Ждём только HTTP-серверы
                 const servers = p2ppong._signalServers.filter(s => s.type === 'http');
                 const results = await Promise.allSettled(
                     servers.map(s =>
@@ -144,7 +157,6 @@ const P2PPongOverHTTPR = {
                 return anyOk ? { ok: true } : { ok: false, error: 'all servers failed' };
             }
 
-            // Сообщения: пробуем HTTPR сначала
             if (self._httpr && keyHash) {
                 const newType = self._mapTypeToHTTPR(self._detectPacketType(packet));
                 const payload = {
@@ -156,14 +168,12 @@ const P2PPongOverHTTPR = {
                     dh: null,
                     data: packet
                 };
-
                 try {
                     const result = await self._httpr.send(payload, keyHash);
                     if (result.success) return { ok: true };
                 } catch (e) {}
             }
 
-            // Fallback
             try {
                 const result = await self._originalPostWithRetry(path, body);
                 return result || { ok: false, error: 'no response' };
@@ -173,35 +183,40 @@ const P2PPongOverHTTPR = {
         };
     },
 
+    // ✅ Исправлено: защита от двойного unsubscribe через кеш _getSubscriptions
     _patchGet(p2ppong) {
         const self = this;
 
         p2ppong._get = async function (path) {
             const keyHash = new URLSearchParams(path.split('?')[1])?.get('key');
 
-            // Маяки и коды: запрашиваем все серверы
             if (keyHash && (keyHash.startsWith('waiting_') || keyHash.startsWith('code_'))) {
-                // HTTPR подписка с очисткой
-                let httprCallback = null;
-                if (self._httpr) {
-                    httprCallback = (payload) => {
-                        if (payload && payload.data) {
-                            if (httprCallback) {
-                                self._httpr.unsubscribe(keyHash, httprCallback).catch(() => {});
-                                httprCallback = null;
-                            }
-                            p2ppong._stopPolling();
-                            p2ppong._handleIn(payload.data);
-                        }
-                    };
-                    self._httpr.subscribe(keyHash, httprCallback).catch(() => {});
+                // Снимаем старую подписку если есть
+                if (self._getSubscriptions[keyHash]) {
+                    self._httpr.unsubscribe(keyHash, self._getSubscriptions[keyHash]).catch(() => {});
+                    delete self._getSubscriptions[keyHash];
                 }
 
-                // Таймаут очистки подписки
+                // Создаём новую подписку
+                let active = true;
+                const callback = (payload) => {
+                    if (!active) return;
+                    active = false;
+                    self._safeUnsubscribe(keyHash, callback);
+                    p2ppong._stopPolling();
+                    p2ppong._handleIn(payload.data);
+                };
+
+                self._getSubscriptions[keyHash] = callback;
+                if (self._httpr) {
+                    self._httpr.subscribe(keyHash, callback).catch(() => {});
+                }
+
+                // Таймаут очистки
                 const cleanupTimeout = setTimeout(() => {
-                    if (httprCallback) {
-                        self._httpr.unsubscribe(keyHash, httprCallback).catch(() => {});
-                        httprCallback = null;
+                    if (active) {
+                        active = false;
+                        self._safeUnsubscribe(keyHash, callback);
                     }
                 }, 30000);
 
@@ -210,10 +225,9 @@ const P2PPongOverHTTPR = {
                     try {
                         const fbResult = await p2ppong._firebaseGet(keyHash);
                         if (fbResult && fbResult.status === 'found') {
+                            active = false;
                             clearTimeout(cleanupTimeout);
-                            if (httprCallback) {
-                                self._httpr.unsubscribe(keyHash, httprCallback).catch(() => {});
-                            }
+                            self._safeUnsubscribe(keyHash, callback);
                             return fbResult;
                         }
                     } catch (e) {}
@@ -227,21 +241,19 @@ const P2PPongOverHTTPR = {
                         if (r.ok) {
                             const data = await r.json();
                             if (data && data.status === 'found' && data.packet) {
+                                active = false;
                                 clearTimeout(cleanupTimeout);
-                                if (httprCallback) {
-                                    self._httpr.unsubscribe(keyHash, httprCallback).catch(() => {});
-                                }
+                                self._safeUnsubscribe(keyHash, callback);
                                 return data;
                             }
                         }
                     } catch (e) {}
                 }
 
-                // Не нашли — подписка остаётся активной до таймаута
                 return { status: 'waiting' };
             }
 
-            // Сообщения: HTTPR subscribe с таймаутом
+            // Сообщения
             if (self._httpr && keyHash) {
                 try {
                     return new Promise((resolve) => {
@@ -274,7 +286,6 @@ const P2PPongOverHTTPR = {
                 } catch (e) {}
             }
 
-            // Fallback
             try {
                 return await self._originalGetWithRetry(path);
             } catch (e) {
@@ -283,8 +294,20 @@ const P2PPongOverHTTPR = {
         };
     },
 
+    // Безопасный unsubscribe с проверкой кеша
+    _safeUnsubscribe(keyHash, callback) {
+        if (this._getSubscriptions[keyHash] === callback) {
+            delete this._getSubscriptions[keyHash];
+        }
+        if (this._httpr) {
+            this._httpr.unsubscribe(keyHash, callback).catch(() => {});
+        }
+    },
+
+    // ✅ Исправлено: коллбэк в _patchPolling сохраняется для очистки
     _patchPolling(p2ppong) {
         const self = this;
+        const _pollCallbacks = {};
 
         p2ppong.startPolling = function (keyHash) {
             if (!keyHash) return;
@@ -293,12 +316,14 @@ const P2PPongOverHTTPR = {
             p2ppong._pollStart = Date.now();
 
             if (self._httpr) {
-                self._httpr.subscribe(keyHash, (payload) => {
+                const callback = (payload) => {
                     if (payload && payload.data) {
                         p2ppong._stopPolling();
                         p2ppong._handleIn(payload.data);
                     }
-                }).catch(() => {});
+                };
+                _pollCallbacks[keyHash] = callback;
+                self._httpr.subscribe(keyHash, callback).catch(() => {});
             }
 
             if (p2ppong._firebaseActive) {
@@ -315,7 +340,10 @@ const P2PPongOverHTTPR = {
 
         p2ppong._stopPolling = function () {
             if (p2ppong._pollTimer) { clearTimeout(p2ppong._pollTimer); p2ppong._pollTimer = null; }
-            if (self._httpr && p2ppong._pollKey) { self._httpr.unsubscribe(p2ppong._pollKey).catch(() => {}); }
+            if (self._httpr && p2ppong._pollKey && _pollCallbacks[p2ppong._pollKey]) {
+                self._httpr.unsubscribe(p2ppong._pollKey, _pollCallbacks[p2ppong._pollKey]).catch(() => {});
+                delete _pollCallbacks[p2ppong._pollKey];
+            }
             if (p2ppong._pollKey) { p2ppong._firebaseUnlisten(p2ppong._pollKey); }
         };
     },
