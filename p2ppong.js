@@ -1,4 +1,4 @@
-// p2ppong.js — v6.5 fix: joinBeacon обрабатывает HTTPR конверты
+// p2ppong.js — v1.0 чистый
 const DEBUG = true;
 function log(msg, data) { if (DEBUG) console.log(`[P2PPong] ${msg}`, data || ''); }
 
@@ -20,13 +20,7 @@ const CONFIG = {
     MAX_RETRIES: 3,
     DH_RATCHET_THRESHOLD: 10
 };
-function httprDecodeBase64(b64) {
-    if (typeof window !== 'undefined' && window.httprDecodeBase64) {
-        return window.httprDecodeBase64(b64);
-    }
-    // Локальный fallback
-    return decodeURIComponent(escape(atob(b64)));
-}
+
 const cryptoWorker = new Worker('crypto-worker.js');
 const cryptoCallbacks = {};
 let cryptoMsgId = 0;
@@ -288,51 +282,69 @@ const P2PPong = {
         this._beacons[this._peerId] = { keyPair: this._kp, beaconKey: bk, expires: Date.now() + CONFIG.BEACON_TTL };
         this._pending = { type: 'creator' };
         
-        await this._post('/beacon', { keyHash: 'waiting_' + beaconId, packet: JSON.stringify(bd) });
-        this.startPolling('waiting_' + beaconId);
+        // Отправляем маяк на все серверы
+        const packet = JSON.stringify(bd);
+        const servers = this._signalServers.filter(s => s.type === 'http');
+        for (const server of servers) {
+            fetch(server.url + '/beacon', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ keyHash: 'waiting_' + beaconId, packet }),
+                signal: AbortSignal.timeout(5000)
+            }).catch(() => {});
+        }
+        // Firebase
+        if (this._firebaseActive) {
+            this._firebasePost('waiting_' + beaconId, packet).catch(() => {});
+        }
+        
+        this.startPolling('ack_' + beaconId);
         this._emit('peer-id-generated', { peerId: this._peerId, beaconId: this._beaconId, code: code, pubKey: this._kp.publicKey });
         return this._beaconId;
     },
 
     async joinBeacon(targetBeaconId) {
         await this._pickServer();
-        const d = await this._get('/beacon?key=waiting_' + targetBeaconId);
+        // Пробуем получить маяк со всех серверов
+        let d = null;
+        const servers = this._signalServers.filter(s => s.type === 'http');
+        
+        // Сначала Firebase
+        if (this._firebaseActive) {
+            try {
+                d = await this._firebaseGet('waiting_' + targetBeaconId);
+                if (d && d.status === 'found') {
+                    log('beacon-found', 'Firebase');
+                }
+            } catch(e) {}
+        }
+        
+        // Потом HTTP-серверы
+        if (!d || !d.packet) {
+            for (const server of servers) {
+                try {
+                    const r = await fetch(server.url + '/beacon?key=waiting_' + targetBeaconId, {
+                        signal: AbortSignal.timeout(5000)
+                    });
+                    if (r.ok) {
+                        const data = await r.json();
+                        if (data && data.status === 'found' && data.packet) {
+                            d = data;
+                            log('beacon-found', server.name);
+                            break;
+                        }
+                    }
+                } catch(e) {}
+            }
+        }
+        
         if (!d?.packet) { this._emit('error', { message: 'Маяк не найден' }); return false; }
         
-        // Извлекаем данные маяка, поддерживая HTTPR конверты
         let bd;
         try {
-            const raw = JSON.parse(d.packet);
-            
-            if (raw.v && raw.pl) {
-                // Это HTTPR конверт — извлекаем payload
-                let payload;
-                try {
-                    // Пробуем base64 декодировать
-                    const decoded = httprDecodeBase64(raw.pl);
-                    payload = JSON.parse(decoded);
-                } catch(e) {
-                    // Не получилось — может внутри JSON-строка
-                    try {
-                        payload = JSON.parse(raw.pl);
-                    } catch(e2) {
-                        this._emit('error', { message: 'Не удалось распарсить HTTPR конверт' });
-                        return false;
-                    }
-                }
-                
-                if (payload && payload.data) {
-                    bd = JSON.parse(payload.data);
-                } else {
-                    this._emit('error', { message: 'HTTPR конверт не содержит данных маяка' });
-                    return false;
-                }
-            } else {
-                // Старый формат маяка
-                bd = raw;
-            }
+            bd = JSON.parse(d.packet);
         } catch(e) {
-            this._emit('error', { message: 'Маяк повреждён — не удалось распарсить' });
+            this._emit('error', { message: 'Маяк повреждён' });
             return false;
         }
         
@@ -387,9 +399,10 @@ const P2PPong = {
             nick: this._myNick,
             avatar: this._myAvatar
         });
-        await this._post('/beacon', { keyHash: 'waiting_' + beaconId, packet: br });
+        // Ответ на ack_, маяк на waiting_
+        await this._post('/beacon', { keyHash: 'ack_' + beaconId, packet: br });
         
-        this.startPolling('waiting_' + beaconId);
+        this.startPolling('ack_' + beaconId);
         this._emit('verification-needed', { code: code });
         return true;
     },
@@ -472,14 +485,6 @@ const P2PPong = {
         });
         this._startMsgPoll(this._chId);
         this._startWebRTC(this._chId, true);
-        
-        if (window.P2PPongOverHTTPR && window.P2PPongOverHTTPR._bridged) {
-            p2pSHA(this._secret + 'transport').then(transportKey => {
-                window.P2PPongOverHTTPR.setTransportKey(transportKey).then(kid => {
-                    log('httpr', 'Транспортный ключ установлен: ' + kid);
-                });
-            });
-        }
     },
 
     async _dhRatchetStep(ch) {
