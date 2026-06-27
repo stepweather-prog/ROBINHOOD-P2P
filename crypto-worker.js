@@ -1,4 +1,4 @@
-// crypto-worker.js — v3.0 Triple Ratchet (Signal Protocol)
+// crypto-worker.js — v1.0 Triple Ratchet (Signal Protocol)
 function bufferToHex(buffer) {
     return Array.from(new Uint8Array(buffer)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
@@ -149,21 +149,11 @@ async function verifyHMAC(data, sigHex, keyHex) {
 // ===== Symmetric Ratchet =====
 
 async function packBlob(jsonString, ch) {
-    // Message Key = HKDF(Chain Key, message-index)
     const messageKey = await HKDF(ch.sendKey, null, 'osprp-message-key-' + ch.sendIndex);
-    
-    // Шифруем сообщение
     const encrypted = await encryptAES(jsonString, messageKey);
-    
-    // HMAC для целостности
     const hmac = await computeHMAC(encrypted, ch.sendKey);
-    
-    // Продвигаем цепочку: новый Chain Key = HKDF(старый Chain Key, chain-index)
     const newSendKey = await HKDF(ch.sendKey, null, 'osprp-chain-key-' + ch.sendIndex);
     const newSendIndex = ch.sendIndex + 1;
-    
-    // Message Key уничтожается (не сохраняется)
-    // Старый Chain Key будет заменён новым
     
     const blob = JSON.stringify({
         d: encrypted,
@@ -184,23 +174,16 @@ async function unpackBlob(blob, ch) {
         const parsed = JSON.parse(blob);
         if (!parsed.d || !parsed.h) return null;
         
-        // Проверяем целостность
         const hmacValid = await verifyHMAC(parsed.d, parsed.h, ch.recvKey);
         if (!hmacValid) return null;
         
-        // Message Key для расшифровки
         const ri = parseInt(parsed._ri) || 0;
         const messageKey = await HKDF(ch.recvKey, null, 'osprp-message-key-' + ri);
-        
-        // Расшифровываем
         const decrypted = await decryptAES(parsed.d, messageKey);
         if (!decrypted) return null;
         
-        // Продвигаем цепочку получения
         const newRecvKey = await HKDF(ch.recvKey, null, 'osprp-chain-key-' + ri);
         const newRecvIndex = ri + 1;
-        
-        // Message Key уничтожается
         
         const result = JSON.parse(decrypted);
         result._ri = parsed._ri;
@@ -221,17 +204,13 @@ async function advanceRecvRatchet(ch, targetRi) {
     let currentIndex = ch.recvIndex || 0;
     const oldKeys = [];
     
-    // Пропускаем потерянные сообщения
     while (currentIndex < targetRi) {
         oldKeys.push({ key: currentKey, index: currentIndex });
         currentKey = await HKDF(currentKey, null, 'osprp-chain-key-' + currentIndex);
         currentIndex++;
-        
-        // Храним только последние 10 ключей
         if (oldKeys.length > 10) oldKeys.shift();
     }
     
-    // Достигли целевого индекса
     if (currentIndex === targetRi) {
         oldKeys.push({ key: currentKey, index: currentIndex });
         currentKey = await HKDF(currentKey, null, 'osprp-chain-key-' + currentIndex);
@@ -245,25 +224,14 @@ async function advanceRecvRatchet(ch, targetRi) {
     };
 }
 
-// ===== DH Ratchet (асимметричный) =====
+// ===== DH Ratchet =====
 
 async function dhRatchetStep(rootKey, myPrivKey, theirPubKey) {
-    // 1. Генерируем новую DH пару
     const newKp = await generateKeyPair();
-    
-    // 2. Вычисляем новый общий секрет
     const dhSecret = await deriveSecret(myPrivKey, theirPubKey);
-    
-    // 3. Новый корневой ключ = HKDF(старый корень, новый DH секрет)
     const newRootKey = await HKDF(rootKey, dhSecret, 'osprp-dh-root');
-    
-    // 4. Новая цепочка отправки (я начинаю слать)
     const newSendKey = await HKDF(newRootKey, null, 'osprp-send-chain');
-    
-    // 5. Новая цепочка получения (будет использована при ответе)
     const newRecvKey = await HKDF(newRootKey, null, 'osprp-recv-chain');
-    
-    // 6. Старый корневой ключ будет перезаписан (уничтожен)
     
     return {
         newRootKey: newRootKey,
@@ -277,19 +245,10 @@ async function dhRatchetStep(rootKey, myPrivKey, theirPubKey) {
 }
 
 async function dhRatchetReceive(rootKey, myPrivKey, theirNewPubKey) {
-    // 1. Вычисляем новый общий секрет (собеседник прислал новый DH ключ)
     const dhSecret = await deriveSecret(myPrivKey, theirNewPubKey);
-    
-    // 2. Новый корневой ключ
     const newRootKey = await HKDF(rootKey, dhSecret, 'osprp-dh-root');
-    
-    // 3. Новая цепочка получения (собеседник начал слать)
     const newRecvKey = await HKDF(newRootKey, null, 'osprp-recv-chain');
-    
-    // 4. Новая цепочка отправки (будет использована при моём ответе)
     const newSendKey = await HKDF(newRootKey, null, 'osprp-send-chain');
-    
-    // 5. Старый корневой ключ будет перезаписан (уничтожен)
     
     return {
         newRootKey: newRootKey,
@@ -312,31 +271,24 @@ self.onmessage = async function(e) {
             case 'SHA':
                 result = await SHA(payload);
                 break;
-                
             case 'generateKeyPair':
                 result = await generateKeyPair();
                 break;
-                
             case 'deriveSecret':
                 result = await deriveSecret(payload.myPrivateKey, payload.theirPublicKey);
                 break;
-                
             case 'encryptAES':
                 result = await encryptAES(payload.text, payload.secret);
                 break;
-                
             case 'decryptAES':
                 result = await decryptAES(payload.enc, payload.secret);
                 break;
-                
             case 'computeHMAC':
                 result = await computeHMAC(payload.data, payload.secret);
                 break;
-                
             case 'verifyHMAC':
                 result = await verifyHMAC(payload.data, payload.sig, payload.secret);
                 break;
-                
             case 'packBlob':
                 const packResult = await packBlob(payload.jsonString, payload.ch);
                 result = {
@@ -345,23 +297,18 @@ self.onmessage = async function(e) {
                     newSendIndex: packResult.newSendIndex
                 };
                 break;
-                
             case 'unpackBlob':
                 result = await unpackBlob(payload.blob, payload.ch);
                 break;
-                
             case 'advanceRecvRatchet':
                 result = await advanceRecvRatchet(payload.ch, payload.targetRi);
                 break;
-                
             case 'dhRatchetStep':
                 result = await dhRatchetStep(payload.rootKey, payload.myPrivKey, payload.theirPubKey);
                 break;
-                
             case 'dhRatchetReceive':
                 result = await dhRatchetReceive(payload.rootKey, payload.myPrivKey, payload.theirNewPubKey);
                 break;
-                
             default:
                 throw new Error('Unknown action: ' + action);
         }
