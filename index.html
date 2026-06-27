@@ -3,318 +3,271 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta name="theme-color" content="#1a1a2a">
-    <title>RobinHood P2P</title>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>RobinCall v1.0</title>
     <link rel="manifest" href="manifest.json">
-    <link rel="icon" type="image/png" href="assets/icons/01icon.png">
-    <script src="lottie.min.js"></script>
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com; style-src 'self' 'unsafe-inline'; media-src 'self' blob: data:; connect-src 'self' https://robincall.stephanclaps-491.workers.dev https://p2ppong-v2.onrender.com https://*.firebaseio.com https://*.firebasedatabase.app wss://*.firebaseio.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.gstatic.com blob:; img-src 'self' data: blob:; frame-src 'self'; manifest-src 'self'; form-action 'none'; base-uri 'self';">
+    <link rel="icon" type="image/png" sizes="192x192" href="001-.png">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com; style-src 'self' 'unsafe-inline'; media-src 'self' blob:; connect-src 'self' https://p2ppong-v2.onrender.com https://robincall.stephanclaps-491.workers.dev https://*.firebaseio.com https://*.firebasedatabase.app wss://*.firebaseio.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com blob:; img-src 'self' data: blob:; frame-src 'self' https://stepweather-prog.github.io; manifest-src 'self'; form-action 'none'; base-uri 'self';">
     <style>
-        :root, [data-theme="forest"] { --bg-primary: #1a2a1f; --bg-secondary: #0d1a0c; --accent: #c4a24b; --accent-light: #e8d5a3; --text: #e8e2c7; --text-bright: #f5e6b8; --text-dim: #b8a87a; --border: #c4a24b; --btn-bg: rgba(196,162,75,0.1); --btn-border: rgba(196,162,75,0.3); --btn-hover: rgba(196,162,75,0.25); --sheet-bg: linear-gradient(145deg, #1e2a1a 0%, #0f180d 100%); --input-bg: rgba(20,30,18,0.9); --msg-bg: rgba(30,40,25,0.85); --msg-accent: #c4a24b; --robin-bg: rgba(50,70,40,0.6); --robin-accent: #e8c97a; --overlay-bg: rgba(0,0,0,0.6); --seeding-color: #4caf50; --danger: #f44336; --call-bg: linear-gradient(180deg, #1a2a1f 0%, #0d1a0c 100%); --call-btn-bg: rgba(196,162,75,0.1); --call-btn-border: rgba(196,162,75,0.3); --call-accept-bg: rgba(76,175,80,0.3); --call-reject-bg: rgba(244,67,54,0.3); --input-text: #e8e2c7; }
-        [data-theme="sunset"] { --bg-primary: #2a1a1f; --bg-secondary: #1a0a0f; --accent: #e85d3a; --accent-light: #f0a080; --text: #f0d8c0; --text-bright: #fae8d0; --text-dim: #c08060; --border: #e85d3a; --robin-accent: #f0a080; --seeding-color: #e85d3a; --msg-bg: rgba(40,20,15,0.85); --input-bg: rgba(30,15,10,0.9); --btn-bg: rgba(232,93,58,0.1); --btn-border: rgba(232,93,58,0.3); --btn-hover: rgba(232,93,58,0.25); --sheet-bg: linear-gradient(145deg, #2a1a18 0%, #1a0a08 100%); --call-bg: linear-gradient(180deg, #2a1a1f 0%, #1a0a0f 100%); --call-btn-bg: rgba(232,93,58,0.1); --call-btn-border: rgba(232,93,58,0.3); --input-text: #f0d8c0; }
-        [data-theme="ocean"] { --bg-primary: #0a1a2f; --bg-secondary: #050d18; --accent: #4bc4d0; --accent-light: #90e8f0; --text: #c8f0f8; --text-bright: #e0fafc; --text-dim: #60a0b0; --border: #4bc4d0; --robin-accent: #90e8f0; --seeding-color: #4bc4d0; --msg-bg: rgba(10,25,35,0.85); --input-bg: rgba(8,20,30,0.9); --btn-bg: rgba(75,196,208,0.1); --btn-border: rgba(75,196,208,0.3); --btn-hover: rgba(75,196,208,0.25); --sheet-bg: linear-gradient(145deg, #0a1828 0%, #050d18 100%); --call-bg: linear-gradient(180deg, #0a1a2f 0%, #050d18 100%); --call-btn-bg: rgba(75,196,208,0.1); --call-btn-border: rgba(75,196,208,0.3); --input-text: #c8f0f8; }
-        [data-theme="rose"] { --bg-primary: #2a1520; --bg-secondary: #1a0a12; --accent: #e84b8a; --accent-light: #f090c0; --text: #f0c8e0; --text-bright: #fae0f0; --text-dim: #c06090; --border: #e84b8a; --robin-accent: #f090c0; --seeding-color: #e84b8a; --msg-bg: rgba(35,15,25,0.85); --input-bg: rgba(30,12,20,0.9); --btn-bg: rgba(232,75,138,0.1); --btn-border: rgba(232,75,138,0.3); --btn-hover: rgba(232,75,138,0.25); --sheet-bg: linear-gradient(145deg, #2a1520 0%, #180a12 100%); --call-bg: linear-gradient(180deg, #2a1520 0%, #1a0a12 100%); --call-btn-bg: rgba(232,75,138,0.1); --call-btn-border: rgba(232,75,138,0.3); --input-text: #f0c8e0; }
-        [data-theme="amber"] { --bg-primary: #2a2010; --bg-secondary: #1a1008; --accent: #e8a030; --accent-light: #f0c860; --text: #f0e0c0; --text-bright: #faf0d0; --text-dim: #c0a060; --border: #e8a030; --robin-accent: #f0c860; --seeding-color: #e8a030; --msg-bg: rgba(35,25,15,0.85); --input-bg: rgba(30,22,12,0.9); --btn-bg: rgba(232,160,48,0.1); --btn-border: rgba(232,160,48,0.3); --btn-hover: rgba(232,160,48,0.25); --sheet-bg: linear-gradient(145deg, #2a2010 0%, #181008 100%); --call-bg: linear-gradient(180deg, #2a2010 0%, #1a1008 100%); --call-btn-bg: rgba(232,160,48,0.1); --call-btn-border: rgba(232,160,48,0.3); --input-text: #f0e0c0; }
-        [data-theme="mint"] { --bg-primary: #0a2a1f; --bg-secondary: #051a10; --accent: #4be8b0; --accent-light: #90f0d0; --text: #c0f0e0; --text-bright: #d0faf0; --text-dim: #60c0a0; --border: #4be8b0; --robin-accent: #90f0d0; --seeding-color: #4be8b0; --msg-bg: rgba(10,30,22,0.85); --input-bg: rgba(8,28,20,0.9); --btn-bg: rgba(75,232,176,0.1); --btn-border: rgba(75,232,176,0.3); --btn-hover: rgba(75,232,176,0.25); --sheet-bg: linear-gradient(145deg, #0a2a1f 0%, #051a10 100%); --call-bg: linear-gradient(180deg, #0a2a1f 0%, #051a10 100%); --call-btn-bg: rgba(75,232,176,0.1); --call-btn-border: rgba(75,232,176,0.3); --input-text: #c0f0e0; }
-        [data-theme="lavender"] { --bg-primary: #1a1530; --bg-secondary: #0d0a20; --accent: #8b5cf6; --accent-light: #b090f8; --text: #d0c8f8; --text-bright: #e0d8fc; --text-dim: #9080c0; --border: #8b5cf6; --robin-accent: #b090f8; --seeding-color: #8b5cf6; --msg-bg: rgba(20,15,35,0.85); --input-bg: rgba(18,12,30,0.9); --btn-bg: rgba(139,92,246,0.1); --btn-border: rgba(139,92,246,0.3); --btn-hover: rgba(139,92,246,0.25); --sheet-bg: linear-gradient(145deg, #1a1528 0%, #0d0a18 100%); --call-bg: linear-gradient(180deg, #1a1530 0%, #0d0a20 100%); --call-btn-bg: rgba(139,92,246,0.1); --call-btn-border: rgba(139,92,246,0.3); --input-text: #d0c8f8; }
-        [data-theme="cherry"] { --bg-primary: #2a0a15; --bg-secondary: #1a0510; --accent: #e8304b; --accent-light: #f06080; --text: #f0c0d0; --text-bright: #fae0e5; --text-dim: #c05070; --border: #e8304b; --robin-accent: #f06080; --seeding-color: #e8304b; --msg-bg: rgba(35,8,18,0.85); --input-bg: rgba(30,8,15,0.9); --btn-bg: rgba(232,48,75,0.1); --btn-border: rgba(232,48,75,0.3); --btn-hover: rgba(232,48,75,0.25); --sheet-bg: linear-gradient(145deg, #2a0a15 0%, #180510 100%); --call-bg: linear-gradient(180deg, #2a0a15 0%, #1a0510 100%); --call-btn-bg: rgba(232,48,75,0.1); --call-btn-border: rgba(232,48,75,0.3); --input-text: #f0c0d0; }
-        [data-theme="emerald"] { --bg-primary: #0a2a15; --bg-secondary: #051a0d; --accent: #30e860; --accent-light: #60f090; --text: #c0f0d0; --text-bright: #d0fae0; --text-dim: #50c070; --border: #30e860; --robin-accent: #60f090; --seeding-color: #30e860; --msg-bg: rgba(10,30,18,0.85); --input-bg: rgba(8,28,15,0.9); --btn-bg: rgba(48,232,96,0.1); --btn-border: rgba(48,232,96,0.3); --btn-hover: rgba(48,232,96,0.25); --sheet-bg: linear-gradient(145deg, #0a2a15 0%, #051a0d 100%); --call-bg: linear-gradient(180deg, #0a2a15 0%, #051a0d 100%); --call-btn-bg: rgba(48,232,96,0.1); --call-btn-border: rgba(48,232,96,0.3); --input-text: #c0f0d0; }
-        [data-theme="slate"] { --bg-primary: #1a1a2a; --bg-secondary: #0d0d1a; --accent: #6b7db3; --accent-light: #a0b0e0; --text: #c8d0f0; --text-bright: #d8e0fa; --text-dim: #8090b0; --border: #6b7db3; --robin-accent: #a0b0e0; --seeding-color: #6b7db3; --msg-bg: rgba(20,20,30,0.85); --input-bg: rgba(18,18,28,0.9); --btn-bg: rgba(107,125,179,0.1); --btn-border: rgba(107,125,179,0.3); --btn-hover: rgba(107,125,179,0.25); --sheet-bg: linear-gradient(145deg, #1a1a28 0%, #0d0d18 100%); --call-bg: linear-gradient(180deg, #1a1a2a 0%, #0d0d1a 100%); --call-btn-bg: rgba(107,125,179,0.1); --call-btn-border: rgba(107,125,179,0.3); --input-text: #c8d0f0; }
-        [data-theme="coral"] { --bg-primary: #2a1a18; --bg-secondary: #1a0d0a; --accent: #e87050; --accent-light: #f0a080; --text: #f0d8c8; --text-bright: #fae8d8; --text-dim: #c09070; --border: #e87050; --robin-accent: #f0a080; --seeding-color: #e87050; --msg-bg: rgba(35,18,14,0.85); --input-bg: rgba(30,18,12,0.9); --btn-bg: rgba(232,112,80,0.1); --btn-border: rgba(232,112,80,0.3); --btn-hover: rgba(232,112,80,0.25); --sheet-bg: linear-gradient(145deg, #2a1a18 0%, #180d0a 100%); --call-bg: linear-gradient(180deg, #2a1a18 0%, #1a0d0a 100%); --call-btn-bg: rgba(232,112,80,0.1); --call-btn-border: rgba(232,112,80,0.3); --input-text: #f0d8c8; }
-        [data-theme="plum"] { --bg-primary: #201a2a; --bg-secondary: #100d1a; --accent: #9b59b6; --accent-light: #c090e0; --text: #d8c8f0; --text-bright: #e8d8fa; --text-dim: #9080b0; --border: #9b59b6; --robin-accent: #c090e0; --seeding-color: #9b59b6; --msg-bg: rgba(25,18,30,0.85); --input-bg: rgba(22,18,28,0.9); --btn-bg: rgba(155,89,182,0.1); --btn-border: rgba(155,89,182,0.3); --btn-hover: rgba(155,89,182,0.25); --sheet-bg: linear-gradient(145deg, #201a28 0%, #100d18 100%); --call-bg: linear-gradient(180deg, #201a2a 0%, #100d1a 100%); --call-btn-bg: rgba(155,89,182,0.1); --call-btn-border: rgba(155,89,182,0.3); --input-text: #d8c8f0; }
+        :root, [data-theme="forest"] { --bg-primary: #1a2a1f; --bg-secondary: #0d1a0c; --accent: #c4a24b; --accent-light: #e8d5a3; --accent-glow: rgba(196,162,75,0.5); --text: #e8e2c7; --text-bright: #f5e6b8; --text-dim: #b8a87a; --border: #c4a24b; --btn-bg: rgba(196,162,75,0.1); --btn-border: rgba(196,162,75,0.3); --btn-hover: rgba(196,162,75,0.25); --sheet-bg: linear-gradient(145deg, #1e2a1a 0%, #0f180d 100%); --input-bg: rgba(20,30,18,0.9); --robin-bg: rgba(50,70,40,0.9); --robin-accent: #e8c97a; --seeding-color: #4caf50; --danger: #f44336; --msg-bg: rgba(30,40,25,0.85); }
+        [data-theme="sunset"] { --bg-primary: #2a1a1f; --bg-secondary: #1a0a0f; --accent: #e85d3a; --accent-light: #f0a080; --text: #f0d8c0; --text-bright: #fae8d0; --text-dim: #c08060; --border: #e85d3a; --robin-accent: #f0a080; --seeding-color: #e85d3a; --msg-bg: rgba(40,20,15,0.85); }
+        [data-theme="ocean"] { --bg-primary: #0a1a2f; --bg-secondary: #050d18; --accent: #4bc4d0; --accent-light: #90e8f0; --text: #c8f0f8; --text-bright: #e0fafc; --text-dim: #60a0b0; --border: #4bc4d0; --robin-accent: #90e8f0; --seeding-color: #4bc4d0; --msg-bg: rgba(10,25,35,0.85); }
+        [data-theme="night-ember"] { --bg-primary: #0f0f0f; --bg-secondary: #080808; --accent: #e87030; --accent-light: #f09060; --text: #d0d0d0; --text-bright: #e8e8e8; --text-dim: #907060; --border: #e87030; --robin-accent: #f09060; --seeding-color: #e87030; --msg-bg: rgba(20,15,10,0.85); }
+        [data-theme="morning-mist"] { --bg-primary: #d8d5c8; --bg-secondary: #c5c1b0; --accent: #4a6b3a; --accent-light: #6b8f55; --text: #2a2a1f; --text-bright: #1a1a0f; --text-dim: #6a6a50; --border: #8a9b70; --robin-accent: #5a7b4a; --seeding-color: #4a6b3a; --msg-bg: rgba(220,215,200,0.85); }
         * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-        html { touch-action: manipulation; }
-        html,body { height:100%; overflow:hidden; font-family:'Segoe UI','Inter',sans-serif; font-size:clamp(14px,2.5vw,16px); }
-        body { background:linear-gradient(135deg, var(--bg-primary), var(--bg-secondary)); color:var(--text); display:flex; flex-direction:column; height:100dvh; position:relative; }
-        body::before { content:""; position:fixed; top:0; left:0; width:100%; height:100%; background-image:url('assets/icons/background.webp'); background-size:cover; background-position:center; z-index:0; opacity:0.35; }
-        .leaves-container { position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:1; overflow:hidden; transition: opacity 2s ease; }
-        .leaf,.feather{position:absolute;top:-50px;animation:fall linear infinite;opacity:0.8}
-        .leaf{font-size:clamp(14px,3vw,22px)}.feather{font-size:clamp(10px,2.5vw,18px)}
-        @keyframes fall{0%{transform:translateY(-50px) rotate(0deg) translateX(0);opacity:.9}25%{transform:translateY(25vh) rotate(90deg) translateX(40px);opacity:.8}50%{transform:translateY(50vh) rotate(180deg) translateX(-30px);opacity:.7}75%{transform:translateY(75vh) rotate(270deg) translateX(35px);opacity:.5}100%{transform:translateY(105vh) rotate(360deg) translateX(-20px);opacity:0}}
-        .leaf:nth-child(odd){animation-duration:15s}.leaf:nth-child(even){animation-duration:20s}.feather:nth-child(odd){animation-duration:24s}.feather:nth-child(even){animation-duration:30s}
-        .leaves-container.sleeping .leaf,.leaves-container.sleeping .feather{animation-play-state:paused;opacity:0.15}
-        .header{background:linear-gradient(135deg,var(--bg-primary),var(--bg-secondary));border-bottom:2px solid var(--border);backdrop-filter:blur(8px);z-index:10;padding:6px 8px;display:flex;flex-direction:column;gap:4px;flex-shrink:0}
-        .header-row-1{display:flex;align-items:center;gap:6px}
-        .header-title-text{font-size:clamp(1em,3vw,1.3em);font-weight:bold;background:linear-gradient(135deg,var(--accent-light),var(--accent));-webkit-background-clip:text;background-clip:text;color:transparent}
-        .header-row-2{display:flex;justify-content:space-around;align-items:center}
-        .header-row-3{display:flex;justify-content:space-around;font-size:0.6em;color:var(--text-dim);margin-top:2px}
-        .header-row-3 span{width:clamp(32px,7vw,42px);text-align:center;cursor:pointer;font-weight:500;letter-spacing:0.3px}
-        .header-btn{width:clamp(36px,8vw,44px);height:clamp(36px,8vw,44px);display:flex;align-items:center;justify-content:center;cursor:pointer;border-radius:50%;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);transition:all 0.15s;position:relative;backdrop-filter:blur(8px);box-shadow:0 2px 8px rgba(0,0,0,0.15)}
-        .header-btn:active{background:rgba(255,255,255,0.12);transform:scale(0.93);box-shadow:0 1px 4px rgba(0,0,0,0.2)}
-        .header-btn img{width:60%;height:60%;object-fit:contain;padding:0}
-        .header-btn.calling { background: var(--call-accept-bg); box-shadow: 0 0 12px var(--seeding-color); }
-        .header-btn.ringing { background: var(--call-reject-bg); animation: btnBlink 0.8s ease-in-out infinite; }
-        @keyframes btnBlink{0%,100%{box-shadow:0 0 8px rgba(196,162,75,0.5)}50%{box-shadow:0 0 20px rgba(196,162,75,0.9),0 0 40px rgba(196,162,75,0.4)}}
-        .header-label{font-size:0.6em;color:var(--text-dim);text-align:center;width:clamp(32px,7vw,42px);cursor:pointer;font-weight:500}
-        .header-avatar{width:clamp(26px,6vw,32px);height:clamp(26px,6vw,32px);border-radius:50%;object-fit:cover;border:2px solid var(--border)}
-        .robin-bar{background:rgba(50,70,40,0.6);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-radius:14px;padding:8px 14px;display:flex;align-items:center;gap:10px;width:100%;border-left:3px solid var(--robin-accent);border:1px solid rgba(255,255,255,0.1);box-shadow:0 4px 16px rgba(0,0,0,0.2),inset 0 1px 0 rgba(255,255,255,0.05)}
-        .robin-bar-avatar{width:40px;height:40px;border-radius:50%;border:2px solid var(--robin-accent);object-fit:cover;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,0.3)}
-        .robin-bar-text{flex:1;min-width:0;text-shadow:0 1px 2px rgba(0,0,0,0.3)}
-        .robin-bar-sender{font-weight:900;font-size:0.85em;color:var(--text-bright)}
-        .robin-bar-msg{font-size:0.85em;color:rgba(255,255,255,0.85);white-space:normal;word-break:break-word}
-        .robin-bar-status{flex-shrink:0;display:flex;align-items:center;gap:4px}
-        .robin-bar-status img{width:14px;height:14px;object-fit:contain}
-        .chat-area{flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:8px;scrollbar-width:none;z-index:1}
-        .chat-area::-webkit-scrollbar{display:none}
-        .message-row{display:flex;align-items:flex-start;gap:8px;background:var(--msg-bg);backdrop-filter:blur(8px);padding:8px 10px;border-radius:14px;border-left:3px solid var(--msg-accent);animation:msgIn 0.3s ease}
-        @keyframes msgIn{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:translateX(0)}}
-        .input-area{background:linear-gradient(135deg,var(--bg-primary),var(--bg-secondary));backdrop-filter:blur(8px);padding:8px;display:flex;gap:6px;align-items:center;border-top:1px solid var(--border);z-index:1;flex-shrink:0}
-        #msg-input{flex:1;background:var(--input-bg);border:1px solid var(--border);padding:10px 12px;color:var(--input-text);border-radius:10px;font-size:clamp(14px,2.5vw,16px);outline:none;font-family:monospace;min-width:0}
-        #msg-input:focus{border-color:var(--accent-light);box-shadow:0 0 8px rgba(196,162,75,0.5)}
-        #btn-emoji{width:32px;height:32px;font-size:16px;border:none;background:transparent;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-        .bow-button{width:clamp(36px,8vw,44px);height:clamp(36px,8vw,44px);cursor:pointer;filter:drop-shadow(0 2px 6px rgba(0,0,0,0.3));flex-shrink:0;transition:transform 0.1s}
-        .bow-button:active{transform:scale(0.92)}
-        .bow-button img{width:100%;height:100%;object-fit:contain}
-        .bow-button.shooting{animation:bowShoot 0.4s ease-out}
-        @keyframes bowShoot{0%{transform:scale(1) rotate(0deg)}30%{transform:scale(1.2) rotate(-15deg)}60%{transform:scale(0.9) rotate(5deg)}100%{transform:scale(1) rotate(0deg)}}
-        .avatar{width:clamp(38px,8vw,44px);height:clamp(38px,8vw,44px);border-radius:50%;object-fit:cover;background-color:#2a3a25;flex-shrink:0;border:2px solid var(--border)}
-        .msg-body{flex:1;min-width:0}.msg-sender{font-weight:900;color:var(--text-bright);font-size:0.9em}
-        .msg-body div{font-size:0.9em;line-height:1.4;color:var(--text)}.msg-status{font-size:0.6em;color:var(--text-dim);text-align:right;margin-top:4px}
-        .bottom-sheet,.avatar-selector{position:fixed;top:0;left:0;width:min(85%,380px);height:100%;background:var(--sheet-bg);border-right:2px solid var(--border);z-index:200;transform:translateX(-100%);transition:transform 0.3s;overflow-y:auto;backdrop-filter:blur(16px)}
-        .bottom-sheet.open,.avatar-selector.show{transform:translateX(0)}
-        .bottom-sheet-header{padding:16px;font-weight:bold;color:var(--accent-light);border-bottom:1px solid var(--border);display:flex;justify-content:space-between}
-        .bottom-sheet-close{background:none;border:none;color:var(--accent-light);font-size:22px;cursor:pointer}
-        .bottom-sheet-list{padding:6px 12px}
-        .contact-item{display:flex;align-items:center;justify-content:space-between;padding:12px 10px;margin:5px 0;border-radius:12px;background:rgba(128,128,128,0.05);border:1px solid var(--btn-border);cursor:pointer;transition:all 0.15s;color:var(--text)}
-        .contact-item:active{background:var(--btn-hover);transform:scale(0.97)}
-        .contact-info{display:flex;align-items:center;gap:10px;flex:1}
-        .contact-info img{width:28px;height:28px;object-fit:contain}
-        .contact-name{font-weight:600;font-size:0.9em;color:var(--accent-light)}
-        .delete-contact{background:none;border:none;color:#c97a5a;font-size:18px;cursor:pointer}
-        .avatar-selector{padding:16px}.avatar-selector p{color:var(--accent-light);margin-bottom:12px;text-align:center}
-        #avatar-list{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;max-height:calc(100vh - 100px);overflow-y:auto;scrollbar-width:none}
-        #avatar-list::-webkit-scrollbar{display:none}
-        .avatar-option{width:clamp(45px,10vw,55px);height:clamp(45px,10vw,55px);border-radius:50%;object-fit:cover;cursor:pointer;border:2px solid transparent;transition:all 0.15s;margin:3px}
-        .avatar-option:active{border-color:var(--accent-light);transform:scale(0.9)}
-        .overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:var(--overlay-bg);backdrop-filter:blur(4px);display:none;z-index:190}
-        .overlay.show{display:block}
-        .modal-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:300;justify-content:center;align-items:center}
-        .modal-overlay.active{display:flex}
-        .modal-dialog{background:var(--sheet-bg);padding:20px;border-radius:20px;width:85%;max-width:380px;text-align:center;border:2px solid var(--border);color:var(--text);max-height:90vh;overflow-y:auto}
-        .modal-dialog h3{color:var(--accent-light);margin-bottom:12px}
-        .modal-dialog button{width:100%;padding:12px;margin-top:8px;border:none;border-radius:10px;font-weight:bold;cursor:pointer;transition:all 0.15s}
-        .modal-dialog button:active{transform:scale(0.95)}
-        .btn-primary{background:linear-gradient(135deg,var(--accent),#b8903a);color:#1a1f0f}
-        .btn-dark{background:#4a3a2a;color:#eee}.btn-cancel{background:#5a3a2a;color:#eee}
-        .code-display{background:rgba(0,0,0,0.3);border:1px solid var(--border);color:var(--accent-light);border-radius:10px;padding:10px;font-size:0.75em;word-break:break-all;margin:12px 0;font-family:monospace;user-select:all}
-        .toggle-switch{position:relative;display:inline-block;width:44px;height:24px}
-        .toggle-switch input{opacity:0;width:0;height:0}
-        .toggle-slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:rgba(128,128,128,0.15);border-radius:24px;border:2px solid var(--border)}
-        .toggle-slider:before{content:"";position:absolute;height:16px;width:16px;left:2px;bottom:2px;background:var(--text-dim);border-radius:50%}
-        .toggle-switch input:checked+.toggle-slider{background:var(--seeding-color)}
-        .toggle-switch input:checked+.toggle-slider:before{transform:translateX(20px);background:white}
-        .smoke-anim{position:fixed;bottom:50%;left:50%;transform:translate(-50%,50%);width:280px;height:280px;z-index:500;pointer-events:none;animation:smokeRise 3s ease-out forwards}
-        @keyframes smokeRise{0%{opacity:1;transform:translate(-50%,50%) scale(0.5)}100%{opacity:0;transform:translate(-50%,-100%) scale(1.5)}}
-        .quiver-anim{position:fixed;top:0;left:0;width:100%;height:100%;z-index:500;pointer-events:none;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.3);animation:fadeIn 0.3s ease}
-        @keyframes fadeIn{from{opacity:0}to{opacity:1}}
-        @keyframes quiverPulse{0%,100%{transform:scale(1) rotate(0deg)}25%{transform:scale(1.2) rotate(-5deg)}75%{transform:scale(1.2) rotate(5deg)}}
-        #lock-screen{position:fixed;top:0;left:0;width:100%;height:100%;z-index:9999;display:none;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--bg-primary),var(--bg-secondary))}
-        .lock-title{font-size:1.5em;font-weight:bold;background:linear-gradient(135deg,var(--accent-light),var(--accent));-webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:20px}
-        .lock-subtitle{color:var(--text-dim);font-size:0.85em;margin-bottom:10px}
-        .lock-pin-dots{display:flex;gap:12px;margin:16px 0}
-        .lock-pin-dot{width:14px;height:14px;border-radius:50%;border:2px solid var(--border)}
-        .lock-pin-dot.filled{background:var(--accent-light)}
-        .lock-numpad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:280px}
-        .lock-num{width:70px;height:70px;border-radius:50%;border:2px solid var(--border);background:var(--btn-bg);color:var(--text);font-size:1.5em;cursor:pointer;display:flex;align-items:center;justify-content:center}
-        .lock-num:active{background:var(--accent)}.lock-num.zero{grid-column:2}
-        .lock-error{color:var(--danger);font-size:0.8em;margin-top:8px}
-        #call-panel{display:none;position:fixed;top:0;left:0;width:100%;height:100dvh;background:var(--call-bg);backdrop-filter:blur(20px);z-index:100;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:40px 20px}
-        .call-avatar-large{width:100px;height:100px;border-radius:50%;object-fit:cover;border:3px solid var(--accent);animation:callPulse 2s ease-in-out infinite}
-        @keyframes callPulse{0%,100%{box-shadow:0 0 20px rgba(196,162,75,0.3)}50%{box-shadow:0 0 40px rgba(196,162,75,0.6)}}
-        .call-name{font-size:1.2em;font-weight:bold;color:var(--accent-light)}
-        .call-status-text{font-size:0.9em;color:var(--text-dim)}
-        .call-timer-large{font-size:2em;font-weight:bold;color:var(--seeding-color);font-family:monospace}
-        .call-buttons{display:flex;gap:30px;margin-top:20px}
-        .call-btn-round{width:65px;height:65px;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:28px;transition:all 0.2s}
-        .call-btn-round:active{transform:scale(0.9)}
-        .call-btn-end{background:var(--danger);color:white}
-        .call-btn-mute{background:var(--call-btn-bg);border:1px solid var(--call-btn-border);color:var(--text)}
-        .call-btn-mute.muted{background:var(--danger)}
-        .call-btn-speaker{background:var(--call-btn-bg);border:1px solid var(--call-btn-border);color:var(--text)}
-        .call-btn-speaker.active{background:var(--accent);color:#1a1f0f}
-        .call-action-btn{width:85px;height:85px;border-radius:50%;border:3px solid;font-size:40px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.2s;background:transparent;backdrop-filter:blur(8px)}
-        .call-action-btn.accept{border-color:var(--seeding-color);color:var(--seeding-color);background:rgba(76,175,80,0.2);box-shadow:0 0 25px rgba(76,175,80,0.3)}
-        .call-action-btn.reject{border-color:var(--danger);color:var(--danger);background:rgba(244,67,54,0.2);box-shadow:0 0 25px rgba(244,67,54,0.3)}
-        .call-action-btn:active{transform:scale(0.8);filter:brightness(1.5)}
-        .call-volume-controls input[type="range"] { -webkit-appearance:none; height:6px; background:var(--call-btn-bg); border-radius:3px; outline:none; }
-        .call-volume-controls input[type="range"]::-webkit-slider-thumb { -webkit-appearance:none; width:20px; height:20px; border-radius:50%; background:var(--accent); cursor:pointer; border:2px solid var(--accent-light); }
-        .voice-recording-indicator{position:absolute;top:-38px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:6px;z-index:22;pointer-events:none}
-        .voice-timer-text{color:var(--danger);font-family:monospace;font-size:0.75em;background:rgba(0,0,0,0.85);padding:2px 6px;border-radius:4px;white-space:nowrap}
-        .voice-wave-bar{width:3px;background:var(--danger);border-radius:1px;animation:voiceWaveAnim 0.5s ease-in-out infinite}
-        @keyframes voiceWaveAnim{0%,100%{transform:scaleY(1)}50%{transform:scaleY(0.4)}}
-        #emoji-panel{scrollbar-width:none}
-        #emoji-panel::-webkit-scrollbar{display:none}
-        #emoji-grid span{font-size:clamp(20px,4vw,24px);cursor:pointer;padding:5px;border-radius:6px;transition:all 0.1s}
-        #emoji-grid span:active{background:var(--btn-hover);transform:scale(0.9)}
-        #bow-above-send{position:fixed;bottom:60px;right:12px;width:100px;height:100px;z-index:100;pointer-events:none;display:none}
-        .robin-arrow-container{display:inline-block;vertical-align:middle;margin-left:6px}
-        .typing-indicator{font-size:0.65em;color:var(--text-dim);padding:2px 10px;font-style:italic;min-height:16px}
-        .audio-player{display:flex;align-items:center;gap:8px;width:100%;max-width:250px;background:var(--msg-bg);border:1px solid var(--btn-border);border-radius:20px;padding:6px 12px}
-        .audio-play-btn{width:36px;height:36px;border-radius:50%;border:none;background:var(--accent);color:#1a1f0f;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
-        .audio-wave{flex:1;display:flex;align-items:flex-end;gap:2px;height:24px}
-        .audio-wave-bar{width:3px;background:var(--accent);border-radius:1px;animation:waveAnim 0.8s ease-in-out infinite}
-        .audio-wave-bar:nth-child(1){animation-delay:0s;height:8px}.audio-wave-bar:nth-child(2){animation-delay:0.1s;height:14px}.audio-wave-bar:nth-child(3){animation-delay:0.2s;height:10px}.audio-wave-bar:nth-child(4){animation-delay:0.3s;height:18px}
-        @keyframes waveAnim{0%,100%{transform:scaleY(1)}50%{transform:scaleY(0.4)}}
-        .audio-playing .audio-wave-bar{animation-play-state:running}
-        .audio-paused .audio-wave-bar{animation-play-state:paused}
-        .audio-time{font-size:0.65em;color:var(--text-dim);min-width:32px;text-align:right;font-family:monospace}
-        #btn-voice-input{width:clamp(36px,8vw,44px)!important;height:clamp(36px,8vw,44px)!important;border-radius:50%!important}
-        .cup-indicator{font-size:0.65em;color:var(--text-dim);display:inline-flex;align-items:center;gap:2px}
-        .cup-indicator .low{color:var(--danger)}.cup-indicator .ok{color:var(--accent)}.cup-indicator .full{color:var(--seeding-color)}
-        .ratchet-indicator{font-size:0.6em;padding:2px 6px;border-radius:4px;font-family:monospace;white-space:nowrap}
-        .hidden { display: none !important; }
-        @media (max-width: 400px) {
-            .modal-dialog { max-width: 95%; padding: 12px; font-size: 0.85em; }
-            .modal-dialog button { padding: 10px; font-size: 0.9em; }
-        }
+        html,body { height:100%; overflow:hidden; font-family:'Segoe UI','Inter','Georgia',serif; font-size: clamp(14px, 2.5vw, 16px); }
+        body { background:linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%); color:var(--text); display:flex; flex-direction:column; height:100dvh; position:relative; }
+        body::before { content:""; position:fixed; top:0; left:0; width:100%; height:100%; background-image:url('background.webp'); background-size:cover; background-position:center; z-index:0; opacity:0.3; }
+        .header { background:linear-gradient(135deg, rgba(25,35,20,0.96), rgba(15,25,12,0.98)); border-bottom:2px solid var(--border); backdrop-filter:blur(8px); z-index:10; padding:6px 10px; display:flex; flex-direction:column; gap:4px; flex-shrink:0; }
+        .header-top { display:flex; align-items:center; gap:6px; }
+        .header-title { font-size:1em; font-weight:bold; background:linear-gradient(135deg, var(--accent-light), var(--accent)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+        .header-status { margin-left:auto; display:flex; align-items:center; gap:4px; font-size:0.6em; color:var(--text-dim); }
+        .connection-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+        .connection-dot.online { background:var(--seeding-color); box-shadow:0 0 5px var(--seeding-color); }
+        .connection-dot.offline { background:var(--danger); }
+        .connection-dot.checking { background:#ff9800; animation:pulse 1s infinite; }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+        .header-btns { display:flex; justify-content:space-around; align-items:center; }
+        .header-btn { width:38px; height:38px; display:flex; align-items:center; justify-content:center; cursor:pointer; border-radius:10px; background:var(--btn-bg); border:1px solid var(--btn-border); font-size:18px; transition:all 0.2s; }
+        .header-btn:hover { background:var(--btn-hover); transform:scale(1.05); border-color:var(--accent); }
+        .header-btn img { width:100%; height:100%; object-fit:contain; padding:4px; }
+        .header-labels { display:flex; justify-content:space-around; }
+        .header-label { font-size:0.5em; color:var(--text-dim); text-align:center; width:38px; cursor:pointer; }
+        .header-avatar { width:26px; height:26px; border-radius:50%; object-fit:cover; border:2px solid var(--border); }
+        .main-area { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; position:relative; z-index:1; padding:15px; gap:12px; }
+        .robin-row { background:var(--robin-bg); border-left:3px solid var(--robin-accent); border-radius:14px; padding:10px 14px; display:flex; align-items:center; gap:10px; max-width:90%; }
+        .robin-avatar { width:40px; height:40px; border-radius:50%; border:2px solid var(--robin-accent); object-fit:cover; }
+        .robin-text { font-weight:700; font-size:0.8em; color:var(--text-bright); }
+        .call-timer { font-size:1.6em; font-weight:bold; color:var(--seeding-color); font-family:monospace; }
+        .btn-round { width:70px; height:70px; border-radius:50%; border:3px solid var(--border); cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.3s; background:var(--btn-bg); font-size:28px; }
+        .btn-round:hover { background:var(--btn-hover); box-shadow:0 0 30px var(--accent-glow); transform:scale(1.08); }
+        .btn-call { border-color:var(--seeding-color); background:rgba(76,175,80,0.2); }
+        .btn-hangup { border-color:var(--danger); background:rgba(244,67,54,0.2); }
+        .btn-main { width:90px; height:90px; border-radius:50%; border:3px solid var(--accent); cursor:pointer; background:var(--btn-bg); display:flex; align-items:center; justify-content:center; transition:all 0.3s; font-size:36px; }
+        .btn-main:hover { background:var(--btn-hover); box-shadow:0 0 35px var(--accent-glow); transform:scale(1.08); }
+        .btn-main:active { transform:scale(0.92); }
+        .btn-main.ringing { animation: ringPulse 0.8s ease-in-out infinite; border-color:var(--seeding-color); }
+        @keyframes ringPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.08);box-shadow:0 0 40px var(--accent-glow)} }
+        .hidden { display:none!important; }
+        .controls-row { display:flex; gap:18px; align-items:center; justify-content:center; }
+        .voice-timer-overlay { display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(0,0,0,0.9); color:var(--danger); font-family:monospace; font-size:1.2em; padding:10px 20px; border-radius:12px; z-index:50; pointer-events:none; border:2px solid var(--danger); }
+        .video-circle-player { position:fixed; top:0; left:0; width:100%; height:100%; z-index:400; background:#000; display:none; justify-content:center; align-items:center; }
+        .video-circle-player video { max-width:100%; max-height:100%; border-radius:16px; }
+        .video-circle-close { position:absolute; top:16px; right:16px; width:44px; height:44px; border-radius:50%; background:rgba(244,67,54,0.8); border:2px solid var(--danger); color:white; font-size:22px; cursor:pointer; z-index:401; display:flex; align-items:center; justify-content:center; }
+        .bottom-sheet, .avatar-selector { position:fixed; top:0; left:0; width:min(85%, 320px); height:100%; background:var(--sheet-bg); border-right:2px solid var(--border); z-index:200; transform:translateX(-100%); transition:transform 0.3s ease; overflow-y:auto; backdrop-filter:blur(16px); }
+        .bottom-sheet.open, .avatar-selector.show { transform:translateX(0); }
+        .bottom-sheet-header { padding:14px 14px 8px; font-weight:bold; color:var(--accent-light); border-bottom:1px solid var(--border); margin-bottom:4px; font-size:0.9em; display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.2); }
+        .bottom-sheet-close { background:none; border:none; color:var(--accent-light); font-size:20px; cursor:pointer; width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; }
+        .contact-item { display:flex; align-items:center; justify-content:space-between; padding:10px; margin:4px 0; border-radius:10px; background:rgba(255,245,215,0.05); border:1px solid var(--btn-border); cursor:pointer; color:var(--text); }
+        .contact-info { display:flex; align-items:center; gap:8px; flex:1; }
+        .contact-name { font-weight:600; font-size:0.8em; color:var(--accent-light); }
+        .avatar-selector { padding:14px; } .avatar-selector p { color:var(--accent-light); margin:0 0 10px; font-size:0.9em; text-align:center; }
+        #avatar-list { display:flex; flex-wrap:wrap; gap:5px; justify-content:center; }
+        .avatar-option { width:46px; height:46px; border-radius:50%; object-fit:cover; margin:2px; cursor:pointer; border:2px solid transparent; transition:all 0.2s; }
+        .avatar-option:hover { border-color:var(--accent-light); transform:scale(1.1); }
+        .overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); backdrop-filter:blur(4px); display:none; z-index:190; }
+        .overlay.show { display:block; }
+        .modal-overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); backdrop-filter:blur(8px); z-index:300; justify-content:center; align-items:center; }
+        .modal-overlay.active { display:flex; }
+        .modal-dialog { background:var(--sheet-bg); padding:18px; border-radius:18px; width:85%; max-width:360px; text-align:center; border:2px solid var(--border); }
+        .modal-dialog h3 { color:var(--accent-light); margin:0 0 10px; }
+        .modal-dialog input { width:100%; padding:8px; margin-bottom:8px; background:var(--input-bg); border:1px solid var(--border); border-radius:8px; color:var(--text); font-size:14px; outline:none; }
+        .modal-dialog button { width:100%; padding:10px; margin-top:6px; border:none; border-radius:8px; font-weight:bold; cursor:pointer; }
+        .btn-primary { background:linear-gradient(135deg, var(--accent), #b8903a); color:#1a1f0f; }
+        .btn-dark { background:#4a3a2a; color:#eee; }
+        .code-display { background:#0a1208; border:1px solid var(--border); color:var(--accent-light); border-radius:8px; padding:8px; font-size:0.65em; word-break:break-all; margin:10px 0; font-family:monospace; user-select:all; }
+        .toggle-switch { position:relative; display:inline-block; width:40px; height:22px; flex-shrink:0; }
+        .toggle-switch input { opacity:0; width:0; height:0; }
+        .toggle-slider { position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; background:rgba(255,255,255,0.1); border-radius:22px; border:2px solid var(--border); }
+        .toggle-slider:before { content:""; position:absolute; height:14px; width:14px; left:2px; bottom:2px; background:var(--text-dim); border-radius:50%; }
+        .toggle-switch input:checked + .toggle-slider { background:var(--seeding-color); border-color:var(--seeding-color); }
+        .toggle-switch input:checked + .toggle-slider:before { transform:translateX(18px); background:white; }
+        .chat-msg { background:var(--msg-bg); border-radius:10px; padding:6px 10px; max-width:85%; font-size:0.75em; border-left:2px solid var(--accent); animation: slideIn 0.3s ease; }
+        @keyframes slideIn { from{opacity:0;transform:translateY(-5px)} to{opacity:1;transform:translateY(0)} }
+        .chat-msg.self { border-left-color:var(--seeding-color); align-self:flex-end; }
+        #recent-msgs { display:none; max-height:120px; overflow-y:auto; width:90%; flex-direction:column; gap:4px; padding:0 10px; }
+        #verify-code-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; max-width:240px; margin:12px auto; }
+        #verify-code-grid button { width:65px; height:65px; font-size:1.8em; border-radius:50%; border:2px solid var(--border); background:var(--btn-bg); color:var(--text); cursor:pointer; }
+        #verify-code-grid button:active { background:var(--accent); }
+        .verify-code-display { font-size:2em; font-family:monospace; letter-spacing:8px; margin:12px 0; color:var(--accent-light); min-height:40px; }
+        .main-input-row { display:flex; gap:6px; width:90%; max-width:320px; }
+        .main-input-row input { flex:1; padding:8px 12px; background:var(--input-bg); border:1px solid var(--border); border-radius:10px; color:var(--text); font-size:12px; font-family:monospace; outline:none; }
+        .main-input-row button { padding:8px 14px; border-radius:10px; border:none; background:linear-gradient(135deg,#6b7db3,#4a5a8a); color:white; cursor:pointer; font-weight:bold; white-space:nowrap; font-size:12px; }
     </style>
 </head>
 <body>
-<div id="lock-screen">
-    <div class="lock-title">🔐 RobinHood P2P</div>
-    <div class="lock-subtitle" id="lock-subtitle">Введи пин-код</div>
-    <div class="lock-pin-dots" id="lock-pin-section">
-        <div class="lock-pin-dot"></div><div class="lock-pin-dot"></div><div class="lock-pin-dot"></div><div class="lock-pin-dot"></div><div class="lock-pin-dot"></div>
-    </div>
-    <div class="lock-numpad" id="lock-numpad"></div>
-    <div class="lock-error" id="lock-error"></div>
-</div>
-<div id="app-container" style="display:none;flex-direction:column;height:100%;">
-<div class="leaves-container" id="leaves-container"></div>
+<div id="app-container" style="display:flex;flex-direction:column;height:100%;">
 <div class="header">
-    <div class="header-row-1"><span class="header-title-text">RobinHood P2P</span><span class="header-shield">🏹</span></div>
-    <div class="header-row-2">
-        <div class="header-btn" id="btn-avatar"><img src="assets/avatar/001ava.png" class="header-avatar" id="profile-avatar-small" alt="avatar"></div>
-        <div class="header-btn" id="btn-craft"><img src="assets/icons/08icon.png" alt="craft"></div>
-        <div class="header-btn" id="btn-call"><img src="assets/icons/16icon.png" alt="call"></div>
-        <div class="header-btn" id="btn-clear"><img src="assets/icons/18icon.png" alt="clear"></div>
-        <div class="header-btn" id="btn-bands"><img src="assets/icons/10icon.png" alt="bands"></div>
-        <div class="header-btn" id="btn-settings"><img src="assets/icons/11icon.png" alt="settings"></div>
+    <div class="header-top"><span class="header-title">🏹 RobinCall v6.1</span><div class="header-status"><span class="connection-dot checking" id="connection-dot"></span><span id="connection-label">Проверка...</span></div></div>
+    <div class="header-btns">
+        <div class="header-btn" id="btn-avatar-menu"><img src="001-.png" class="header-avatar" id="profile-avatar-small" alt="avatar"></div>
+        <div class="header-btn" id="btn-arrow"><span>🏹</span></div>
+        <div class="header-btn" id="btn-call-main"><span>📞</span></div>
+        <div class="header-btn" id="btn-video-circle"><span>📹</span></div>
+        <div class="header-btn" id="btn-voice"><span>🎤</span></div>
+        <div class="header-btn" id="btn-settings"><span>⚙️</span></div>
     </div>
-   <div class="header-row-3"><span class="header-label" id="nick-label">Твой ник</span><span class="header-label">Открыть колчан</span><span class="header-label">Колчан звонков</span><span class="header-label">Скурить чат</span><span class="header-label">Шайки Шервуда</span><span class="header-label">Опции Шервуда</span></div>
-    <div class="robin-bar"><img src="assets/avatar/001ava.png" class="robin-bar-avatar" id="robin-avatar"><div class="robin-bar-text"><div class="robin-bar-sender" id="robin-bar-sender">RobinHood P2P</div><div class="robin-bar-msg" id="robin-text">Слепой Улей активирован! Святые сокеты стабильны!</div></div><div class="robin-bar-status"><span class="ratchet-indicator" id="ratchet-indicator" style="display:none;">🔄 0</span><img src="assets/icons/05icon.png" id="connection-icon" alt="status"><span class="cup-indicator" id="cup-indicator" style="display:none;">&nbsp;🍺<span id="cup-blobs">0/10</span>&nbsp;⏱<span id="cup-timer">10:00</span></span></div></div>
+    <div class="header-labels"><span class="header-label" id="nick-label">Ник</span><span class="header-label">Стрела</span><span class="header-label">Звонок</span><span class="header-label">Кружок</span><span class="header-label">Голос</span><span class="header-label" id="settings-label">Опции</span></div>
 </div>
-<div class="chat-area" id="chat-box"><div class="typing-indicator" id="typing-indicator"></div></div>
-<div class="input-area">
-    <input type="text" id="msg-input" placeholder="Выпустить стрелу" autocomplete="off">
-    <button id="btn-emoji">😊</button>
-    <button class="header-btn" id="btn-voice-input" style="flex-shrink:0;position:relative;"><img src="assets/icons/03icon.png" alt="voice"></button>
-    <img src="assets/icons/02icon.png" class="bow-button" id="send-btn" alt="Отправить">
-</div>
-<div id="emoji-panel" style="display:none;position:fixed;bottom:55px;left:0;width:100%;background:linear-gradient(135deg,var(--bg-primary),var(--bg-secondary));border-top:2px solid var(--border);z-index:50;padding:8px;max-height:180px;overflow-y:auto;"><div id="emoji-grid" style="display:grid;grid-template-columns:repeat(8,1fr);gap:6px;text-align:center;"></div></div>
-<div id="call-panel">
-    <img id="call-avatar" class="call-avatar-large" src="assets/avatar/001ava.png">
-    <div class="call-name" id="call-contact-name">Лучник</div>
-    <div class="call-status-text" id="call-status">📞 Вызов...</div>
-    <div class="call-volume-controls" style="display:flex;flex-direction:column;gap:8px;width:80%;max-width:250px;margin:8px 0;">
-        <div style="display:flex;align-items:center;gap:8px;"><span style="font-size:16px;">🎤</span><input type="range" id="mic-volume" min="0" max="200" value="100" style="flex:1;accent-color:var(--accent);"><span style="font-size:16px;" id="mic-volume-value">100%</span></div>
-        <div style="display:flex;align-items:center;gap:8px;"><span style="font-size:16px;">🔊</span><input type="range" id="speaker-volume" min="0" max="200" value="100" style="flex:1;accent-color:var(--accent);"><span style="font-size:16px;" id="speaker-volume-value">100%</span></div>
-    </div>
-    <div class="call-buttons" id="active-call-controls" style="display:none;">
-        <button class="call-btn-round call-btn-speaker" id="call-speaker">🔊</button>
-        <button class="call-btn-round call-btn-mute" id="call-mic">🎤</button>
-        <button class="call-btn-round call-btn-end" id="call-end">✕</button>
-    </div>
-    <div class="call-buttons" id="incoming-call-controls" style="display:none;">
-        <button class="call-action-btn accept" id="call-accept">📞</button>
-        <button class="call-action-btn reject" id="call-reject">✕</button>
-    </div>
-</div>
-<div class="overlay" id="overlay"></div>
-<div class="avatar-selector" id="avatar-selector"><p>🏹 Выбери лучника 🏹</p><div id="avatar-list"></div></div>
-<div class="bottom-sheet" id="settings-sheet"><div class="bottom-sheet-header"><span>⚙️ Опции Шервуда</span><button class="bottom-sheet-close" id="settings-close">✕</button></div><div class="bottom-sheet-list">
-    <div class="contact-item" id="setting-sound"><div class="contact-info"><img src="assets/icons/15icon.png"><span class="contact-name">Звук</span></div><label class="toggle-switch"><input type="checkbox" id="toggle-sound" checked><span class="toggle-slider"></span></label></div>
-    <div class="contact-item" id="setting-animations"><div class="contact-info"><span style="font-size:24px;">✨</span><span class="contact-name">Анимации</span></div><label class="toggle-switch"><input type="checkbox" id="toggle-animations" checked><span class="toggle-slider"></span></label></div>
-    <div class="contact-item" id="setting-theme"><div class="contact-info"><img src="assets/icons/12icon.png"><span class="contact-name">Тема</span></div><span id="theme-name">Сланец</span></div>
-    <div class="contact-item" id="setting-theme-random"><div class="contact-info"><span style="font-size:24px;">🎲</span><span class="contact-name">Авто-тема</span></div><span>🎨</span></div>
-    <div class="contact-item" id="setting-self-destruct"><div class="contact-info"><span style="font-size:24px;">🍁</span><span class="contact-name">Листопад</span></div><label class="toggle-switch"><input type="checkbox" id="toggle-selfdestruct"><span class="toggle-slider"></span></label></div>
-    <div class="contact-item" id="setting-lock"><div class="contact-info"><span style="font-size:24px;">🔐</span><span class="contact-name">Блокировка</span></div><span id="lock-status">Не задан</span></div>
-    <div class="contact-item" id="setting-terms"><div class="contact-info"><span style="font-size:24px;">⚜</span><span class="contact-name">Условия использования</span></div><span>→</span></div>
-    <div class="contact-item setting-install-btn hidden" id="setting-install"><div class="contact-info"><img src="assets/avatar/001ava.png" style="width:28px;height:28px;border-radius:6px;"><div><div class="contact-name">RobinHood P2P</div><div style="font-size:0.6em;color:var(--text-dim);">Установить приложение</div></div></div><span>📲</span></div>
-</div></div>
 
-<div class="modal-overlay" id="craft-modal"><div class="modal-dialog"><h3>🏹 Открыть колчан</h3>
+<div class="main-area">
+    <div class="robin-row"><img src="001-.png" class="robin-avatar" id="robin-avatar" alt="Robin" onerror="this.src='001-.png';"><div><div style="font-weight:900;font-size:0.85em;">Robin Hood</div><div class="robin-text" id="robin-message">Колчан готов!</div></div></div>
+    <div class="main-input-row" id="main-join-row">
+        <input type="text" id="main-join-input" placeholder="Beacon ID друга..." autocomplete="off">
+        <button id="btn-main-join">🔗</button>
+    </div>
+    <div class="call-timer hidden" id="call-timer">00:00</div>
+    <div id="recent-msgs"></div>
+    <button class="btn-main" id="btn-main-action"><span>🏹</span></button>
+    <div class="controls-row hidden" id="incoming-row"><button class="btn-round btn-call" id="btn-answer">📞</button><button class="btn-round btn-hangup" id="btn-reject">✕</button></div>
+    <div class="controls-row hidden" id="active-row"><button class="btn-round btn-hangup" id="btn-end-call">✕</button></div>
+    <div class="controls-row hidden" id="audio-controls" style="gap:10px;"><button class="header-btn" id="btn-mic" style="width:44px;height:44px;">🎤</button><button class="header-btn" id="btn-speaker" style="width:44px;height:44px;">🔊</button></div>
+</div>
+
+<div class="voice-timer-overlay" id="voice-timer-overlay">🎤 0:00</div>
+<div class="video-circle-player" id="video-circle-player"><button class="video-circle-close" id="video-circle-close">✕</button><video id="video-circle-video" controls autoplay playsinline></video></div>
+
+<div class="modal-overlay" id="craft-modal"><div class="modal-dialog">
+    <h3>🏹 Колчан</h3>
     <button class="btn-primary" id="btn-craft-arrow">🏹 Крафт стрелы</button>
-    <button class="btn-dark" id="btn-scan-qr">📷 Сканировать QR собеседника</button>
-    <div style="color:var(--text-dim);margin-bottom:6px;">Твоя стрела:</div><div class="code-display" id="craft-peer-id-display"></div><div style="color:var(--text-dim);margin:8px 0 4px;">Секретный код (7 цифр):</div>
-<div class="code-display" id="craft-code-display" style="display:none;font-size:1.5em;letter-spacing:6px;"></div>
-<div id="craft-qr-code" style="display:none;"></div>
-<button class="btn-dark" id="btn-copy-peer-id">📋 Скопировать стрелу и код</button><div style="color:var(--text-dim);margin:16px 0 6px;">Стрела друга:</div><input type="text" id="peer-id-input" placeholder="Peer ID друга..." style="width:100%;margin:0 0 12px;padding:8px;background:var(--input-bg);border:1px solid var(--border);color:var(--input-text);border-radius:8px;font-size:0.75em;font-family:monospace;"><button class="btn-primary" id="btn-create-beacon" style="background:linear-gradient(135deg,#6b7db3,#4a5a8a);">🏹 Натянуть тетиву</button><button class="btn-dark" id="close-craft-modal">Закрыть</button></div></div>
-
-<div class="modal-overlay" id="verify-modal"><div class="modal-dialog"><h3>🔐 Подтверждение</h3><div id="verify-instruction" style="color:var(--text-dim);margin-bottom:12px;">Введи 7-значный код</div>
-<div style="color:var(--danger);font-size:0.7em;margin:4px 0 12px;text-align:center;">
-⚠️ Рекомендуется сравнить код с собеседником голосом или при встрече.
-</div>
-<div id="verify-code-display" style="font-size:2em;font-family:monospace;letter-spacing:8px;margin:12px 0;color:var(--accent-light);min-height:40px;">_______</div><div id="verify-code-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;max-width:240px;margin:12px auto;"></div><div id="verify-error" style="color:var(--danger);font-size:0.8em;margin-top:6px;display:none;"></div><button class="btn-dark" id="btn-verify-reset" style="width:auto;display:inline-block;margin:8px auto;">↩ Сбросить</button><button class="btn-primary" id="btn-verify-confirm">✅ Подтвердить</button><button class="btn-dark" id="close-verify-modal">Закрыть</button></div></div>
-
-<div class="modal-overlay" id="nick-modal"><div class="modal-dialog"><h3>🏷 Придумай ник</h3><input type="text" id="nick-input" placeholder="Введи ник (макс 12 символов)..." style="width:100%;margin:8px 0;padding:8px;background:var(--input-bg);border:1px solid var(--border);color:var(--input-text);border-radius:8px;font-size:0.9em;font-family:monospace;"><button class="btn-primary" id="btn-save-nick">💾 Сохранить</button><button class="btn-dark" id="close-nick-modal">Закрыть</button></div></div>
-
-<div class="modal-overlay" id="bands-modal"><div class="modal-dialog"><h3>🏹 Обитатели Шервуда</h3>
-    <button class="btn-primary" id="btn-open-create-band">🏹 Создать шайку</button>
-    <button class="btn-dark" id="btn-open-join-band">🔗 Войти в шайку</button>
+    <div class="code-display" id="craft-beacon-display" style="display:none;"></div>
+    <div class="code-display" id="craft-code-display" style="display:none;font-size:1.5em;letter-spacing:6px;"></div>
+    <button class="btn-dark" id="btn-copy-link" style="display:none;">📋 Копировать</button>
     <hr style="border-color:var(--border);margin:12px 0;">
-    <div id="bands-list"></div>
-    <button class="btn-dark" id="close-bands-modal">Закрыть</button>
+    <div style="color:var(--text-dim);margin-bottom:6px;">Стрела друга:</div>
+    <input type="text" id="join-input" placeholder="Beacon ID или ссылка" autocomplete="off" style="width:100%;padding:8px;margin:6px 0;background:var(--input-bg);border:1px solid var(--border);color:var(--text);border-radius:8px;font-size:12px;font-family:monospace;">
+    <button class="btn-primary" id="btn-join" style="background:linear-gradient(135deg,#6b7db3,#4a5a8a);">🏹 Натянуть тетиву</button>
+    <button class="btn-dark" id="btn-close-craft" style="margin-top:8px;">Закрыть</button>
 </div></div>
 
-<div class="modal-overlay" id="create-band-modal"><div class="modal-dialog"><h3>🏹 Создать шайку</h3>
-    <div style="color:var(--text-dim);margin:8px 0 4px;">Название шайки:</div>
-    <input type="text" id="band-name-input" placeholder="Шайка лучников..." style="width:100%;margin:0 0 8px;padding:8px;background:var(--input-bg);border:1px solid var(--border);color:var(--input-text);border-radius:8px;font-size:0.9em;">
-    <button class="btn-primary" id="btn-craft-band-arrow">🏹 Крафт стрелы шайки</button>
-    <div style="color:var(--text-dim);margin:8px 0 4px;">ID шайки:</div>
-    <div class="code-display" id="band-id-display"></div>
-    <div style="color:var(--text-dim);margin:8px 0 4px;">Код шайки (7 цифр):</div>
-    <div class="code-display" id="band-code-display" style="display:none;font-size:1.5em;letter-spacing:6px;"></div>
-    <button class="btn-dark" id="btn-copy-band-id">📋 Скопировать ID и код</button>
-    <button class="btn-primary" id="btn-create-band">🏹 Создать шайку (стать Соколиным Глазом)</button>
-    <button class="btn-dark" id="close-create-band-modal">Назад</button>
+<div class="modal-overlay" id="verify-modal"><div class="modal-dialog">
+    <h3>🔐 Подтверждение</h3>
+    <div style="color:var(--text-dim);margin-bottom:12px;">Введи 7-значный код</div>
+    <div style="color:var(--danger);font-size:0.7em;margin-bottom:12px;">⚠️ Сравни код с собеседником голосом</div>
+    <div class="verify-code-display" id="verify-code-display">_______</div>
+    <div id="verify-code-grid"></div>
+    <div style="color:var(--danger);font-size:0.7em;margin-top:6px;display:none;" id="verify-error"></div>
+    <button class="btn-dark" id="btn-verify-reset" style="width:auto;display:inline-block;margin:8px auto;">↩ Сбросить</button>
+    <button class="btn-primary" id="btn-verify-confirm">✅ Подтвердить</button>
+    <button class="btn-dark" id="btn-close-verify">Закрыть</button>
 </div></div>
 
-<div class="modal-overlay" id="join-band-modal"><div class="modal-dialog"><h3>🔗 Войти в шайку</h3>
-    <div style="color:var(--text-dim);margin:8px 0 4px;">Вставь стрелу шайки:</div>
-    <input type="text" id="band-join-input" placeholder="Вставь ID шайки и код..." style="width:100%;margin:0 0 8px;padding:8px;background:var(--input-bg);border:1px solid var(--border);color:var(--input-text);border-radius:8px;font-size:0.75em;font-family:monospace;">
-    <button class="btn-primary" id="btn-join-band">🔗 Войти в шайку</button>
-    <button class="btn-dark" id="close-join-band-modal">Назад</button>
+<div class="modal-overlay" id="nick-modal"><div class="modal-dialog"><h3>🏷 Сменить ник</h3><input type="text" id="nick-input" placeholder="Ваш ник (макс. 12 символов)" maxlength="12" autocomplete="off"><div style="display:flex;gap:6px;"><button class="btn-dark" id="btn-nick-cancel">Отмена</button><button class="btn-primary" id="btn-nick-save">✓ Сохранить</button></div></div></div>
+
+<div class="bottom-sheet" id="settings-sheet"><div class="bottom-sheet-header"><span>⚙️ Опции</span><button class="bottom-sheet-close" id="settings-close">✕</button></div><div class="bottom-sheet-list">
+    <div class="contact-item" id="setting-sound"><div class="contact-info"><span>🔔</span><span class="contact-name">Звук</span></div><label class="toggle-switch"><input type="checkbox" id="toggle-sound" checked><span class="toggle-slider"></span></label></div>
+    <div class="contact-item" id="setting-theme"><div class="contact-info"><span id="theme-icon">🌲</span><span class="contact-name">Тема</span></div><span id="theme-name">Лес</span></div>
+    <div class="contact-item" id="setting-clear"><div class="contact-info"><span>🚬</span><span class="contact-name">Сбросить всё</span></div><span style="color:var(--danger);">⚠</span></div>
 </div></div>
 
-<div class="modal-overlay" id="input-modal"><div class="modal-dialog"><h3 id="input-modal-title">Ввод</h3><input type="text" id="input-modal-field" placeholder="..." style="width:100%;margin:8px 0;padding:8px;background:var(--input-bg);border:1px solid var(--border);color:var(--input-text);border-radius:8px;"><div id="input-modal-error" style="color:var(--danger);font-size:0.8em;display:none;"></div><button class="btn-primary" id="input-modal-ok">✅ ОК</button><button class="btn-dark" id="input-modal-cancel">Отмена</button></div></div>
-
-<div class="modal-overlay" id="confirm-modal"><div class="modal-dialog"><h3 id="confirm-modal-title">Подтверждение</h3><div id="confirm-modal-text" style="color:var(--text-dim);margin:12px 0;"></div><button class="btn-primary" id="confirm-modal-yes">✅ Да</button><button class="btn-dark" id="confirm-modal-no">Нет</button></div></div>
-
-<div id="bow-above-send"></div>
+<div class="avatar-selector" id="avatar-selector"><p>🏹 Выбери лучника 🏹</p><div id="avatar-list"></div></div>
+<div class="overlay" id="overlay"></div>
 </div>
 
-<script src="firebase-config.js"></script>
-
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
-    import { getDatabase, ref, set, get, onValue, off, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-database.js";
-    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-auth.js";
-
-    const firebaseConfig = window.FIREBASE_CONFIG || {};
-
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
-    const auth = getAuth(app);
-
-    signInAnonymously(auth)
-        .then(() => console.log('🔥 Firebase: OK'))
-        .catch(err => console.error('Firebase error:', err));
-
-    window.firebaseDB = db;
-    window.firebaseRef = ref;
-    window.firebaseSet = set;
-    window.firebaseGet = get;
-    window.firebaseOnValue = onValue;
-    window.firebaseOff = off;
-    window.firebaseServerTimestamp = serverTimestamp;
-</script>
-
-<script src="firebase-config.js"></script>
-<script type="module">/* Firebase SDK */</script>
-<script src="peer-help.js?v=1.0.5"></script>
 <script src="crypto-worker.js"></script>
 <script src="p2ppong.js"></script>
-<script src="robinhood-ui.js"></script>
+<script>
+(function(){
+const MAX_VOICE_DURATION=60;
+let activeChannelId=null,pc=null,stream=null,callActive=!1,callStartTime=null,callTimerInterval=null;
+let micOn=!0,incomingOffer=null,toggleSoundState=!0;
+let voiceRecorder=null,voiceChunks=[],voiceStream=null,voiceRecording=!1,voiceSeconds=0,voiceTimerInterval=null;
+let videoCircleRecorder=null,videoCircleChunks=[],audioPool={};
+let verifyCode='',verifyInput='';
+
+function $(s){return document.getElementById(s)}
+function rMsg(m,t=0){const rm=$('robin-message');if(rm){rm.textContent=m;if(t>0)setTimeout(()=>{if(rm.textContent===m)rm.textContent='Колчан готов!'},t)}}
+function conn(s){const cd=$('connection-dot'),cl=$('connection-label');if(cd)cd.className='connection-dot '+s;if(cl)cl.textContent=s==='online'?'Готов':s==='offline'?'Нет связи':'Проверка...'}
+function playSound(f){if(!toggleSoundState)return;if(!audioPool[f]){audioPool[f]=new Audio('sounds/'+f);audioPool[f].volume=0.5}const a=audioPool[f];a.currentTime=0;a.play().catch(()=>{})}
+
+function ui(s){
+    $('btn-main-action')?.classList.remove('hidden','ringing');$('incoming-row')?.classList.add('hidden');
+    $('active-row')?.classList.add('hidden');$('audio-controls')?.classList.add('hidden');
+    if(s==='idle'){$('btn-main-action')?.classList.remove('hidden');$('btn-main-action').querySelector('span').textContent='🏹'}
+    else if(s==='ready'){$('btn-main-action')?.classList.remove('hidden');$('btn-main-action').querySelector('span').textContent='📞'}
+    else if(s==='active'){$('active-row')?.classList.remove('hidden');$('audio-controls')?.classList.remove('hidden')}
+    else if(s==='incoming'){$('incoming-row')?.classList.remove('hidden');$('btn-main-action')?.classList.add('ringing','hidden')}
+}
+
+async function getMediaStream(){try{return await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:!0,noiseSuppression:!0}})}catch(e){rMsg('❌ Нет микрофона',4000);return null}}
+function createPC(){if(pc){pc.close();pc=null}pc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'}]});if(stream)stream.getTracks().forEach(t=>pc.addTrack(t,stream));pc.ontrack=e=>{if(e.streams[0]){const a=new Audio();a.srcObject=e.streams[0];a.play().catch(()=>{})}};pc.onicecandidate=e=>{if(e.candidate&&activeChannelId)P2PPong.sendMessage(activeChannelId,JSON.stringify({webrtc:'webrtc-ice',sdp:JSON.stringify(e.candidate)}))};pc.onconnectionstatechange=()=>{if(pc.connectionState==='connected'){callActive=!0;callStartTime=Date.now();startCallTimer();ui('active');playSound('open.mp3')}if(pc.connectionState==='disconnected'||pc.connectionState==='failed')hang(!1)};return pc}
+function startCallTimer(){$('call-timer').classList.remove('hidden');callTimerInterval=setInterval(()=>{const e=Math.floor((Date.now()-callStartTime)/1000);$('call-timer').textContent=Math.floor(e/60).toString().padStart(2,'0')+':'+(e%60).toString().padStart(2,'0')},1000)}
+function stopCallTimer(){if(callTimerInterval)clearInterval(callTimerInterval);$('call-timer').classList.add('hidden')}
+async function startCall(){if(callActive||!activeChannelId){rMsg('⚠ Сначала подключитесь',4000);return}ui('calling');const s=await getMediaStream();if(!s){ui('ready');return}stream=s;createPC();try{const o=await pc.createOffer();await pc.setLocalDescription(o);P2PPong.sendMessage(activeChannelId,JSON.stringify({webrtc:'webrtc-offer',sdp:JSON.stringify(o)}))}catch(e){hang(!0)}}
+async function acceptCall(){if(!incomingOffer)return;ui('active');const s=await getMediaStream();if(!s){ui('ready');return}stream=s;createPC();try{await pc.setRemoteDescription(new RTCSessionDescription(incomingOffer));const a=await pc.createAnswer();await pc.setLocalDescription(a);P2PPong.sendMessage(activeChannelId,JSON.stringify({webrtc:'webrtc-answer',sdp:JSON.stringify(a)}));incomingOffer=null;callActive=!0;callStartTime=Date.now();startCallTimer();playSound('open.mp3')}catch(e){hang(!0)}}
+function hang(sig=!0){callActive=!1;stopCallTimer();if(sig&&activeChannelId)P2PPong.sendMessage(activeChannelId,JSON.stringify({webrtc:'webrtc-hangup',sdp:''}));if(pc){pc.close();pc=null}if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}incomingOffer=null;ui('ready');playSound('exet.mp3')}
+function startVoiceTimer(){voiceSeconds=0;$('voice-timer-overlay').style.display='block';voiceTimerInterval=setInterval(()=>{voiceSeconds++;const m=Math.floor(voiceSeconds/60),s=(voiceSeconds%60).toString().padStart(2,'0');$('voice-timer-overlay').textContent='🎤 '+m+':'+s;if(voiceSeconds>=MAX_VOICE_DURATION)stopVoiceRecording()},1000)}
+function stopVoiceTimer(){if(voiceTimerInterval)clearInterval(voiceTimerInterval);$('voice-timer-overlay').style.display='none'}
+function startVoiceRecording(){if(voiceRecording)return;navigator.mediaDevices.getUserMedia({audio:!0}).then(st=>{voiceStream=st;voiceRecorder=new MediaRecorder(st,{mimeType:'audio/webm',audioBitsPerSecond:16000});voiceChunks=[];voiceRecorder.ondataavailable=e=>voiceChunks.push(e.data);voiceRecorder.onstop=()=>{const blob=new Blob(voiceChunks,{type:'audio/webm'});stopVoiceTimer();if(blob.size>100&&blob.size<50000&&activeChannelId){const r=new FileReader();r.onload=()=>P2PPong.sendVoiceMessage(activeChannelId,r.result.split(',')[1]);r.readAsDataURL(blob)}if(voiceStream){voiceStream.getTracks().forEach(t=>t.stop());voiceStream=null}voiceRecorder=null;voiceRecording=!1;$('btn-voice').style.background=''};voiceRecorder.start();voiceRecording=!0;startVoiceTimer();$('btn-voice').style.background='#f44336'}).catch(()=>rMsg('❌ Нет микрофона',3000))}
+function stopVoiceRecording(){if(voiceRecorder?.state==='recording'){voiceRecorder.stop();stopVoiceTimer()}}
+function startVideoCircle(){if(videoCircleRecorder?.state==='recording'){videoCircleRecorder.stop();$('btn-video-circle').style.background='';return}navigator.mediaDevices.getUserMedia({video:!0,audio:!0}).then(st=>{videoCircleRecorder=new MediaRecorder(st,{mimeType:'video/webm; codecs=vp8,opus',videoBitsPerSecond:50000});videoCircleChunks=[];videoCircleRecorder.ondataavailable=e=>videoCircleChunks.push(e.data);videoCircleRecorder.onstop=()=>{const blob=new Blob(videoCircleChunks,{type:'video/webm'});if(blob.size<50000&&activeChannelId)P2PPong.sendVoiceMessage(activeChannelId,btoa(String.fromCharCode(...new Uint8Array(blob)))).catch(()=>{});st.getTracks().forEach(t=>t.stop());videoCircleRecorder=null;$('btn-video-circle').style.background=''};videoCircleRecorder.start();$('btn-video-circle').style.background='#f44336';setTimeout(()=>{if(videoCircleRecorder?.state==='recording')videoCircleRecorder.stop()},30000)}).catch(()=>rMsg('❌ Нет камеры',3000))}
+
+const avatars=['001-.png'];
+function loadAvatars(){const al=$('avatar-list');if(!al)return;al.innerHTML='';avatars.forEach(src=>{const img=document.createElement('img');img.src=src;img.className='avatar-option';img.onerror=()=>img.src='001-.png';img.onclick=()=>{const pa=$('profile-avatar-small');if(pa)pa.src=src;$('robin-avatar').src=src;localStorage.setItem('robinhood_avatar',src);closeSheets()};al.appendChild(img)})}
+function closeSheets(){$('avatar-selector')?.classList.remove('show');$('settings-sheet')?.classList.remove('open');$('overlay')?.classList.remove('show')}
+
+const themes=[{id:'forest',icon:'🌲',name:'Лес'},{id:'sunset',icon:'🌅',name:'Закат'},{id:'ocean',icon:'🌊',name:'Океан'},{id:'night-ember',icon:'🔥',name:'Костёр'},{id:'morning-mist',icon:'🌫️',name:'Туман'}];
+function applyTheme(id){document.documentElement.setAttribute('data-theme',id);localStorage.setItem('robinhood_theme',id);const t=themes.find(t=>t.id===id)||themes[0];const ti=$('theme-icon'),tn=$('theme-name');if(ti)ti.textContent=t.icon;if(tn)tn.textContent=t.name}
+function addMsg(sender,text,self=false){const rm=$('recent-msgs');if(!rm)return;rm.style.display='flex';const d=document.createElement('div');d.className='chat-msg'+(self?' self':'');d.textContent=(self?'Вы: ':'Друг: ')+text;rm.appendChild(d);if(rm.children.length>20)rm.firstChild.remove();rm.scrollTop=rm.scrollHeight}
+function showVerifyModal(expectedCode){verifyCode=expectedCode;verifyInput='';$('verify-code-display').textContent='_______';$('verify-error').style.display='none';const grid=$('verify-code-grid');grid.innerHTML='';for(let i=1;i<=9;i++){const btn=document.createElement('button');btn.textContent=i;btn.onclick=()=>addVerifyDigit(i.toString());grid.appendChild(btn)}const btn0=document.createElement('button');btn0.textContent='0';btn0.onclick=()=>addVerifyDigit('0');grid.appendChild(btn0);const btnDel=document.createElement('button');btnDel.textContent='⌫';btnDel.style.background='rgba(244,67,54,0.3)';btnDel.onclick=()=>{verifyInput=verifyInput.slice(0,-1);$('verify-code-display').textContent=verifyInput.padEnd(7,'_')};grid.appendChild(btnDel);$('verify-modal')?.classList.add('active')}
+function addVerifyDigit(d){if(verifyInput.length>=7)return;verifyInput+=d;$('verify-code-display').textContent=verifyInput.padEnd(7,'_');if(verifyInput.length===7)setTimeout(()=>$('btn-verify-confirm')?.click(),300)}
+
+function initApp(){
+    applyTheme(localStorage.getItem('robinhood_theme')||'forest');
+    const savedAvatar=localStorage.getItem('robinhood_avatar');if(savedAvatar){const pa=$('profile-avatar-small');if(pa)pa.src=savedAvatar;$('robin-avatar').src=savedAvatar}
+    const savedNick=localStorage.getItem('robinhood_nick');if(savedNick){const nl=$('nick-label');if(nl)nl.textContent=savedNick.substring(0,12)}
+    toggleSoundState=localStorage.getItem('robinhood_sound')!=='false';const ts=$('toggle-sound');if(ts)ts.checked=toggleSoundState;
+
+    P2PPong.on('ready',()=>{conn('online');rMsg('🏹 Готов!',3000);ui('idle')});
+    P2PPong.on('peer-id-generated',d=>{$('craft-beacon-display').style.display='block';$('craft-beacon-display').textContent=d.beaconId;const cd=$('craft-code-display');if(cd){cd.style.display='block';cd.textContent=d.code}$('btn-copy-link').style.display='block';rMsg('✅ Стрела создана!',3000);navigator.clipboard.writeText(d.beaconId+'\n'+d.code).catch(()=>{})});
+    P2PPong.on('verification-needed',d=>{showVerifyModal(d.code)});
+    P2PPong.on('channel-opened',d=>{activeChannelId=d.channelId;ui('ready');rMsg('✅ Колчан открыт!',3000);$('verify-modal')?.classList.remove('active');$('craft-modal')?.classList.remove('active')});
+    P2PPong.on('message-received',d=>{if(!d.text)return;try{const p=JSON.parse(d.text);if(p.webrtc){handleWebRTCSignal(p.webrtc,p.sdp);return}}catch(e){}activeChannelId=d.channelId;addMsg('Друг',d.text);playSound('arrow_hit.wav')});
+    P2PPong.on('error',d=>{rMsg('⚠ '+(d.message||'Ошибка'),4000);conn('offline')});
+
+    function handleWebRTCSignal(type,sdp){if(type==='webrtc-offer'&&!callActive){try{incomingOffer=JSON.parse(sdp);ui('incoming');playSound('melodi.mp3');rMsg('📞 Входящий!',0)}catch(e){}return}if(type==='webrtc-answer'&&pc){try{pc.setRemoteDescription(new RTCSessionDescription(JSON.parse(sdp)));callActive=!0;callStartTime=Date.now();startCallTimer();ui('active');playSound('open.mp3')}catch(e){}return}if(type==='webrtc-ice'&&pc){try{pc.addIceCandidate(new RTCIceCandidate(JSON.parse(sdp))).catch(()=>{})}catch(e){}return}if(type==='webrtc-hangup'){if(callActive||pc){rMsg('📞 Собеседник завершил',3000);hang(!1)}return}}
+
+    $('btn-main-action')?.addEventListener('click',()=>{if(!activeChannelId)$('craft-modal')?.classList.add('active');else if(callActive)hang(!0);else startCall()});
+    $('btn-arrow')?.addEventListener('click',()=>$('craft-modal')?.classList.add('active'));
+    $('btn-craft-arrow')?.addEventListener('click',()=>P2PPong.craftArrow());
+    $('btn-copy-link')?.addEventListener('click',()=>{const bid=$('craft-beacon-display')?.textContent;const code=$('craft-code-display')?.textContent;if(bid)navigator.clipboard.writeText(bid+'\n'+code).then(()=>rMsg('📋 Скопировано!',2000))});
+    $('btn-join')?.addEventListener('click',()=>{const raw=$('join-input')?.value.trim();if(!raw){rMsg('⚠ Вставь Beacon ID',3000);return}const lines=raw.split('\n');const bid=lines[0]?.trim();if(bid)P2PPong.joinBeacon(bid);$('craft-modal')?.classList.remove('active')});
+    $('btn-main-join')?.addEventListener('click',()=>{const raw=$('main-join-input')?.value.trim();if(!raw){rMsg('⚠ Вставь Beacon ID',3000);return}const lines=raw.split('\n');const bid=lines[0]?.trim();if(bid)P2PPong.joinBeacon(bid)});
+    $('main-join-input')?.addEventListener('keypress',e=>{if(e.key==='Enter')$('btn-main-join')?.click()});
+    $('join-input')?.addEventListener('keypress',e=>{if(e.key==='Enter')$('btn-join')?.click()});
+    $('btn-close-craft')?.addEventListener('click',()=>$('craft-modal')?.classList.remove('active'));
+    $('btn-close-verify')?.addEventListener('click',()=>$('verify-modal')?.classList.remove('active'));
+    $('btn-call-main')?.addEventListener('click',()=>callActive?hang(!0):startCall());
+    $('btn-answer')?.addEventListener('click',acceptCall);
+    $('btn-reject')?.addEventListener('click',()=>{if(incomingOffer){P2PPong.sendMessage(activeChannelId,JSON.stringify({webrtc:'webrtc-hangup',sdp:''}));incomingOffer=null;ui('ready')}});
+    $('btn-end-call')?.addEventListener('click',()=>hang(!0));
+    $('btn-mic')?.addEventListener('click',()=>{if(stream){micOn=!micOn;stream.getAudioTracks().forEach(t=>t.enabled=micOn);$('btn-mic').textContent=micOn?'🎤':'🔇'}});
+    $('btn-speaker')?.addEventListener('click',()=>{$('btn-speaker').textContent=$('btn-speaker').textContent==='🔊'?'🔈':'🔊'});
+    $('btn-voice')?.addEventListener('pointerdown',e=>{e.preventDefault();startVoiceRecording()});
+    $('btn-voice')?.addEventListener('pointerup',e=>{e.preventDefault();stopVoiceRecording()});
+    $('btn-voice')?.addEventListener('pointerleave',stopVoiceRecording);
+    $('btn-video-circle')?.addEventListener('click',startVideoCircle);
+    $('video-circle-close')?.addEventListener('click',()=>{$('video-circle-player').style.display='none';$('video-circle-video')?.pause()});
+    $('btn-verify-confirm')?.addEventListener('click',()=>{if(verifyInput.length!==7){$('verify-error').style.display='block';$('verify-error').textContent='Введи ровно 7 цифр';return}if(verifyInput===verifyCode){$('verify-error').style.display='none';$('verify-modal')?.classList.remove('active');P2PPong.confirmVerification()}else{$('verify-error').style.display='block';$('verify-error').textContent='❌ Неверный код';verifyInput='';$('verify-code-display').textContent='_______'}});
+    $('btn-verify-reset')?.addEventListener('click',()=>{verifyInput='';$('verify-code-display').textContent='_______'});
+    $('btn-avatar-menu')?.addEventListener('click',()=>{$('avatar-selector')?.classList.toggle('show');$('overlay')?.classList.toggle('show');if($('avatar-selector')?.classList.contains('show'))loadAvatars()});
+    $('overlay')?.addEventListener('click',closeSheets);
+    $('nick-label')?.addEventListener('click',()=>{$('nick-input').value=$('nick-label').textContent;$('nick-modal')?.classList.add('active')});
+    $('btn-nick-cancel')?.addEventListener('click',()=>$('nick-modal')?.classList.remove('active'));
+    $('btn-nick-save')?.addEventListener('click',()=>{const n=$('nick-input').value.trim().substring(0,12);if(n){$('nick-label').textContent=n;localStorage.setItem('robinhood_nick',n)}$('nick-modal')?.classList.remove('active')});
+    $('btn-settings')?.addEventListener('click',()=>{$('settings-sheet')?.classList.toggle('open');$('overlay')?.classList.toggle('show')});
+    $('settings-close')?.addEventListener('click',closeSheets);
+    $('setting-theme')?.addEventListener('click',()=>{const ct=localStorage.getItem('robinhood_theme')||'forest';const idx=themes.findIndex(t=>t.id===ct);applyTheme(themes[(idx+1)%themes.length].id)});
+    $('setting-clear')?.addEventListener('click',()=>{if(confirm('⚠ Все данные будут удалены!')){hang(!1);activeChannelId=null;rMsg('🚬 Всё сожжено!',5000);localStorage.clear()}});
+    if(ts)ts.addEventListener('change',function(){toggleSoundState=this.checked;localStorage.setItem('robinhood_sound',toggleSoundState)});
+
+    conn('checking');ui('idle');rMsg('🏹 Готов!',3000);
+}
+P2PPong.on('ready',initApp);
+P2PPong.init();
+})();
+</script>
 </body>
 </html>
