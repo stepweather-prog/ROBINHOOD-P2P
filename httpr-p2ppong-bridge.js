@@ -1,4 +1,4 @@
-// httpr-p2ppong-bridge.js — v1.5 fix: маяки на все серверы + _get тоже на все серверы
+// httpr-p2ppong-bridge.js — v1.6 fix: очистка подписок в _patchGet
 const P2PPongOverHTTPR = {
     _p2ppong: null,
     _httpr: null,
@@ -111,12 +111,10 @@ const P2PPongOverHTTPR = {
 
             // Маяки и коды: отправляем на ВСЕ серверы параллельно
             if (keyHash && (keyHash.startsWith('waiting_') || keyHash.startsWith('code_'))) {
-                // Firebase (фоном)
                 if (p2ppong._firebaseActive) {
                     p2ppong._firebasePost(keyHash, packet).catch(() => {});
                 }
 
-                // HTTPR (фоном)
                 if (self._httpr) {
                     const payload = {
                         type: 'beacon',
@@ -130,12 +128,9 @@ const P2PPongOverHTTPR = {
                     self._httpr.send(payload, keyHash).catch(() => {});
                 }
 
-                // Все HTTP-серверы параллельно
                 const servers = p2ppong._signalServers.filter(s => s.type === 'http');
-                let anyOk = false;
-
                 const results = await Promise.allSettled(
-                    servers.map(s => 
+                    servers.map(s =>
                         fetch(s.url + path, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -145,7 +140,7 @@ const P2PPongOverHTTPR = {
                     )
                 );
 
-                anyOk = results.some(r => r.status === 'fulfilled' && r.value);
+                const anyOk = results.some(r => r.status === 'fulfilled' && r.value);
                 return anyOk ? { ok: true } : { ok: false, error: 'all servers failed' };
             }
 
@@ -186,21 +181,41 @@ const P2PPongOverHTTPR = {
 
             // Маяки и коды: запрашиваем все серверы
             if (keyHash && (keyHash.startsWith('waiting_') || keyHash.startsWith('code_'))) {
-                // HTTPR подписка (фоном)
+                // HTTPR подписка с очисткой
+                let httprCallback = null;
                 if (self._httpr) {
-                    self._httpr.subscribe(keyHash, (payload) => {
+                    httprCallback = (payload) => {
                         if (payload && payload.data) {
+                            if (httprCallback) {
+                                self._httpr.unsubscribe(keyHash, httprCallback).catch(() => {});
+                                httprCallback = null;
+                            }
                             p2ppong._stopPolling();
                             p2ppong._handleIn(payload.data);
                         }
-                    }).catch(() => {});
+                    };
+                    self._httpr.subscribe(keyHash, httprCallback).catch(() => {});
                 }
+
+                // Таймаут очистки подписки
+                const cleanupTimeout = setTimeout(() => {
+                    if (httprCallback) {
+                        self._httpr.unsubscribe(keyHash, httprCallback).catch(() => {});
+                        httprCallback = null;
+                    }
+                }, 30000);
 
                 // Firebase
                 if (p2ppong._firebaseActive) {
                     try {
                         const fbResult = await p2ppong._firebaseGet(keyHash);
-                        if (fbResult && fbResult.status === 'found') return fbResult;
+                        if (fbResult && fbResult.status === 'found') {
+                            clearTimeout(cleanupTimeout);
+                            if (httprCallback) {
+                                self._httpr.unsubscribe(keyHash, httprCallback).catch(() => {});
+                            }
+                            return fbResult;
+                        }
                     } catch (e) {}
                 }
 
@@ -212,12 +227,17 @@ const P2PPongOverHTTPR = {
                         if (r.ok) {
                             const data = await r.json();
                             if (data && data.status === 'found' && data.packet) {
+                                clearTimeout(cleanupTimeout);
+                                if (httprCallback) {
+                                    self._httpr.unsubscribe(keyHash, httprCallback).catch(() => {});
+                                }
                                 return data;
                             }
                         }
                     } catch (e) {}
                 }
 
+                // Не нашли — подписка остаётся активной до таймаута
                 return { status: 'waiting' };
             }
 
@@ -226,14 +246,6 @@ const P2PPongOverHTTPR = {
                 try {
                     return new Promise((resolve) => {
                         let resolved = false;
-                        const timeout = setTimeout(() => {
-                            if (!resolved) {
-                                resolved = true;
-                                self._httpr.unsubscribe(keyHash, tempCallback).catch(() => {});
-                                self._originalGetWithRetry(path).then(resolve).catch(() => resolve(null));
-                            }
-                        }, 2000);
-
                         const tempCallback = (payload) => {
                             if (!resolved) {
                                 resolved = true;
@@ -242,6 +254,14 @@ const P2PPongOverHTTPR = {
                                 resolve({ packet: payload.data, status: 'found' });
                             }
                         };
+
+                        const timeout = setTimeout(() => {
+                            if (!resolved) {
+                                resolved = true;
+                                self._httpr.unsubscribe(keyHash, tempCallback).catch(() => {});
+                                self._originalGetWithRetry(path).then(resolve).catch(() => resolve(null));
+                            }
+                        }, 2000);
 
                         self._httpr.subscribe(keyHash, tempCallback).catch(() => {
                             if (!resolved) {
