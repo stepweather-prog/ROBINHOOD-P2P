@@ -1,4 +1,4 @@
-// p2ppong.js — v6.3 fix: joinBeacon использует _get вместо _getWithRetry
+// p2ppong.js — v6.4 fix: дедупликация verification-code
 const DEBUG = true;
 function log(msg, data) { if (DEBUG) console.log(`[P2PPong] ${msg}`, data || ''); }
 
@@ -290,7 +290,6 @@ const P2PPong = {
 
     async joinBeacon(targetBeaconId) {
         await this._pickServer();
-        // ✅ Используем _get (с Firebase + HTTPR + fallback) вместо _getWithRetry
         const d = await this._get('/beacon?key=waiting_' + targetBeaconId);
         if (!d?.packet) { this._emit('error', { message: 'Маяк не найден' }); return false; }
         
@@ -716,7 +715,12 @@ const P2PPong = {
             return;
         }
         
+        // ✅ Дедупликация: канал уже открыт — игнорируем повторные verification-code
         if (d.type === 'verification-code' && d.code) {
+            if (Object.keys(this._channels).length > 0) {
+                return;
+            }
+            
             if (this._pending?.type === 'creator' && this._verificationCode && d.code === this._verificationCode) {
                 this._remotePubKey = d.pubKey;
                 this._remotePeerId = d.peerId;
