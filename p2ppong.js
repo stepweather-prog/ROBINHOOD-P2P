@@ -1,4 +1,4 @@
-// p2ppong.js — v6.2 с HTTPR мостом и быстрой отправкой
+// p2ppong.js — v6.2 fix: SHA → p2pSHA (конфликт с httpr-core.js)
 const DEBUG = true;
 function log(msg, data) { if (DEBUG) console.log(`[P2PPong] ${msg}`, data || ''); }
 
@@ -21,15 +21,6 @@ const CONFIG = {
     DH_RATCHET_THRESHOLD: 10
 };
 
-function arraysEqual(a, b) {
-    if (!a || !b) return false;
-    if (a.length !== b.length) return false;
-    for (let i = 0; i < a.length; i++) {
-        if (a[i] !== b[i]) return false;
-    }
-    return true;
-}
-
 const cryptoWorker = new Worker('crypto-worker.js');
 const cryptoCallbacks = {};
 let cryptoMsgId = 0;
@@ -51,7 +42,7 @@ cryptoWorker.onmessage = function(e) {
     }
 };
 
-const SHA = (t) => cryptoCall('SHA', t);
+const p2pSHA = (t) => cryptoCall('SHA', t);
 const workerGenerateKeyPair = () => cryptoCall('generateKeyPair');
 const workerEncryptAES = (text, secret) => cryptoCall('encryptAES', { text, secret });
 const workerDecryptAES = (enc, secret) => cryptoCall('decryptAES', { enc, secret });
@@ -269,7 +260,7 @@ const P2PPong = {
         const beaconId = RND();
         this._beaconId = beaconId;
         
-        const bk = await SHA(this._kp.publicKey + 'beacon');
+        const bk = await p2pSHA(this._kp.publicKey + 'beacon');
         const inner = await workerEncryptAES(JSON.stringify({ 
             timestamp: Date.now(), 
             peerId: this._peerId,
@@ -315,7 +306,7 @@ const P2PPong = {
             if (srv) { this._signalServer = srv; log('signal-synced', srv.name); }
         }
         
-        const bk = await SHA(bd.pubKey + 'beacon');
+        const bk = await p2pSHA(bd.pubKey + 'beacon');
         const sigValid = await workerVerifyHMAC(bd.pubKey + bd.peerId, bd.sig, bk);
         if (!sigValid) { this._emit('error', { message: 'Подпись маяка недействительна' }); return false; }
         
@@ -338,7 +329,7 @@ const P2PPong = {
         this._chId = RND();
         
         this._secret = await workerDeriveSecret(this._kp.privateKey, bd.pubKey);
-        const verificationHash = await SHA(this._secret + code);
+        const verificationHash = await p2pSHA(this._secret + code);
         
         this._beacons[this._peerId] = { keyPair: this._kp, beaconKey: bk, expires: Date.now() + CONFIG.BEACON_TTL };
         this._pending = { type: 'joiner', targetPeerId: innerData.peerId, verificationHash };
@@ -442,7 +433,7 @@ const P2PPong = {
         
         // HTTPR: установка транспортного ключа
         if (window.P2PPongOverHTTPR && window.P2PPongOverHTTPR._bridged) {
-            SHA(this._secret + 'transport').then(transportKey => {
+            p2pSHA(this._secret + 'transport').then(transportKey => {
                 window.P2PPongOverHTTPR.setTransportKey(transportKey).then(kid => {
                     log('httpr', 'Транспортный ключ установлен: ' + kid);
                 });
