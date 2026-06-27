@@ -1,4 +1,6 @@
-// httpr-p2ppong-bridge.js — v1.3 fix: _get не подменяется
+// httpr-p2ppong-bridge.js — v1.3
+// Мост между HTTPR Core и P2PPong
+// Надёжная отправка маяков через прямой HTTP + HTTPR для сообщений
 const P2PPongOverHTTPR = {
     _p2ppong: null,
     _httpr: null,
@@ -11,6 +13,11 @@ const P2PPongOverHTTPR = {
     _originalStopPolling: null,
     _originalHandleIn: null,
 
+    /**
+     * Подключить мост между P2PPong и HTTPR Core
+     * @param {Object} p2ppong - экземпляр P2PPong
+     * @param {HTTPRCore} httpr - экземпляр HTTPRCore
+     */
     async bridge(p2ppong, httpr) {
         if (this._bridged) {
             console.warn('[HTTPR Bridge] Уже подключён');
@@ -20,6 +27,7 @@ const P2PPongOverHTTPR = {
         this._p2ppong = p2ppong;
         this._httpr = httpr;
 
+        // Сохраняем оригинальные методы
         this._originalPost = p2ppong._post.bind(p2ppong);
         this._originalPostWithRetry = p2ppong._postWithRetry.bind(p2ppong);
         this._originalGet = p2ppong._get.bind(p2ppong);
@@ -28,7 +36,9 @@ const P2PPongOverHTTPR = {
         this._originalStopPolling = p2ppong._stopPolling.bind(p2ppong);
         this._originalHandleIn = p2ppong._handleIn.bind(p2ppong);
 
+        // Подменяем методы
         this._patchPost(p2ppong);
+        this._patchGet(p2ppong);
         this._patchPolling(p2ppong);
         this._patchHandleIn(p2ppong);
 
@@ -36,6 +46,9 @@ const P2PPongOverHTTPR = {
         console.log('[HTTPR Bridge] Подключён');
     },
 
+    /**
+     * Отключить мост, вернуть оригинальные методы
+     */
     async unbridge() {
         if (!this._bridged) return;
 
@@ -56,6 +69,9 @@ const P2PPongOverHTTPR = {
         console.log('[HTTPR Bridge] Отключён');
     },
 
+    /**
+     * Маппинг старых типов пакетов P2PPong → новые HTTPR
+     */
     _mapTypeToHTTPR(oldType) {
         const map = {
             'beacon': 'beacon',
@@ -71,6 +87,9 @@ const P2PPongOverHTTPR = {
         return map[oldType] || 'system';
     },
 
+    /**
+     * Маппинг новых типов HTTPR → старые P2PPong
+     */
     _mapTypeToOld(newType) {
         const map = {
             'beacon': 'beacon',
@@ -92,6 +111,9 @@ const P2PPongOverHTTPR = {
         return map[newType] !== undefined ? map[newType] : null;
     },
 
+    /**
+     * Извлечь тип пакета из сырых данных
+     */
     _detectPacketType(packetData) {
         try {
             const parsed = JSON.parse(packetData);
@@ -101,6 +123,9 @@ const P2PPongOverHTTPR = {
         }
     },
 
+    /**
+     * Подменить _post — отправка через HTTPR с гарантированным HTTP для маяков
+     */
     _patchPost(p2ppong) {
         const self = this;
 
@@ -108,6 +133,33 @@ const P2PPongOverHTTPR = {
             const keyHash = body?.keyHash;
             const packet = body?.packet || JSON.stringify(body);
 
+            // Для маяков и кодов верификации ВСЕГДА используем прямой HTTP
+            // Это гарантирует что маяк попадёт на сервер даже если HTTPR транспорт не готов
+            if (keyHash && (keyHash.startsWith('waiting_') || keyHash.startsWith('code_'))) {
+                // Попутно отправляем через HTTPR (для статистики и будущего использования)
+                if (self._httpr) {
+                    const payload = {
+                        type: 'beacon',
+                        from: p2ppong._peerId,
+                        to: p2ppong._remotePeerId || null,
+                        ch: p2ppong._chId || null,
+                        ri: 0,
+                        dh: null,
+                        data: packet
+                    };
+                    self._httpr.send(payload, keyHash).catch(() => {});
+                }
+
+                // Обязательно через прямой HTTP
+                try {
+                    const result = await self._originalPostWithRetry(path, body);
+                    return result || { ok: false, error: 'no response' };
+                } catch (e) {
+                    return { ok: false, error: e.message };
+                }
+            }
+
+            // Для сообщений и WebRTC-сигналов — пробуем HTTPR сначала
             if (self._httpr && keyHash) {
                 const oldType = self._detectPacketType(packet);
                 const newType = self._mapTypeToHTTPR(oldType);
@@ -128,10 +180,11 @@ const P2PPongOverHTTPR = {
                         return { ok: true };
                     }
                 } catch (e) {
-                    console.warn('[HTTPR Bridge] _post HTTPR failed:', e.message);
+                    console.warn('[HTTPR Bridge] _post HTTPR failed, falling back:', e.message);
                 }
             }
 
+            // Fallback: оригинальный _postWithRetry
             try {
                 const result = await self._originalPostWithRetry(path, body);
                 return result || { ok: false, error: 'no response' };
@@ -141,17 +194,94 @@ const P2PPongOverHTTPR = {
         };
     },
 
+    /**
+     * Подменить _get — для маяков используем прямой HTTP
+     */
+    _patchGet(p2ppong) {
+        const self = this;
+
+        p2ppong._get = async function (path) {
+            const keyHash = new URLSearchParams(path.split('?')[1])?.get('key');
+
+            // Для маяков (waiting_, code_) всегда используем прямой HTTP GET
+            if (keyHash && (keyHash.startsWith('waiting_') || keyHash.startsWith('code_'))) {
+                // Попутно подписываемся через HTTPR (на будущее)
+                if (self._httpr) {
+                    self._httpr.subscribe(keyHash, (payload) => {
+                        if (payload && payload.data) {
+                            p2ppong._stopPolling();
+                            p2ppong._handleIn(payload.data);
+                        }
+                    }).catch(() => {});
+                }
+
+                // Используем прямой HTTP
+                try {
+                    return await self._originalGetWithRetry(path);
+                } catch (e) {
+                    return null;
+                }
+            }
+
+            // Для сообщений — пробуем HTTPR subscribe с таймаутом
+            if (self._httpr && keyHash) {
+                try {
+                    return new Promise((resolve) => {
+                        let resolved = false;
+                        const timeout = setTimeout(() => {
+                            if (!resolved) {
+                                resolved = true;
+                                self._httpr.unsubscribe(keyHash, tempCallback).catch(() => {});
+                                // Fallback
+                                self._originalGetWithRetry(path).then(resolve).catch(() => resolve(null));
+                            }
+                        }, 2000);
+
+                        const tempCallback = (payload) => {
+                            if (!resolved) {
+                                resolved = true;
+                                clearTimeout(timeout);
+                                self._httpr.unsubscribe(keyHash, tempCallback).catch(() => {});
+                                resolve({ packet: payload.data, status: 'found' });
+                            }
+                        };
+
+                        self._httpr.subscribe(keyHash, tempCallback).catch(() => {
+                            if (!resolved) {
+                                resolved = true;
+                                clearTimeout(timeout);
+                                self._originalGetWithRetry(path).then(resolve).catch(() => resolve(null));
+                            }
+                        });
+                    });
+                } catch (e) {}
+            }
+
+            // Fallback: оригинальный _getWithRetry
+            try {
+                return await self._originalGetWithRetry(path);
+            } catch (e) {
+                return null;
+            }
+        };
+    },
+
+    /**
+     * Подменить поллинг на HTTPR подписки
+     */
     _patchPolling(p2ppong) {
         const self = this;
 
         p2ppong.startPolling = function (keyHash) {
             if (!keyHash) return;
 
+            // Останавливаем предыдущий поллинг
             p2ppong._stopPolling();
 
             p2ppong._pollKey = keyHash;
             p2ppong._pollStart = Date.now();
 
+            // Подписываемся через HTTPR (для будущих пакетов)
             if (self._httpr) {
                 self._httpr.subscribe(keyHash, (payload, meta) => {
                     if (payload && payload.data) {
@@ -161,6 +291,7 @@ const P2PPongOverHTTPR = {
                 }).catch(() => {});
             }
 
+            // Firebase слушатель
             if (p2ppong._firebaseActive) {
                 p2ppong._firebaseListen(keyHash, (data) => {
                     if (data && data.packet) {
@@ -170,6 +301,7 @@ const P2PPongOverHTTPR = {
                 });
             }
 
+            // HTTP fallback поллинг
             p2ppong._doPoll();
         };
 
@@ -179,26 +311,34 @@ const P2PPongOverHTTPR = {
                 p2ppong._pollTimer = null;
             }
 
+            // Отписываемся от HTTPR
             if (self._httpr && p2ppong._pollKey) {
                 self._httpr.unsubscribe(p2ppong._pollKey).catch(() => {});
             }
 
+            // Отписываемся от Firebase
             if (p2ppong._pollKey) {
                 p2ppong._firebaseUnlisten(p2ppong._pollKey);
             }
         };
     },
 
+    /**
+     * Подменить _handleIn — поддержка конвертов HTTPR
+     */
     _patchHandleIn(p2ppong) {
         const self = this;
 
         p2ppong._handleIn = async function (blobData) {
+            // Пробуем распарсить как HTTPR конверт
             try {
                 const env = JSON.parse(blobData);
 
+                // Проверяем что это HTTPR конверт
                 if (env.v && env.pl && env.tid) {
                     let payload;
 
+                    // Пробуем расшифровать конверт
                     if (env.kid && self._httpr && self._httpr._transportKeys) {
                         const transportKey = self._httpr._transportKeys.get(env.kid);
                         if (transportKey) {
@@ -213,6 +353,7 @@ const P2PPongOverHTTPR = {
                         }
                     }
 
+                    // Если не расшифровали — пробуем без шифрования
                     if (!payload) {
                         try {
                             payload = JSON.parse(httprDecodeBase64(env.pl));
@@ -222,10 +363,13 @@ const P2PPongOverHTTPR = {
                     }
 
                     if (payload && payload.type) {
+                        // Маппим новый тип на старый
                         const oldType = self._mapTypeToOld(payload.type);
 
+                        // Извлекаем данные
                         let dataToProcess = payload.data || blobData;
 
+                        // Для beacon типов — сохраняем правильный type
                         if (oldType) {
                             try {
                                 const parsed = JSON.parse(dataToProcess);
@@ -234,37 +378,63 @@ const P2PPongOverHTTPR = {
                             } catch (e) {}
                         }
 
+                        // Обрабатываем через оригинальный метод
                         return self._originalHandleIn(dataToProcess);
                     }
                 }
-            } catch (e) {}
+            } catch (e) {
+                // Не HTTPR конверт — обрабатываем как обычно
+            }
 
+            // Вызываем оригинальный обработчик
             return self._originalHandleIn(blobData);
         };
     },
 
+    /**
+     * Установить транспортный ключ для конвертного шифрования
+     * @param {string} key - ключ шифрования конвертов
+     * @returns {Promise<string>} kid - идентификатор ключа
+     */
     async setTransportKey(key) {
         if (!this._httpr) throw new Error('Мост не подключён');
         return this._httpr.setTransportKey(key);
     },
 
+    /**
+     * Удалить транспортный ключ
+     */
     removeTransportKey(kid) {
         if (this._httpr) {
             this._httpr.removeTransportKey(kid);
         }
     },
 
+    /**
+     * Получить статистику HTTPR
+     */
     getStats() {
         if (!this._httpr) return null;
         return this._httpr.getStats();
     },
 
+    /**
+     * Получить имя активного транспорта
+     */
     getActiveTransport() {
         if (!this._httpr) return null;
         return this._httpr.getActiveTransport();
     }
 };
 
+// ============================================================
+// ЭКСПОРТ
+// ============================================================
+
 if (typeof window !== 'undefined') {
     window.P2PPongOverHTTPR = P2PPongOverHTTPR;
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = P2PPongOverHTTPR;
 }
