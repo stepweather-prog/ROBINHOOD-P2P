@@ -1,4 +1,4 @@
-// p2ppong.js — v1.0 чистый
+// p2ppong.js — v 1.0
 const DEBUG = true;
 function log(msg, data) { if (DEBUG) console.log(`[P2PPong] ${msg}`, data || ''); }
 
@@ -282,7 +282,6 @@ const P2PPong = {
         this._beacons[this._peerId] = { keyPair: this._kp, beaconKey: bk, expires: Date.now() + CONFIG.BEACON_TTL };
         this._pending = { type: 'creator' };
         
-        // Отправляем маяк на все серверы
         const packet = JSON.stringify(bd);
         const servers = this._signalServers.filter(s => s.type === 'http');
         for (const server of servers) {
@@ -293,7 +292,6 @@ const P2PPong = {
                 signal: AbortSignal.timeout(5000)
             }).catch(() => {});
         }
-        // Firebase
         if (this._firebaseActive) {
             this._firebasePost('waiting_' + beaconId, packet).catch(() => {});
         }
@@ -305,21 +303,16 @@ const P2PPong = {
 
     async joinBeacon(targetBeaconId) {
         await this._pickServer();
-        // Пробуем получить маяк со всех серверов
         let d = null;
         const servers = this._signalServers.filter(s => s.type === 'http');
         
-        // Сначала Firebase
         if (this._firebaseActive) {
             try {
                 d = await this._firebaseGet('waiting_' + targetBeaconId);
-                if (d && d.status === 'found') {
-                    log('beacon-found', 'Firebase');
-                }
+                if (d && d.status === 'found') log('beacon-found', 'Firebase');
             } catch(e) {}
         }
         
-        // Потом HTTP-серверы
         if (!d || !d.packet) {
             for (const server of servers) {
                 try {
@@ -341,9 +334,7 @@ const P2PPong = {
         if (!d?.packet) { this._emit('error', { message: 'Маяк не найден' }); return false; }
         
         let bd;
-        try {
-            bd = JSON.parse(d.packet);
-        } catch(e) {
+        try { bd = JSON.parse(d.packet); } catch(e) {
             this._emit('error', { message: 'Маяк повреждён' });
             return false;
         }
@@ -399,7 +390,6 @@ const P2PPong = {
             nick: this._myNick,
             avatar: this._myAvatar
         });
-        // Ответ на ack_, маяк на waiting_
         await this._post('/beacon', { keyHash: 'ack_' + beaconId, packet: br });
         
         this.startPolling('ack_' + beaconId);
@@ -772,7 +762,8 @@ const P2PPong = {
                 this._remotePeerId = d.peerId;
                 this._secret = await workerDeriveSecret(this._kp.privateKey, d.pubKey);
                 
-                await this._post('/beacon', { keyHash: 'waiting_' + this._beaconId, packet: JSON.stringify({
+                // ✅ beacon-ack отправляется на ack_ ключ (не на waiting_)
+                await this._post('/beacon', { keyHash: 'ack_' + this._beaconId, packet: JSON.stringify({
                     type: 'beacon-ack', peerId: this._peerId, channelId: this._chId, pubKey: this._kp.publicKey, signalServer: this._signalServer.url, nick: this._myNick, avatar: this._myAvatar
                 })});
                 
