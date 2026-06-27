@@ -1,4 +1,4 @@
-// robinhood-ui.js — v6.2 fix: листопад + скурить с очисткой кеша
+// robinhood-ui.js — v6.3 с активированным HTTPR мостом
 let contacts = [],
     activeChannelId = null,
     activePeerId = null,
@@ -422,7 +422,7 @@ function initApp() {
     document.getElementById('close-verify-modal')?.addEventListener('click', () => { document.getElementById('verify-modal')?.classList.remove('active'); verificationModalShown = false; });
     document.getElementById('verify-modal')?.addEventListener('click', function(e) { if (e.target === this) { this.classList.remove('active'); verificationModalShown = false; } });
     
-    // Кнопка "Скурить" — с полной очисткой кеша
+    // Кнопка "Скурить"
     document.getElementById('btn-clear')?.addEventListener('click', async () => {
         const mode = activeBandId ? 'шайку' : 'колчан';
         
@@ -464,7 +464,6 @@ function initApp() {
         
         resetChatUI();
         
-        // Полная очистка кеша
         localStorage.clear();
         sessionStorage.clear();
         
@@ -527,6 +526,30 @@ function initApp() {
     });
     document.getElementById('msg-input')?.addEventListener('keypress', e => { if (e.key == 'Enter') document.getElementById('send-btn')?.click(); });
     setConnectionStatus('online');
+    
+    // 🌉 Активация HTTPR моста
+    (async function activateBridge() {
+        if (typeof HTTPRCore === 'undefined') {
+            console.warn('[HTTPR] Ядро не загружено, мост не активирован');
+            return;
+        }
+        
+        try {
+            const httpr = new HTTPRCore();
+            
+            await httpr.registerTransport(new HTTPRelayTransport(), {
+                servers: [
+                    'https://robincall.stephanclaps-491.workers.dev',
+                    'https://p2ppong-v2.onrender.com'
+                ]
+            });
+            
+            await P2PPongOverHTTPR.bridge(P2PPong, httpr);
+            console.log('🌉 HTTPR мост активен, транспорт:', P2PPongOverHTTPR.getActiveTransport());
+        } catch(e) {
+            console.warn('[HTTPR] Ошибка активации моста:', e.message);
+        }
+    })();
 }
 window.addEventListener('beforeunload', () => { if (callActive) hang(false); if (voiceTimerInterval) clearInterval(voiceTimerInterval); stopSelfDestruct(); bands = []; P2PPong.destroy(); });
 P2PPong.on('ready', () => { initUI(); initApp(); });
