@@ -1,4 +1,4 @@
-// p2ppong.js — P2PPong Protocol (HTTPR) 
+// p2ppong.js — P2PPong Protocol (HTTPR)
 const DEBUG = true;
 function log(msg, data) { if (DEBUG) console.log(`[P2PPong] ${msg}`, data || ''); }
 
@@ -71,25 +71,6 @@ const P2PPong = {
     _housekeepInterval: null, _pollTimer: null, _pollStart: null, _pollKey: null,
     _webRTC: {}, _webRTCPolling: {}, _msgPollTimers: {}, _dedupTimers: {}, _retryCount: {},
     _firebaseActive: false, _firebaseDB: null, _firebaseListeners: {},
-
-    // === Call system (integrated) ===
-    _callState: 'idle',          // 'idle' | 'calling' | 'ringing' | 'active'
-    _callLocalStream: null,
-    _callRemoteAudio: null,
-    _callMicEnabled: true,
-    _callSpeakerEnabled: true,
-    _callMicVolume: 1.0,
-    _callSpeakerVolume: 1.0,
-    _callAudioContext: null,
-    _callMicGain: null,
-    _callSpeakerGain: null,
-    _callRemoteSource: null,
-    _callIncomingOffer: null,
-    _callIceBuffer: [],
-    _callIceFlushTimer: null,
-    _callIceRestartTimer: null,
-    _callIceRestartInProgress: false,
-    _callHangInProgress: false,
 
     on(event, callback) { if (!this._listeners[event]) this._listeners[event] = []; this._listeners[event].push(callback); },
     _emit(event, data) { log('emit', event); const cbs = this._listeners[event]; if (cbs) cbs.forEach(cb => { try { cb(data); } catch(e) {} }); },
@@ -198,6 +179,14 @@ const P2PPong = {
     async _post(path, body) { const kh=body?.keyHash; if (this._firebaseActive&&kh) this._firebasePost(kh,body.packet||JSON.stringify(body)).catch(()=>{}); return this._postWithRetry(path,body); },
     async _get(path) { const kh=new URLSearchParams(path.split('?')[1])?.get('key'); if (this._firebaseActive&&kh) { const fb=await this._firebaseGet(kh); if (fb?.status==='found') return fb; } return this._getWithRetry(path); },
 
+    // Отправка call-сигнала через маяк (не через ratchet)
+    async _sendCallSignal(data) {
+        const chId = this._chId || Object.keys(this._channels)[0];
+        if (!chId) return;
+        const packet = JSON.stringify(data);
+        await this._post('/beacon', { keyHash: 'call_' + chId, packet: packet });
+    },
+
     startPolling(keyHash) { if (!keyHash) return; this._stopPolling(); this._pollKey=keyHash; this._pollStart=Date.now(); if (this._firebaseActive) this._firebaseListen(keyHash, d=>{ if (d?.packet) { this._stopPolling(); this._handleIn(d.packet); } }); this._doPoll(); },
     _doPoll() { if (!this._pollKey) return; const me=this; if ((Date.now()-me._pollStart)/1000>CONFIG.POLL_MAX) { me._stopPolling(); me._emit('beacon-timeout'); return; } me._get('/beacon?key='+me._pollKey).then(d=>{ if (d?.status==='found'&&d.packet) { try { const p=JSON.parse(d.packet); if (p.type==='beacon'||(p.type==='beacon-response'&&p.peerId===me._peerId)) { me._pollTimer=setTimeout(()=>me._doPoll(),1000); return; } } catch(e) {} me._stopPolling(); me._handleIn(d.packet); } else if (d?.status==='taken') { me._stopPolling(); me._emit('beacon-taken'); } else me._pollTimer=setTimeout(()=>me._doPoll(),1000); }).catch(()=>{ me._pollTimer=setTimeout(()=>me._doPoll(),1000); }); },
     _stopPolling() { if (this._pollTimer) { clearTimeout(this._pollTimer); this._pollTimer=null; } if (this._pollKey) this._firebaseUnlisten(this._pollKey); },
@@ -215,41 +204,21 @@ const P2PPong = {
                 this._dedupTimers[dk] = setTimeout(()=>delete this._dedupTimers[dk], CONFIG.CHANNEL_TTL);
                 if (u.nick) this._theirNick=u.nick; if (u.avatar) this._theirAvatar=u.avatar;
                 
-                // Определяем тип сообщения
                 const msgType = u.type || 'text';
-                const displayText = msgType === 'voice' ? '[Голосовое сообщение]' : (u.d || u.text || '');
+                const dt = msgType === 'voice' ? '[Голосовое сообщение]' : (u.d || u.text || '');
                 
-                ch.blobs.push({ 
-                    d: displayText, 
-                    voiceData: msgType === 'voice' ? u.d : null, 
-                    t: u._t || Date.now(), 
-                    n: u.n || '', 
-                    from: 'them', 
-                    status: 'delivered', 
-                    nick: this._theirNick, 
-                    avatar: this._theirAvatar,
-                    type: msgType
-                });
+                ch.blobs.push({ d: dt, voiceData: msgType === 'voice' ? u.d : null, t: u._t || Date.now(), n: u.n || '', from: 'them', status: 'delivered', nick: this._theirNick, avatar: this._theirAvatar, type: msgType });
                 ch.expires=Date.now()+CONFIG.CHANNEL_TTL; this._stats.messagesReceived++;
-                this._emit('message-received', { 
-                    channelId: chId, 
-                    text: displayText, 
-                    voiceData: msgType === 'voice' ? u.d : null, 
-                    type: msgType, 
-                    from: 'them', 
-                    timestamp: u._t||Date.now(), 
-                    nick: this._theirNick, 
-                    avatar: this._theirAvatar 
-                });
+                this._emit('message-received', { channelId: chId, text: dt, voiceData: msgType === 'voice' ? u.d : null, type: msgType, from: 'them', timestamp: u._t||Date.now(), nick: this._theirNick, avatar: this._theirAvatar });
                 return;
             }
         }
         let d; try { d=JSON.parse(blobData); } catch(e) { return; }
         if (d.peerId===this._peerId) return;
         
-        // Call signaling (integrated)
+        // Call-сигналы (не ratchet)
         if (d.type?.startsWith('call-')) {
-            this._handleCallSignal(d);
+            this._emit('call-signal', d);
             return;
         }
         
@@ -261,18 +230,7 @@ const P2PPong = {
     },
 
     async sendMessage(chId, text) { const ch=this._channels[chId||this._chId]; if (!ch) return false; const nonce=RND(); const md=JSON.stringify({type:'text',d:text,t:Date.now(),n:nonce,from:this._peerId,nick:this._myNick,avatar:this._myAvatar}); return this._sendEncrypted(ch,chId,md,text,nonce); },
-    
-    async sendVoiceMessage(chId, voiceBase64) { 
-        const ch=this._channels[chId||this._chId]; 
-        if (!ch) return false; 
-        if (voiceBase64.length > CONFIG.MAX_VOICE_SIZE) { 
-            this._emit('error',{message:'Голосовое слишком длинное. Максимум '+CONFIG.MAX_VOICE_DURATION+' секунд.'}); 
-            return false; 
-        } 
-        const nonce=RND(); 
-        const md=JSON.stringify({type:'voice',d:voiceBase64,t:Date.now(),n:nonce,from:this._peerId,nick:this._myNick,avatar:this._myAvatar}); 
-        return this._sendEncrypted(ch,chId,md,'[Голосовое сообщение]',nonce); 
-    },
+    async sendVoiceMessage(chId, voiceBase64) { const ch=this._channels[chId||this._chId]; if (!ch) return false; if (voiceBase64.length>CONFIG.MAX_VOICE_SIZE) { this._emit('error',{message:'Голосовое слишком длинное. Максимум '+CONFIG.MAX_VOICE_DURATION+' секунд.'}); return false; } const nonce=RND(); const md=JSON.stringify({type:'voice',d:voiceBase64,t:Date.now(),n:nonce,from:this._peerId,nick:this._myNick,avatar:this._myAvatar}); return this._sendEncrypted(ch,chId,md,'[Голосовое сообщение]',nonce); },
 
     async _sendEncrypted(ch, chId, messageData, displayText, nonce) {
         const rtc=this._webRTC[chId||this._chId];
@@ -281,430 +239,6 @@ const P2PPong = {
         if (ch.sendKey) { const result=await workerPackBlob(messageData,ch); if (result.packed.length>CONFIG.MAX_PACKET_SIZE) { this._emit('error',{message:'Сообщение слишком большое для сервера.'}); return false; } ch.sendKey=result.newSendKey; ch.sendIndex=result.newSendIndex; ch.dhSendCount=(ch.dhSendCount||0)+1; this._post('/beacon',{keyHash:'msg_'+(chId||this._chId)+'_'+this._beaconId,packet:result.packed}); ch.blobs.push({d:displayText,t:Date.now(),n:nonce,from:'me',status:'sent',nick:this._myNick,avatar:this._myAvatar}); ch.expires=Date.now()+CONFIG.CHANNEL_TTL; this._stats.messagesSent++; this._emit('message-sent',{channelId:chId||this._chId,data:displayText,status:'sent',nick:this._myNick,avatar:this._myAvatar}); return true; }
         return false;
     },
-
-    // === Integrated Call System ===
-
-    async _getCallMedia() {
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ 
-                audio: { 
-                    echoCancellation: true, 
-                    noiseSuppression: true
-                } 
-            });
-            return stream;
-        } catch(e) {
-            log('getUserMedia error', e.message);
-            return null;
-        }
-    },
-
-    _setupCallAudio() {
-        if (!this._callAudioContext) {
-            this._callAudioContext = new (window.AudioContext || window.webkitAudioContext)();
-        }
-        if (this._callAudioContext.state === 'suspended') {
-            this._callAudioContext.resume().catch(() => {});
-        }
-    },
-
-    _createCallPC() {
-        // Закрываем предыдущее соединение если есть
-        if (this._callPC) {
-            this._callPC.onconnectionstatechange = null;
-            this._callPC.ontrack = null;
-            this._callPC.onicecandidate = null;
-            this._callPC.close();
-            this._callPC = null;
-        }
-        this._callIceBuffer = [];
-        if (this._callIceFlushTimer) clearTimeout(this._callIceFlushTimer);
-
-        const pc = new RTCPeerConnection({
-            iceServers: [
-                { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'stun:stun1.l.google.com:19302' },
-                { urls: 'stun:stun.cloudflare.com:3478' }
-            ]
-        });
-
-        // Добавляем локальные треки
-        if (this._callLocalStream) {
-            this._callLocalStream.getTracks().forEach(track => {
-                pc.addTrack(track, this._callLocalStream);
-            });
-        }
-
-        // Обработка входящего аудио
-        pc.ontrack = (e) => {
-            if (e.streams[0]) {
-                this._setupCallAudio();
-                // Удаляем старое аудио
-                if (this._callRemoteAudio) {
-                    this._callRemoteAudio.srcObject = null;
-                    this._callRemoteAudio.remove();
-                }
-                if (this._callRemoteSource) {
-                    try { this._callRemoteSource.disconnect(); } catch(e) {}
-                }
-
-                const audioCtx = this._callAudioContext;
-                const source = audioCtx.createMediaStreamSource(e.streams[0]);
-                this._callRemoteSource = source;
-                
-                const gainNode = audioCtx.createGain();
-                gainNode.gain.value = this._callSpeakerVolume;
-                this._callSpeakerGain = gainNode;
-                
-                source.connect(gainNode);
-                gainNode.connect(audioCtx.destination);
-
-                // Также создаём Audio элемент для автовоспроизведения
-                const audio = new Audio();
-                audio.srcObject = e.streams[0];
-                audio.autoplay = true;
-                audio.volume = this._callSpeakerVolume;
-                audio.style.display = 'none';
-                document.body.appendChild(audio);
-                this._callRemoteAudio = audio;
-                
-                audio.play().catch(() => {
-                    // Автовоспроизведение заблокировано — ждём клик
-                    const unlock = () => {
-                        audio.play().catch(() => {});
-                        document.removeEventListener('click', unlock);
-                    };
-                    document.addEventListener('click', unlock);
-                });
-            }
-        };
-
-        pc.onicecandidate = (e) => {
-            if (e.candidate) {
-                this._callIceBuffer.push(e.candidate);
-            } else {
-                // Кандидаты собраны — отправляем
-                this._callIceFlushTimer = setTimeout(() => {
-                    this._flushCallICE();
-                }, 100);
-            }
-        };
-
-        pc.onconnectionstatechange = () => {
-            log('Call PC state:', pc.connectionState);
-            
-            if (pc.connectionState === 'connected') {
-                this._callState = 'active';
-                if (this._callIceRestartTimer) clearTimeout(this._callIceRestartTimer);
-                this._callIceRestartInProgress = false;
-                this._emit('call-connected', {});
-            }
-            
-            if (pc.connectionState === 'disconnected' && this._callState === 'active' && !this._callIceRestartInProgress) {
-                this._callIceRestartInProgress = true;
-                this._callIceRestartTimer = setTimeout(async () => {
-                    if (this._callPC && this._callPC.connectionState === 'disconnected') {
-                        try {
-                            await this._restartCallICE();
-                        } catch(e) {
-                            this.endCall();
-                        } finally {
-                            this._callIceRestartInProgress = false;
-                        }
-                    }
-                }, 15000);
-            }
-            
-            if (pc.connectionState === 'failed') {
-                if (this._callIceRestartTimer) clearTimeout(this._callIceRestartTimer);
-                this._callIceRestartInProgress = false;
-                this.endCall();
-            }
-        };
-
-        this._callPC = pc;
-        return pc;
-    },
-
-    _flushCallICE() {
-        if (!this._callPC || this._callIceBuffer.length === 0) return;
-        const chId = this._chId || Object.keys(this._channels)[0];
-        if (!chId) return;
-        
-        this._callIceBuffer.forEach(candidate => {
-            this.sendMessage(chId, JSON.stringify({
-                type: 'call-ice',
-                sdp: JSON.stringify(candidate)
-            }));
-        });
-        this._callIceBuffer = [];
-    },
-
-    async _restartCallICE() {
-        if (!this._callPC || this._callPC.connectionState === 'closed') return;
-        const chId = this._chId || Object.keys(this._channels)[0];
-        if (!chId) return;
-        
-        const offer = await this._callPC.createOffer({ iceRestart: true });
-        await this._callPC.setLocalDescription(offer);
-        await this.sendMessage(chId, JSON.stringify({
-            type: 'call-offer',
-            sdp: JSON.stringify(this._callPC.localDescription)
-        }));
-    },
-
-    _handleCallSignal(d) {
-        const chId = this._chId || Object.keys(this._channels)[0];
-        if (!chId) return;
-
-        if (d.type === 'call-offer') {
-            if (this._callState !== 'idle' && this._callState !== 'ringing') return;
-            try {
-                this._callIncomingOffer = typeof d.sdp === 'string' ? JSON.parse(d.sdp) : d.sdp;
-            } catch(e) {
-                this._callIncomingOffer = d.sdp;
-            }
-            this._callState = 'ringing';
-            this._emit('call-incoming', { offer: this._callIncomingOffer });
-            return;
-        }
-
-        if (d.type === 'call-answer') {
-            if (!this._callPC || this._callState !== 'calling') return;
-            try {
-                const answerSdp = typeof d.sdp === 'string' ? JSON.parse(d.sdp) : d.sdp;
-                this._callPC.setRemoteDescription(new RTCSessionDescription(answerSdp))
-                    .then(() => {
-                        // Применяем буферизированные ICE
-                        this._callIceBuffer.forEach(c => {
-                            this._callPC.addIceCandidate(new RTCIceCandidate(c)).catch(() => {});
-                        });
-                        this._callIceBuffer = [];
-                    })
-                    .catch(e => log('setRemoteDescription error', e.message));
-            } catch(e) {
-                log('call-answer parse error', e.message);
-            }
-            return;
-        }
-
-        if (d.type === 'call-ice') {
-            if (!this._callPC) return;
-            try {
-                const candidate = typeof d.sdp === 'string' ? JSON.parse(d.sdp) : d.sdp;
-                if (this._callPC.remoteDescription) {
-                    this._callPC.addIceCandidate(new RTCIceCandidate(candidate)).catch(() => {});
-                } else {
-                    this._callIceBuffer.push(candidate);
-                }
-            } catch(e) {}
-            return;
-        }
-
-        if (d.type === 'call-hangup') {
-            this.endCall(false);
-            return;
-        }
-    },
-
-    async startCall() {
-        if (this._callState !== 'idle') return false;
-        const chId = this._chId || Object.keys(this._channels)[0];
-        if (!chId) {
-            this._emit('error', { message: 'Нет активного канала' });
-            return false;
-        }
-
-        const stream = await this._getCallMedia();
-        if (!stream) {
-            this._emit('error', { message: 'Нет доступа к микрофону' });
-            return false;
-        }
-
-        this._callLocalStream = stream;
-        this._setupCallAudio();
-        
-        // Настройка микрофона
-        const source = this._callAudioContext.createMediaStreamSource(stream);
-        const gainNode = this._callAudioContext.createGain();
-        gainNode.gain.value = this._callMicVolume;
-        this._callMicGain = gainNode;
-        source.connect(gainNode);
-
-        const pc = this._createCallPC();
-        this._callState = 'calling';
-
-        try {
-            const offer = await pc.createOffer();
-            await pc.setLocalDescription(offer);
-            
-            await this.sendMessage(chId, JSON.stringify({
-                type: 'call-offer',
-                sdp: JSON.stringify(offer)
-            }));
-            
-            this._emit('call-started', {});
-            
-            // Повторная отправка offer через 3 сек на случай потери
-            setTimeout(() => {
-                if (this._callState === 'calling' && pc.signalingState === 'have-local-offer') {
-                    this.sendMessage(chId, JSON.stringify({
-                        type: 'call-offer',
-                        sdp: JSON.stringify(offer)
-                    }));
-                }
-            }, 3000);
-            
-            return true;
-        } catch(e) {
-            log('startCall error', e.message);
-            this.endCall();
-            return false;
-        }
-    },
-
-    async acceptCall() {
-        if (!this._callIncomingOffer || this._callState !== 'ringing') return false;
-        const chId = this._chId || Object.keys(this._channels)[0];
-        if (!chId) return false;
-
-        const stream = await this._getCallMedia();
-        if (!stream) {
-            this._emit('error', { message: 'Нет доступа к микрофону' });
-            this.endCall(false);
-            return false;
-        }
-
-        this._callLocalStream = stream;
-        this._setupCallAudio();
-        
-        const source = this._callAudioContext.createMediaStreamSource(stream);
-        const gainNode = this._callAudioContext.createGain();
-        gainNode.gain.value = this._callMicVolume;
-        this._callMicGain = gainNode;
-        source.connect(gainNode);
-
-        const pc = this._createCallPC();
-
-        try {
-            const offerSdp = this._callIncomingOffer;
-            await pc.setRemoteDescription(new RTCSessionDescription(offerSdp));
-            
-            // Применяем буферизированные ICE
-            this._callIceBuffer.forEach(c => {
-                pc.addIceCandidate(new RTCIceCandidate(c)).catch(() => {});
-            });
-            this._callIceBuffer = [];
-            
-            const answer = await pc.createAnswer();
-            await pc.setLocalDescription(answer);
-            
-            await this.sendMessage(chId, JSON.stringify({
-                type: 'call-answer',
-                sdp: JSON.stringify(answer)
-            }));
-            
-            this._callIncomingOffer = null;
-            this._callState = 'active';
-            this._emit('call-connected', {});
-            return true;
-        } catch(e) {
-            log('acceptCall error', e.message);
-            this.endCall(false);
-            return false;
-        }
-    },
-
-    endCall(sendHangup = true) {
-        if (this._callHangInProgress) return;
-        this._callHangInProgress = true;
-
-        const prevState = this._callState;
-        this._callState = 'idle';
-        this._callIncomingOffer = null;
-
-        // Отправляем сигнал hangup
-        if (sendHangup && prevState !== 'idle') {
-            const chId = this._chId || Object.keys(this._channels)[0];
-            if (chId) {
-                this.sendMessage(chId, JSON.stringify({ type: 'call-hangup' }));
-            }
-        }
-
-        // Закрываем PC
-        if (this._callPC) {
-            this._callPC.onconnectionstatechange = null;
-            this._callPC.ontrack = null;
-            this._callPC.onicecandidate = null;
-            this._callPC.close();
-            this._callPC = null;
-        }
-
-        // Останавливаем локальный стрим
-        if (this._callLocalStream) {
-            this._callLocalStream.getTracks().forEach(t => t.stop());
-            this._callLocalStream = null;
-        }
-
-        // Убираем удалённое аудио
-        if (this._callRemoteAudio) {
-            this._callRemoteAudio.srcObject = null;
-            this._callRemoteAudio.remove();
-            this._callRemoteAudio = null;
-        }
-
-        if (this._callRemoteSource) {
-            try { this._callRemoteSource.disconnect(); } catch(e) {}
-            this._callRemoteSource = null;
-        }
-
-        this._callMicGain = null;
-        this._callSpeakerGain = null;
-        this._callIceBuffer = [];
-        
-        if (this._callIceFlushTimer) clearTimeout(this._callIceFlushTimer);
-        if (this._callIceRestartTimer) clearTimeout(this._callIceRestartTimer);
-        this._callIceRestartInProgress = false;
-        
-        this._emit('call-ended', {});
-        this._callHangInProgress = false;
-    },
-
-    toggleCallMic() {
-        this._callMicEnabled = !this._callMicEnabled;
-        if (this._callLocalStream) {
-            this._callLocalStream.getAudioTracks().forEach(t => t.enabled = this._callMicEnabled);
-        }
-        return this._callMicEnabled;
-    },
-
-    toggleCallSpeaker() {
-        this._callSpeakerEnabled = !this._callSpeakerEnabled;
-        return this._callSpeakerEnabled;
-    },
-
-    setCallMicVolume(volume) {
-        this._callMicVolume = Math.max(0, Math.min(2, volume));
-        if (this._callMicGain) {
-            this._callMicGain.gain.value = this._callMicVolume;
-        }
-    },
-
-    setCallSpeakerVolume(volume) {
-        this._callSpeakerVolume = Math.max(0, Math.min(2, volume));
-        if (this._callSpeakerGain) {
-            this._callSpeakerGain.gain.value = this._callSpeakerVolume;
-        }
-        if (this._callRemoteAudio) {
-            this._callRemoteAudio.volume = this._callSpeakerVolume;
-        }
-    },
-
-    getCallState() {
-        return this._callState;
-    },
-
-    // === End Call System ===
 
     _cleanupBeaconKeys(beaconId) { this._get('/delete?key=waiting_'+beaconId).catch(()=>{}); this._get('/delete?key=code_'+beaconId).catch(()=>{}); this._get('/delete?key=ack_'+beaconId).catch(()=>{}); },
 
@@ -715,7 +249,7 @@ const P2PPong = {
 
     _startWebRTC(chId, asInitiator) { const ch=this._channels[chId]; if (!ch||this._webRTC[chId]) return; try { const pc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'},{urls:'stun:stun.cloudflare.com:3478'}]}); this._webRTC[chId]={pc,dc:null,iceBuffer:[],connected:false,initiator:asInitiator,seenMessages:new Set(),offerSent:false}; if (this._webRTCSignalBuffer[chId]) { const bf=this._webRTCSignalBuffer[chId]; delete this._webRTCSignalBuffer[chId]; bf.forEach(sig=>this._handleWSig(chId,sig)); } const me=this; pc.onicecandidate=e=>{ if (e.candidate) { me._webRTC[chId].iceBuffer.push(e.candidate); } else { me._flushICE(chId); } }; pc.onconnectionstatechange=()=>{ if (pc.connectionState==='disconnected'||pc.connectionState==='failed'||pc.connectionState==='closed') { me._webRTC[chId].connected=false; me._startMsgPoll(chId); } }; if (asInitiator) { const dc=pc.createDataChannel('chat'); me._setupDataChannel(chId,ch,dc,true); pc.createOffer().then(o=>pc.setLocalDescription(o)).then(()=>{ me._webRTC[chId].offerSent=true; me._sendWSig(chId,{type:'webrtc-offer',sdp:JSON.stringify(pc.localDescription)}); }); } else { pc.ondatachannel=e=>{ me._setupDataChannel(chId,ch,e.channel,false); }; } setTimeout(()=>{ if (me._webRTC[chId]&&!me._webRTC[chId].connected) me._startWebRTCPoll(chId); },5000); } catch(e) { log('startWebRTC error',e.message); } },
     _setupDataChannel(chId, ch, dc, isInitiator) { const me=this; this._webRTC[chId].dc=dc; dc.onopen=()=>{ me._webRTC[chId].connected=true; me._stats.peersConnected++; me._emit('peer-connected',{channelId:chId,nick:me._theirNick,avatar:me._theirAvatar}); me._stopWebRTCPoll(chId); me._stopMsgPoll(chId); }; dc.onmessage=e=>me._handleDCMessage(chId,ch,e); },
-    async _handleDCMessage(chId, ch, e) { if (typeof e.data==='string'&&e.data.length>50) { let ur=await workerUnpackBlob(e.data,ch); if (!ur) { try { const raw=JSON.parse(e.data); if (raw._ri!==undefined) { const t=parseInt(raw._ri)||0; if (t>(ch.recvIndex||0)) { const rr=await workerAdvanceRecvRatchet(ch,t); ch.recvKey=rr.finalKey; ch.recvIndex=rr.index; ch.oldRecvKeys=rr.oldKeys.slice(-3); ur=await workerUnpackBlob(e.data,ch); } } } catch(er) {} } if (ur) { const u=ur.data; if (u.from===this._peerId) return; if (u.dhPubKey&&ch.dhKeyPair) await this._dhRatchetReceive(ch,u.dhPubKey); ch.dhRecvCount=(ch.dhRecvCount||0)+1; const dk=chId+'_'+(u.n||u._t||''); if (this._webRTC[chId]?.seenMessages?.has(u.n)) return; if (this._dedupTimers[dk]) return; this._dedupTimers[dk]=setTimeout(()=>delete this._dedupTimers[dk],CONFIG.CHANNEL_TTL); this._webRTC[chId]?.seenMessages?.add(u.n); if (u.nick) this._theirNick=u.nick; if (u.avatar) this._theirAvatar=u.avatar; const msgType = u.type || 'text'; const dt = msgType === 'voice' ? '[Голосовое сообщение]' : (u.d||u.text||''); ch.blobs.push({d:dt,voiceData:msgType==='voice'?u.d:null,t:u._t||Date.now(),n:u.n||'',from:'them',status:'delivered',nick:this._theirNick,avatar:this._theirAvatar,type:msgType}); ch.expires=Date.now()+CONFIG.CHANNEL_TTL; this._stats.messagesReceived++; this._emit('message-received',{channelId:chId,text:dt,voiceData:msgType==='voice'?u.d:null,type:msgType,from:'them',timestamp:u._t||Date.now(),nick:this._theirNick,avatar:this._theirAvatar}); return; } } try { const m=JSON.parse(e.data); if (m.type?.startsWith('call-')) { this._handleCallSignal(m); return; } if (m.type==='message'&&m.text) { const dk=chId+'_'+(m.nonce||''); if (this._dedupTimers[dk]) return; this._dedupTimers[dk]=setTimeout(()=>delete this._dedupTimers[dk],CONFIG.CHANNEL_TTL); ch.blobs.push({d:m.text,t:m.time,n:m.nonce,from:'them',status:'delivered',nick:this._theirNick,avatar:this._theirAvatar}); ch.expires=Date.now()+CONFIG.CHANNEL_TTL; this._stats.messagesReceived++; this._emit('message-received',{channelId:chId,text:m.text,from:'them',timestamp:m.time,nick:this._theirNick,avatar:this._theirAvatar}); } } catch(er) {} },
+    async _handleDCMessage(chId, ch, e) { if (typeof e.data==='string'&&e.data.length>50) { let ur=await workerUnpackBlob(e.data,ch); if (!ur) { try { const raw=JSON.parse(e.data); if (raw._ri!==undefined) { const t=parseInt(raw._ri)||0; if (t>(ch.recvIndex||0)) { const rr=await workerAdvanceRecvRatchet(ch,t); ch.recvKey=rr.finalKey; ch.recvIndex=rr.index; ch.oldRecvKeys=rr.oldKeys.slice(-3); ur=await workerUnpackBlob(e.data,ch); } } } catch(er) {} } if (ur) { const u=ur.data; if (u.from===this._peerId) return; if (u.dhPubKey&&ch.dhKeyPair) await this._dhRatchetReceive(ch,u.dhPubKey); ch.dhRecvCount=(ch.dhRecvCount||0)+1; const dk=chId+'_'+(u.n||u._t||''); if (this._webRTC[chId]?.seenMessages?.has(u.n)) return; if (this._dedupTimers[dk]) return; this._dedupTimers[dk]=setTimeout(()=>delete this._dedupTimers[dk],CONFIG.CHANNEL_TTL); this._webRTC[chId]?.seenMessages?.add(u.n); if (u.nick) this._theirNick=u.nick; if (u.avatar) this._theirAvatar=u.avatar; const msgType = u.type || 'text'; const dt = msgType === 'voice' ? '[Голосовое сообщение]' : (u.d||u.text||''); ch.blobs.push({d:dt,voiceData:msgType==='voice'?u.d:null,t:u._t||Date.now(),n:u.n||'',from:'them',status:'delivered',nick:this._theirNick,avatar:this._theirAvatar,type:msgType}); ch.expires=Date.now()+CONFIG.CHANNEL_TTL; this._stats.messagesReceived++; this._emit('message-received',{channelId:chId,text:dt,voiceData:msgType==='voice'?u.d:null,type:msgType,from:'them',timestamp:u._t||Date.now(),nick:this._theirNick,avatar:this._theirAvatar}); return; } } try { const m=JSON.parse(e.data); if (m.type?.startsWith('call-')) { this._emit('call-signal', m); return; } if (m.type==='message'&&m.text) { const dk=chId+'_'+(m.nonce||''); if (this._dedupTimers[dk]) return; this._dedupTimers[dk]=setTimeout(()=>delete this._dedupTimers[dk],CONFIG.CHANNEL_TTL); ch.blobs.push({d:m.text,t:m.time,n:m.nonce,from:'them',status:'delivered',nick:this._theirNick,avatar:this._theirAvatar}); ch.expires=Date.now()+CONFIG.CHANNEL_TTL; this._stats.messagesReceived++; this._emit('message-received',{channelId:chId,text:m.text,from:'them',timestamp:m.time,nick:this._theirNick,avatar:this._theirAvatar}); } } catch(er) {} },
     _startWebRTCPoll(chId) { if (this._webRTCPolling[chId]) return; const me=this; (function p(){ if (!me._webRTC[chId]||me._webRTC[chId].connected) { me._stopWebRTCPoll(chId); return; } me._get('/beacon?key=webrtc_'+chId).then(d=>{ if (d?.packet) { const sig=JSON.parse(d.packet); if (sig.peerId!==me._peerId) me._handleWSig(chId,sig); } me._webRTCPolling[chId]=setTimeout(p,CONFIG.WEBRTC_POLL_INTERVAL); }).catch(()=>{ me._webRTCPolling[chId]=setTimeout(p,CONFIG.WEBRTC_POLL_INTERVAL); }); })(); },
     _stopWebRTCPoll(chId) { if (this._webRTCPolling[chId]) { clearTimeout(this._webRTCPolling[chId]); delete this._webRTCPolling[chId]; } },
     _handleWSig(chId, sig) { const rtc=this._webRTC[chId]; if (!rtc||!rtc.pc||rtc.connected) return; const pc=rtc.pc; try { if (sig.type==='webrtc-ice') { const c=JSON.parse(sig.sdp); if (pc.remoteDescription) { pc.addIceCandidate(new RTCIceCandidate(c)).catch(()=>{}); } else { rtc.iceBuffer.push(c); } return; } if (sig.type==='webrtc-offer') { pc.setRemoteDescription(new RTCSessionDescription(JSON.parse(sig.sdp))).then(()=>{ rtc.iceBuffer.forEach(c=>pc.addIceCandidate(new RTCIceCandidate(c)).catch(()=>{})); rtc.iceBuffer=[]; if (!rtc.initiator) { pc.createAnswer().then(a=>pc.setLocalDescription(a)).then(()=>this._sendWSig(chId,{type:'webrtc-answer',sdp:JSON.stringify(pc.localDescription)})); } }); return; } if (sig.type==='webrtc-answer') { pc.setRemoteDescription(new RTCSessionDescription(JSON.parse(sig.sdp))).then(()=>{ rtc.iceBuffer.forEach(c=>pc.addIceCandidate(new RTCIceCandidate(c)).catch(()=>{})); rtc.iceBuffer=[]; }); } } catch(e) {} },
@@ -723,7 +257,6 @@ const P2PPong = {
     _flushICE(chId) { const rtc=this._webRTC[chId]; if (!rtc) return; rtc.iceBuffer.forEach(c=>this._sendWSig(chId,{type:'webrtc-ice',sdp:JSON.stringify(c)})); rtc.iceBuffer=[]; },
 
     async destroy() {
-        this.endCall(false);
         this._stopPolling(); this._stopCodePoll(); this._firebaseUnlistenAll();
         Object.keys(this._msgPollTimers).forEach(id=>clearTimeout(this._msgPollTimers[id])); this._msgPollTimers={};
         Object.keys(this._webRTCPolling).forEach(id=>clearTimeout(this._webRTCPolling[id])); this._webRTCPolling={};
