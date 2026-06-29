@@ -1,4 +1,4 @@
-// robinhood-ui.js — v1.0: фикс багов, только автотемы, листопад с анимацией, убрана блокировка
+// robinhood-ui.js — v1.0
 let contacts = [],
     activeChannelId = null,
     activePeerId = null,
@@ -143,7 +143,6 @@ function startSelfDestruct() {
         }
         if (box.querySelectorAll('.message-row').length === 0) stopSelfDestruct();
     }, selfDestructIntervalTime);
-    // Включаем анимацию листопада
     document.getElementById('leaves-container')?.classList.remove('sleeping');
 }
 
@@ -161,7 +160,6 @@ function stopSelfDestruct() {
     if (activeChannelId && P2PPong._channels[activeChannelId]) {
         P2PPong._channels[activeChannelId].blobs = [];
     }
-    // Выключаем анимацию листопада
     document.getElementById('leaves-container')?.classList.add('sleeping');
 }
 
@@ -416,5 +414,8 @@ function initApp() {
     document.getElementById('msg-input')?.addEventListener('keypress', e => { if (e.key == 'Enter') document.getElementById('send-btn')?.click(); });
     setConnectionStatus('online');
 }
+
 window.addEventListener('beforeunload', () => { if (callActive) hang(false); if (voiceTimerInterval) clearInterval(voiceTimerInterval); stopSelfDestruct(); bands = []; P2PPong.destroy(); });
+
 P2PPong.on('ready', () => { initUI(); initApp(); });
+P2PPong.init();
