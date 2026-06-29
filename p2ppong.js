@@ -1,4 +1,4 @@
-// p2ppong.js — v1.0: чистый, без HTTPR, без XMPP/Tor, лимит 100KB
+// p2ppong.js — v1.0
 const DEBUG = true;
 function log(msg, data) { if (DEBUG) console.log(`[P2PPong] ${msg}`, data || ''); }
 
