@@ -369,7 +369,7 @@ const P2PPong = {
                 if (u.dhPubKey&&ch.dhKeyPair) await this._dhRatchetReceive(ch, u.dhPubKey);
                 ch.dhRecvCount = (ch.dhRecvCount||0)+1;
 
-                const dk = chId + '_' + (u.n || '') + '_' + (u._ri !== undefined ? u._ri : u._t || '');
+                const dk = chId + '_' + (u.n || u._t || '');
                 if (this._dedupTimers[dk]) return;
                 this._dedupTimers[dk] = setTimeout(()=>delete this._dedupTimers[dk], CONFIG.CHANNEL_TTL);
 
@@ -672,7 +672,7 @@ const P2PPong = {
                 ch.dhRecvCount=(ch.dhRecvCount||0)+1;
 
                 if (this._webRTC[chId]?.seenMessages?.has(u.n)) return;
-                const dk = chId + '_' + (u.n || '') + '_' + (u._ri !== undefined ? u._ri : u._t || '');
+                const dk = chId + '_' + (u.n || u._t || '');
                 if (this._dedupTimers[dk]) return;
                 this._dedupTimers[dk]=setTimeout(()=>delete this._dedupTimers[dk],CONFIG.CHANNEL_TTL);
                 this._webRTC[chId]?.seenMessages?.add(u.n);
@@ -690,7 +690,7 @@ const P2PPong = {
         try {
             const m=JSON.parse(e.data);
             if (m.type==='message'&&m.text) {
-                const dk = chId + '_' + (m.nonce||'') + '_' + (m._ri !== undefined ? m._ri : '');
+                const dk = chId + '_' + (m.nonce || '');
                 if (this._dedupTimers[dk]) return;
                 this._dedupTimers[dk]=setTimeout(()=>delete this._dedupTimers[dk],CONFIG.CHANNEL_TTL);
                 ch.blobs.push({d:m.text,t:m.time,n:m.nonce,from:'them',status:'delivered',nick:this._theirNick,avatar:this._theirAvatar});
