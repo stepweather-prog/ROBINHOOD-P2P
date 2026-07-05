@@ -1,4 +1,4 @@
-// crypto-worker.js — v1.0 Triple Ratchet (Signal Protocol)
+// crypto-worker.js
 function bufferToHex(buffer) {
     return Array.from(new Uint8Array(buffer)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
@@ -146,6 +146,24 @@ async function verifyHMAC(data, sigHex, keyHex) {
     );
 }
 
+// ===== X3DH (Extended Triple Diffie-Hellman) =====
+
+async function x3dhSend(myIdentityPriv, myEphemeralPriv, theirIdentityPub, theirSignedPreKeyPub) {
+    const dh1 = await deriveSecret(myIdentityPriv, theirSignedPreKeyPub);
+    const dh2 = await deriveSecret(myEphemeralPriv, theirIdentityPub);
+    const dh3 = await deriveSecret(myEphemeralPriv, theirSignedPreKeyPub);
+    const combined = dh1 + dh2 + dh3;
+    return await HKDF(combined, null, 'osprp-x3dh-root');
+}
+
+async function x3dhReceive(myIdentityPriv, mySignedPreKeyPriv, theirIdentityPub, theirEphemeralPub) {
+    const dh1 = await deriveSecret(mySignedPreKeyPriv, theirIdentityPub);
+    const dh2 = await deriveSecret(myIdentityPriv, theirEphemeralPub);
+    const dh3 = await deriveSecret(mySignedPreKeyPriv, theirEphemeralPub);
+    const combined = dh1 + dh2 + dh3;
+    return await HKDF(combined, null, 'osprp-x3dh-root');
+}
+
 // ===== Symmetric Ratchet =====
 
 async function packBlob(jsonString, ch) {
@@ -154,14 +172,14 @@ async function packBlob(jsonString, ch) {
     const hmac = await computeHMAC(encrypted, ch.sendKey);
     const newSendKey = await HKDF(ch.sendKey, null, 'osprp-chain-key-' + ch.sendIndex);
     const newSendIndex = ch.sendIndex + 1;
-    
+
     const blob = JSON.stringify({
         d: encrypted,
         h: hmac,
         _ri: ch.sendIndex,
         _t: Date.now()
     });
-    
+
     return {
         packed: blob,
         newSendKey: newSendKey,
@@ -173,22 +191,22 @@ async function unpackBlob(blob, ch) {
     try {
         const parsed = JSON.parse(blob);
         if (!parsed.d || !parsed.h) return null;
-        
+
         const hmacValid = await verifyHMAC(parsed.d, parsed.h, ch.recvKey);
         if (!hmacValid) return null;
-        
+
         const ri = parseInt(parsed._ri) || 0;
         const messageKey = await HKDF(ch.recvKey, null, 'osprp-message-key-' + ri);
         const decrypted = await decryptAES(parsed.d, messageKey);
         if (!decrypted) return null;
-        
+
         const newRecvKey = await HKDF(ch.recvKey, null, 'osprp-chain-key-' + ri);
         const newRecvIndex = ri + 1;
-        
+
         const result = JSON.parse(decrypted);
         result._ri = parsed._ri;
         result._t = parsed._t;
-        
+
         return {
             data: result,
             newRecvKey: newRecvKey,
@@ -203,20 +221,20 @@ async function advanceRecvRatchet(ch, targetRi) {
     let currentKey = ch.recvKey;
     let currentIndex = ch.recvIndex || 0;
     const oldKeys = [];
-    
+
     while (currentIndex < targetRi) {
         oldKeys.push({ key: currentKey, index: currentIndex });
         currentKey = await HKDF(currentKey, null, 'osprp-chain-key-' + currentIndex);
         currentIndex++;
         if (oldKeys.length > 10) oldKeys.shift();
     }
-    
+
     if (currentIndex === targetRi) {
         oldKeys.push({ key: currentKey, index: currentIndex });
         currentKey = await HKDF(currentKey, null, 'osprp-chain-key-' + currentIndex);
         currentIndex++;
     }
-    
+
     return {
         finalKey: currentKey,
         index: currentIndex,
@@ -232,7 +250,7 @@ async function dhRatchetStep(rootKey, myPrivKey, theirPubKey) {
     const newRootKey = await HKDF(rootKey, dhSecret, 'osprp-dh-root');
     const newSendKey = await HKDF(newRootKey, null, 'osprp-send-chain');
     const newRecvKey = await HKDF(newRootKey, null, 'osprp-recv-chain');
-    
+
     return {
         newRootKey: newRootKey,
         newSendKey: newSendKey,
@@ -249,7 +267,7 @@ async function dhRatchetReceive(rootKey, myPrivKey, theirNewPubKey) {
     const newRootKey = await HKDF(rootKey, dhSecret, 'osprp-dh-root');
     const newRecvKey = await HKDF(newRootKey, null, 'osprp-recv-chain');
     const newSendKey = await HKDF(newRootKey, null, 'osprp-send-chain');
-    
+
     return {
         newRootKey: newRootKey,
         newSendKey: newSendKey,
@@ -263,10 +281,10 @@ async function dhRatchetReceive(rootKey, myPrivKey, theirNewPubKey) {
 
 self.onmessage = async function(e) {
     const { id, action, payload } = e.data;
-    
+
     try {
         let result;
-        
+
         switch (action) {
             case 'SHA':
                 result = await SHA(payload);
@@ -288,6 +306,22 @@ self.onmessage = async function(e) {
                 break;
             case 'verifyHMAC':
                 result = await verifyHMAC(payload.data, payload.sig, payload.secret);
+                break;
+            case 'x3dhSend':
+                result = await x3dhSend(
+                    payload.myIdentityPriv,
+                    payload.myEphemeralPriv,
+                    payload.theirIdentityPub,
+                    payload.theirSignedPreKeyPub
+                );
+                break;
+            case 'x3dhReceive':
+                result = await x3dhReceive(
+                    payload.myIdentityPriv,
+                    payload.mySignedPreKeyPriv,
+                    payload.theirIdentityPub,
+                    payload.theirEphemeralPub
+                );
                 break;
             case 'packBlob':
                 const packResult = await packBlob(payload.jsonString, payload.ch);
@@ -312,7 +346,7 @@ self.onmessage = async function(e) {
             default:
                 throw new Error('Unknown action: ' + action);
         }
-        
+
         self.postMessage({ id, result });
     } catch(e) {
         self.postMessage({ id, error: e.message });
