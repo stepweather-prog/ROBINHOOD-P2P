@@ -114,6 +114,38 @@ async function decryptAES(encryptedHex, keyHex) {
     }
 }
 
+async function sign(hexData, hexPrivateKey) {
+    const key = await crypto.subtle.importKey(
+        'pkcs8',
+        hexToBuffer(hexPrivateKey),
+        { name: 'ECDSA', namedCurve: 'P-256' },
+        false,
+        ['sign']
+    );
+    const sig = await crypto.subtle.sign(
+        { name: 'ECDSA', hash: 'SHA-256' },
+        key,
+        hexToBuffer(hexData)
+    );
+    return bufferToHex(sig);
+}
+
+async function verify(hexData, hexSignature, hexPublicKey) {
+    const key = await crypto.subtle.importKey(
+        'raw',
+        hexToBuffer(hexPublicKey),
+        { name: 'ECDSA', namedCurve: 'P-256' },
+        false,
+        ['verify']
+    );
+    return await crypto.subtle.verify(
+        { name: 'ECDSA', hash: 'SHA-256' },
+        key,
+        hexToBuffer(hexSignature),
+        hexToBuffer(hexData)
+    );
+}
+
 async function computeHMAC(data, keyHex) {
     const key = await crypto.subtle.importKey(
         'raw',
@@ -300,6 +332,12 @@ self.onmessage = async function(e) {
                 break;
             case 'decryptAES':
                 result = await decryptAES(payload.enc, payload.secret);
+                break;
+            case 'sign':
+                result = await sign(payload.data, payload.privateKey);
+                break;
+            case 'verify':
+                result = await verify(payload.data, payload.signature, payload.publicKey);
                 break;
             case 'computeHMAC':
                 result = await computeHMAC(payload.data, payload.secret);
