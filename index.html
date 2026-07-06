@@ -36,7 +36,7 @@
         @keyframes btnBlink{0%,100%{box-shadow:0 0 8px rgba(196,162,75,0.5)}50%{box-shadow:0 0 20px rgba(196,162,75,0.9),0 0 40px rgba(196,162,75,0.4)}}
         .header-label{font-size:0.6em;color:var(--text-dim);text-align:center;width:clamp(32px,7vw,42px);cursor:pointer;font-weight:500}
         .header-avatar{width:clamp(26px,6vw,32px);height:clamp(26px,6vw,32px);border-radius:50%;object-fit:cover;border:2px solid var(--border)}
-        .robin-bar{background:rgba(50,70,40,0.6);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-radius:14px;padding:8px 14px;display:flex;align-items:center;gap:10px;width:100%;border-left:3px solid var(--robin-accent);border:1px solid rgba(255,255,255,0.1);box-shadow:0 4px 16px rgba(0,0,0,0.2),inset 0 1px 0 rgba(255,255,255,0.05)}
+        .robin-bar{background:rgba(50,70,40,0.6);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-radius:14px;padding:8px 14px;display:flex;align-items:center;gap:10px;width:100%;border-left:3px solid var(--robin-accent);border:1px solid rgba(255,255,255,0.1);box-shadow:0 4px 16px rgba(0,0,0,0.2),inset 0 1px 0 rgba(255,255,255,0.05);cursor:pointer}
         .robin-bar-avatar{width:40px;height:40px;border-radius:50%;border:2px solid var(--robin-accent);object-fit:cover;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,0.3)}
         .robin-bar-text{flex:1;min-width:0;text-shadow:0 1px 2px rgba(0,0,0,0.3)}
         .robin-bar-sender{font-weight:900;font-size:0.85em;color:var(--text-bright)}
@@ -149,15 +149,15 @@
 <div class="header">
     <div class="header-row-1"><span class="header-title-text">RobinHood P2P</span><span class="header-shield">🏹</span></div>
     <div class="header-row-2">
-        <div class="header-btn" id="btn-avatar"><img src="assets/avatar/001ava.png" class="header-avatar" id="profile-avatar-small" alt="avatar"></div>
+        <div class="header-btn" id="btn-avatar"><img src="assets/icons/01icon.png" class="header-avatar" id="profile-avatar-small" alt="avatar"></div>
         <div class="header-btn" id="btn-craft"><img src="assets/icons/08icon.png" alt="craft"></div>
+        <div class="header-btn" id="btn-bands"><img src="assets/icons/10icon.png" alt="bands"></div>
         <div class="header-btn" id="btn-call"><img src="assets/icons/16icon.png" alt="call"></div>
         <div class="header-btn" id="btn-clear"><img src="assets/icons/18icon.png" alt="clear"></div>
-        <div class="header-btn" id="btn-bands"><img src="assets/icons/10icon.png" alt="bands"></div>
         <div class="header-btn" id="btn-settings"><img src="assets/icons/11icon.png" alt="settings"></div>
     </div>
-   <div class="header-row-3"><span class="header-label" id="nick-label">Твой ник</span><span class="header-label">Открыть колчан</span><span class="header-label">Колчан звонков</span><span class="header-label">Скурить чат</span><span class="header-label">Шайки Шервуда</span><span class="header-label">Опции Шервуда</span></div>
-    <div class="robin-bar"><img src="assets/avatar/001ava.png" class="robin-bar-avatar" id="robin-avatar"><div class="robin-bar-text"><div class="robin-bar-sender" id="robin-bar-sender">RobinHood P2P</div><div class="robin-bar-msg" id="robin-text">Слепой Улей активирован! Святые сокеты стабильны!</div></div><div class="robin-bar-status"><span class="ratchet-indicator" id="ratchet-indicator" style="display:none;">🔄 0</span><img src="assets/icons/05icon.png" id="connection-icon" alt="status"><span class="cup-indicator" id="cup-indicator" style="display:none;">&nbsp;🍺<span id="cup-blobs">0/10</span>&nbsp;⏱<span id="cup-timer">10:00</span></span></div></div>
+   <div class="header-row-3"><span class="header-label" id="nick-label">Твой ник</span><span class="header-label">Открыть колчан</span><span class="header-label">Шайки Шервуда</span><span class="header-label">Колчан звонков</span><span class="header-label">Скурить чат</span><span class="header-label">Опции Шервуда</span></div>
+    <div class="robin-bar" id="robin-bar"><img src="assets/icons/01icon.png" class="robin-bar-avatar" id="robin-avatar"><div class="robin-bar-text"><div class="robin-bar-sender" id="robin-bar-sender">RobinHood P2P</div><div class="robin-bar-msg" id="robin-text">Святые сокеты стабильны!</div></div><div class="robin-bar-status"><span class="ratchet-indicator" id="ratchet-indicator" style="display:none;">🔄 0</span><img src="assets/icons/05icon.png" id="connection-icon" alt="status"><span class="cup-indicator" id="cup-indicator" style="display:none;">&nbsp;🍺<span id="cup-blobs">0/10</span>&nbsp;⏱<span id="cup-timer">10:00</span></span></div></div>
 </div>
 <div class="chat-area" id="chat-box"><div class="typing-indicator" id="typing-indicator"></div></div>
 <div class="input-area">
@@ -168,7 +168,7 @@
 </div>
 <div id="emoji-panel" style="display:none;position:fixed;bottom:55px;left:0;width:100%;background:linear-gradient(135deg,var(--bg-primary),var(--bg-secondary));border-top:2px solid var(--border);z-index:50;padding:8px;max-height:180px;overflow-y:auto;"><div id="emoji-grid" style="display:grid;grid-template-columns:repeat(8,1fr);gap:6px;text-align:center;"></div></div>
 <div id="call-panel">
-    <img id="call-avatar" class="call-avatar-large" src="assets/avatar/001ava.png">
+    <img id="call-avatar" class="call-avatar-large" src="assets/icons/01icon.png">
     <div class="call-name" id="call-contact-name">Лучник</div>
     <div class="call-status-text" id="call-status">📞 Вызов...</div>
     <div class="call-volume-controls" style="display:flex;flex-direction:column;gap:8px;width:80%;max-width:250px;margin:8px 0;">
@@ -186,7 +186,7 @@
     <div class="contact-item" id="setting-theme"><div class="contact-info"><span style="font-size:24px;">🎲</span><span class="contact-name">Авто-тема</span></div><span id="theme-name">Авто</span></div>
     <div class="contact-item" id="setting-self-destruct"><div class="contact-info"><span style="font-size:24px;">🍁</span><span class="contact-name">Листопад</span></div><label class="toggle-switch"><input type="checkbox" id="toggle-selfdestruct"><span class="toggle-slider"></span></label></div>
     <div class="contact-item" id="setting-terms"><div class="contact-info"><span style="font-size:24px;">⚜</span><span class="contact-name">Условия</span></div><span>→</span></div>
-    <div class="contact-item setting-install-btn hidden" id="setting-install"><div class="contact-info"><img src="assets/avatar/01icon.png" style="width:28px;height:28px;border-radius:6px;"><div><div class="contact-name">RobinHood P2P</div><div style="font-size:0.6em;color:var(--text-dim);">Установить</div></div></div><span>📲</span></div>
+    <div class="contact-item setting-install-btn hidden" id="setting-install"><div class="contact-info"><img src="assets/icons/01icon.png" style="width:28px;height:28px;border-radius:6px;"><div><div class="contact-name">RobinHood P2P</div><div style="font-size:0.6em;color:var(--text-dim);">Установить</div></div></div><span>📲</span></div>
 </div></div>
 
 <div class="modal-overlay" id="craft-modal"><div class="modal-dialog"><h3>🏹 Открыть колчан</h3>
