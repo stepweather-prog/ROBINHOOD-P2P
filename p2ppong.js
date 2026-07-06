@@ -46,6 +46,8 @@ const p2pSHA = (t) => cryptoCall('SHA', t);
 const workerGenerateKeyPair = () => cryptoCall('generateKeyPair');
 const workerEncryptAES = (text, secret) => cryptoCall('encryptAES', { text, secret });
 const workerDecryptAES = (enc, secret) => cryptoCall('decryptAES', { enc, secret });
+const workerSign = (data, privateKey) => cryptoCall('sign', { data, privateKey });
+const workerVerify = (data, signature, publicKey) => cryptoCall('verify', { data, signature, publicKey });
 const workerComputeHMAC = (data, secret) => cryptoCall('computeHMAC', { data, secret });
 const workerVerifyHMAC = (data, sig, secret) => cryptoCall('verifyHMAC', { data, sig, secret });
 const workerPackBlob = (jsonString, ch) => cryptoCall('packBlob', { jsonString, ch });
@@ -163,6 +165,9 @@ const P2PPong = {
         const beaconId = RND();
         this._beaconId = beaconId;
         const bk = await p2pSHA(this._kp.publicKey + 'beacon');
+
+        const signedPreKeySig = await workerSign(this._signedPreKeyPair.publicKey, this._kp.privateKey);
+
         const inner = await workerEncryptAES(JSON.stringify({
             timestamp: Date.now(),
             peerId: this._peerId,
@@ -172,6 +177,7 @@ const P2PPong = {
             avatar: this._myAvatar,
             identityPubKey: this._kp.publicKey,
             signedPreKeyPub: this._signedPreKeyPair.publicKey,
+            signedPreKeySig: signedPreKeySig,
             ephemeralPubKey: this._ephemeralKeyPair.publicKey
         }), bk);
         const bd = { type: 'beacon', pubKey: this._kp.publicKey, peerId: this._peerId, inner, signalServer: this._signalServer.url };
@@ -227,6 +233,15 @@ const P2PPong = {
         const theirIdentityPub = innerData.identityPubKey || bd.pubKey;
         const theirSignedPreKeyPub = innerData.signedPreKeyPub;
         const theirEphemeralPub = innerData.ephemeralPubKey;
+        const theirSignedPreKeySig = innerData.signedPreKeySig;
+
+        if (theirSignedPreKeyPub && theirSignedPreKeySig && theirIdentityPub) {
+            const isSigValid = await workerVerify(theirSignedPreKeyPub, theirSignedPreKeySig, theirIdentityPub);
+            if (!isSigValid) {
+                this._emit('error', { message: 'Подпись SignedPreKey недействительна' });
+                return false;
+            }
+        }
 
         if (theirSignedPreKeyPub && theirEphemeralPub) {
             this._secret = await workerX3DHReceive(
@@ -242,6 +257,9 @@ const P2PPong = {
         const verificationHash = await p2pSHA(this._secret + code);
         this._beacons[this._peerId] = { keyPair: this._kp, signedPreKeyPair: this._signedPreKeyPair, ephemeralKeyPair: this._ephemeralKeyPair, beaconKey: bk, expires: Date.now() + CONFIG.BEACON_TTL };
         this._pending = { type: 'joiner', targetPeerId: innerData.peerId, verificationHash };
+
+        const mySignedPreKeySig = await workerSign(this._signedPreKeyPair.publicKey, this._kp.privateKey);
+
         const br = JSON.stringify({
             type: 'beacon-response',
             pubKey: this._kp.publicKey,
@@ -254,6 +272,7 @@ const P2PPong = {
             avatar: this._myAvatar,
             identityPubKey: this._kp.publicKey,
             signedPreKeyPub: this._signedPreKeyPair.publicKey,
+            signedPreKeySig: mySignedPreKeySig,
             ephemeralPubKey: this._ephemeralKeyPair.publicKey
         });
         await this._post('/beacon', { keyHash: 'ack_'+beaconId, packet: br });
@@ -403,6 +422,16 @@ const P2PPong = {
             const theirIdentityPub = d.identityPubKey || d.pubKey;
             const theirSignedPreKeyPub = d.signedPreKeyPub;
             const theirEphemeralPub = d.ephemeralPubKey;
+            const theirSignedPreKeySig = d.signedPreKeySig;
+
+            if (theirSignedPreKeyPub && theirSignedPreKeySig && theirIdentityPub) {
+                const isSigValid = await workerVerify(theirSignedPreKeyPub, theirSignedPreKeySig, theirIdentityPub);
+                if (!isSigValid) {
+                    this._emit('error', { message: 'Подпись SignedPreKey недействительна' });
+                    return;
+                }
+            }
+
             if (theirSignedPreKeyPub && theirEphemeralPub && this._signedPreKeyPair && this._ephemeralKeyPair) {
                 this._secret = await workerX3DHSend(
                     this._kp.privateKey,
@@ -422,12 +451,26 @@ const P2PPong = {
         if (d.type==='beacon-ack'&&d.channelId) {
             if (this._pending?.type!=='joiner') return;
             this._chId = d.channelId;
-            if (!this._secret && d.identityPubKey && d.signedPreKeyPub && d.ephemeralPubKey && this._kp && this._signedPreKeyPair) {
+
+            const theirIdentityPub = d.identityPubKey || d.pubKey;
+            const theirSignedPreKeyPub = d.signedPreKeyPub;
+            const theirEphemeralPub = d.ephemeralPubKey;
+            const theirSignedPreKeySig = d.signedPreKeySig;
+
+            if (theirSignedPreKeyPub && theirSignedPreKeySig && theirIdentityPub) {
+                const isSigValid = await workerVerify(theirSignedPreKeyPub, theirSignedPreKeySig, theirIdentityPub);
+                if (!isSigValid) {
+                    this._emit('error', { message: 'Подпись SignedPreKey недействительна' });
+                    return;
+                }
+            }
+
+            if (!this._secret && theirIdentityPub && theirSignedPreKeyPub && theirEphemeralPub && this._kp && this._signedPreKeyPair) {
                 this._secret = await workerX3DHReceive(
                     this._kp.privateKey,
                     this._signedPreKeyPair.privateKey,
-                    d.identityPubKey,
-                    d.ephemeralPubKey
+                    theirIdentityPub,
+                    theirEphemeralPub
                 );
             } else if (!this._secret && d.pubKey) {
                 this._secret = await workerDeriveSecret(this._kp.privateKey, d.pubKey);
@@ -435,7 +478,7 @@ const P2PPong = {
             if (d.peerId) this._remotePeerId = d.peerId;
             if (d.nick) this._theirNick = d.nick;
             if (d.avatar) this._theirAvatar = d.avatar;
-            this._openChannel(d.peerId, this._signalServer?.url, d.nick, d.avatar, d.identityPubKey, d.signedPreKeyPub, d.ephemeralPubKey);
+            this._openChannel(d.peerId, this._signalServer?.url, d.nick, d.avatar, theirIdentityPub, theirSignedPreKeyPub, theirEphemeralPub);
             return;
         }
         if (d.type==='verification-code'&&d.code) {
@@ -453,7 +496,7 @@ const P2PPong = {
                 } else {
                     this._secret = await workerDeriveSecret(this._kp.privateKey, d.pubKey);
                 }
-                await this._post('/beacon',{keyHash:'ack_'+this._beaconId,packet:JSON.stringify({type:'beacon-ack',peerId:this._peerId,channelId:this._chId,pubKey:this._kp.publicKey,signalServer:this._signalServer.url,nick:this._myNick,avatar:this._myAvatar,identityPubKey:this._kp.publicKey,signedPreKeyPub:this._signedPreKeyPair.publicKey,ephemeralPubKey:this._ephemeralKeyPair.publicKey})});
+                await this._post('/beacon',{keyHash:'ack_'+this._beaconId,packet:JSON.stringify({type:'beacon-ack',peerId:this._peerId,channelId:this._chId,pubKey:this._kp.publicKey,signalServer:this._signalServer.url,nick:this._myNick,avatar:this._myAvatar,identityPubKey:this._kp.publicKey,signedPreKeyPub:this._signedPreKeyPair.publicKey,signedPreKeySig:await workerSign(this._signedPreKeyPair.publicKey,this._kp.privateKey),ephemeralPubKey:this._ephemeralKeyPair.publicKey})});
                 this._openChannel(d.peerId, d.signalServer, d.nick, d.avatar, d.identityPubKey || d.pubKey, d.signedPreKeyPub, d.ephemeralPubKey);
                 return;
             }
@@ -530,7 +573,7 @@ const P2PPong = {
             ch.sendKey=result.newSendKey;
             ch.sendIndex=result.newSendIndex;
             ch.dhSendCount=(ch.dhSendCount||0)+1;
-            this._post('/beacon',{keyHash:'msg_'+(chId||this._chId)+'_'+this._beaconId,packet:result.packed});
+            this._post('/beacon',{keyHash:'msg_'+(chId||this._chId),packet:result.packed});
             ch.blobs.push({d:displayText,t:Date.now(),n:nonce,from:'me',status:'sent',nick:this._myNick,avatar:this._myAvatar});
             ch.expires=Date.now()+CONFIG.CHANNEL_TTL;
             this._stats.messagesSent++;
@@ -572,7 +615,7 @@ const P2PPong = {
         (function p(){
             if (!me._channels[chId]) { me._stopMsgPoll(chId); return; }
             if (me._webRTC[chId]&&me._webRTC[chId].connected) { me._stopMsgPoll(chId); return; }
-            const kh='msg_'+chId+'_'+me._beaconId;
+            const kh='msg_'+chId;
             if (me._firebaseActive) me._firebaseListen(kh,d=>{ if (d?.packet) me._handleIn(d.packet); });
             me._get('/beacon?key='+kh).then(d=>{
                 if (d?.packet) me._handleIn(d.packet);
