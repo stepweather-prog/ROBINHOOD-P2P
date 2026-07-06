@@ -13,7 +13,7 @@ let pc = null,
     ringtoneAudio = null,
     ringbackAudio = null;
 let audioPool = {},
-    robinDefaultText = 'Глухая Прерия активирована! Святые сокеты стабильны!',
+    robinDefaultText = ' Святые сокеты стабильны!',
     robinTimer = null;
 let voiceRecorder = null,
     voiceChunks = [],
@@ -263,7 +263,24 @@ function initUI() {
 function addVerifyDigit(d) { if (window._verifyInput.length >= 7) return; window._verifyInput += d; document.getElementById('verify-code-display').textContent = window._verifyInput.padEnd(7, '_'); if (window._verifyInput.length === 7) { setTimeout(() => document.getElementById('btn-verify-confirm')?.click(), 300); } }
 
 function handleIncomingMessage(data) {
-    if (!data || !data.text) return;
+    if (!data) return;
+    
+    if (data.voiceData) {
+        const ct = contacts.find(c => c.channelId === data.channelId);
+        const nick = safeHtml(data.nick || ct?.name || 'Лучник');
+        const avatar = data.avatar || ct?.avatar || '001';
+        if (data.channelId === activeChannelId) {
+            appendMessage(nick, '🎤 Голосовое', avatar, data.voiceData, 'audio/webm');
+        } else {
+            rMsg('🎤 Голосовое от ' + nick, 3000);
+            playVoiceBlob(data.voiceData);
+        }
+        updateCupIndicator();
+        return;
+    }
+    
+    if (!data.text) return;
+    
     try {
         const parsed = JSON.parse(data.text);
         if (parsed.type === 'channel-destroyed') {
@@ -283,9 +300,42 @@ function handleIncomingMessage(data) {
             return;
         }
         if (parsed.band) { handleBandMessage(parsed, data); return; }
-    } catch(e) {}
-    if (data.voiceData) { const ct = contacts.find(c => c.channelId === data.channelId); const nick = safeHtml(data.nick || ct?.name || 'Лучник'); const avatar = data.avatar || ct?.avatar || '001'; if (data.channelId === activeChannelId) { appendMessage(nick, '🎤 Голосовое', avatar, data.voiceData, 'audio/webm'); } else { rMsg('🎤 Голосовое от ' + nick, 3000); playVoiceBlob(data.voiceData); } updateCupIndicator(); return; }
-    try { const parsed = JSON.parse(data.text); if (parsed.webrtc) { handleWebRTCSignal(parsed.webrtc, parsed.sdp, data.channelId); return; } if (parsed.voice) { const ct = contacts.find(c => c.channelId === data.channelId); const nick = safeHtml(ct?.name || 'Лучник'); const avatar = ct?.avatar || '001'; if (data.channelId === activeChannelId) { appendMessage(nick, '🎤 Голосовое', avatar, parsed.data, 'audio/webm'); } else { rMsg('🎤 Голосовое от ' + nick, 3000); playVoiceBlob(parsed.data); } updateCupIndicator(); return; } if (parsed.d === '__SMOKE__') { selfDestructMode = true; const sd = document.getElementById('toggle-selfdestruct'); if (sd) sd.checked = true; startSelfDestruct(); rMsg('🍁 Собеседник включил листопад', 3000); return; } } catch (e) {} const ct = contacts.find(c => c.channelId === data.channelId); const nick = safeHtml(data.nick || ct?.name || 'Лучник'); const avatar = data.avatar || ct?.avatar || '001'; if (data.channelId === activeChannelId) { appendMessage(nick, data.text, avatar); } else { rMsg('Новое от ' + nick, 3000); } updateCupIndicator(); updateRatchetIndicator(); playSound('arrow_hit.wav'); }
+        if (parsed.webrtc) { handleWebRTCSignal(parsed.webrtc, parsed.sdp, data.channelId); return; }
+        if (parsed.voice) {
+            const ct = contacts.find(c => c.channelId === data.channelId);
+            const nick = safeHtml(ct?.name || 'Лучник');
+            const avatar = ct?.avatar || '001';
+            if (data.channelId === activeChannelId) {
+                appendMessage(nick, '🎤 Голосовое', avatar, parsed.data, 'audio/webm');
+            } else {
+                rMsg('🎤 Голосовое от ' + nick, 3000);
+                playVoiceBlob(parsed.data);
+            }
+            updateCupIndicator();
+            return;
+        }
+        if (parsed.d === '__SMOKE__') {
+            selfDestructMode = true;
+            const sd = document.getElementById('toggle-selfdestruct');
+            if (sd) sd.checked = true;
+            startSelfDestruct();
+            rMsg('🍁 Собеседник включил листопад', 3000);
+            return;
+        }
+    } catch (e) {}
+    
+    const ct = contacts.find(c => c.channelId === data.channelId);
+    const nick = safeHtml(data.nick || ct?.name || 'Лучник');
+    const avatar = data.avatar || ct?.avatar || '001';
+    if (data.channelId === activeChannelId) {
+        appendMessage(nick, data.text, avatar);
+    } else {
+        rMsg('Новое от ' + nick, 3000);
+    }
+    updateCupIndicator();
+    updateRatchetIndicator();
+    playSound('arrow_hit.wav');
+}
 
 function handleBandMessage(parsed, data) {
     switch (parsed.band) {
