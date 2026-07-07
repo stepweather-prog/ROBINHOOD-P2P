@@ -254,6 +254,16 @@ const P2PPong = {
             this._secret = await workerDeriveSecret(this._kp.privateKey, this._remotePubKey);
         }
 
+        this._pendingChannelData = {
+            peerId: innerData.peerId,
+            signalServer: this._signalServer?.url,
+            nick: this._theirNick,
+            avatar: this._theirAvatar,
+            theirIdentityPub,
+            theirSignedPreKeyPub,
+            theirEphemeralPub
+        };
+
         const verificationHash = await p2pSHA(this._secret + code);
         this._beacons[this._peerId] = { keyPair: this._kp, signedPreKeyPair: this._signedPreKeyPair, ephemeralKeyPair: this._ephemeralKeyPair, beaconKey: bk, expires: Date.now() + CONFIG.BEACON_TTL };
         this._pending = { type: 'joiner', targetPeerId: innerData.peerId, verificationHash };
@@ -478,6 +488,7 @@ const P2PPong = {
             if (d.peerId) this._remotePeerId = d.peerId;
             if (d.nick) this._theirNick = d.nick;
             if (d.avatar) this._theirAvatar = d.avatar;
+            this._pendingChannelData = { peerId: d.peerId, signalServer: this._signalServer?.url, nick: d.nick, avatar: d.avatar, theirIdentityPub, theirSignedPreKeyPub, theirEphemeralPub };
             this._openChannel(d.peerId, this._signalServer?.url, d.nick, d.avatar, theirIdentityPub, theirSignedPreKeyPub, theirEphemeralPub);
             return;
         }
