@@ -4,7 +4,7 @@ function log(msg, data) { if (DEBUG) console.log(`[P2PPong] ${msg}`, data || '')
 
 const CONFIG = {
     BEACON_TTL: 300000,
-    CHANNEL_TTL: 600000,
+    CHANNEL_TTL: 1800000,
     POLL_MAX: 150,
     MSG_POLL_INTERVAL: 3000,
     WEBRTC_POLL_INTERVAL: 5000,
@@ -18,7 +18,7 @@ const CONFIG = {
     SERVER_FAIL_TIMEOUT: 5000,
     MAX_RETRIES: 3,
     DH_RATCHET_THRESHOLD: 10,
-    MAX_PACKET_SIZE: 100000
+    MAX_PACKET_SIZE: 500000
 };
 
 const cryptoWorker = new Worker('crypto-worker.js');
@@ -486,18 +486,23 @@ const P2PPong = {
             if (this._pending?.type==='creator'&&this._verificationCode&&d.code===this._verificationCode) {
                 this._remotePubKey = d.pubKey;
                 this._remotePeerId = d.peerId;
-                if (this._ephemeralKeyPair && this._signedPreKeyPair && d.identityPubKey && d.signedPreKeyPub && d.ephemeralPubKey) {
-                    this._secret = await workerX3DHSend(
-                        this._kp.privateKey,
-                        this._ephemeralKeyPair.privateKey,
-                        d.identityPubKey || d.pubKey,
-                        d.signedPreKeyPub
-                    );
+                if (this._pendingChannelData) {
+                    const pd = this._pendingChannelData;
+                    if (pd.theirIdentityPub && pd.theirSignedPreKeyPub && pd.theirEphemeralPub && this._ephemeralKeyPair) {
+                        this._secret = await workerX3DHSend(
+                            this._kp.privateKey,
+                            this._ephemeralKeyPair.privateKey,
+                            pd.theirIdentityPub,
+                            pd.theirSignedPreKeyPub
+                        );
+                    } else {
+                        this._secret = await workerDeriveSecret(this._kp.privateKey, d.pubKey);
+                    }
+                    this._openChannel(pd.peerId, pd.signalServer, pd.nick, pd.avatar, pd.theirIdentityPub, pd.theirSignedPreKeyPub, pd.theirEphemeralPub);
                 } else {
                     this._secret = await workerDeriveSecret(this._kp.privateKey, d.pubKey);
+                    this._openChannel(d.peerId, this._signalServer?.url, d.nick, d.avatar);
                 }
-                await this._post('/beacon',{keyHash:'ack_'+this._beaconId,packet:JSON.stringify({type:'beacon-ack',peerId:this._peerId,channelId:this._chId,pubKey:this._kp.publicKey,signalServer:this._signalServer.url,nick:this._myNick,avatar:this._myAvatar,identityPubKey:this._kp.publicKey,signedPreKeyPub:this._signedPreKeyPair.publicKey,signedPreKeySig:await workerSign(this._signedPreKeyPair.publicKey,this._kp.privateKey),ephemeralPubKey:this._ephemeralKeyPair.publicKey})});
-                this._openChannel(d.peerId, d.signalServer, d.nick, d.avatar, d.identityPubKey || d.pubKey, d.signedPreKeyPub, d.ephemeralPubKey);
                 return;
             }
             return;
@@ -573,7 +578,12 @@ const P2PPong = {
             ch.sendKey=result.newSendKey;
             ch.sendIndex=result.newSendIndex;
             ch.dhSendCount=(ch.dhSendCount||0)+1;
-            this._post('/beacon',{keyHash:'msg_'+(chId||this._chId),packet:result.packed});
+            const keyHash = 'msg_'+(chId||this._chId);
+            const packet = result.packed;
+            for (const s of this._signalServers.filter(s=>s.type==='http')) {
+                fetch(s.url+'/beacon',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({keyHash,packet}),signal:AbortSignal.timeout(5000)}).catch(()=>{});
+            }
+            if (this._firebaseActive) this._firebasePost(keyHash, packet).catch(()=>{});
             ch.blobs.push({d:displayText,t:Date.now(),n:nonce,from:'me',status:'sent',nick:this._myNick,avatar:this._myAvatar});
             ch.expires=Date.now()+CONFIG.CHANNEL_TTL;
             this._stats.messagesSent++;
