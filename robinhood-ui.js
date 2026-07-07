@@ -1,406 +1,362 @@
-// robinhood-ui.js 
-let contacts = [],
-    activeChannelId = null,
-    activePeerId = null,
-    selectedAvatar = 'icons/01icon.png';
-let toggleSoundState = true,
-    toggleAnimations = true,
-    selfDestructMode = false;
-let audioPool = {},
-    robinDefaultText = 'Святые сокеты стабильны!',
-    robinTimer = null;
-let voiceRecorder = null,
-    voiceChunks = [],
-    voiceStream = null,
-    voiceRecording = false,
-    voiceSeconds = 0,
-    voiceTimerInterval = null,
-    voiceRecTimeout = null;
-let archerAnimation, quiverAnim, bowAnim, currentArrowContainer;
-let callArcherAnimation, callArrowContainer;
-let deferredPrompt = null;
-let verificationModalShown = false;
-let verificationDone = false;
-let verifyInProgress = false;
+// p2ppong.js
+const DEBUG = true;
+function log(msg, data) { if (DEBUG) console.log(`[P2PPong] ${msg}`, data || ''); }
 
-let selfDestructBatchSize = 5;
-let selfDestructIntervalTime = 20000;
-let selfDestructIntervalId = null;
+const CONFIG = {
+    BEACON_TTL: 300000,
+    CHANNEL_TTL: 1800000,
+    POLL_MAX: 150,
+    MSG_POLL_INTERVAL: 3000,
+    WEBRTC_POLL_INTERVAL: 5000,
+    HOUSEKEEP_INTERVAL: 30000,
+    MAX_OLD_KEYS: 50,
+    MAX_VOICE_SIZE: 500000,
+    MAX_VOICE_DURATION: 10,
+    NONCE_LENGTH: 32,
+    RATCHET_RESYNC_INTERVAL: 60000,
+    SERVER_HEALTH_TTL: 300000,
+    SERVER_FAIL_TIMEOUT: 5000,
+    MAX_RETRIES: 3,
+    DH_RATCHET_THRESHOLD: 10,
+    MAX_PACKET_SIZE: 500000
+};
 
-let bands = [];
-let activeBandId = null;
-let pendingBandData = null;
+const cryptoWorker = new Worker('crypto-worker.js');
+const cryptoCallbacks = {};
+let cryptoMsgId = 0;
 
-const MAX_CHAT_MESSAGES = 100;
+function cryptoCall(action, payload) {
+    return new Promise((resolve, reject) => {
+        const id = ++cryptoMsgId;
+        cryptoCallbacks[id] = { resolve, reject };
+        cryptoWorker.postMessage({ id, action, payload });
+    });
+}
 
-let sharedAudioContext = null;
-function getAudioContext() {
-    if (!sharedAudioContext || sharedAudioContext.state === 'closed') {
-        sharedAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+cryptoWorker.onmessage = function(e) {
+    const { id, result, error } = e.data;
+    if (cryptoCallbacks[id]) {
+        if (error) cryptoCallbacks[id].reject(new Error(error));
+        else cryptoCallbacks[id].resolve(result);
+        delete cryptoCallbacks[id];
     }
-    if (sharedAudioContext.state === 'suspended') {
-        sharedAudioContext.resume().catch(() => {});
-    }
-    return sharedAudioContext;
-}
+};
 
-function isMobile() {
-    return /Android|iPhone|iPad|iPod|webOS/i.test(navigator.userAgent) || window.innerWidth < 768;
-}
+const p2pSHA = (t) => cryptoCall('SHA', t);
+const workerGenerateKeyPair = () => cryptoCall('generateKeyPair');
+const workerEncryptAES = (text, secret) => cryptoCall('encryptAES', { text, secret });
+const workerDecryptAES = (enc, secret) => cryptoCall('decryptAES', { enc, secret });
+const workerSign = (data, privateKey) => cryptoCall('sign', { data, privateKey });
+const workerVerify = (data, signature, publicKey) => cryptoCall('verify', { data, signature, publicKey });
+const workerComputeHMAC = (data, secret) => cryptoCall('computeHMAC', { data, secret });
+const workerVerifyHMAC = (data, sig, secret) => cryptoCall('verifyHMAC', { data, sig, secret });
+const workerPackBlob = (jsonString, ch) => cryptoCall('packBlob', { jsonString, ch });
+const workerUnpackBlob = (blob, ch) => cryptoCall('unpackBlob', { blob, ch });
+const workerDeriveSecret = (myPrivateKey, theirPublicKey) => cryptoCall('deriveSecret', { myPrivateKey, theirPublicKey });
+const workerX3DHSend = (myIdentityPriv, myEphemeralPriv, theirIdentityPub, theirSignedPreKeyPub) => cryptoCall('x3dhSend', { myIdentityPriv, myEphemeralPriv, theirIdentityPub, theirSignedPreKeyPub });
+const workerX3DHReceive = (myIdentityPriv, mySignedPreKeyPriv, theirIdentityPub, theirEphemeralPub) => cryptoCall('x3dhReceive', { myIdentityPriv, mySignedPreKeyPriv, theirIdentityPub, theirEphemeralPub });
+const workerAdvanceRecvRatchet = (ch, targetRi) => cryptoCall('advanceRecvRatchet', { ch, targetRi });
+const workerDHRatchetStep = (rootKey, myPrivKey, theirPubKey) => cryptoCall('dhRatchetStep', { rootKey, myPrivKey, theirPubKey });
+const workerDHRatchetReceive = (rootKey, myPrivKey, theirNewPubKey) => cryptoCall('dhRatchetReceive', { rootKey, myPrivKey, theirNewPubKey });
 
-const avatarList = ['002','004','006','007','023','025','028','031','033','037','045','051','053','056','057','059','062','064','066','075','076','080','082','092','094','097','098','110','112','114','119','128','129','132','146','150','153','154','156','159','161','166','167'];
-const avatars = avatarList.map(id => 'assets/avatar/' + id + 'ava.png');
+const P2PPong = {
+    _peerId: null, _kp: null, _remotePubKey: null, _remotePeerId: null, _secret: null, _chId: null,
+    _channels: {}, _beacons: {}, _pending: null, _pendingChannelData: null, _signalServer: null, _serverHealth: {},
+    _webRTCSignalBuffer: {}, _myNick: 'Лучник', _myAvatar: '001', _theirNick: 'Незнакомец', _theirAvatar: '000',
+    _verificationCode: null, _beaconId: null, _codeVerified: false, _codePollTimer: null, _codePollActive: false,
+    _ephemeralKeyPair: null, _signedPreKeyPair: null,
 
-function throttle(fn, delay) { let last = 0; return function(...args) { const now = Date.now(); if (now - last >= delay) { last = now; fn.apply(this, args); } }; }
-function safeHtml(s) { if (!s) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
-function rMsg(t, d = 4000) { const rt = document.getElementById('robin-text'); if (!rt) return; clearTimeout(robinTimer); rt.textContent = t; if (d > 0) robinTimer = setTimeout(() => { rt.textContent = robinDefaultText; }, d); }
-function setConnectionStatus(s) { const ic = document.getElementById('connection-icon'); if (ic) ic.src = s === 'online' ? 'assets/icons/06icon.png' : 'assets/icons/05icon.png'; }
-function playSound(f) { if (!toggleSoundState) return; if (!audioPool[f]) { audioPool[f] = new Audio('assets/sounds/' + f); audioPool[f].volume = 0.5; audioPool[f].preload = 'auto'; } const a = audioPool[f]; a.currentTime = 0; a.play().catch(e => {}); }
-function closeSheets() { document.getElementById('avatar-selector')?.classList.remove('show'); document.getElementById('settings-sheet')?.classList.remove('open'); document.getElementById('overlay')?.classList.remove('show'); }
+    _signalServers: [
+        { type: 'http', url: 'https://robincall.stephanclaps-491.workers.dev', name: 'Cloudflare', priority: 1 },
+        { type: 'http', url: 'https://p2ppong-v2.onrender.com', name: 'Render', priority: 1 }
+    ],
 
-function playSmokeAnimation() { if (!toggleAnimations) return; const smoke = document.createElement('div'); smoke.className = 'smoke-anim'; document.body.appendChild(smoke); if (typeof lottie !== 'undefined') { try { lottie.loadAnimation({ container: smoke, renderer: 'canvas', loop: false, autoplay: true, path: 'assets/smoke.json' }); } catch (e) {} } setTimeout(() => { if (smoke.parentNode) smoke.remove(); }, 5000); }
+    _listeners: {}, _state: 'idle',
+    _stats: { messagesSent: 0, messagesReceived: 0, peersConnected: 0, channelsOpened: 0 },
+    _housekeepInterval: null, _pollTimer: null, _pollStart: null, _pollKey: null,
+    _webRTC: {}, _webRTCPolling: {}, _msgPollTimers: {}, _dedupTimers: {}, _retryCount: {},
+    _firebaseActive: false, _firebaseDB: null, _firebaseListeners: {},
 
-function playArcherAnimation() {
-    if (!toggleAnimations) return;
-    const rt = document.getElementById('robin-text');
-    if (!rt) return;
-    if (currentArrowContainer?.parentNode) currentArrowContainer.remove();
-    if (archerAnimation) { archerAnimation.destroy(); archerAnimation = null; }
-    const wrapper = document.createElement('span');
-    wrapper.className = 'robin-arrow-container';
-    wrapper.style.cssText = 'width:120px;height:60px;display:inline-block;vertical-align:middle;';
-    currentArrowContainer = wrapper;
-    rt.textContent = '';
-    rt.appendChild(wrapper);
-    if (typeof lottie !== 'undefined') {
-        try { archerAnimation = lottie.loadAnimation({ container: wrapper, renderer: 'canvas', loop: false, autoplay: true, path: 'assets/Archer.json' });
-            archerAnimation.addEventListener('complete', () => { if (wrapper.parentNode) wrapper.remove(); currentArrowContainer = null; archerAnimation = null; rt.textContent = robinDefaultText; });
-        } catch (e) { wrapper.textContent = '🏹'; wrapper.style.fontSize = '40px'; setTimeout(() => { if (wrapper.parentNode) wrapper.remove(); currentArrowContainer = null; rt.textContent = robinDefaultText; }, 1500); }
-    } else { wrapper.textContent = '🏹'; wrapper.style.fontSize = '40px'; setTimeout(() => { if (wrapper.parentNode) wrapper.remove(); currentArrowContainer = null; rt.textContent = robinDefaultText; }, 1500); }
-}
+    on(event, callback) { if (!this._listeners[event]) this._listeners[event] = []; this._listeners[event].push(callback); },
+    _emit(event, data) { log('emit', event); const cbs = this._listeners[event]; if (cbs) cbs.forEach(cb => { try { cb(data); } catch(e) {} }); },
+    setMyProfile(nick, avatar) { this._myNick = nick || 'Лучник'; this._myAvatar = avatar || '001'; },
 
-function playQuiverAnimation() { 
-    if (!toggleAnimations) return; 
-    const quiver = document.createElement('div'); 
-    quiver.className = 'quiver-anim'; 
-    const img = document.createElement('img'); 
-    img.src = 'assets/docking.gif?t=' + Date.now(); 
-    img.style.cssText = 'width:min(200px,40vw);height:min(200px,40vw);object-fit:contain;filter:drop-shadow(0 0 20px rgba(255,215,0,0.8));'; 
-    img.loading = 'lazy'; 
-    img.onerror = () => { quiver.innerHTML = '<div style="font-size:min(120px,25vw);animation:quiverPulse 0.5s ease-in-out 7;">🏹</div>'; }; 
-    quiver.appendChild(img); 
-    document.body.appendChild(quiver); 
-    setTimeout(() => { quiver.style.opacity = '0'; quiver.style.transition = 'opacity 0.5s ease'; setTimeout(() => quiver.remove(), 500); }, 3500); 
-}
+    async init() {
+        if (this._state === 'online') { this._emit('ready', {}); return; }
+        this._state = 'connecting'; this._emit('state-change', { state: 'connecting' });
+        try { this._initFirebase(); this._startHousekeeping(); this._state = 'online'; this._emit('state-change', { state: 'online' }); this._emit('ready', {}); }
+        catch(e) { this._state = 'offline'; this._emit('error', { message: 'Init failed: ' + e.message }); }
+    },
 
-function showInput(title, placeholder = '') { return new Promise((resolve) => { document.getElementById('input-modal-title').textContent = title; document.getElementById('input-modal-field').value = ''; document.getElementById('input-modal-field').placeholder = placeholder; document.getElementById('input-modal-error').style.display = 'none'; document.getElementById('input-modal')?.classList.add('active'); const ok = () => { const val = document.getElementById('input-modal-field').value.trim(); document.getElementById('input-modal')?.classList.remove('active'); cleanup(); resolve(val); }; const cancel = () => { document.getElementById('input-modal')?.classList.remove('active'); cleanup(); resolve(null); }; const cleanup = () => { document.getElementById('input-modal-ok').removeEventListener('click', ok); document.getElementById('input-modal-cancel').removeEventListener('click', cancel); document.getElementById('input-modal-field').removeEventListener('keypress', onKey); }; const onKey = (e) => { if (e.key === 'Enter') ok(); }; document.getElementById('input-modal-ok').addEventListener('click', ok); document.getElementById('input-modal-cancel').addEventListener('click', cancel); document.getElementById('input-modal-field').addEventListener('keypress', onKey); document.getElementById('input-modal-field').focus(); }); }
-function showConfirm(title, text) { return new Promise((resolve) => { document.getElementById('confirm-modal-title').textContent = title; document.getElementById('confirm-modal-text').textContent = text; document.getElementById('confirm-modal')?.classList.add('active'); const yes = () => { document.getElementById('confirm-modal')?.classList.remove('active'); cleanup(); resolve(true); }; const no = () => { document.getElementById('confirm-modal')?.classList.remove('active'); cleanup(); resolve(false); }; const cleanup = () => { document.getElementById('confirm-modal-yes').removeEventListener('click', yes); document.getElementById('confirm-modal-no').removeEventListener('click', no); }; document.getElementById('confirm-modal-yes').addEventListener('click', yes); document.getElementById('confirm-modal-no').addEventListener('click', no); }); }
+    _genNonce() { const a = new Uint32Array(CONFIG.NONCE_LENGTH / 8); crypto.getRandomValues(a); return Array.from(a).map(x => x.toString(16).padStart(8, '0')).join(''); },
+    _genCode() { const arr = new Uint32Array(1); crypto.getRandomValues(arr); return (arr[0] % 10000000).toString().padStart(7, '0'); },
 
-function startSelfDestruct() {
-    stopSelfDestruct();
-    selfDestructIntervalId = setInterval(() => {
-        const box = document.getElementById('chat-box');
-        if (!box) return;
-        const allMessages = box.querySelectorAll('.message-row');
-        const totalMessages = allMessages.length;
-        if (totalMessages === 0) { stopSelfDestruct(); return; }
-        const deleteCount = Math.min(selfDestructBatchSize, totalMessages);
-        const startIndex = totalMessages - deleteCount;
-        for (let i = startIndex; i < totalMessages; i++) {
-            const el = allMessages[i];
-            if (el && el.parentNode) {
-                const msgId = el.dataset.msgId;
-                if (msgId && P2PPong._dedupTimers) {
-                    for (const key in P2PPong._dedupTimers) {
-                        if (key.includes(msgId)) {
-                            clearTimeout(P2PPong._dedupTimers[key]);
-                            delete P2PPong._dedupTimers[key];
-                        }
-                    }
-                }
-                el.style.transition = 'opacity 0.5s';
-                el.style.opacity = '0';
-                setTimeout(() => { if (el.parentNode) el.remove(); }, 500);
+    async _pickServer() {
+        const now = Date.now();
+        const healthy = this._signalServers.filter(s => !this._serverHealth[s.url]?.failed || (now - this._serverHealth[s.url].lastCheck > CONFIG.SERVER_HEALTH_TTL)).sort((a,b) => a.priority - b.priority);
+        for (const s of healthy) {
+            if (s.type === 'http') {
+                try { const r = await fetch(s.url + '/health', { signal: AbortSignal.timeout(5000) }); if (r.ok) { this._signalServer = s; this._serverHealth[s.url] = { healthy: true, lastCheck: now }; return s; } }
+                catch(e) { this._serverHealth[s.url] = { healthy: false, failed: true, lastCheck: now }; }
             }
         }
-        if (box.querySelectorAll('.message-row').length === 0) stopSelfDestruct();
-    }, selfDestructIntervalTime);
-    document.getElementById('leaves-container')?.classList.remove('sleeping');
-}
+        this._signalServer = this._signalServers[0]; return this._signalServer;
+    },
 
-function stopSelfDestruct() {
-    if (selfDestructIntervalId) {
-        clearInterval(selfDestructIntervalId);
-        selfDestructIntervalId = null;
-    }
-    if (P2PPong._dedupTimers) {
-        for (const key in P2PPong._dedupTimers) {
-            clearTimeout(P2PPong._dedupTimers[key]);
+    _initFirebase() { if (window.firebaseDB && !this._firebaseActive) { this._firebaseDB = window.firebaseDB; this._firebaseActive = true; } },
+    async _firebasePost(keyHash, packet) { if (!this._firebaseDB) return false; try { await window.firebaseSet(window.firebaseRef(this._firebaseDB, 'beacons/' + keyHash), { packet, timestamp: Date.now() }); setTimeout(() => { window.firebaseSet(window.firebaseRef(this._firebaseDB, 'beacons/' + keyHash), null).catch(()=>{}); }, 300000); return true; } catch(e) { return false; } },
+    async _firebaseGet(keyHash) { if (!this._firebaseDB) return null; try { const s = await window.firebaseGet(window.firebaseRef(this._firebaseDB, 'beacons/' + keyHash)); const d = s.val(); if (d?.packet) return { packet: d.packet, status: 'found' }; return { status: 'waiting' }; } catch(e) { return null; } },
+    _firebaseListen(keyHash, cb) { if (!this._firebaseDB) return; this._firebaseUnlisten(keyHash); const ref = window.firebaseRef(this._firebaseDB, 'beacons/' + keyHash); window.firebaseOnValue(ref, (s) => { const d = s.val(); if (d?.packet) cb({ packet: d.packet, status: 'found' }); }); this._firebaseListeners[keyHash] = ref; },
+    _firebaseUnlisten(keyHash) { if (this._firebaseListeners[keyHash]) { window.firebaseOff(this._firebaseListeners[keyHash]); delete this._firebaseListeners[keyHash]; } },
+    _firebaseUnlistenAll() { Object.keys(this._firebaseListeners).forEach(k => this._firebaseUnlisten(k)); this._firebaseListeners = {}; },
+
+    async craftArrow() {
+        this._codeVerified = false; this._peerId = RND();
+        this._kp = await workerGenerateKeyPair();
+        this._signedPreKeyPair = await workerGenerateKeyPair();
+        this._ephemeralKeyPair = await workerGenerateKeyPair();
+        this._remotePubKey = null; this._remotePeerId = null; this._secret = null; this._chId = null;
+        await this._pickServer();
+        const code = this._genCode(); this._verificationCode = code;
+        const beaconId = RND(); this._beaconId = beaconId;
+        const bk = await p2pSHA(this._kp.publicKey + 'beacon');
+        const signedPreKeySig = await workerSign(this._signedPreKeyPair.publicKey, this._kp.privateKey);
+        const inner = await workerEncryptAES(JSON.stringify({
+            timestamp: Date.now(), peerId: this._peerId, beaconId, code,
+            nick: this._myNick, avatar: this._myAvatar,
+            identityPubKey: this._kp.publicKey,
+            signedPreKeyPub: this._signedPreKeyPair.publicKey,
+            signedPreKeySig: signedPreKeySig,
+            ephemeralPubKey: this._ephemeralKeyPair.publicKey
+        }), bk);
+        const bd = { type: 'beacon', pubKey: this._kp.publicKey, peerId: this._peerId, inner, signalServer: this._signalServer.url };
+        bd.sig = await workerComputeHMAC(bd.pubKey + bd.peerId, bk);
+        this._beacons[this._peerId] = { keyPair: this._kp, signedPreKeyPair: this._signedPreKeyPair, ephemeralKeyPair: this._ephemeralKeyPair, beaconKey: bk, expires: Date.now() + CONFIG.BEACON_TTL };
+        this._pending = { type: 'creator' };
+        const packet = JSON.stringify(bd);
+        for (const s of this._signalServers.filter(s=>s.type==='http')) {
+            fetch(s.url+'/beacon',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({keyHash:'waiting_'+beaconId,packet}),signal:AbortSignal.timeout(5000)}).catch(()=>{});
         }
-        P2PPong._dedupTimers = {};
-    }
-    if (activeChannelId && P2PPong._channels[activeChannelId]) {
-        P2PPong._channels[activeChannelId].blobs = [];
-    }
-    document.getElementById('leaves-container')?.classList.add('sleeping');
-}
+        if (this._firebaseActive) this._firebasePost('waiting_'+beaconId, packet).catch(()=>{});
+        this.startPolling('ack_'+beaconId);
+        this._emit('peer-id-generated', { peerId: this._peerId, beaconId: this._beaconId, code, pubKey: this._kp.publicKey });
+        return this._beaconId;
+    },
 
-function showVoiceRecordingUI(show) { const old = document.getElementById('voice-recording-indicator'); if (old) old.remove(); if (!show) return; const btn = document.getElementById('btn-voice-input'); if (!btn) return; const container = document.createElement('div'); container.id = 'voice-recording-indicator'; container.className = 'voice-recording-indicator'; const timer = document.createElement('span'); timer.className = 'voice-timer-text'; timer.id = 'voice-timer-text'; timer.textContent = '🎤 0:00'; const wave = document.createElement('div'); wave.style.cssText = 'display:flex;align-items:flex-end;gap:2px;height:18px;'; for (let i = 0; i < 4; i++) { const bar = document.createElement('div'); bar.className = 'voice-wave-bar'; bar.style.cssText = `width:3px;animation:voiceWaveAnim 0.5s ease-in-out infinite;animation-delay:${i * 0.1}s;height:${6 + i * 3}px;`; wave.appendChild(bar); } container.appendChild(timer); container.appendChild(wave); btn.parentNode.insertBefore(container, btn); }
-
-function startVoiceTimer() { voiceSeconds = 0; const vt = document.getElementById('voice-timer-text'); if (vt) vt.textContent = '🎤 0:00'; voiceTimerInterval = setInterval(() => { voiceSeconds++; const m = Math.floor(voiceSeconds / 60), s = (voiceSeconds % 60).toString().padStart(2, '0'); const vt = document.getElementById('voice-timer-text'); if (vt) vt.textContent = '🎤 ' + m + ':' + s; }, 1000); }
-function stopVoiceTimer() { if (voiceTimerInterval) clearInterval(voiceTimerInterval); }
-function toggleVoiceRecording() { voiceRecording ? stopVoiceRecording() : startVoiceRecording(); }
-function startVoiceRecording() { if (voiceRecorder?.state === 'recording') return; const audioBits = isMobile() ? 8000 : 16000; navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } }).then(st => { voiceStream = st; voiceRecorder = new MediaRecorder(st, { mimeType: 'audio/webm; codecs=opus', audioBitsPerSecond: audioBits }); voiceChunks = []; voiceRecorder.ondataavailable = e => voiceChunks.push(e.data); voiceRecorder.onstop = () => { if (voiceRecTimeout) clearTimeout(voiceRecTimeout); const blob = new Blob(voiceChunks, { type: 'audio/webm' }); if (blob.size > 100 && blob.size < 500000 && activeChannelId) { const reader = new FileReader(); reader.onload = async () => { const b64 = reader.result.split(',')[1]; await P2PPong.sendVoiceMessage(activeChannelId, b64); appendMessage('Вы', '🎤 Голосовое', selectedAvatar, b64, 'audio/webm'); }; reader.readAsDataURL(blob); } if (voiceStream) { voiceStream.getTracks().forEach(t => t.stop()); voiceStream = null; } voiceRecorder = null; voiceRecording = false; stopVoiceTimer(); document.getElementById('btn-voice-input').style.background = ''; showVoiceRecordingUI(false); }; voiceRecorder.start(); voiceRecording = true; startVoiceTimer(); document.getElementById('btn-voice-input').style.background = '#f44336'; showVoiceRecordingUI(true); voiceRecTimeout = setTimeout(() => { if (voiceRecorder?.state === 'recording') { voiceRecorder.stop(); rMsg('⏰ Максимальная длина записи — 10 секунд', 3000); } }, 10000); }).catch(e => { voiceChunks = []; rMsg('❌ Микрофон недоступен или занят', 3000); }); }
-function stopVoiceRecording() { if (voiceRecorder?.state === 'recording') voiceRecorder.stop(); }
-function playVoiceBlob(b64) { const a = new Audio('data:audio/webm;base64,' + b64); a.load(); a.play().catch(e => {}); }
-
-function appendMessage(sender, text, avatarSrc, audioData, audioMime) { const box = document.getElementById('chat-box'); const row = document.createElement('div'); row.className = 'message-row'; const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); const av = getAvatarUrl(avatarSrc); const safeSender = safeHtml(sender); if (audioData && audioMime && audioMime.startsWith('audio/')) { const player = createAudioPlayer(audioData, audioMime); row.innerHTML = `<img src="${av}" class="avatar" onerror="this.src='assets/icons/01icon.png'" loading="lazy"><div class="msg-body"><div class="msg-sender">${safeSender}</div></div>`; row.querySelector('.msg-body').appendChild(player); const ts = document.createElement('div'); ts.className = 'msg-status'; ts.textContent = time; row.querySelector('.msg-body').appendChild(ts); } else { row.innerHTML = `<img src="${av}" class="avatar" onerror="this.src='assets/icons/01icon.png'" loading="lazy"><div class="msg-body"><div class="msg-sender">${safeSender}</div><div style="word-break:break-word;white-space:pre-wrap;">${safeHtml(text)}</div><div class="msg-status">${time}</div></div>`; } const msgId = 'msg_' + Date.now() + Math.random(); row.dataset.msgId = msgId; box.insertBefore(row, document.getElementById('typing-indicator')); const allRows = box.querySelectorAll('.message-row'); while (allRows.length > MAX_CHAT_MESSAGES) { const firstRow = allRows[0]; if (firstRow && firstRow.parentNode) firstRow.remove(); } box.scrollTop = box.scrollHeight; }
-function createAudioPlayer(audioData, audioMime) { const container = document.createElement('div'); container.className = 'audio-player audio-paused'; const audio = new Audio('data:' + audioMime + ';base64,' + audioData); audio.load(); let isPlaying = false; const playBtn = document.createElement('button'); playBtn.className = 'audio-play-btn'; playBtn.textContent = '▶'; const waveDiv = document.createElement('div'); waveDiv.className = 'audio-wave'; for (let i = 0; i < 4; i++) { const bar = document.createElement('div'); bar.className = 'audio-wave-bar'; waveDiv.appendChild(bar); } const timeSpan = document.createElement('span'); timeSpan.className = 'audio-time'; timeSpan.textContent = '0:00'; playBtn.addEventListener('click', () => { if (isPlaying) { audio.pause(); container.classList.remove('audio-playing'); container.classList.add('audio-paused'); playBtn.textContent = '▶'; } else { audio.play(); container.classList.remove('audio-paused'); container.classList.add('audio-playing'); playBtn.textContent = '⏸'; } isPlaying = !isPlaying; }); audio.addEventListener('timeupdate', () => { const m = Math.floor(audio.currentTime / 60); const s = Math.floor(audio.currentTime % 60).toString().padStart(2, '0'); timeSpan.textContent = m + ':' + s; }); audio.addEventListener('ended', () => { container.classList.remove('audio-playing'); container.classList.add('audio-paused'); playBtn.textContent = '▶'; isPlaying = false; }); container.appendChild(playBtn); container.appendChild(waveDiv); container.appendChild(timeSpan); return container; }
-function showChatForChannel(channelId) { activeChannelId = channelId; activeBandId = null; const box = document.getElementById('chat-box'); box.innerHTML = '<div class="typing-indicator" id="typing-indicator"></div>'; const ch = P2PPong._channels[channelId]; if (ch && ch.blobs) { ch.blobs.forEach(b => { const im = b.from === 'me'; appendMessage(im ? 'Вы' : 'Лучник', b.d || b.text || '', im ? selectedAvatar : 'icons/01icon.png'); }); } updateCupIndicator(); updateRatchetIndicator(); }
-
-function getAvatarUrl(avatarSrc) {
-    if (!avatarSrc || avatarSrc === 'icons/01icon.png') return 'assets/icons/01icon.png';
-    if (avatarSrc === '001') return 'assets/avatar/001ava.png';
-    if (avatarSrc.startsWith('assets/')) return avatarSrc.endsWith('.png') ? avatarSrc : avatarSrc + 'ava.png';
-    if (avatarSrc.includes('/')) return avatarSrc.endsWith('.png') ? avatarSrc : avatarSrc + 'ava.png';
-    return 'assets/avatar/' + avatarSrc + 'ava.png';
-}
-function addContact(c) { if (!contacts.find(x => x.peerId === c.peerId)) { contacts.push(c); } else { const existing = contacts.find(x => x.peerId === c.peerId); if (c.name && c.name !== 'Лучник') existing.name = c.name; if (c.avatar && c.avatar !== '001') existing.avatar = c.avatar; if (c.channelId) existing.channelId = c.channelId; } }
-
-function createBand(bandId, name, password = null) { if (bands.find(b => b.id === bandId)) { rMsg('❌ Шайка с таким ID уже существует', 3000); return null; } const band = { id: bandId, name: name || 'Шайка лучников', eagleEye: P2PPong._peerId, rangers: [], outlaws: [P2PPong._peerId], strangers: [], password: password, created: Date.now(), maxMembers: 4, blobs: [] }; bands.push(band); activeBandId = bandId; activeChannelId = null; showBandChat(bandId); playQuiverAnimation(); rMsg('🏹 Шайка собрана в Шервуде! Вы — Орлиный Глаз.', 4000); return bandId; }
-function joinBand(bandId, password = null) { let band = bands.find(b => b.id === bandId); if (!band) { band = { id: bandId, name: 'Шайка лучников', eagleEye: null, rangers: [], outlaws: [P2PPong._peerId], strangers: [], password: password, created: Date.now(), maxMembers: 4, blobs: [] }; bands.push(band); } else { if (band.password && band.password !== password) { rMsg('❌ Неверный пароль шайки', 3000); return false; } if (band.outlaws.length >= band.maxMembers) { rMsg('❌ Шайка полна (макс 4 Вольных Стрелков)', 3000); return false; } if (!band.outlaws.includes(P2PPong._peerId)) { band.outlaws.push(P2PPong._peerId); } } activeBandId = bandId; activeChannelId = null; showBandChat(bandId); playQuiverAnimation(); rMsg('🏹 Вы вступили в шайку!', 4000); return true; }
-function showBandChat(bandId) { const band = bands.find(b => b.id === bandId); if (!band) return; activeBandId = bandId; activeChannelId = null; const role = band.eagleEye === P2PPong._peerId ? '🦅 Орлиный Глаз' : '🏹 Вольный Стрелок'; document.getElementById('robin-bar-sender').textContent = role + ' ' + (band.name || 'Шайка'); const box = document.getElementById('chat-box'); box.innerHTML = '<div class="typing-indicator" id="typing-indicator"></div>'; if (band.blobs) { band.blobs.forEach(b => { const im = b.from === P2PPong._peerId; appendMessage(im ? 'Вы' : (b.nick || 'Лучник'), b.text || '', im ? selectedAvatar : (b.avatar || 'icons/01icon.png')); }); } }
-
-function showBandsList() { const list = document.getElementById('bands-list'); if (!list) return; list.innerHTML = ''; if (bands.length === 0) { list.innerHTML = '<div style="color:var(--text-dim);text-align:center;padding:20px;">Нет шаек. Создайте первую!</div>'; return; } bands.forEach(band => { const item = document.createElement('div'); item.className = 'contact-item'; const role = band.eagleEye === P2PPong._peerId ? '🦅 Орлиный Глаз' : '🏹 Вольный Стрелок'; item.innerHTML = `<div style="display:flex;align-items:center;gap:8px;width:100%;"><img src="assets/icons/10icon.png" style="width:28px;height:28px;"><div><div class="contact-name">${band.name || 'Шайка'}</div><div style="font-size:0.65em;color:var(--text-dim);">${role} · ${band.outlaws.length}/4 ${band.password ? '🔐' : ''}</div></div></div>`; item.addEventListener('click', () => { if (band.outlaws.includes(P2PPong._peerId)) { showBandChat(band.id); document.getElementById('bands-modal')?.classList.remove('active'); } else { if (band.password) { showInput('Пароль шайки', 'Введи пароль').then(pass => { if (pass) joinBand(band.id, pass); }); } else { joinBand(band.id); } } }); list.appendChild(item); }); }
-
-function updateCupIndicator() { const chId = activeChannelId || Object.keys(P2PPong._channels)[0]; const ch = chId ? P2PPong._channels[chId] : null; const ind = document.getElementById('cup-indicator'); if (!ch || !ind) { if (ind) ind.style.display = 'none'; return; } ind.style.display = 'inline-flex'; const bc = ch.blobs ? ch.blobs.length : 0; const be = document.getElementById('cup-blobs'); if (be) { be.textContent = bc + '/10'; be.className = bc >= 10 ? 'full' : bc >= 7 ? 'ok' : ''; } const totalSec = Math.max(0, Math.round((ch.expires - Date.now()) / 1000)); const min = Math.floor(totalSec / 60); const sec = totalSec % 60; const te = document.getElementById('cup-timer'); if (te) { te.textContent = min + ':' + sec.toString().padStart(2, '0'); te.className = min <= 2 ? 'low' : min <= 5 ? 'ok' : ''; } }
-function updateRatchetIndicator() { const chId = activeChannelId || Object.keys(P2PPong._channels)[0]; const ch = chId ? P2PPong._channels[chId] : null; const indicator = document.getElementById('ratchet-indicator'); if (!indicator) return; if (!ch || !ch.sendKey) { indicator.style.display = 'none'; return; } indicator.style.display = 'inline'; const ri = ch.sendIndex || 0; let color, icon; if (ri === 0) { color = 'var(--danger)'; icon = '⚠️'; } else if (ri < 10) { color = 'orange'; icon = '🔄'; } else if (ri < 50) { color = 'var(--accent)'; icon = '🔒'; } else { color = 'var(--seeding-color)'; icon = '🔐'; } indicator.style.color = color; indicator.style.background = 'rgba(0,0,0,0.3)'; indicator.textContent = icon + ' ' + ri; indicator.title = 'Ratchet (send): ' + ri + ' сообщений отправлено'; }
-
-const themes = [{ id: 'forest', name: 'Лес' }, { id: 'sunset', name: 'Закат' }, { id: 'ocean', name: 'Океан' }, { id: 'rose', name: 'Роза' }, { id: 'amber', name: 'Янтарь' }, { id: 'mint', name: 'Мята' }, { id: 'lavender', name: 'Лаванда' }, { id: 'cherry', name: 'Вишня' }, { id: 'emerald', name: 'Изумруд' }, { id: 'slate', name: 'Сланец' }, { id: 'coral', name: 'Коралл' }, { id: 'plum', name: 'Слива' }];
-function applyTheme(id) { document.documentElement.setAttribute('data-theme', id); try { localStorage.setItem('robinhood_theme', id); } catch (e) {} const tn = document.getElementById('theme-name'); if (tn) tn.textContent = (themes.find(t => t.id === id) || themes[0]).name; }
-function generateRandomTheme() { const hue = Math.floor(Math.random() * 360), sat = 40 + Math.floor(Math.random() * 50), bgLight = 5 + Math.floor(Math.random() * 15), bgDark = 2 + Math.floor(Math.random() * 8), id = 'random_' + Date.now(); const s = `[data-theme="${id}"]{--bg-primary:hsl(${hue},${sat}%,${bgLight}%);--bg-secondary:hsl(${hue},${sat-10}%,${bgDark}%);--accent:hsl(${(hue+30)%360},${sat+10}%,50%);--accent-light:hsl(${(hue+30)%360},${sat+20}%,70%);--text:hsl(${hue},20%,85%);--text-bright:hsl(${hue},25%,92%);--text-dim:hsl(${hue},15%,60%);--border:hsl(${(hue+30)%360},${sat+10}%,50%);--btn-bg:hsla(${(hue+30)%360},${sat+10}%,50%,0.1);--btn-border:hsla(${(hue+30)%360},${sat+10}%,50%,0.3);--btn-hover:hsla(${(hue+30)%360},${sat+10}%,50%,0.25);--sheet-bg:linear-gradient(145deg,hsl(${hue},${sat}%,${bgLight}%)0%,hsl(${hue},${sat-10}%,${bgDark}%)100%);--input-bg:hsla(${hue},${sat-10}%,${bgLight+2}%,0.9);--msg-bg:hsla(${hue},${sat-5}%,${bgLight+3}%,0.85);--msg-accent:hsl(${(hue+30)%360},${sat+10}%,50%);--robin-bg:hsla(${hue},${sat}%,${bgLight+8}%,0.9);--robin-accent:hsl(${(hue+30)%360},${sat+20}%,65%);--overlay-bg:rgba(0,0,0,0.6);--call-bg:linear-gradient(180deg,hsl(${hue},${sat}%,${bgLight}%)0%,hsl(${hue},${sat-10}%,${bgDark}%)100%);--call-btn-bg:hsla(${(hue+30)%360},${sat+10}%,50%,0.1);--call-btn-border:hsla(${(hue+30)%360},${sat+10}%,50%,0.3);--input-text:hsl(${hue},20%,85%)}`; let el = document.getElementById('gen-theme'); if (!el) { el = document.createElement('style'); el.id = 'gen-theme'; document.head.appendChild(el); } el.textContent = s; document.documentElement.setAttribute('data-theme', id); const tn = document.getElementById('theme-name'); if (tn) tn.textContent = 'Авто'; try { localStorage.setItem('robinhood_theme', id); } catch (e) {} }
-function loadAvatars() { const list = document.getElementById('avatar-list'); if (!list) return; list.innerHTML = ''; const fragment = document.createDocumentFragment(); avatars.forEach(src => { const img = document.createElement('img'); img.src = src; img.className = 'avatar-option'; img.loading = 'lazy'; img.onerror = () => img.src = 'assets/icons/01icon.png'; img.onclick = () => { const pas = document.getElementById('profile-avatar-small'); if (pas) pas.src = src; document.getElementById('robin-avatar').src = src; selectedAvatar = src.includes('/') ? src.split('/').pop()?.replace('ava.png', '') || 'icons/01icon.png' : src; try { localStorage.setItem('robinhood_avatar', src); } catch (e) {} const savedNick = document.getElementById('nick-label')?.textContent || 'Лучник'; P2PPong.setMyProfile(savedNick, selectedAvatar); closeSheets(); rMsg('🖼 Аватар обновлён'); }; fragment.appendChild(img); }); list.appendChild(fragment); }
-
-async function performDestruction(channelId, source = 'local') {
-    playSmokeAnimation();
-    playSound('clear cache.mp3');
-    const msg = source === 'remote'
-        ? '🔥 Орлиный Глаз скурил колчан! Связь потеряна.'
-        : '🔥 Колчан скурен! Связь разорвана!';
-    rMsg(msg, 5000);
-    await new Promise(resolve => setTimeout(resolve, 3000));
-    if (P2PPong._webRTC[channelId]) {
-        try { P2PPong._webRTC[channelId].pc.close(); } catch(e) {}
-        delete P2PPong._webRTC[channelId];
-    }
-    P2PPong._stopMsgPoll(channelId);
-    P2PPong._stopWebRTCPoll(channelId);
-    delete P2PPong._channels[channelId];
-    for (const key in P2PPong._dedupTimers) {
-        if (key.startsWith(channelId + '_')) {
-            clearTimeout(P2PPong._dedupTimers[key]);
-            delete P2PPong._dedupTimers[key];
+    async joinBeacon(targetBeaconId) {
+        await this._pickServer(); let d = null;
+        if (this._firebaseActive) { try { d = await this._firebaseGet('waiting_'+targetBeaconId); if (d?.status==='found') log('beacon-found','Firebase'); } catch(e) {} }
+        if (!d?.packet) {
+            for (const s of this._signalServers.filter(s=>s.type==='http')) {
+                try { const r = await fetch(s.url+'/beacon?key=waiting_'+targetBeaconId,{signal:AbortSignal.timeout(5000)}); if (r.ok) { const data = await r.json(); if (data?.status==='found'&&data.packet) { d = data; log('beacon-found',s.name); break; } } } catch(e) {}
+            }
         }
-    }
-    contacts = [];
-    bands = [];
-    resetChatUI();
-    localStorage.clear();
-    sessionStorage.clear();
-    if ('caches' in window) { caches.keys().then(names => names.forEach(name => caches.delete(name))); }
-    if (window.indexedDB) { indexedDB.databases().then(dbs => dbs.forEach(db => indexedDB.deleteDatabase(db.name))).catch(() => {}); }
-    P2PPong._emit('channel-destroyed', { channelId, source });
-    await P2PPong.destroy();
-    window.location.reload(true);
-}
+        if (!d?.packet) { this._emit('error', { message: 'Метка не найдена' }); return false; }
+        let bd; try { bd = JSON.parse(d.packet); } catch(e) { this._emit('error', { message: 'Метка повреждена' }); return false; }
+        if (!bd?.pubKey || !bd?.inner) { this._emit('error', { message: 'Метка повреждена — нет ключей' }); return false; }
+        if (bd.signalServer) { const srv = this._signalServers.find(s=>s.url===bd.signalServer); if (srv) { this._signalServer = srv; log('signal-synced',srv.name); } }
+        const bk = await p2pSHA(bd.pubKey + 'beacon');
+        if (!await workerVerifyHMAC(bd.pubKey+bd.peerId, bd.sig, bk)) { this._emit('error', { message: 'Подпись метки недействительна' }); return false; }
+        const decrypted = await workerDecryptAES(bd.inner, bk);
+        if (!decrypted) { this._emit('error', { message: 'Не удалось расшифровать метку' }); return false; }
+        const innerData = JSON.parse(decrypted);
+        const code = innerData.code || ''; this._verificationCode = code;
+        this._remotePeerId = innerData.peerId;
+        this._theirNick = innerData.nick || 'Незнакомец'; this._theirAvatar = innerData.avatar || '000';
+        const beaconId = innerData.beaconId; this._beaconId = beaconId;
+        this._peerId = RND();
+        this._kp = await workerGenerateKeyPair();
+        this._signedPreKeyPair = await workerGenerateKeyPair();
+        this._ephemeralKeyPair = await workerGenerateKeyPair();
+        this._remotePubKey = innerData.identityPubKey || bd.pubKey;
+        this._chId = RND();
 
-function initUI() {
-    P2PPong.on('ready', () => { setConnectionStatus('online'); rMsg('🏹 Глухая Прерия готова', 0); });
-    P2PPong.on('state-change', (data) => { if (data.state === 'online') setConnectionStatus('online'); else if (data.state === 'offline') setConnectionStatus('offline'); });
-    P2PPong.on('peer-connected', () => { rMsg('🔗 Прямой канал установлен', 3000); });
-    P2PPong.on('message-received', (data) => { handleIncomingMessage(data); });
-    P2PPong.on('message-sent', () => { updateCupIndicator(); updateRatchetIndicator(); });
-    P2PPong.on('beacon-taken', () => { rMsg('👀 Метку забрали...', 3000); });
+        const theirIdentityPub = innerData.identityPubKey || bd.pubKey;
+        const theirSignedPreKeyPub = innerData.signedPreKeyPub;
+        const theirEphemeralPub = innerData.ephemeralPubKey;
+        const theirSignedPreKeySig = innerData.signedPreKeySig;
 
-    P2PPong.on('verification-needed', (data) => {
-        if (verificationModalShown) return;
-        verificationModalShown = true;
-        verificationDone = false;
-        window._verifyCode = data.code || P2PPong.getVerificationCode();
-        window._verifyInput = '';
-        document.getElementById('verify-instruction').textContent = 'Введи 7-значный код';
-        document.getElementById('verify-error').style.display = 'none';
-        document.getElementById('verify-code-display').textContent = '_______';
-        const grid = document.getElementById('verify-code-grid'); grid.innerHTML = '';
-        grid.style.cssText = 'display:grid;grid-template-columns:repeat(3,1fr);gap:6px;max-width:240px;margin:12px auto;';
-        for (let i = 1; i <= 9; i++) { const btn = document.createElement('button'); btn.textContent = i; btn.className = 'lock-num'; btn.style.cssText = 'width:65px;height:65px;font-size:1.8em;'; btn.onclick = () => addVerifyDigit(i.toString()); grid.appendChild(btn); }
-        const btn0 = document.createElement('button'); btn0.textContent = '0'; btn0.className = 'lock-num'; btn0.style.cssText = 'width:65px;height:65px;font-size:1.8em;'; btn0.onclick = () => addVerifyDigit('0'); grid.appendChild(btn0);
-        const btnDel = document.createElement('button'); btnDel.textContent = '⌫'; btnDel.className = 'lock-num'; btnDel.style.cssText = 'width:65px;height:65px;font-size:1.5em;background:rgba(244,67,54,0.3);'; btnDel.onclick = () => { window._verifyInput = window._verifyInput.slice(0, -1); document.getElementById('verify-code-display').textContent = window._verifyInput.padEnd(7, '_'); }; grid.appendChild(btnDel);
-        document.getElementById('btn-verify-reset').onclick = () => { window._verifyInput = ''; document.getElementById('verify-code-display').textContent = '_______'; };
-        const modalDialog = document.getElementById('verify-modal')?.querySelector('.modal-dialog');
-        if (modalDialog && !document.getElementById('speak-code-btn')) {
-            const speakBtn = document.createElement('button'); speakBtn.id = 'speak-code-btn'; speakBtn.textContent = '🔊 Произнести код'; speakBtn.className = 'btn-dark';
-            speakBtn.style.cssText = 'width:auto;display:inline-block;margin:8px auto;';
-            speakBtn.onclick = () => { const code = window._verifyCode || P2PPong.getVerificationCode(); if (code && 'speechSynthesis' in window) { const utterance = new SpeechSynthesisUtterance(code.split('').join(' ')); utterance.lang = 'ru-RU'; utterance.rate = 0.8; speechSynthesis.speak(utterance); } };
-            modalDialog.appendChild(speakBtn);
+        if (theirSignedPreKeyPub && theirSignedPreKeySig && theirIdentityPub) {
+            const isSigValid = await workerVerify(theirSignedPreKeyPub, theirSignedPreKeySig, theirIdentityPub);
+            if (!isSigValid) { this._emit('error', { message: 'Подпись SignedPreKey недействительна' }); return false; }
         }
-        document.getElementById('verify-modal')?.classList.add('active');
-    });
 
-    P2PPong.on('channel-opened', (data) => {
-        document.getElementById('verify-modal')?.classList.remove('active');
-        verificationModalShown = false;
-        verificationDone = false;
-        setTimeout(() => { playQuiverAnimation(); }, 300);
-        rMsg('✅ Колчан открыт! Тетива натянута!', 3000);
-        addContact({ peerId: data.peerId, name: data.nick || 'Лучник', channelId: data.channelId, verified: false, avatar: data.avatar || 'icons/01icon.png' });
-        showChatForChannel(data.channelId);
-    });
-    
-    P2PPong.on('channel-expired', (data) => { if (data.channelId === activeChannelId) { activeChannelId = null; activePeerId = null; document.getElementById('chat-box').innerHTML = '<div class="typing-indicator" id="typing-indicator"></div>'; } });
-    P2PPong.on('error', (data) => { rMsg('❌ ' + data.message, 5000); });
-    P2PPong.on('destroyed', () => { document.getElementById('chat-box').innerHTML = '<div class="typing-indicator" id="typing-indicator"></div>'; setConnectionStatus('offline'); });
-    P2PPong.on('beacon-timeout', () => { document.getElementById('verify-modal')?.classList.remove('active'); document.getElementById('craft-modal')?.classList.remove('active'); verificationModalShown = false; verificationDone = false; rMsg('⏰ Время ожидания истекло. Попробуй снова.', 5000); });
-}
-
-function addVerifyDigit(d) { if (window._verifyInput.length >= 7) return; window._verifyInput += d; document.getElementById('verify-code-display').textContent = window._verifyInput.padEnd(7, '_'); if (window._verifyInput.length === 7) { setTimeout(() => document.getElementById('btn-verify-confirm')?.click(), 300); } }
-
-function handleIncomingMessage(data) {
-    if (!data) return;
-    if (data.voiceData) {
-        const nick = safeHtml(data.nick || 'Лучник');
-        const avatar = data.avatar || 'icons/01icon.png';
-        if (data.channelId === activeChannelId) { appendMessage(nick, '🎤 Голосовое', avatar, data.voiceData, 'audio/webm'); }
-        else { rMsg('🎤 Голосовое от ' + nick, 3000); playVoiceBlob(data.voiceData); }
-        updateCupIndicator(); return;
-    }
-    if (!data.text) return;
-    try {
-        const parsed = JSON.parse(data.text);
-        if (parsed.type === 'channel-destroyed') { performDestruction(parsed.channelId, 'remote'); return; }
-        if (parsed.band === 'band-destroyed') { playSmokeAnimation(); playSound('clear cache.mp3'); rMsg('🔥 Орлиный Глаз скурил шайку! Все разбежались!', 5000); setTimeout(() => { bands = bands.filter(b => b.id !== parsed.bandId); resetChatUI(); }, 3000); return; }
-        if (parsed.band) { handleBandMessage(parsed, data); return; }
-        if (parsed.voice) { const nick = safeHtml(data.nick || 'Лучник'); const avatar = data.avatar || 'icons/01icon.png'; if (data.channelId === activeChannelId) { appendMessage(nick, '🎤 Голосовое', avatar, parsed.data, 'audio/webm'); } else { rMsg('🎤 Голосовое от ' + nick, 3000); playVoiceBlob(parsed.data); } updateCupIndicator(); return; }
-        if (parsed.d === '__SMOKE__') { selfDestructMode = true; const sd = document.getElementById('toggle-selfdestruct'); if (sd) sd.checked = true; startSelfDestruct(); rMsg('🍁 Собеседник включил листопад', 3000); return; }
-    } catch (e) {}
-    const nick = safeHtml(data.nick || 'Лучник'); const avatar = data.avatar || 'icons/01icon.png';
-    if (data.channelId === activeChannelId) { appendMessage(nick, data.text, avatar); }
-    else { rMsg('Новое от ' + nick, 3000); }
-    updateCupIndicator(); updateRatchetIndicator();
-    playSound('arrow_hit.wav');
-}
-
-function handleBandMessage(parsed, data) {
-    switch (parsed.band) {
-        case 'invite': if (!bands.find(b => b.id === parsed.bandId)) { const band = { id: parsed.bandId, name: parsed.name || 'Шайка лучников', eagleEye: parsed.eagleEye || data.peerId, rangers: [], outlaws: [parsed.eagleEye || data.peerId, P2PPong._peerId], strangers: [], password: parsed.password, created: Date.now(), maxMembers: 4, blobs: [] }; bands.push(band); rMsg('🏹 Приглашение в шайку «' + band.name + '»!', 4000); activeBandId = band.id; activeChannelId = null; showBandChat(band.id); playQuiverAnimation(); } break;
-        case 'join-request': var band = bands.find(b => b.id === parsed.bandId); if (band && !band.outlaws.includes(parsed.peerId)) { band.outlaws.push(parsed.peerId); rMsg('🏹 Вольный Стрелок присоединился к шайке!', 3000); } break;
-        case 'member-joined': var band = bands.find(b => b.id === parsed.bandId); if (band) { if (!band.outlaws.includes(parsed.peerId)) { band.outlaws.push(parsed.peerId); } if (!band.eagleEye && data.peerId) { band.eagleEye = data.peerId; } rMsg('✅ Вы в шайке!', 3000); } break;
-        case 'band-message': var band = bands.find(b => b.id === parsed.bandId); if (band) { band.blobs.push({ text: parsed.text, from: parsed.from || data.peerId, nick: parsed.nick || 'Лучник', avatar: parsed.avatar || 'icons/01icon.png', time: Date.now() }); if (activeBandId === band.id) { appendMessage(parsed.nick || 'Лучник', parsed.text, parsed.avatar || 'icons/01icon.png'); } } break;
-    }
-}
-
-let inactivityTimer;
-function resetInactivityTimer() { clearTimeout(inactivityTimer); const lc = document.getElementById('leaves-container'); if (lc) { lc.classList.remove('sleeping'); lc.style.opacity = '1'; } inactivityTimer = setTimeout(() => { const lc = document.getElementById('leaves-container'); if (lc) lc.classList.add('sleeping'); }, 90000); }
-document.addEventListener('pointermove', throttle(resetInactivityTimer, 5000)); document.addEventListener('pointerdown', resetInactivityTimer); document.addEventListener('keypress', resetInactivityTimer);
-window.addEventListener('blur', () => { clearTimeout(inactivityTimer); inactivityTimer = setTimeout(() => { const lc = document.getElementById('leaves-container'); if (lc) lc.classList.add('sleeping'); }, 5000); });
-window.addEventListener('focus', () => { clearTimeout(inactivityTimer); const lc = document.getElementById('leaves-container'); if (lc) { lc.classList.remove('sleeping'); lc.style.opacity = '1'; } resetInactivityTimer(); });
-window.addEventListener('visibilitychange', () => { if (document.hidden) { stopSelfDestruct(); } else { if (selfDestructMode) startSelfDestruct(); } });
-
-function initLeaves() { const c = document.getElementById('leaves-container'); if (!c || c.children.length > 0) return; const emojis = ['🍁','🍂','🌿','🍃','🌰']; const fragment = document.createDocumentFragment(); for (let i = 0; i < 7; i++) { const el = document.createElement('span'); el.className = i % 3 == 0 ? 'feather' : 'leaf'; el.textContent = emojis[i % emojis.length]; el.style.left = Math.random() * 100 + '%'; el.style.animationDelay = Math.random() * 15 + 's'; el.style.animationDuration = (16 + Math.random() * 18) + 's'; fragment.appendChild(el); } c.appendChild(fragment); c.classList.add('sleeping'); resetInactivityTimer(); }
-
-function generateQR(text, size) { const canvas = document.createElement('canvas'); canvas.width = size; canvas.height = size; const ctx = canvas.getContext('2d'); const bytes = new TextEncoder().encode(text); const moduleCount = 21; const moduleSize = Math.floor(size / (moduleCount + 8)); const offset = Math.floor((size - moduleCount * moduleSize) / 2); ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, size, size); ctx.fillStyle = '#000000'; function drawModule(row, col) { ctx.fillRect(offset + col * moduleSize, offset + row * moduleSize, moduleSize, moduleSize); } function drawFinderPattern(startRow, startCol) { for (let r = 0; r < 7; r++) { for (let c = 0; c < 7; c++) { if (r === 0 || r === 6 || c === 0 || c === 6 || (r >= 2 && r <= 4 && c >= 2 && c <= 4)) { drawModule(startRow + r, startCol + c); } } } } drawFinderPattern(0, 0); drawFinderPattern(0, moduleCount - 7); drawFinderPattern(moduleCount - 7, 0); let bitIndex = 0; const totalBits = bytes.length * 8; for (let row = 0; row < moduleCount && bitIndex < totalBits; row++) { for (let col = 0; col < moduleCount && bitIndex < totalBits; col++) { if ((row < 7 && col < 7) || (row < 7 && col >= moduleCount - 7) || (row >= moduleCount - 7 && col < 7)) continue; const byteIndex = Math.floor(bitIndex / 8); const bitInByte = 7 - (bitIndex % 8); const bit = (bytes[byteIndex] >> bitInByte) & 1; if (bit === 1) drawModule(row, col); bitIndex++; } } return canvas.toDataURL('image/png'); }
-
-function resetChatUI() { activeChannelId = null; activePeerId = null; activeBandId = null; document.getElementById('robin-bar-sender').textContent = 'RobinHood P2P'; document.getElementById('chat-box').innerHTML = '<div class="typing-indicator" id="typing-indicator"></div>'; contacts = []; }
-
-function initApp() {
-    document.addEventListener('click', function unlockAudio() { if (sharedAudioContext && sharedAudioContext.state === 'suspended') { sharedAudioContext.resume().catch(() => {}); } }, { once: true });
-    initLeaves();
-    const savedTheme = localStorage.getItem('robinhood_theme');
-    if (savedTheme) { applyTheme(savedTheme); }
-    else { applyTheme('forest'); }
-    const savedAvatar = localStorage.getItem('robinhood_avatar'); if (savedAvatar) { selectedAvatar = savedAvatar.includes('/') ? savedAvatar.split('/').pop()?.replace('ava.png', '') || 'icons/01icon.png' : savedAvatar; const pas = document.getElementById('profile-avatar-small'); if (pas) pas.src = getAvatarUrl(selectedAvatar); document.getElementById('robin-avatar').src = getAvatarUrl(selectedAvatar); }
-    const savedNick = localStorage.getItem('robinhood_nick'); const nl = document.getElementById('nick-label'); if (savedNick && nl) nl.textContent = savedNick.substring(0, 12);
-    P2PPong.setMyProfile(savedNick || 'Лучник', selectedAvatar);
-    toggleSoundState = localStorage.getItem('robinhood_sound') !== 'false'; const ts = document.getElementById('toggle-sound'); if (ts) ts.checked = toggleSoundState;
-    toggleAnimations = localStorage.getItem('robinhood_animations') !== 'false'; const ta = document.getElementById('toggle-animations'); if (ta) ta.checked = toggleAnimations;
-    selfDestructMode = localStorage.getItem('robinhood_selfdestruct') === 'true'; const sd = document.getElementById('toggle-selfdestruct'); if (sd) sd.checked = selfDestructMode; if (selfDestructMode) startSelfDestruct();
-    const isPWA = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone || false; const si = document.getElementById('setting-install'); if (!isPWA && si) si.classList.remove('hidden');
-
-    let headerVisible = true;
-    document.getElementById('robin-bar')?.addEventListener('click', () => {
-        const h1 = document.querySelector('.header-row-1');
-        const h2 = document.querySelector('.header-row-2');
-        const h3 = document.querySelector('.header-row-3');
-        if (headerVisible) { h1.style.display = 'none'; h2.style.display = 'none'; h3.style.display = 'none'; headerVisible = false; }
-        else { h1.style.display = ''; h2.style.display = ''; h3.style.display = ''; headerVisible = true; }
-    });
-
-    document.getElementById('btn-craft')?.addEventListener('click', () => { document.getElementById('craft-modal')?.classList.add('active'); const bid = P2PPong._beaconId; const display = document.getElementById('craft-peer-id-display'); if (display) display.textContent = bid || 'Не создана'; });
-    document.getElementById('btn-craft-arrow')?.addEventListener('click', async () => { try { const beaconId = await P2PPong.craftArrow(); const display = document.getElementById('craft-peer-id-display'); if (display) display.textContent = beaconId; const code = P2PPong.getVerificationCode(); const pubKey = P2PPong.getPubKey(); if (code) { const codeDisplay = document.getElementById('craft-code-display'); if (codeDisplay) { codeDisplay.textContent = code; codeDisplay.style.display = 'block'; } const qrContainer = document.getElementById('craft-qr-code'); if (qrContainer) { qrContainer.innerHTML = ''; const qrDataUrl = generateQR(JSON.stringify({ beaconId, code, pubKey }), 200); const img = document.createElement('img'); img.src = qrDataUrl; img.style.cssText = 'width:200px;height:200px;margin:8px auto;display:block;'; img.loading = 'lazy'; qrContainer.appendChild(img); qrContainer.style.display = 'block'; } } window._verifyCode = code; rMsg('🏹 Стрела изготовлена!', 3000); } catch(e) {} });
-    document.getElementById('btn-copy-peer-id')?.addEventListener('click', () => { const bid = P2PPong._beaconId; const code = P2PPong.getVerificationCode(); let copyText = bid || ''; if (code) copyText += '\n' + code; if (bid) { navigator.clipboard.writeText(copyText).then(() => rMsg('⎘ Скопировано!')).catch(() => {}); } });
-    document.getElementById('close-craft-modal')?.addEventListener('click', () => { document.getElementById('craft-modal')?.classList.remove('active'); });
-    document.getElementById('craft-modal')?.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('active'); });
-    document.getElementById('btn-scan-qr')?.addEventListener('click', async () => { const text = await showInput('Вставь данные из QR', ''); if (text) { try { const qrData = JSON.parse(text); window._expectedPubKey = qrData.pubKey; const ok = await P2PPong.joinBeacon(qrData.beaconId); if (ok) { rMsg('📷 QR принят!', 3000); document.getElementById('craft-modal')?.classList.remove('active'); } } catch(e) { rMsg('❌ Неверный формат', 3000); } } });
-    document.getElementById('btn-create-beacon')?.addEventListener('click', async () => { const targetId = document.getElementById('peer-id-input')?.value.trim(); if (targetId) { const ok = await P2PPong.joinBeacon(targetId); if (ok) { rMsg('🏹 Тетива натянута...', 3000); document.getElementById('craft-modal')?.classList.remove('active'); } } });
-
-    document.getElementById('btn-bands')?.addEventListener('click', () => { showBandsList(); document.getElementById('bands-modal')?.classList.add('active'); });
-    document.getElementById('close-bands-modal')?.addEventListener('click', () => { document.getElementById('bands-modal')?.classList.remove('active'); });
-    document.getElementById('bands-modal')?.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('active'); });
-    document.getElementById('btn-open-create-band')?.addEventListener('click', () => { document.getElementById('bands-modal')?.classList.remove('active'); document.getElementById('create-band-modal')?.classList.add('active'); });
-    document.getElementById('btn-open-join-band')?.addEventListener('click', () => { document.getElementById('bands-modal')?.classList.remove('active'); document.getElementById('join-band-modal')?.classList.add('active'); });
-    document.getElementById('btn-craft-band-arrow')?.addEventListener('click', () => { const bandId = RND(); const code = Math.floor(1000000 + Math.random() * 9000000).toString(); document.getElementById('band-id-display').textContent = bandId; document.getElementById('band-code-display').textContent = code; document.getElementById('band-code-display').style.display = 'block'; rMsg('🏹 Стрела шайки изготовлена!', 3000); });
-    document.getElementById('btn-copy-band-id')?.addEventListener('click', () => { const bandId = document.getElementById('band-id-display')?.textContent; const code = document.getElementById('band-code-display')?.textContent; let copyText = ''; if (bandId && bandId !== '') copyText += bandId; if (code && code !== '') copyText += '\n' + code; if (copyText) { navigator.clipboard.writeText(copyText).then(() => rMsg('⎘ Скопировано!')).catch(() => {}); } else { rMsg('❌ Сначала скрафти стрелу', 3000); } });
-    document.getElementById('btn-create-band')?.addEventListener('click', async () => { const bandId = document.getElementById('band-id-display')?.textContent; const name = document.getElementById('band-name-input')?.value.trim() || 'Шайка лучников'; if (!bandId || bandId === '') { rMsg('❌ Сначала скрафти стрелу', 3000); return; } const needPass = await showConfirm('Пароль', 'Установить пароль на вход?'); let pass = null; if (needPass) pass = await showInput('Пароль шайки', ''); createBand(bandId, name, pass); document.getElementById('create-band-modal')?.classList.remove('active'); });
-    document.getElementById('close-create-band-modal')?.addEventListener('click', () => { document.getElementById('create-band-modal')?.classList.remove('active'); document.getElementById('bands-modal')?.classList.add('active'); });
-    document.getElementById('create-band-modal')?.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('active'); });
-    document.getElementById('btn-join-band')?.addEventListener('click', async () => { const raw = document.getElementById('band-join-input')?.value.trim(); if (!raw) { rMsg('❌ Вставь стрелу шайки', 3000); return; } const lines = raw.split('\n'); const bandId = lines[0]?.trim(); const codeInput = lines[1]?.trim(); if (!bandId) { rMsg('❌ ID шайки не найден', 3000); return; } if (codeInput) { window._verifyCode = codeInput; window._verifyInput = ''; pendingBandData = { bandId }; verificationModalShown = true; verificationDone = false; document.getElementById('verify-instruction').textContent = 'Введи 7-значный код шайки'; document.getElementById('verify-code-display').textContent = '_______'; const grid = document.getElementById('verify-code-grid'); grid.innerHTML = ''; grid.style.cssText = 'display:grid;grid-template-columns:repeat(3,1fr);gap:6px;max-width:240px;margin:12px auto;'; for (let i = 1; i <= 9; i++) { const btn = document.createElement('button'); btn.textContent = i; btn.className = 'lock-num'; btn.style.cssText = 'width:65px;height:65px;font-size:1.8em;'; btn.onclick = () => addVerifyDigit(i.toString()); grid.appendChild(btn); } const btn0 = document.createElement('button'); btn0.textContent = '0'; btn0.className = 'lock-num'; btn0.style.cssText = 'width:65px;height:65px;font-size:1.8em;'; btn0.onclick = () => addVerifyDigit('0'); grid.appendChild(btn0); const btnDel = document.createElement('button'); btnDel.textContent = '⌫'; btnDel.className = 'lock-num'; btnDel.style.cssText = 'width:65px;height:65px;font-size:1.5em;background:rgba(244,67,54,0.3);'; btnDel.onclick = () => { window._verifyInput = window._verifyInput.slice(0, -1); document.getElementById('verify-code-display').textContent = window._verifyInput.padEnd(7, '_'); }; grid.appendChild(btnDel); document.getElementById('btn-verify-reset').onclick = () => { window._verifyInput = ''; document.getElementById('verify-code-display').textContent = '_______'; }; document.getElementById('verify-modal')?.classList.add('active'); document.getElementById('join-band-modal')?.classList.remove('active'); return; } joinBand(bandId); document.getElementById('join-band-modal')?.classList.remove('active'); });
-    document.getElementById('close-join-band-modal')?.addEventListener('click', () => { document.getElementById('join-band-modal')?.classList.remove('active'); document.getElementById('bands-modal')?.classList.add('active'); });
-    document.getElementById('join-band-modal')?.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('active'); });
-
-    document.getElementById('btn-verify-confirm')?.addEventListener('click', async () => { const inputCode = window._verifyInput || ''; const expectedCode = window._verifyCode || ''; const errEl = document.getElementById('verify-error'); if (inputCode.length !== 7) { if (errEl) { errEl.textContent = 'Введи ровно 7 цифр'; errEl.style.display = 'block'; } return; } if (inputCode === expectedCode) { if (errEl) errEl.style.display = 'none'; if (pendingBandData) { const { bandId } = pendingBandData; pendingBandData = null; verificationModalShown = false; verificationDone = true; document.getElementById('verify-modal')?.classList.remove('active'); joinBand(bandId); rMsg('✅ Шайка подтверждена!', 3000); return; } verificationModalShown = false; verificationDone = true; document.getElementById('verify-modal')?.classList.remove('active'); await P2PPong.confirmVerification(); rMsg('✅ Подтверждено!', 3000); } else { if (errEl) { errEl.textContent = '❌ Неверный код.'; errEl.style.display = 'block'; } window._verifyInput = ''; document.getElementById('verify-code-display').textContent = '_______'; } });
-    document.getElementById('close-verify-modal')?.addEventListener('click', () => { document.getElementById('verify-modal')?.classList.remove('active'); verificationModalShown = false; });
-    document.getElementById('verify-modal')?.addEventListener('click', function(e) { if (e.target === this) { this.classList.remove('active'); verificationModalShown = false; } });
-    
-    document.getElementById('btn-clear')?.addEventListener('click', async () => {
-        const mode = activeBandId ? 'шайку' : 'колчан';
-        const confirmed = await showConfirm(`🔥 Скурить ${mode}?`, `Вся переписка будет уничтожена безвозвратно. ${activeBandId ? 'Все участники потеряют доступ.' : 'Собеседник потеряет доступ.'}`);
-        if (!confirmed) return;
-        const box = document.getElementById('chat-box'); if (box) box.querySelectorAll('.message-row').forEach(m => m.remove());
-        if (activeBandId) { const band = bands.find(b => b.id === activeBandId); if (band && band.eagleEye === P2PPong._peerId) { if (activeChannelId) { P2PPong.sendMessage(activeChannelId, JSON.stringify({ band: 'band-destroyed', bandId: activeBandId })); } bands = bands.filter(b => b.id !== activeBandId); } performDestruction(activeChannelId, 'local'); }
-        else if (activeChannelId) { P2PPong.sendMessage(activeChannelId, JSON.stringify({ type: 'channel-destroyed', channelId: activeChannelId })); performDestruction(activeChannelId, 'local'); }
-    });
-    
-    document.getElementById('btn-settings')?.addEventListener('click', () => { closeSheets(); document.getElementById('settings-sheet')?.classList.add('open'); document.getElementById('overlay')?.classList.add('show'); });
-    document.getElementById('settings-close')?.addEventListener('click', closeSheets); document.getElementById('overlay')?.addEventListener('click', closeSheets);
-    document.getElementById('btn-avatar')?.addEventListener('click', () => { closeSheets(); loadAvatars(); document.getElementById('avatar-selector')?.classList.add('show'); document.getElementById('overlay')?.classList.add('show'); });
-    document.getElementById('nick-label')?.addEventListener('click', () => { document.getElementById('nick-modal')?.classList.add('active'); document.getElementById('nick-input').value = document.getElementById('nick-label')?.textContent || ''; });
-    document.getElementById('btn-save-nick')?.addEventListener('click', () => { const n = document.getElementById('nick-input')?.value.trim(); if (n) { const nl2 = document.getElementById('nick-label'); if (nl2) nl2.textContent = n.substring(0, 12); try { localStorage.setItem('robinhood_nick', n.substring(0, 12)); } catch (e) {} P2PPong.setMyProfile(n.substring(0, 12), selectedAvatar); } document.getElementById('nick-modal')?.classList.remove('active'); });
-    document.getElementById('close-nick-modal')?.addEventListener('click', () => { document.getElementById('nick-modal')?.classList.remove('active'); });
-    document.getElementById('setting-theme')?.addEventListener('click', generateRandomTheme);
-    document.getElementById('setting-terms')?.addEventListener('click', () => { window.open('https://github.com/stepweather-prog/ROBINHOOD-P2P/blob/main/README.md', '_blank'); });
-    si?.addEventListener('click', () => { if (deferredPrompt) deferredPrompt.prompt().catch(() => {}); else rMsg('📲 Меню браузера → Добавить на экран', 4000); document.getElementById('settings-sheet')?.classList.remove('open'); document.getElementById('overlay')?.classList.remove('show'); });
-    window.addEventListener('beforeinstallprompt', e => { deferredPrompt = e; });
-    document.getElementById('btn-voice-input')?.addEventListener('click', toggleVoiceRecording);
-    
-    const emojis = ['😀','😂','🤣','😍','😘','😜','😎','🤩','🥳','😢','😡','👍','👎','❤️','🔥','🎉','💀','🏹','🌲','🏰','🦊','🐺','✨','⚔️','🛡️','🍺','🍗','🏕️','🌙','☀️','🌟','💪','🤝','🙏','👑','💰','🎯','📞','💬','🔔','❌','✅','🎵','📜','⚜️'];
-    const eg = document.getElementById('emoji-grid'); if (eg) emojis.forEach(e => { const span = document.createElement('span'); span.textContent = e; span.addEventListener('click', () => { const mi = document.getElementById('msg-input'); if (mi) { mi.value += e; mi.focus(); } }); eg.appendChild(span); });
-    const be = document.getElementById('btn-emoji'); if (be) be.addEventListener('click', () => { const ep = document.getElementById('emoji-panel'); if (ep) ep.style.display = ep.style.display === 'block' ? 'none' : 'block'; });
-    document.addEventListener('click', e => { const ep = document.getElementById('emoji-panel'); if (ep && !ep.contains(e.target) && e.target !== be) ep.style.display = 'none'; });
-
-    document.getElementById('send-btn')?.addEventListener('click', async () => {
-        const mi = document.getElementById('msg-input'); const t = mi?.value.trim();
-        if (t) {
-            if (activeBandId) { const band = bands.find(b => b.id === activeBandId); if (band) { band.blobs.push({ text: t, from: P2PPong._peerId, nick: document.getElementById('nick-label')?.textContent || 'Лучник', avatar: selectedAvatar, time: Date.now() }); appendMessage('Вы', t, selectedAvatar); if (mi) mi.value = ''; playArcherAnimation(); if (toggleSoundState) playSound('shot.mp3'); return; } }
-            if (!activeChannelId) { const chIds = Object.keys(P2PPong._channels); if (!chIds.length) return; activeChannelId = chIds[0]; }
-            const sent = await P2PPong.sendMessage(activeChannelId, t);
-            if (sent) { appendMessage('Вы', t, selectedAvatar); updateCupIndicator(); updateRatchetIndicator(); if (mi) mi.value = ''; playArcherAnimation(); if (toggleSoundState) playSound('shot.mp3'); }
+        if (theirSignedPreKeyPub && theirEphemeralPub) {
+            this._secret = await workerX3DHReceive(this._kp.privateKey, this._signedPreKeyPair.privateKey, theirIdentityPub, theirEphemeralPub);
+        } else {
+            this._secret = await workerDeriveSecret(this._kp.privateKey, this._remotePubKey);
         }
-    });
-    document.getElementById('msg-input')?.addEventListener('keypress', e => { if (e.key == 'Enter') document.getElementById('send-btn')?.click(); });
-    setConnectionStatus('online');
-}
 
-window.addEventListener('beforeunload', () => { if (voiceTimerInterval) clearInterval(voiceTimerInterval); stopSelfDestruct(); bands = []; P2PPong.destroy(); });
+        this._pendingChannelData = { peerId: innerData.peerId, signalServer: this._signalServer?.url, nick: this._theirNick, avatar: this._theirAvatar, theirIdentityPub, theirSignedPreKeyPub, theirEphemeralPub };
+        const verificationHash = await p2pSHA(this._secret + code);
+        this._beacons[this._peerId] = { keyPair: this._kp, signedPreKeyPair: this._signedPreKeyPair, ephemeralKeyPair: this._ephemeralKeyPair, beaconKey: bk, expires: Date.now() + CONFIG.BEACON_TTL };
+        this._pending = { type: 'joiner', targetPeerId: innerData.peerId, verificationHash };
 
-P2PPong.on('ready', () => { initUI(); initApp(); });
-P2PPong.init();
+        const mySignedPreKeySig = await workerSign(this._signedPreKeyPair.publicKey, this._kp.privateKey);
+        const br = JSON.stringify({
+            type: 'beacon-response', pubKey: this._kp.publicKey, peerId: this._peerId, inner: bd.inner, channelId: this._chId,
+            verificationHash, signalServer: this._signalServer.url, nick: this._myNick, avatar: this._myAvatar,
+            identityPubKey: this._kp.publicKey, signedPreKeyPub: this._signedPreKeyPair.publicKey,
+            signedPreKeySig: mySignedPreKeySig, ephemeralPubKey: this._ephemeralKeyPair.publicKey
+        });
+        await this._post('/beacon', { keyHash: 'ack_'+beaconId, packet: br });
+        this.startPolling('ack_'+beaconId);
+        this._emit('verification-needed', { code });
+        return true;
+    },
+
+    confirmVerification() {
+        if (this._pending?.type==='joiner'&&this._beaconId&&this._verificationCode) {
+            this._post('/beacon',{keyHash:'code_'+this._beaconId,packet:JSON.stringify({type:'verification-code',code:this._verificationCode,peerId:this._peerId,pubKey:this._kp.publicKey,identityPubKey:this._kp.publicKey,signedPreKeyPub:this._signedPreKeyPair.publicKey,signedPreKeySig:null,ephemeralPubKey:this._ephemeralKeyPair.publicKey})});
+        }
+        if (this._pendingChannelData) {
+            const d=this._pendingChannelData; this._pendingChannelData=null;
+            this._openChannel(d.peerId,d.signalServer,d.nick,d.avatar,d.theirIdentityPub,d.theirSignedPreKeyPub,d.theirEphemeralPub);
+        }
+        return true;
+    },
+
+    getVerificationCode(){return this._verificationCode},
+    getPeerId(){return this._peerId},
+    getBeaconId(){return this._beaconId},
+    getPubKey(){return this._kp?.publicKey},
+
+    async _openChannel(peerId, signalServerUrl, theirNick, theirAvatar, theirIdentityPub, theirSignedPreKeyPub, theirEphemeralPub) {
+        if (!this._chId) this._chId = RND();
+        if (!this._secret && theirIdentityPub && theirSignedPreKeyPub && theirEphemeralPub && this._kp && this._signedPreKeyPair) {
+            this._secret = await workerX3DHReceive(this._kp.privateKey, this._signedPreKeyPair.privateKey, theirIdentityPub, theirEphemeralPub);
+        }
+        if (!this._secret) return;
+        if (signalServerUrl) { const srv = this._signalServers.find(s=>s.url===signalServerUrl); if (srv) this._signalServer = srv; }
+        if (theirNick) this._theirNick = theirNick;
+        if (theirAvatar) this._theirAvatar = theirAvatar;
+        if (peerId) this._remotePeerId = peerId;
+        const rootKey = this._secret;
+        this._channels[this._chId] = {
+            secret: this._secret, sendKey: rootKey, sendIndex: 0, recvKey: rootKey, recvIndex: 0, oldRecvKeys: [],
+            peerId: peerId||'unknown', type: 'cup', blobs: [], expires: Date.now()+CONFIG.CHANNEL_TTL, createdAt: Date.now(), rootKey,
+            dhKeyPair: { publicKey: this._kp.publicKey, privateKey: this._kp.privateKey },
+            dhRemotePubKey: this._remotePubKey, dhSendCount: 0, dhRecvCount: 0
+        };
+        this._stopPolling(); this._stopCodePoll();
+        setTimeout(() => this._cleanupBeaconKeys(this._beaconId), 10000);
+        this._ephemeralKeyPair = null; this._stats.channelsOpened++; this._pending = null;
+        this._emit('channel-opened', { channelId: this._chId, peerId: peerId||'unknown', nick: this._theirNick, avatar: this._theirAvatar });
+        this._startMsgPoll(this._chId); this._startWebRTC(this._chId, true);
+    },
+
+    async _dhRatchetStep(ch) { if (!ch?.rootKey||!ch.dhKeyPair||!ch.dhRemotePubKey) return null; const r = await workerDHRatchetStep(ch.rootKey,ch.dhKeyPair.privateKey,ch.dhRemotePubKey); ch.rootKey=r.newRootKey; ch.dhKeyPair={publicKey:r.newPubKey,privateKey:r.newPrivKey}; ch.sendKey=r.newSendKey; ch.sendIndex=0; ch.recvKey=r.newRecvKey; ch.recvIndex=0; ch.dhSendCount=0; ch.oldRecvKeys=[]; return r; },
+    async _dhRatchetReceive(ch, pk) { if (!ch?.rootKey||!ch.dhKeyPair) return null; ch.dhRemotePubKey=pk; const r = await workerDHRatchetReceive(ch.rootKey,ch.dhKeyPair.privateKey,pk); ch.rootKey=r.newRootKey; ch.recvKey=r.newRecvKey; ch.recvIndex=0; ch.sendKey=r.newSendKey; ch.sendIndex=0; ch.dhRecvCount=0; ch.oldRecvKeys=[]; return r; },
+
+    _startCodePoll() { this._stopCodePoll(); this._codePollActive=true; const me=this; let n=0; (function p(){ if (!me._codePollActive||!me._beaconId||n>=120) return; if (Object.keys(me._channels).length>0) { me._stopCodePoll(); return; } n++; me._get('/beacon?key=code_'+me._beaconId).then(d=>{ if (d?.packet) { me._stopCodePoll(); me._handleIn(d.packet); } else me._codePollTimer=setTimeout(p,1000); }).catch(()=>{ me._codePollTimer=setTimeout(p,1000); }); })(); },
+    _stopCodePoll() { this._codePollActive=false; if (this._codePollTimer) { clearTimeout(this._codePollTimer); this._codePollTimer=null; } },
+
+    async _postWithRetry(path, body, n=0) { if (n>=CONFIG.MAX_RETRIES) { await this._pickServer(); return this._postWithRetry(path,body,0); } const s=this._signalServer||this._signalServers[0]; try { const r=await fetch(s.url+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(5000)}); if (r.ok) return r.json(); if (r.status===429) { await new Promise(r=>setTimeout(r,10000)); return this._postWithRetry(path,body,n+1); } } catch(e) { this._serverHealth[s.url]={healthy:false,failed:true,lastCheck:Date.now()}; await this._pickServer(); return this._postWithRetry(path,body,n+1); } return null; },
+    async _getWithRetry(path, n=0) { if (n>=CONFIG.MAX_RETRIES) { await this._pickServer(); return this._getWithRetry(path,0); } const s=this._signalServer||this._signalServers[0]; try { const r=await fetch(s.url+path,{signal:AbortSignal.timeout(5000)}); if (r.ok) return r.json(); if (r.status===429) { await new Promise(r=>setTimeout(r,10000)); return this._getWithRetry(path,n+1); } } catch(e) { this._serverHealth[s.url]={healthy:false,failed:true,lastCheck:Date.now()}; await this._pickServer(); return this._getWithRetry(path,n+1); } return null; },
+    async _post(path, body) { const kh=body?.keyHash; if (this._firebaseActive&&kh) this._firebasePost(kh,body.packet||JSON.stringify(body)).catch(()=>{}); return this._postWithRetry(path,body); },
+    async _get(path) { const kh=new URLSearchParams(path.split('?')[1])?.get('key'); if (this._firebaseActive&&kh) { const fb=await this._firebaseGet(kh); if (fb?.status==='found') return fb; } return this._getWithRetry(path); },
+
+    startPolling(keyHash) { if (!keyHash) return; this._stopPolling(); this._pollKey=keyHash; this._pollStart=Date.now(); if (this._firebaseActive) this._firebaseListen(keyHash, d=>{ if (d?.packet) { this._stopPolling(); this._handleIn(d.packet); } }); this._doPoll(); },
+    _doPoll() { if (!this._pollKey) return; const me=this; if ((Date.now()-me._pollStart)/1000>CONFIG.POLL_MAX) { me._stopPolling(); me._emit('beacon-timeout'); return; } me._get('/beacon?key='+me._pollKey).then(d=>{ if (d?.status==='found'&&d.packet) { try { const p=JSON.parse(d.packet); if (p.type==='beacon'||(p.type==='beacon-response'&&p.peerId===me._peerId)) { me._pollTimer=setTimeout(()=>me._doPoll(),1000); return; } } catch(e) {} me._stopPolling(); me._handleIn(d.packet); } else if (d?.status==='taken') { me._stopPolling(); me._emit('beacon-taken'); } else me._pollTimer=setTimeout(()=>me._doPoll(),1000); }).catch(()=>{ me._pollTimer=setTimeout(()=>me._doPoll(),1000); }); },
+    _stopPolling() { if (this._pollTimer) { clearTimeout(this._pollTimer); this._pollTimer=null; } if (this._pollKey) this._firebaseUnlisten(this._pollKey); },
+
+    async _handleIn(blobData) {
+        const chId = this._chId || Object.keys(this._channels)[0]; const ch = this._channels[chId];
+        if (ch?.secret && typeof blobData === 'string') {
+            let ur = await workerUnpackBlob(blobData, ch);
+            if (!ur) { try { const raw=JSON.parse(blobData); if (raw._ri!==undefined) { const t=parseInt(raw._ri)||0; if (t>(ch.recvIndex||0)) { const rr=await workerAdvanceRecvRatchet(ch,t); ch.recvKey=rr.finalKey; ch.recvIndex=rr.index; ch.oldRecvKeys=rr.oldKeys.slice(-3); ur=await workerUnpackBlob(blobData,ch); } } } catch(e) {} }
+            if (ur) {
+                const u = ur.data; if (u.from === this._peerId) return;
+                ch.recvKey = ur.newRecvKey || ch.recvKey; ch.recvIndex = ur.newRecvIndex || ch.recvIndex;
+                if (u.dhPubKey&&ch.dhKeyPair) await this._dhRatchetReceive(ch, u.dhPubKey);
+                ch.dhRecvCount = (ch.dhRecvCount||0)+1;
+                const dk = chId + '_' + (u.n || u._t || ''); if (this._dedupTimers[dk]) return;
+                this._dedupTimers[dk] = setTimeout(()=>delete this._dedupTimers[dk], CONFIG.CHANNEL_TTL);
+                if (u.nick) this._theirNick=u.nick; if (u.avatar) this._theirAvatar=u.avatar;
+                const dt = u.type==='voice'?'[Голосовое сообщение]':(u.d||u.text||'');
+                ch.blobs.push({ d: dt, voiceData: u.type==='voice'?u.d:null, t: u._t||Date.now(), n: u.n||'', from: 'them', status: 'delivered', nick: this._theirNick, avatar: this._theirAvatar });
+                ch.expires=Date.now()+CONFIG.CHANNEL_TTL; this._stats.messagesReceived++;
+                this._emit('message-received', { channelId: chId, text: dt, voiceData: u.type==='voice'?u.d:null, type: u.type||'text', from: 'them', timestamp: u._t||Date.now(), nick: this._theirNick, avatar: this._theirAvatar });
+                return;
+            }
+        }
+        let d; try { d=JSON.parse(blobData); } catch(e) { return; }
+        if (d.peerId===this._peerId) return;
+        if (d.type?.startsWith('webrtc-')) { if (this._chId) { if (!this._webRTC[this._chId]) { if (!this._webRTCSignalBuffer[this._chId]) this._webRTCSignalBuffer[this._chId]=[]; this._webRTCSignalBuffer[this._chId].push(d); } else this._handleWSig(this._chId,d); } return; }
+        if (d.type==='beacon-response'&&d.pubKey&&d.channelId) {
+            if (this._pending?.type!=='creator') return;
+            this._remotePubKey = d.identityPubKey || d.pubKey; this._remotePeerId = d.peerId; this._chId = d.channelId;
+            const theirIdentityPub = d.identityPubKey || d.pubKey;
+            const theirSignedPreKeyPub = d.signedPreKeyPub; const theirEphemeralPub = d.ephemeralPubKey; const theirSignedPreKeySig = d.signedPreKeySig;
+            if (theirSignedPreKeyPub && theirSignedPreKeySig && theirIdentityPub) { const isSigValid = await workerVerify(theirSignedPreKeyPub, theirSignedPreKeySig, theirIdentityPub); if (!isSigValid) { this._emit('error', { message: 'Подпись SignedPreKey недействительна' }); return; } }
+            if (theirSignedPreKeyPub && theirEphemeralPub && this._signedPreKeyPair && this._ephemeralKeyPair) { this._secret = await workerX3DHSend(this._kp.privateKey, this._ephemeralKeyPair.privateKey, theirIdentityPub, theirSignedPreKeyPub); }
+            else { this._secret = await workerDeriveSecret(this._kp.privateKey, this._remotePubKey); }
+            if (d.nick) this._theirNick = d.nick; if (d.avatar) this._theirAvatar = d.avatar;
+            this._pendingChannelData = { peerId: d.peerId, signalServer: d.signalServer, nick: d.nick, avatar: d.avatar, theirIdentityPub, theirSignedPreKeyPub, theirEphemeralPub };
+            this._startCodePoll(); return;
+        }
+        if (d.type==='beacon-ack'&&d.channelId) {
+            if (this._pending?.type!=='joiner') return;
+            this._chId = d.channelId;
+            if (!this._secret && d.identityPubKey && d.signedPreKeyPub && d.ephemeralPubKey && this._kp && this._signedPreKeyPair) {
+                this._secret = await workerX3DHReceive(this._kp.privateKey, this._signedPreKeyPair.privateKey, d.identityPubKey, d.ephemeralPubKey);
+            } else if (!this._secret && d.pubKey) {
+                this._secret = await workerDeriveSecret(this._kp.privateKey, d.pubKey);
+            }
+            if (d.peerId) this._remotePeerId = d.peerId; if (d.nick) this._theirNick = d.nick; if (d.avatar) this._theirAvatar = d.avatar;
+            this._openChannel(d.peerId, this._signalServer?.url, d.nick, d.avatar, d.identityPubKey, d.signedPreKeyPub, d.ephemeralPubKey);
+            return;
+        }
+        if (d.type==='verification-code'&&d.code) {
+            if (Object.keys(this._channels).length>0) return;
+            if (this._pending?.type==='creator'&&this._verificationCode&&d.code===this._verificationCode) {
+                this._remotePubKey = d.pubKey; this._remotePeerId = d.peerId;
+                if (this._pendingChannelData) {
+                    const pd = this._pendingChannelData;
+                    if (pd.theirIdentityPub && pd.theirSignedPreKeyPub && pd.theirEphemeralPub && this._ephemeralKeyPair) {
+                        this._secret = await workerX3DHSend(this._kp.privateKey, this._ephemeralKeyPair.privateKey, pd.theirIdentityPub, pd.theirSignedPreKeyPub);
+                    } else { this._secret = await workerDeriveSecret(this._kp.privateKey, d.pubKey); }
+                    this._openChannel(pd.peerId, pd.signalServer, pd.nick, pd.avatar, pd.theirIdentityPub, pd.theirSignedPreKeyPub, pd.theirEphemeralPub);
+                } else {
+                    this._secret = await workerDeriveSecret(this._kp.privateKey, d.pubKey);
+                    this._openChannel(d.peerId, this._signalServer?.url, d.nick, d.avatar);
+                }
+                return;
+            }
+            return;
+        }
+        if (d.type==='ratchet-resync'&&d.pubKey) { if (ch) { try { const ss=await workerDeriveSecret(this._kp?.privateKey||'',d.pubKey); ch.secret=ss; ch.sendKey=ss; ch.sendIndex=0; ch.recvKey=ss; ch.recvIndex=0; ch.oldRecvKeys=[]; } catch(e) { log('resync error',e.message); } } return; }
+    },
+
+    async sendMessage(chId, text) { const ch=this._channels[chId||this._chId]; if (!ch) return false; const nonce=RND(); const md=JSON.stringify({type:'text',d:text,t:Date.now(),n:nonce,from:this._peerId,nick:this._myNick,avatar:this._myAvatar}); return this._sendEncrypted(ch,chId||this._chId,md,text,nonce); },
+    async sendVoiceMessage(chId, voiceBase64) { const ch=this._channels[chId||this._chId]; if (!ch) return false; if (voiceBase64.length>CONFIG.MAX_VOICE_SIZE) { this._emit('error',{message:'Голосовое слишком длинное. Максимум '+CONFIG.MAX_VOICE_DURATION+' секунд.'}); return false; } const nonce=RND(); const md=JSON.stringify({type:'voice',d:voiceBase64,t:Date.now(),n:nonce,from:this._peerId,nick:this._myNick,avatar:this._myAvatar}); return this._sendEncrypted(ch,chId||this._chId,md,'[Голосовое сообщение]',nonce); },
+
+    async _sendEncrypted(ch, chId, messageData, displayText, nonce) {
+        const rtc=this._webRTC[chId||this._chId];
+        if (ch.dhSendCount>=CONFIG.DH_RATCHET_THRESHOLD&&ch.dhKeyPair&&ch.dhRemotePubKey) { const dr=await this._dhRatchetStep(ch); if (dr) { const parsed=JSON.parse(messageData); parsed.dhPubKey=dr.newPubKey; messageData=JSON.stringify(parsed); } }
+        if (rtc&&rtc.dc&&rtc.dc.readyState==='open') { const result=await workerPackBlob(messageData,ch); ch.sendKey=result.newSendKey; ch.sendIndex=result.newSendIndex; ch.dhSendCount=(ch.dhSendCount||0)+1; if (result.packed.length>CONFIG.MAX_PACKET_SIZE) { this._emit('error',{message:'Сообщение слишком большое.'}); return false; } rtc.dc.send(result.packed); ch.blobs.push({d:displayText,t:Date.now(),n:nonce,from:'me',status:'sent',nick:this._myNick,avatar:this._myAvatar}); ch.expires=Date.now()+CONFIG.CHANNEL_TTL; this._stats.messagesSent++; this._emit('message-sent',{channelId:chId||this._chId,data:displayText,status:'sent',nick:this._myNick,avatar:this._myAvatar}); return true; }
+        if (ch.sendKey) { const result=await workerPackBlob(messageData,ch); if (result.packed.length>CONFIG.MAX_PACKET_SIZE) { this._emit('error',{message:'Сообщение слишком большое для сервера.'}); return false; } ch.sendKey=result.newSendKey; ch.sendIndex=result.newSendIndex; ch.dhSendCount=(ch.dhSendCount||0)+1; const keyHash = 'msg_'+(chId||this._chId); const packet = result.packed; for (const s of this._signalServers.filter(s=>s.type==='http')) { fetch(s.url+'/beacon',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({keyHash,packet}),signal:AbortSignal.timeout(5000)}).catch(()=>{}); } if (this._firebaseActive) this._firebasePost(keyHash, packet).catch(()=>{}); ch.blobs.push({d:displayText,t:Date.now(),n:nonce,from:'me',status:'sent',nick:this._myNick,avatar:this._myAvatar}); ch.expires=Date.now()+CONFIG.CHANNEL_TTL; this._stats.messagesSent++; this._emit('message-sent',{channelId:chId||this._chId,data:displayText,status:'sent',nick:this._myNick,avatar:this._myAvatar}); return true; }
+        return false;
+    },
+
+    _cleanupBeaconKeys(beaconId) { this._get('/delete?key=waiting_'+beaconId).catch(()=>{}); this._get('/delete?key=code_'+beaconId).catch(()=>{}); this._get('/delete?key=ack_'+beaconId).catch(()=>{}); },
+
+    _startHousekeeping() { const me=this; this._housekeepInterval=setInterval(()=>{ const now=Date.now(); Object.keys(me._channels).forEach(id=>{ if (now>me._channels[id].expires) { delete me._channels[id]; delete me._webRTC[id]; me._stopMsgPoll(id); me._stopWebRTCPoll(id); me._emit('channel-expired',{channelId:id}); } }); Object.keys(me._beacons).forEach(id=>{ if (now>me._beacons[id].expires) delete me._beacons[id]; }); me._pickServer().catch(()=>{}); },CONFIG.HOUSEKEEP_INTERVAL); },
+
+    _startMsgPoll(chId) { if (this._msgPollTimers[chId]) return; const me=this; (function p(){ if (!me._channels[chId]) { me._stopMsgPoll(chId); return; } if (me._webRTC[chId]&&me._webRTC[chId].connected) { me._stopMsgPoll(chId); return; } const kh='msg_'+chId; if (me._firebaseActive) me._firebaseListen(kh,d=>{ if (d?.packet) me._handleIn(d.packet); }); me._get('/beacon?key='+kh).then(d=>{ if (d?.packet) me._handleIn(d.packet); me._msgPollTimers[chId]=setTimeout(p,CONFIG.MSG_POLL_INTERVAL); }).catch(()=>{ me._msgPollTimers[chId]=setTimeout(p,CONFIG.MSG_POLL_INTERVAL); }); })(); },
+    _stopMsgPoll(chId) { if (this._msgPollTimers[chId]) { clearTimeout(this._msgPollTimers[chId]); delete this._msgPollTimers[chId]; } },
+
+    _startWebRTC(chId, asInitiator) { const ch=this._channels[chId]; if (!ch||this._webRTC[chId]) return; try { const pc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'},{urls:'stun:stun.cloudflare.com:3478'},{urls:'turn:robinhoodp2p.metered.live:80?transport=tcp',username:'466624d8364bb4660ed45c7d',credential:'mpODzmBDhwG/b+VL'},{urls:'turn:robinhoodp2p.metered.live:443?transport=tcp',username:'466624d8364bb4660ed45c7d',credential:'mpODzmBDhwG/b+VL'}]}); this._webRTC[chId]={pc,dc:null,iceBuffer:[],connected:false,initiator:asInitiator,seenMessages:new Set(),offerSent:false}; if (this._webRTCSignalBuffer[chId]) { const bf=this._webRTCSignalBuffer[chId]; delete this._webRTCSignalBuffer[chId]; bf.forEach(sig=>this._handleWSig(chId,sig)); } const me=this; pc.onicecandidate=e=>{ if (e.candidate) { me._webRTC[chId].iceBuffer.push(e.candidate); } else { me._flushICE(chId); } }; pc.onconnectionstatechange=()=>{ if (pc.connectionState==='disconnected'||pc.connectionState==='failed'||pc.connectionState==='closed') { me._webRTC[chId].connected=false; me._startMsgPoll(chId); } }; if (asInitiator) { const dc=pc.createDataChannel('chat'); me._setupDataChannel(chId,ch,dc,true); pc.createOffer().then(o=>pc.setLocalDescription(o)).then(()=>{ me._webRTC[chId].offerSent=true; me._sendWSig(chId,{type:'webrtc-offer',sdp:JSON.stringify(pc.localDescription)}); }); } else { pc.ondatachannel=e=>{ me._setupDataChannel(chId,ch,e.channel,false); }; } setTimeout(()=>{ if (me._webRTC[chId]&&!me._webRTC[chId].connected) me._startWebRTCPoll(chId); },5000); } catch(e) { log('startWebRTC error',e.message); } },
+    _setupDataChannel(chId, ch, dc, isInitiator) { const me=this; this._webRTC[chId].dc=dc; dc.onopen=()=>{ me._webRTC[chId].connected=true; me._stats.peersConnected++; me._emit('peer-connected',{channelId:chId,nick:me._theirNick,avatar:me._theirAvatar}); me._stopWebRTCPoll(chId); me._stopMsgPoll(chId); }; dc.onmessage=e=>me._handleDCMessage(chId,ch,e); },
+    async _handleDCMessage(chId, ch, e) { if (typeof e.data==='string'&&e.data.length>50) { let ur=await workerUnpackBlob(e.data,ch); if (!ur) { try { const raw=JSON.parse(e.data); if (raw._ri!==undefined) { const t=parseInt(raw._ri)||0; if (t>(ch.recvIndex||0)) { const rr=await workerAdvanceRecvRatchet(ch,t); ch.recvKey=rr.finalKey; ch.recvIndex=rr.index; ch.oldRecvKeys=rr.oldKeys.slice(-3); ur=await workerUnpackBlob(e.data,ch); } } } catch(er) {} } if (ur) { const u=ur.data; if (u.from===this._peerId) return; ch.recvKey = ur.newRecvKey || ch.recvKey; ch.recvIndex = ur.newRecvIndex || ch.recvIndex; if (u.dhPubKey&&ch.dhKeyPair) await this._dhRatchetReceive(ch,u.dhPubKey); ch.dhRecvCount=(ch.dhRecvCount||0)+1; if (this._webRTC[chId]?.seenMessages?.has(u.n)) return; const dk = chId + '_' + (u.n || u._t || ''); if (this._dedupTimers[dk]) return; this._dedupTimers[dk]=setTimeout(()=>delete this._dedupTimers[dk],CONFIG.CHANNEL_TTL); this._webRTC[chId]?.seenMessages?.add(u.n); if (u.nick) this._theirNick=u.nick; if (u.avatar) this._theirAvatar=u.avatar; const dt=u.type==='voice'?'[Голосовое сообщение]':(u.d||u.text||''); ch.blobs.push({d:dt,voiceData:u.type==='voice'?u.d:null,t:u._t||Date.now(),n:u.n||'',from:'them',status:'delivered',nick:this._theirNick,avatar:this._theirAvatar}); ch.expires=Date.now()+CONFIG.CHANNEL_TTL; this._stats.messagesReceived++; this._emit('message-received',{channelId:chId,text:dt,voiceData:u.type==='voice'?u.d:null,type:u.type||'text',from:'them',timestamp:u._t||Date.now(),nick:this._theirNick,avatar:this._theirAvatar}); return; } } try { const m=JSON.parse(e.data); if (m.type==='message'&&m.text) { const dk = chId + '_' + (m.nonce || ''); if (this._dedupTimers[dk]) return; this._dedupTimers[dk]=setTimeout(()=>delete this._dedupTimers[dk],CONFIG.CHANNEL_TTL); ch.blobs.push({d:m.text,t:m.time,n:m.nonce,from:'them',status:'delivered',nick:this._theirNick,avatar:this._theirAvatar}); ch.expires=Date.now()+CONFIG.CHANNEL_TTL; this._stats.messagesReceived++; this._emit('message-received',{channelId:chId,text:m.text,from:'them',timestamp:m.time,nick:this._theirNick,avatar:this._theirAvatar}); } } catch(er) {} },
+    _startWebRTCPoll(chId) { if (this._webRTCPolling[chId]) return; const me=this; (function p(){ if (!me._webRTC[chId]||me._webRTC[chId].connected) { me._stopWebRTCPoll(chId); return; } me._get('/beacon?key=webrtc_'+chId).then(d=>{ if (d?.packet) { const sig=JSON.parse(d.packet); if (sig.peerId!==me._peerId) me._handleWSig(chId,sig); } me._webRTCPolling[chId]=setTimeout(p,CONFIG.WEBRTC_POLL_INTERVAL); }).catch(()=>{ me._webRTCPolling[chId]=setTimeout(p,CONFIG.WEBRTC_POLL_INTERVAL); }); })(); },
+    _stopWebRTCPoll(chId) { if (this._webRTCPolling[chId]) { clearTimeout(this._webRTCPolling[chId]); delete this._webRTCPolling[chId]; } },
+    _handleWSig(chId, sig) { const rtc=this._webRTC[chId]; if (!rtc||!rtc.pc||rtc.connected) return; const pc=rtc.pc; try { if (sig.type==='webrtc-ice') { const c=JSON.parse(sig.sdp); if (pc.remoteDescription) { pc.addIceCandidate(new RTCIceCandidate(c)).catch(()=>{}); } else { rtc.iceBuffer.push(c); } return; } if (sig.type==='webrtc-offer') { pc.setRemoteDescription(new RTCSessionDescription(JSON.parse(sig.sdp))).then(()=>{ rtc.iceBuffer.forEach(c=>pc.addIceCandidate(new RTCIceCandidate(c)).catch(()=>{})); rtc.iceBuffer=[]; if (!rtc.initiator) { pc.createAnswer().then(a=>pc.setLocalDescription(a)).then(()=>this._sendWSig(chId,{type:'webrtc-answer',sdp:JSON.stringify(pc.localDescription)})); } }); return; } if (sig.type==='webrtc-answer') { pc.setRemoteDescription(new RTCSessionDescription(JSON.parse(sig.sdp))).then(()=>{ rtc.iceBuffer.forEach(c=>pc.addIceCandidate(new RTCIceCandidate(c)).catch(()=>{})); rtc.iceBuffer=[]; }); } } catch(e) {} },
+    _sendWSig(chId, data) { this._post('/beacon',{keyHash:'webrtc_'+chId,packet:JSON.stringify(data)}); },
+    _flushICE(chId) { const rtc=this._webRTC[chId]; if (!rtc) return; rtc.iceBuffer.forEach(c=>this._sendWSig(chId,{type:'webrtc-ice',sdp:JSON.stringify(c)})); rtc.iceBuffer=[]; },
+
+    async destroy() { this._stopPolling(); this._stopCodePoll(); this._firebaseUnlistenAll(); Object.keys(this._msgPollTimers).forEach(id=>clearTimeout(this._msgPollTimers[id])); this._msgPollTimers={}; Object.keys(this._webRTCPolling).forEach(id=>clearTimeout(this._webRTCPolling[id])); this._webRTCPolling={}; Object.keys(this._webRTC).forEach(id=>{ try{this._webRTC[id].pc.close();}catch(e){} }); this._webRTC={}; if (this._housekeepInterval) clearInterval(this._housekeepInterval); for (const k in this._dedupTimers) clearTimeout(this._dedupTimers[k]); this._dedupTimers={}; this._channels={}; this._beacons={}; this._listeners={}; this._state='idle'; this._peerId=null; this._kp=null; this._signedPreKeyPair=null; this._ephemeralKeyPair=null; this._remotePubKey=null; this._secret=null; this._chId=null; this._pending=null; this._pendingChannelData=null; this._verificationCode=null; this._signalServer=null; this._webRTCSignalBuffer={}; this._remotePeerId=null; this._serverHealth={}; this._beaconId=null; this._codeVerified=false; this._firebaseActive=false; this._firebaseDB=null; this._emit('destroyed'); }
+};
+
+const RND = () => { const a = new Uint32Array(4); crypto.getRandomValues(a); return Array.from(a).map(x => x.toString(16).padStart(8, '0')).join(''); };
+if (typeof window !== 'undefined') { window.P2PPong = P2PPong; }
