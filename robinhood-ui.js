@@ -17,7 +17,11 @@ let voiceRecorder = null,
     voiceTimerInterval = null,
     voiceRecTimeout = null;
 let archerAnimation, quiverAnim, bowAnim, currentArrowContainer;
+let callArcherAnimation, callArrowContainer;
 let deferredPrompt = null;
+let verificationModalShown = false;
+let verificationDone = false;
+let verifyInProgress = false;
 
 let selfDestructBatchSize = 5;
 let selfDestructIntervalTime = 20000;
@@ -28,6 +32,17 @@ let activeBandId = null;
 let pendingBandData = null;
 
 const MAX_CHAT_MESSAGES = 100;
+
+let sharedAudioContext = null;
+function getAudioContext() {
+    if (!sharedAudioContext || sharedAudioContext.state === 'closed') {
+        sharedAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (sharedAudioContext.state === 'suspended') {
+        sharedAudioContext.resume().catch(() => {});
+    }
+    return sharedAudioContext;
+}
 
 function isMobile() {
     return /Android|iPhone|iPad|iPod|webOS/i.test(navigator.userAgent) || window.innerWidth < 768;
@@ -255,60 +270,23 @@ function handleIncomingMessage(data) {
     if (data.voiceData) {
         const nick = safeHtml(data.nick || 'Лучник');
         const avatar = data.avatar || 'icons/01icon.png';
-        if (data.channelId === activeChannelId) {
-            appendMessage(nick, '🎤 Голосовое', avatar, data.voiceData, 'audio/webm');
-        } else {
-            rMsg('🎤 Голосовое от ' + nick, 3000);
-            playVoiceBlob(data.voiceData);
-        }
-        updateCupIndicator();
-        return;
+        if (data.channelId === activeChannelId) { appendMessage(nick, '🎤 Голосовое', avatar, data.voiceData, 'audio/webm'); }
+        else { rMsg('🎤 Голосовое от ' + nick, 3000); playVoiceBlob(data.voiceData); }
+        updateCupIndicator(); return;
     }
     if (!data.text) return;
     try {
         const parsed = JSON.parse(data.text);
-        if (parsed.type === 'channel-destroyed') {
-            performDestruction(parsed.channelId, 'remote');
-            return;
-        }
-        if (parsed.band === 'band-destroyed') {
-            playSmokeAnimation();
-            playSound('clear cache.mp3');
-            rMsg('🔥 Орлиный Глаз скурил шайку! Все разбежались!', 5000);
-            setTimeout(() => { bands = bands.filter(b => b.id !== parsed.bandId); resetChatUI(); }, 3000);
-            return;
-        }
+        if (parsed.type === 'channel-destroyed') { performDestruction(parsed.channelId, 'remote'); return; }
+        if (parsed.band === 'band-destroyed') { playSmokeAnimation(); playSound('clear cache.mp3'); rMsg('🔥 Орлиный Глаз скурил шайку! Все разбежались!', 5000); setTimeout(() => { bands = bands.filter(b => b.id !== parsed.bandId); resetChatUI(); }, 3000); return; }
         if (parsed.band) { handleBandMessage(parsed, data); return; }
-        if (parsed.voice) {
-            const nick = safeHtml(data.nick || 'Лучник');
-            const avatar = data.avatar || 'icons/01icon.png';
-            if (data.channelId === activeChannelId) {
-                appendMessage(nick, '🎤 Голосовое', avatar, parsed.data, 'audio/webm');
-            } else {
-                rMsg('🎤 Голосовое от ' + nick, 3000);
-                playVoiceBlob(parsed.data);
-            }
-            updateCupIndicator();
-            return;
-        }
-        if (parsed.d === '__SMOKE__') {
-            selfDestructMode = true;
-            const sd = document.getElementById('toggle-selfdestruct');
-            if (sd) sd.checked = true;
-            startSelfDestruct();
-            rMsg('🍁 Собеседник включил листопад', 3000);
-            return;
-        }
+        if (parsed.voice) { const nick = safeHtml(data.nick || 'Лучник'); const avatar = data.avatar || 'icons/01icon.png'; if (data.channelId === activeChannelId) { appendMessage(nick, '🎤 Голосовое', avatar, parsed.data, 'audio/webm'); } else { rMsg('🎤 Голосовое от ' + nick, 3000); playVoiceBlob(parsed.data); } updateCupIndicator(); return; }
+        if (parsed.d === '__SMOKE__') { selfDestructMode = true; const sd = document.getElementById('toggle-selfdestruct'); if (sd) sd.checked = true; startSelfDestruct(); rMsg('🍁 Собеседник включил листопад', 3000); return; }
     } catch (e) {}
-    const nick = safeHtml(data.nick || 'Лучник');
-    const avatar = data.avatar || 'icons/01icon.png';
-    if (data.channelId === activeChannelId) {
-        appendMessage(nick, data.text, avatar);
-    } else {
-        rMsg('Новое от ' + nick, 3000);
-    }
-    updateCupIndicator();
-    updateRatchetIndicator();
+    const nick = safeHtml(data.nick || 'Лучник'); const avatar = data.avatar || 'icons/01icon.png';
+    if (data.channelId === activeChannelId) { appendMessage(nick, data.text, avatar); }
+    else { rMsg('Новое от ' + nick, 3000); }
+    updateCupIndicator(); updateRatchetIndicator();
     playSound('arrow_hit.wav');
 }
 
@@ -335,6 +313,7 @@ function generateQR(text, size) { const canvas = document.createElement('canvas'
 function resetChatUI() { activeChannelId = null; activePeerId = null; activeBandId = null; document.getElementById('robin-bar-sender').textContent = 'RobinHood P2P'; document.getElementById('chat-box').innerHTML = '<div class="typing-indicator" id="typing-indicator"></div>'; contacts = []; }
 
 function initApp() {
+    document.addEventListener('click', function unlockAudio() { if (sharedAudioContext && sharedAudioContext.state === 'suspended') { sharedAudioContext.resume().catch(() => {}); } }, { once: true });
     initLeaves();
     const savedTheme = localStorage.getItem('robinhood_theme');
     if (savedTheme) { applyTheme(savedTheme); }
@@ -401,7 +380,6 @@ function initApp() {
     document.getElementById('setting-terms')?.addEventListener('click', () => { window.open('https://github.com/stepweather-prog/ROBINHOOD-P2P/blob/main/README.md', '_blank'); });
     si?.addEventListener('click', () => { if (deferredPrompt) deferredPrompt.prompt().catch(() => {}); else rMsg('📲 Меню браузера → Добавить на экран', 4000); document.getElementById('settings-sheet')?.classList.remove('open'); document.getElementById('overlay')?.classList.remove('show'); });
     window.addEventListener('beforeinstallprompt', e => { deferredPrompt = e; });
-    document.getElementById('btn-call')?.addEventListener('click', () => { rMsg('📞 Звонки в разработке', 3000); });
     document.getElementById('btn-voice-input')?.addEventListener('click', toggleVoiceRecording);
     
     const emojis = ['😀','😂','🤣','😍','😘','😜','😎','🤩','🥳','😢','😡','👍','👎','❤️','🔥','🎉','💀','🏹','🌲','🏰','🦊','🐺','✨','⚔️','🛡️','🍺','🍗','🏕️','🌙','☀️','🌟','💪','🤝','🙏','👑','💰','🎯','📞','💬','🔔','❌','✅','🎵','📜','⚜️'];
