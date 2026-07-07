@@ -167,7 +167,7 @@ function showCallWave(show) { const cw = document.getElementById('call-wave'); i
 function showVoiceRecordingUI(show) { const old = document.getElementById('voice-recording-indicator'); if (old) old.remove(); if (!show) return; const btn = document.getElementById('btn-voice-input'); if (!btn) return; const container = document.createElement('div'); container.id = 'voice-recording-indicator'; container.className = 'voice-recording-indicator'; const timer = document.createElement('span'); timer.className = 'voice-timer-text'; timer.id = 'voice-timer-text'; timer.textContent = '🎤 0:00'; const wave = document.createElement('div'); wave.style.cssText = 'display:flex;align-items:flex-end;gap:2px;height:18px;'; for (let i = 0; i < 4; i++) { const bar = document.createElement('div'); bar.className = 'voice-wave-bar'; bar.style.cssText = `width:3px;animation:voiceWaveAnim 0.5s ease-in-out infinite;animation-delay:${i * 0.1}s;height:${6 + i * 3}px;`; wave.appendChild(bar); } container.appendChild(timer); container.appendChild(wave); btn.parentNode.insertBefore(container, btn); }
 function showIncomingControls(show) { const ic = document.getElementById('incoming-call-controls'); if (ic) ic.style.display = show ? 'flex' : 'none'; }
 function showActiveControls(show) { const ac = document.getElementById('active-call-controls'); if (ac) ac.style.display = show ? 'flex' : 'none'; }
-function updateCallButtonState() { const btn = document.getElementById('btn-call'); if (!btn) return; btn.classList.remove('calling', 'ringing'); if (callActive) btn.classList.add('calling'); else if (incomingOffer) btn.classList.add('ringing'); }
+
 function playRingtone() { stopRingtone(); ringtoneAudio = new Audio('assets/sounds/melodi.mp3'); ringtoneAudio.loop = true; ringtoneAudio.volume = 0.5; ringtoneAudio.play().catch(e => {}); }
 function stopRingtone() { if (ringtoneAudio) { ringtoneAudio.pause(); ringtoneAudio.loop = false; ringtoneAudio = null; } }
 function playRingback() { stopRingback(); ringbackAudio = new Audio('assets/sounds/Welk.mp3'); ringbackAudio.loop = true; ringbackAudio.volume = 0.5; ringbackAudio.play().catch(e => {}); }
@@ -488,7 +488,7 @@ function initApp() {
     document.getElementById('setting-terms')?.addEventListener('click', () => { window.open('https://github.com/stepweather-prog/ROBINHOOD-P2P/blob/main/README.md', '_blank'); });
     si?.addEventListener('click', () => { if (deferredPrompt) deferredPrompt.prompt().catch(() => {}); else rMsg('📲 Меню браузера → Добавить на экран', 4000); document.getElementById('settings-sheet')?.classList.remove('open'); document.getElementById('overlay')?.classList.remove('show'); });
     window.addEventListener('beforeinstallprompt', e => { deferredPrompt = e; });
-    document.getElementById('btn-call')?.addEventListener('click', () => { callActive ? hang(true) : startCall(); });
+    
     document.getElementById('call-accept')?.addEventListener('click', acceptCall);
     document.getElementById('call-reject')?.addEventListener('click', () => { if (incomingOffer) { stopRingtone(); sendWebRTCMsg('webrtc-hangup', ''); incomingOffer = null; const cp2 = document.getElementById('call-panel'); if (cp2) cp2.style.display = 'none'; updateCallButtonState(); } });
     document.getElementById('call-end')?.addEventListener('click', () => hang(true));
