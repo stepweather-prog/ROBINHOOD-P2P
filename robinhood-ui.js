@@ -122,7 +122,7 @@ function playVoiceBlob(b64) { const a = new Audio('data:audio/webm;base64,' + b6
 
 function appendMessage(sender, text, avatarSrc, audioData, audioMime) { const box = document.getElementById('chat-box'); const row = document.createElement('div'); row.className = 'message-row'; const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); const av = getAvatarUrl(avatarSrc); const safeSender = safeHtml(sender); if (audioData && audioMime && audioMime.startsWith('audio/')) { const player = createAudioPlayer(audioData, audioMime); row.innerHTML = `<img src="${av}" class="avatar" onerror="this.src='assets/icons/01icon.png'" loading="lazy"><div class="msg-body"><div class="msg-sender">${safeSender}</div></div>`; row.querySelector('.msg-body').appendChild(player); const ts = document.createElement('div'); ts.className = 'msg-status'; ts.textContent = time; row.querySelector('.msg-body').appendChild(ts); } else { row.innerHTML = `<img src="${av}" class="avatar" onerror="this.src='assets/icons/01icon.png'" loading="lazy"><div class="msg-body"><div class="msg-sender">${safeSender}</div><div style="word-break:break-word;white-space:pre-wrap;">${safeHtml(text)}</div><div class="msg-status">${time}</div></div>`; } const msgId = 'msg_' + Date.now() + Math.random(); row.dataset.msgId = msgId; box.insertBefore(row, document.getElementById('typing-indicator')); const allRows = box.querySelectorAll('.message-row'); while (allRows.length > MAX_CHAT_MESSAGES) { const firstRow = allRows[0]; if (firstRow && firstRow.parentNode) firstRow.remove(); } box.scrollTop = box.scrollHeight; }
 function createAudioPlayer(audioData, audioMime) { const container = document.createElement('div'); container.className = 'audio-player audio-paused'; const audio = new Audio('data:' + audioMime + ';base64,' + audioData); audio.load(); let isPlaying = false; const playBtn = document.createElement('button'); playBtn.className = 'audio-play-btn'; playBtn.textContent = '▶'; const waveDiv = document.createElement('div'); waveDiv.className = 'audio-wave'; for (let i = 0; i < 4; i++) { const bar = document.createElement('div'); bar.className = 'audio-wave-bar'; waveDiv.appendChild(bar); } const timeSpan = document.createElement('span'); timeSpan.className = 'audio-time'; timeSpan.textContent = '0:00'; playBtn.addEventListener('click', () => { if (isPlaying) { audio.pause(); container.classList.remove('audio-playing'); container.classList.add('audio-paused'); playBtn.textContent = '▶'; } else { audio.play(); container.classList.remove('audio-paused'); container.classList.add('audio-playing'); playBtn.textContent = '⏸'; } isPlaying = !isPlaying; }); audio.addEventListener('timeupdate', () => { const m = Math.floor(audio.currentTime / 60); const s = Math.floor(audio.currentTime % 60).toString().padStart(2, '0'); timeSpan.textContent = m + ':' + s; }); audio.addEventListener('ended', () => { container.classList.remove('audio-playing'); container.classList.add('audio-paused'); playBtn.textContent = '▶'; isPlaying = false; }); container.appendChild(playBtn); container.appendChild(waveDiv); container.appendChild(timeSpan); return container; }
-function showChatForChannel(channelId) { activeChannelId = channelId; const box = document.getElementById('chat-box'); box.innerHTML = '<div class="typing-indicator" id="typing-indicator"></div>'; const ch = P2PPong._channels[channelId]; if (ch && ch.blobs) { ch.blobs.forEach(b => { const im = b.from === 'me'; appendMessage(im ? 'Вы' : 'Лучник', b.d || b.text || '', im ? selectedAvatar : 'icons/01icon.png'); }); }  updateRatchetIndicator(); }
+function showChatForChannel(channelId) { activeChannelId = channelId; const box = document.getElementById('chat-box'); box.innerHTML = '<div class="typing-indicator" id="typing-indicator"></div>'; const ch = P2PPong._channels[channelId]; if (ch && ch.blobs) { ch.blobs.forEach(b => { const im = b.from === 'me'; appendMessage(im ? 'Вы' : 'Лучник', b.d || b.text || '', im ? selectedAvatar : 'icons/01icon.png'); }); }  }
 
 function getAvatarUrl(avatarSrc) {
     if (!avatarSrc || avatarSrc === 'icons/01icon.png') return 'assets/icons/01icon.png';
@@ -134,7 +134,6 @@ function getAvatarUrl(avatarSrc) {
 function addContact(c) { if (!contacts.find(x => x.peerId === c.peerId)) { contacts.push(c); } else { const existing = contacts.find(x => x.peerId === c.peerId); if (c.name && c.name !== 'Лучник') existing.name = c.name; if (c.avatar && c.avatar !== '001') existing.avatar = c.avatar; if (c.channelId) existing.channelId = c.channelId; } }
 
 
-function updateRatchetIndicator() { const chId = activeChannelId || Object.keys(P2PPong._channels)[0]; const ch = chId ? P2PPong._channels[chId] : null; const indicator = document.getElementById('ratchet-indicator'); if (!indicator) return; if (!ch || !ch.sendKey) { indicator.style.display = 'none'; return; } indicator.style.display = 'inline'; const ri = ch.sendIndex || 0; let color, icon; if (ri === 0) { color = 'var(--danger)'; icon = '⚠️'; } else if (ri < 10) { color = 'orange'; icon = '🔄'; } else if (ri < 50) { color = 'var(--accent)'; icon = '🔒'; } else { color = 'var(--seeding-color)'; icon = '🔐'; } indicator.style.color = color; indicator.style.background = 'rgba(0,0,0,0.3)'; indicator.textContent = icon + ' ' + ri; indicator.title = 'Ratchet (send): ' + ri + ' сообщений отправлено'; }
 
 const themes = [{ id: 'forest', name: 'Лес' }, { id: 'sunset', name: 'Закат' }, { id: 'ocean', name: 'Океан' }, { id: 'rose', name: 'Роза' }, { id: 'amber', name: 'Янтарь' }, { id: 'mint', name: 'Мята' }, { id: 'lavender', name: 'Лаванда' }, { id: 'cherry', name: 'Вишня' }, { id: 'emerald', name: 'Изумруд' }, { id: 'slate', name: 'Сланец' }, { id: 'coral', name: 'Коралл' }, { id: 'plum', name: 'Слива' }];
 function applyTheme(id) { document.documentElement.setAttribute('data-theme', id); try { localStorage.setItem('robinhood_theme', id); } catch (e) {} const tn = document.getElementById('theme-name'); if (tn) tn.textContent = (themes.find(t => t.id === id) || themes[0]).name; }
@@ -144,7 +143,7 @@ function loadAvatars() { const list = document.getElementById('avatar-list'); if
 async function performDestruction(channelId, source = 'local') {
     playSmokeAnimation();
     playSound('clear cache.mp3');
-    const msg = source === 'remote' ? '🔥 Орлиный Глаз скурил колчан! Связь потеряна.' : '🔥 Колчан скурен! Связь разорвана!';
+    const msg = source === 'remote' ? '👀 Орлиный Глаз скурил колчан! Связь потеряна.' : '🔥 Колчан скурен! Связь разорвана!';
     rMsg(msg, 5000);
     const delay = source === 'local' ? 6000 : 3000;
     await new Promise(resolve => setTimeout(resolve, delay));
@@ -165,7 +164,7 @@ function initUI() {
     P2PPong.on('state-change', (data) => { if (data.state === 'online') setConnectionStatus('online'); else if (data.state === 'offline') setConnectionStatus('offline'); });
     P2PPong.on('peer-connected', () => { rMsg('🔗 Прямой канал установлен', 3000); });
     P2PPong.on('message-received', (data) => { handleIncomingMessage(data); });
-    P2PPong.on('message-sent', () => { updateRatchetIndicator(); });
+    
     P2PPong.on('beacon-taken', () => { rMsg('👀 Метку забрали...', 3000); });
     P2PPong.on('verification-needed', (data) => {
         if (verificationModalShown) return;
@@ -211,7 +210,7 @@ function handleIncomingMessage(data) {
     } catch (e) {}
     const nick = safeHtml(data.nick || 'Лучник'); const avatar = data.avatar || 'icons/01icon.png';
     if (data.channelId === activeChannelId) { appendMessage(nick, data.text, avatar); } else { rMsg('Новое от ' + nick, 3000); }
-    updateRatchetIndicator(); playSound('arrow_hit.wav');
+     playSound('arrow_hit.wav');
 }
 
 let inactivityTimer;
@@ -272,7 +271,7 @@ function initApp() {
     const be = document.getElementById('btn-emoji'); if (be) be.addEventListener('click', () => { const ep = document.getElementById('emoji-panel'); if (ep) ep.style.display = ep.style.display === 'block' ? 'none' : 'block'; });
     document.addEventListener('click', e => { const ep = document.getElementById('emoji-panel'); if (ep && !ep.contains(e.target) && e.target !== be) ep.style.display = 'none'; });
 
-    document.getElementById('send-btn')?.addEventListener('click', async () => { const mi = document.getElementById('msg-input'); const t = mi?.value.trim(); if (t) { if (!activeChannelId) { const chIds = Object.keys(P2PPong._channels); if (!chIds.length) return; activeChannelId = chIds[0]; } const sent = await P2PPong.sendMessage(activeChannelId, t); if (sent) { appendMessage('Вы', t, selectedAvatar); updateRatchetIndicator(); if (mi) mi.value = ''; playArcherAnimation(); if (toggleSoundState) playSound('shot.mp3'); } } });
+    document.getElementById('send-btn')?.addEventListener('click', async () => { const mi = document.getElementById('msg-input'); const t = mi?.value.trim(); if (t) { if (!activeChannelId) { const chIds = Object.keys(P2PPong._channels); if (!chIds.length) return; activeChannelId = chIds[0]; } const sent = await P2PPong.sendMessage(activeChannelId, t); if (sent) { appendMessage('Вы', t, selectedAvatar);  if (mi) mi.value = ''; playArcherAnimation(); if (toggleSoundState) playSound('shot.mp3'); } } });
     document.getElementById('msg-input')?.addEventListener('keypress', e => { if (e.key == 'Enter') document.getElementById('send-btn')?.click(); });
     setConnectionStatus('online');
 }
