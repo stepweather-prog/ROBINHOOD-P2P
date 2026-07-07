@@ -85,9 +85,9 @@ async function encryptAES(plaintext, keyHex) {
         key,
         data
     );
-    const combined = new Uint8Array(iv.length + encrypted.byteLength);
+    const combined = new Uint8Array(iv.byteLength + encrypted.byteLength);
     combined.set(iv);
-    combined.set(new Uint8Array(encrypted), iv.length);
+    combined.set(new Uint8Array(encrypted), iv.byteLength);
     return bufferToHex(combined.buffer);
 }
 
@@ -205,23 +205,19 @@ async function packBlob(jsonString, ch) {
     const newSendKey = await HKDF(ch.sendKey, null, 'osprp-chain-key-' + ch.sendIndex);
     const newSendIndex = ch.sendIndex + 1;
 
-    const blob = JSON.stringify({
-        d: encrypted,
-        h: hmac,
-        _ri: ch.sendIndex,
-        _t: Date.now()
-    });
+    const payload = { d: encrypted, h: hmac, _ri: ch.sendIndex, _t: Date.now() };
+    const packed = JSON.stringify(payload);
 
     return {
-        packed: blob,
+        packed: packed,
         newSendKey: newSendKey,
         newSendIndex: newSendIndex
     };
 }
 
-async function unpackBlob(blob, ch) {
+async function unpackBlob(packedString, ch) {
     try {
-        const parsed = JSON.parse(blob);
+        const parsed = JSON.parse(packedString);
         if (!parsed.d || !parsed.h) return null;
 
         const hmacValid = await verifyHMAC(parsed.d, parsed.h, ch.recvKey);
