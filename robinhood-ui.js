@@ -242,14 +242,24 @@ async function performDestruction(channelId, source = 'local') {
     }
 
     contacts = [];
+    bands = [];
     resetChatUI();
+
+    localStorage.clear();
+    sessionStorage.clear();
+
+    if ('caches' in window) {
+        caches.keys().then(names => names.forEach(name => caches.delete(name)));
+    }
+    if (window.indexedDB) {
+        indexedDB.databases().then(dbs => dbs.forEach(db => indexedDB.deleteDatabase(db.name))).catch(() => {});
+    }
 
     P2PPong._emit('channel-destroyed', { channelId, source });
 
     await P2PPong.destroy();
     window.location.reload(true);
 }
-
 function initUI() {
     P2PPong.on('ready', () => { setConnectionStatus('online'); rMsg('🏹 Глухая Прерия готова', 0); });
     P2PPong.on('state-change', (data) => { if (data.state === 'online') setConnectionStatus('online'); else if (data.state === 'offline') setConnectionStatus('offline'); });
