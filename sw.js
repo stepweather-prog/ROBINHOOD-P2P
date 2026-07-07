@@ -1,12 +1,11 @@
-// sw.js — Service Worker для RobinHood P2P (правка 10)
-const CACHE_VERSION = 'v10';
+// sw.js
+const CACHE_VERSION = 'v11';
 const CACHE_NAME = 'robinhood-' + CACHE_VERSION;
 const ASSETS = [
   '/ROBINHOOD-P2P/',
   '/ROBINHOOD-P2P/index.html',
   '/ROBINHOOD-P2P/manifest.json',
   '/ROBINHOOD-P2P/lottie.min.js',
-  '/ROBINHOOD-P2P/peer-help.js',
   '/ROBINHOOD-P2P/p2ppong.js',
   '/ROBINHOOD-P2P/robinhood-ui.js',
   '/ROBINHOOD-P2P/crypto-worker.js',
@@ -37,8 +36,9 @@ const ASSETS = [
   '/ROBINHOOD-P2P/assets/docking.webp',
 ];
 
-for (let i = 1; i <= 168; i++) {
-  ASSETS.push('/ROBINHOOD-P2P/assets/avatar/' + String(i).padStart(3, '0') + 'ava.png');
+const avatarList = ['002','004','006','007','023','025','028','031','033','037','045','051','053','056','057','059','062','064','066','075','076','080','082','092','094','097','098','110','112','114','119','128','129','132','146','150','153','154','156','159','161','166','167'];
+for (let i = 0; i < avatarList.length; i++) {
+  ASSETS.push('/ROBINHOOD-P2P/assets/avatar/' + avatarList[i] + 'ava.png');
 }
 
 self.addEventListener('install', event => {
@@ -52,7 +52,6 @@ self.addEventListener('install', event => {
   self.skipWaiting();
 });
 
-// ✅ Правка 10: убрана принудительная перезагрузка вкладок
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(keys => Promise.all(
