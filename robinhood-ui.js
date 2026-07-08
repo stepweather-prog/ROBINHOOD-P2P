@@ -25,6 +25,18 @@ let selfDestructBatchSize = 5,
     selfDestructIntervalTime = 20000,
     selfDestructIntervalId = null;
 
+// Фоны: первая — картинка, дальше видео, потом опять картинка
+const videoBackgrounds = [
+    { type: 'image', src: 'assets/icons/background.webp', name: 'Картина' },
+    { type: 'video', src: 'assets/icons/background.webm', name: 'Лес' },
+    { type: 'video', src: 'assets/icons/forest2.webm', name: 'Чаща' },
+    { type: 'video', src: 'assets/icons/ocean.webm', name: 'Океан' },
+    { type: 'video', src: 'assets/icons/sunset.webm', name: 'Закат' },
+    { type: 'image', src: 'assets/icons/background.webp', name: 'Картина' },
+];
+
+let currentBgIndex = 0;
+
 const MAX_CHAT_MESSAGES = 100;
 const avatarList = ['002','004','006','007','023','025','028','031','033','037','045','051','053','056','057','059','062','064','066','075','076','080','082','092','094','097','098','110','112','114','119','128','129','132','146','150','153','154','156','159','161','166','167'];
 const avatars = avatarList.map(id => 'assets/avatar/' + id + 'ava.png');
@@ -136,6 +148,37 @@ function addContact(c) { if (!contacts.find(x => x.peerId === c.peerId)) { conta
 const themes = [{ id: 'forest', name: 'Лес' }, { id: 'sunset', name: 'Закат' }, { id: 'ocean', name: 'Океан' }, { id: 'rose', name: 'Роза' }, { id: 'amber', name: 'Янтарь' }, { id: 'mint', name: 'Мята' }, { id: 'lavender', name: 'Лаванда' }, { id: 'cherry', name: 'Вишня' }, { id: 'emerald', name: 'Изумруд' }, { id: 'slate', name: 'Сланец' }, { id: 'coral', name: 'Коралл' }, { id: 'plum', name: 'Слива' }];
 function applyTheme(id) { document.documentElement.setAttribute('data-theme', id); try { localStorage.setItem('robinhood_theme', id); } catch (e) {} const tn = document.getElementById('theme-name'); if (tn) tn.textContent = (themes.find(t => t.id === id) || themes[0]).name; }
 function generateRandomTheme() { const hue = Math.floor(Math.random() * 360), sat = 40 + Math.floor(Math.random() * 50), bgLight = 5 + Math.floor(Math.random() * 15), bgDark = 2 + Math.floor(Math.random() * 8), id = 'random_' + Date.now(); const s = `[data-theme="${id}"]{--bg-primary:hsl(${hue},${sat}%,${bgLight}%);--bg-secondary:hsl(${hue},${sat-10}%,${bgDark}%);--accent:hsl(${(hue+30)%360},${sat+10}%,50%);--accent-light:hsl(${(hue+30)%360},${sat+20}%,70%);--text:hsl(${hue},20%,85%);--text-bright:hsl(${hue},25%,92%);--text-dim:hsl(${hue},15%,60%);--border:hsl(${(hue+30)%360},${sat+10}%,50%);--btn-bg:hsla(${(hue+30)%360},${sat+10}%,50%,0.1);--btn-border:hsla(${(hue+30)%360},${sat+10}%,50%,0.3);--btn-hover:hsla(${(hue+30)%360},${sat+10}%,50%,0.25);--sheet-bg:linear-gradient(145deg,hsl(${hue},${sat}%,${bgLight}%)0%,hsl(${hue},${sat-10}%,${bgDark}%)100%);--input-bg:hsla(${hue},${sat-10}%,${bgLight+2}%,0.9);--msg-bg:hsla(${hue},${sat-5}%,${bgLight+3}%,0.85);--msg-accent:hsl(${(hue+30)%360},${sat+10}%,50%);--robin-bg:hsla(${hue},${sat}%,${bgLight+8}%,0.9);--robin-accent:hsl(${(hue+30)%360},${sat+20}%,65%);--overlay-bg:rgba(0,0,0,0.6);--call-bg:linear-gradient(180deg,hsl(${hue},${sat}%,${bgLight}%)0%,hsl(${hue},${sat-10}%,${bgDark}%)100%);--call-btn-bg:hsla(${(hue+30)%360},${sat+10}%,50%,0.1);--call-btn-border:hsla(${(hue+30)%360},${sat+10}%,50%,0.3);--input-text:hsl(${hue},20%,85%)}`; let el = document.getElementById('gen-theme'); if (!el) { el = document.createElement('style'); el.id = 'gen-theme'; document.head.appendChild(el); } el.textContent = s; document.documentElement.setAttribute('data-theme', id); const tn = document.getElementById('theme-name'); if (tn) tn.textContent = 'Авто'; try { localStorage.setItem('robinhood_theme', id); } catch (e) {} }
+
+function applyBackground(index) {
+    const vbg = document.querySelector('.video-bg');
+    if (!vbg) return;
+    
+    const bg = videoBackgrounds[index];
+    document.getElementById('videobg-name').textContent = bg.name;
+    
+    if (bg.type === 'image') {
+        vbg.querySelector('source').removeAttribute('src');
+        vbg.removeAttribute('src');
+        vbg.style.backgroundImage = `url('${bg.src}')`;
+        vbg.style.backgroundSize = 'cover';
+        vbg.style.backgroundPosition = 'center';
+        vbg.style.display = 'block';
+        vbg.style.opacity = '1';
+    } else {
+        vbg.style.backgroundImage = '';
+        vbg.querySelector('source').src = bg.src;
+        vbg.load();
+        vbg.play();
+        vbg.style.display = '';
+        vbg.style.opacity = '0.35';
+    }
+}
+
+function cycleBackground() {
+    currentBgIndex = (currentBgIndex + 1) % videoBackgrounds.length;
+    applyBackground(currentBgIndex);
+}
+
 function loadAvatars() { const list = document.getElementById('avatar-list'); if (!list) return; list.innerHTML = ''; const fragment = document.createDocumentFragment(); avatars.forEach(src => { const img = document.createElement('img'); img.src = src; img.className = 'avatar-option'; img.loading = 'lazy'; img.onerror = () => img.src = 'assets/icons/01icon.png'; img.onclick = () => { const pas = document.getElementById('profile-avatar-small'); if (pas) pas.src = src; document.getElementById('robin-avatar').src = src; selectedAvatar = src.includes('/') ? src.split('/').pop()?.replace('ava.png', '') || 'icons/01icon.png' : src; try { localStorage.setItem('robinhood_avatar', src); } catch (e) {} const savedNick = document.getElementById('nick-label')?.textContent || 'Лучник'; P2PPong.setMyProfile(savedNick, selectedAvatar); closeSheets(); rMsg('🖼 Аватар обновлён'); }; fragment.appendChild(img); }); list.appendChild(fragment); }
 
 async function performDestruction(channelId, source = 'local') {
@@ -227,6 +270,9 @@ function resetChatUI() { activeChannelId = null; activePeerId = null; document.g
 function initApp() {
     //initLeaves();
     const savedTheme = localStorage.getItem('robinhood_theme'); if (savedTheme) { applyTheme(savedTheme); } else { applyTheme('forest'); }
+    // Фон всегда начинается с картинки
+    currentBgIndex = 0;
+    applyBackground(currentBgIndex);
     const savedAvatar = localStorage.getItem('robinhood_avatar'); if (savedAvatar) { selectedAvatar = savedAvatar.includes('/') ? savedAvatar.split('/').pop()?.replace('ava.png', '') || 'icons/01icon.png' : savedAvatar; const pas = document.getElementById('profile-avatar-small'); if (pas) pas.src = getAvatarUrl(selectedAvatar); document.getElementById('robin-avatar').src = getAvatarUrl(selectedAvatar); }
     const savedNick = localStorage.getItem('robinhood_nick'); const nl = document.getElementById('nick-label'); if (savedNick && nl) nl.textContent = savedNick.substring(0, 12);
     P2PPong.setMyProfile(savedNick || 'Лучник', selectedAvatar);
@@ -234,15 +280,9 @@ function initApp() {
     toggleAnimations = localStorage.getItem('robinhood_animations') !== 'false'; const ta = document.getElementById('toggle-animations'); if (ta) ta.checked = toggleAnimations;
     selfDestructMode = localStorage.getItem('robinhood_selfdestruct') === 'true'; const sd = document.getElementById('toggle-selfdestruct'); if (sd) sd.checked = selfDestructMode; if (selfDestructMode) startSelfDestruct();
     if (!toggleAnimations) {
-        const vbg = document.querySelector('.video-bg');
-        if (vbg) {
-            vbg.querySelector('source').removeAttribute('src');
-            vbg.removeAttribute('src');
-            vbg.style.backgroundImage = "url('assets/icons/background.webp')";
-            vbg.style.backgroundSize = 'cover';
-            vbg.style.backgroundPosition = 'center';
-            vbg.style.display = 'block';
-        }
+        document.getElementById('leaves-container')?.classList.add('sleeping');
+    } else {
+        document.getElementById('leaves-container')?.classList.remove('sleeping');
     }
     const isPWA = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone || false; const si = document.getElementById('setting-install'); if (!isPWA && si) si.classList.remove('hidden');
 
@@ -267,6 +307,11 @@ function initApp() {
     document.getElementById('btn-save-nick')?.addEventListener('click', () => { const n = document.getElementById('nick-input')?.value.trim(); if (n) { const nl2 = document.getElementById('nick-label'); if (nl2) nl2.textContent = n.substring(0, 12); try { localStorage.setItem('robinhood_nick', n.substring(0, 12)); } catch (e) {} P2PPong.setMyProfile(n.substring(0, 12), selectedAvatar); } document.getElementById('nick-modal')?.classList.remove('active'); });
     document.getElementById('close-nick-modal')?.addEventListener('click', () => { document.getElementById('nick-modal')?.classList.remove('active'); });
     document.getElementById('setting-theme')?.addEventListener('click', generateRandomTheme);
+    document.getElementById('setting-videobg')?.addEventListener('click', () => {
+        cycleBackground();
+        playSound('shot.mp3');
+        rMsg('🎬 Фон: ' + videoBackgrounds[currentBgIndex].name, 2000);
+    });
     document.getElementById('setting-terms')?.addEventListener('click', () => { window.open('https://github.com/stepweather-prog/ROBINHOOD-P2P/blob/main/README.md', '_blank'); });
     si?.addEventListener('click', () => { if (deferredPrompt) deferredPrompt.prompt().catch(() => {}); else rMsg('📲 Меню браузера → Добавить на экран', 4000); document.getElementById('settings-sheet')?.classList.remove('open'); document.getElementById('overlay')?.classList.remove('show'); });
     window.addEventListener('beforeinstallprompt', e => { deferredPrompt = e; });
@@ -274,21 +319,13 @@ function initApp() {
     if (ta) ta.addEventListener('change', function() { 
         toggleAnimations = this.checked; 
         try { localStorage.setItem('robinhood_animations', toggleAnimations); } catch (e) {}
-        const vbg = document.querySelector('.video-bg');
-        if (vbg) {
-            if (this.checked) {
-                vbg.style.backgroundImage = '';
-                vbg.querySelector('source').src = 'assets/icons/background.webm';
-                vbg.load();
-                vbg.style.display = '';
-            } else {
-                vbg.querySelector('source').removeAttribute('src');
-                vbg.removeAttribute('src');
-                vbg.style.backgroundImage = "url('assets/icons/background.webp')";
-                vbg.style.backgroundSize = 'cover';
-                vbg.style.backgroundPosition = 'center';
-                vbg.style.display = 'block';
-            }
+        
+        if (!this.checked) {
+            stopSelfDestruct();
+            document.getElementById('leaves-container')?.classList.add('sleeping');
+        } else {
+            if (selfDestructMode) startSelfDestruct();
+            document.getElementById('leaves-container')?.classList.remove('sleeping');
         }
     });
     if (sd) sd.addEventListener('change', function() { selfDestructMode = this.checked; try { localStorage.setItem('robinhood_selfdestruct', selfDestructMode); } catch (e) {} if (selfDestructMode) { startSelfDestruct(); if (activeChannelId) P2PPong.sendMessage(activeChannelId, JSON.stringify({ d: '__SMOKE__' })); rMsg('🍁 Листопад включён!', 3000); } else { stopSelfDestruct(); rMsg('🍂 Листопад остановлен.', 3000); } });
