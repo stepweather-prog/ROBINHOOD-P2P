@@ -343,7 +343,21 @@ const P2PPong = {
 
     _startHousekeeping() { const me=this; this._housekeepInterval=setInterval(()=>{ const now=Date.now(); Object.keys(me._channels).forEach(id=>{ if (now>me._channels[id].expires) { delete me._channels[id]; delete me._webRTC[id]; me._stopMsgPoll(id); me._stopWebRTCPoll(id); me._emit('channel-expired',{channelId:id}); } }); Object.keys(me._beacons).forEach(id=>{ if (now>me._beacons[id].expires) delete me._beacons[id]; }); me._pickServer().catch(()=>{}); },CONFIG.HOUSEKEEP_INTERVAL); },
 
-    _startMsgPoll(chId) { if (this._msgPollTimers[chId]) return; const me=this; (function p(){ if (!me._channels[chId]) { me._stopMsgPoll(chId); return; } if (me._webRTC[chId]&&me._webRTC[chId].connected) { me._stopMsgPoll(chId); return; } const kh='msg_'+chId; if (me._firebaseActive) me._firebaseListen(kh,d=>{ if (d?.packet) me._handleIn(d.packet); }); me._get('/beacon?key='+kh).then(d=>{ if (d?.packet) me._handleIn(d.packet); me._msgPollTimers[chId]=setTimeout(p,CONFIG.MSG_POLL_INTERVAL); }).catch(()=>{ me._msgPollTimers[chId]=setTimeout(p,CONFIG.MSG_POLL_INTERVAL); }); })(); },
+    _startMsgPoll(chId) { if (this._msgPollTimers[chId]) return; const me=this; (function p(){ if (!me._channels[chId]) { me._stopMsgPoll(chId); return; } if (me._webRTC[chId]&&me._webRTC[chId].connected) { me._stopMsgPoll(chId); return; } const kh='msg_'+chId; if (me._firebaseActive) me._firebaseListen(kh,d=>{ if (d?.packet) me._handleIn(d.packet); }); me._get('/beacon?key='+kh).then(d=>{
+    if (d?.packet) {
+        me._handleIn(d.packet);
+        me._msgPollTimers[chId]=setTimeout(p,CONFIG.MSG_POLL_INTERVAL);
+    } else {
+        me._get('/beacon?key='+kh).then(d2=>{
+            if (d2?.packet) me._handleIn(d2.packet);
+            me._msgPollTimers[chId]=setTimeout(p,CONFIG.MSG_POLL_INTERVAL);
+        }).catch(()=>{
+            me._msgPollTimers[chId]=setTimeout(p,CONFIG.MSG_POLL_INTERVAL);
+        });
+    }
+}).catch(()=>{
+    me._msgPollTimers[chId]=setTimeout(p,CONFIG.MSG_POLL_INTERVAL);
+}); },
     _stopMsgPoll(chId) { if (this._msgPollTimers[chId]) { clearTimeout(this._msgPollTimers[chId]); delete this._msgPollTimers[chId]; } },
 
     _startWebRTC(chId, asInitiator) { const ch=this._channels[chId]; if (!ch||this._webRTC[chId]) return; try { const pc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'},{urls:'stun:stun.cloudflare.com:3478'},{urls:'turn:robinhoodp2p.metered.live:80?transport=tcp',username:'466624d8364bb4660ed45c7d',credential:'mpODzmBDhwG/b+VL'},{urls:'turn:robinhoodp2p.metered.live:443?transport=tcp',username:'466624d8364bb4660ed45c7d',credential:'mpODzmBDhwG/b+VL'}]}); this._webRTC[chId]={pc,dc:null,iceBuffer:[],connected:false,initiator:asInitiator,seenMessages:new Set(),offerSent:false}; if (this._webRTCSignalBuffer[chId]) { const bf=this._webRTCSignalBuffer[chId]; delete this._webRTCSignalBuffer[chId]; bf.forEach(sig=>this._handleWSig(chId,sig)); } const me=this; pc.onicecandidate=e=>{ if (e.candidate) { me._webRTC[chId].iceBuffer.push(e.candidate); } else { me._flushICE(chId); } }; pc.onconnectionstatechange=()=>{ if (pc.connectionState==='disconnected'||pc.connectionState==='failed'||pc.connectionState==='closed') { me._webRTC[chId].connected=false; me._startMsgPoll(chId); } }; if (asInitiator) { const dc=pc.createDataChannel('chat'); me._setupDataChannel(chId,ch,dc,true); pc.createOffer().then(o=>pc.setLocalDescription(o)).then(()=>{ me._webRTC[chId].offerSent=true; me._sendWSig(chId,{type:'webrtc-offer',sdp:JSON.stringify(pc.localDescription)}); }); } else { pc.ondatachannel=e=>{ me._setupDataChannel(chId,ch,e.channel,false); }; } setTimeout(()=>{ if (me._webRTC[chId]&&!me._webRTC[chId].connected) me._startWebRTCPoll(chId); },5000); } catch(e) { log('startWebRTC error',e.message); } },
