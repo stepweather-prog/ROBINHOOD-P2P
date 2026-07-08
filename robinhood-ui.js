@@ -116,12 +116,7 @@ function showVoiceRecordingUI(show) { const old = document.getElementById('voice
 function startVoiceTimer() { voiceSeconds = 0; const vt = document.getElementById('voice-timer-text'); if (vt) vt.textContent = '🎤 0:00'; voiceTimerInterval = setInterval(() => { voiceSeconds++; const m = Math.floor(voiceSeconds / 60), s = (voiceSeconds % 60).toString().padStart(2, '0'); const vt = document.getElementById('voice-timer-text'); if (vt) vt.textContent = '🎤 ' + m + ':' + s; }, 1000); }
 function stopVoiceTimer() { if (voiceTimerInterval) clearInterval(voiceTimerInterval); }
 function toggleVoiceRecording() { voiceRecording ? stopVoiceRecording() : startVoiceRecording(); }
-function startVoiceRecording() { if (voiceRecorder?.state === 'recording') return; const audioBits = isMobile() ? 8000 : 16000; navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } }).then(st => { voiceStream = st; voiceRecorder = new MediaRecorder(st, { mimeType: 'audio/webm; codecs=opus', audioBitsPerSecond: audioBits }); voiceChunks = []; voiceRecorder.ondataavailable = e => voiceChunks.push(e.data); voiceRecorder.onstop = () => { if (voiceRecTimeout) clearTimeout(voiceRecTimeout); const blob = new Blob(voiceChunks, { type: 'audio/webm' }); if (blob.size > 100 && blob.size < 500000 && activeChannelId) { const reader = new FileReader(); reader.onload = async () => {
-    const b64 = reader.result.split(',')[1];
-    await P2PPong.sendVoiceMessage(activeChannelId, b64);
-    playSound('open.mp3');
-    appendMessage('Вы', '🎤 Голосовое', selectedAvatar, b64, 'audio/webm');
-};  reader.readAsDataURL(blob); } if (voiceStream) { voiceStream.getTracks().forEach(t => t.stop()); voiceStream = null; } voiceRecorder = null; voiceRecording = false; stopVoiceTimer(); document.getElementById('btn-voice-input').style.background = ''; showVoiceRecordingUI(false); }; voiceRecorder.start(); voiceRecording = true; startVoiceTimer(); document.getElementById('btn-voice-input').style.background = '#f44336'; showVoiceRecordingUI(true); voiceRecTimeout = setTimeout(() => { if (voiceRecorder?.state === 'recording') { voiceRecorder.stop(); rMsg('⏰ Максимальная длина записи — 10 секунд', 3000); } }, 10000); }).catch(e => { voiceChunks = []; rMsg('❌ Микрофон недоступен или занят', 3000); }); }
+function startVoiceRecording() { if (voiceRecorder?.state === 'recording') return; const audioBits = isMobile() ? 8000 : 16000; navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } }).then(st => { voiceStream = st; voiceRecorder = new MediaRecorder(st, { mimeType: 'audio/webm; codecs=opus', audioBitsPerSecond: audioBits }); voiceChunks = []; voiceRecorder.ondataavailable = e => voiceChunks.push(e.data); voiceRecorder.onstop = () => { if (voiceRecTimeout) clearTimeout(voiceRecTimeout); const blob = new Blob(voiceChunks, { type: 'audio/webm' }); if (blob.size > 100 && blob.size < 500000 && activeChannelId) { const reader = new FileReader(); reader.onload = async () => { const b64 = reader.result.split(',')[1]; await P2PPong.sendVoiceMessage(activeChannelId, b64); playSound('open.mp3'); appendMessage('Вы', '🎤 Голосовое', selectedAvatar, b64, 'audio/webm'); }; reader.readAsDataURL(blob); } if (voiceStream) { voiceStream.getTracks().forEach(t => t.stop()); voiceStream = null; } voiceRecorder = null; voiceRecording = false; stopVoiceTimer(); document.getElementById('btn-voice-input').style.background = ''; showVoiceRecordingUI(false); }; voiceRecorder.start(); voiceRecording = true; startVoiceTimer(); document.getElementById('btn-voice-input').style.background = '#f44336'; showVoiceRecordingUI(true); voiceRecTimeout = setTimeout(() => { if (voiceRecorder?.state === 'recording') { voiceRecorder.stop(); rMsg('⏰ Максимальная длина записи — 10 секунд', 3000); } }, 10000); }).catch(e => { voiceChunks = []; rMsg('❌ Микрофон недоступен или занят', 3000); }); }
 function stopVoiceRecording() { if (voiceRecorder?.state === 'recording') voiceRecorder.stop(); }
 function playVoiceBlob(b64) { const a = new Audio('data:audio/webm;base64,' + b64); a.load(); a.play().catch(e => {}); }
 
@@ -137,8 +132,6 @@ function getAvatarUrl(avatarSrc) {
     return 'assets/avatar/' + avatarSrc + 'ava.png';
 }
 function addContact(c) { if (!contacts.find(x => x.peerId === c.peerId)) { contacts.push(c); } else { const existing = contacts.find(x => x.peerId === c.peerId); if (c.name && c.name !== 'Лучник') existing.name = c.name; if (c.avatar && c.avatar !== '001') existing.avatar = c.avatar; if (c.channelId) existing.channelId = c.channelId; } }
-
-
 
 const themes = [{ id: 'forest', name: 'Лес' }, { id: 'sunset', name: 'Закат' }, { id: 'ocean', name: 'Океан' }, { id: 'rose', name: 'Роза' }, { id: 'amber', name: 'Янтарь' }, { id: 'mint', name: 'Мята' }, { id: 'lavender', name: 'Лаванда' }, { id: 'cherry', name: 'Вишня' }, { id: 'emerald', name: 'Изумруд' }, { id: 'slate', name: 'Сланец' }, { id: 'coral', name: 'Коралл' }, { id: 'plum', name: 'Слива' }];
 function applyTheme(id) { document.documentElement.setAttribute('data-theme', id); try { localStorage.setItem('robinhood_theme', id); } catch (e) {} const tn = document.getElementById('theme-name'); if (tn) tn.textContent = (themes.find(t => t.id === id) || themes[0]).name; }
@@ -205,18 +198,7 @@ function addVerifyDigit(d) { if (window._verifyInput.length >= 7) return; window
 
 function handleIncomingMessage(data) {
     if (!data) return;
-    if (data.voiceData) {
-    playSound('open.mp3');
-    const nick = safeHtml(data.nick || 'Лучник');
-    const avatar = data.avatar || 'icons/01icon.png';
-    if (data.channelId === activeChannelId) {
-        appendMessage(nick, '🎤 Голосовое', avatar, data.voiceData, 'audio/webm');
-    } else {
-        rMsg('🎤 Голосовое от ' + nick, 3000);
-        playVoiceBlob(data.voiceData);
-    }
-    return;
-}
+    if (data.voiceData) { playSound('open.mp3'); const nick = safeHtml(data.nick || 'Лучник'); const avatar = data.avatar || 'icons/01icon.png'; if (data.channelId === activeChannelId) { appendMessage(nick, '🎤 Голосовое', avatar, data.voiceData, 'audio/webm'); } else { rMsg('🎤 Голосовое от ' + nick, 3000); playVoiceBlob(data.voiceData); } return; }
     if (!data.text) return;
     try {
         const parsed = JSON.parse(data.text);
@@ -226,7 +208,7 @@ function handleIncomingMessage(data) {
     } catch (e) {}
     const nick = safeHtml(data.nick || 'Лучник'); const avatar = data.avatar || 'icons/01icon.png';
     if (data.channelId === activeChannelId) { appendMessage(nick, data.text, avatar); } else { rMsg('Новое от ' + nick, 3000); }
-     playSound('arrow_hit.wav');
+    playSound('arrow_hit.wav');
 }
 
 let inactivityTimer;
@@ -236,7 +218,7 @@ window.addEventListener('blur', () => { clearTimeout(inactivityTimer); inactivit
 window.addEventListener('focus', () => { clearTimeout(inactivityTimer); const lc = document.getElementById('leaves-container'); if (lc) { lc.classList.remove('sleeping'); lc.style.opacity = '1'; } resetInactivityTimer(); });
 window.addEventListener('visibilitychange', () => { if (document.hidden) { stopSelfDestruct(); } else { if (selfDestructMode) startSelfDestruct(); } });
 
-function  initLeaves() { const c = document.getElementById('leaves-container'); if (!c || c.children.length > 0) return; const emojis = ['🍁','🍂','🌿','🍃','🌰']; const fragment = document.createDocumentFragment(); for (let i = 0; i < 7; i++) { const el = document.createElement('span'); el.className = i % 3 == 0 ? 'feather' : 'leaf'; el.textContent = emojis[i % emojis.length]; el.style.left = Math.random() * 100 + '%'; el.style.animationDelay = Math.random() * 15 + 's'; el.style.animationDuration = (16 + Math.random() * 18) + 's'; fragment.appendChild(el); } c.appendChild(fragment); c.classList.add('sleeping'); resetInactivityTimer(); }
+function initLeaves() { const c = document.getElementById('leaves-container'); if (!c || c.children.length > 0) return; const emojis = ['🍁','🍂','🌿','🍃','🌰']; const fragment = document.createDocumentFragment(); for (let i = 0; i < 7; i++) { const el = document.createElement('span'); el.className = i % 3 == 0 ? 'feather' : 'leaf'; el.textContent = emojis[i % emojis.length]; el.style.left = Math.random() * 100 + '%'; el.style.animationDelay = Math.random() * 15 + 's'; el.style.animationDuration = (16 + Math.random() * 18) + 's'; fragment.appendChild(el); } c.appendChild(fragment); c.classList.add('sleeping'); resetInactivityTimer(); }
 
 function generateQR(text, size) { const canvas = document.createElement('canvas'); canvas.width = size; canvas.height = size; const ctx = canvas.getContext('2d'); const bytes = new TextEncoder().encode(text); const moduleCount = 21; const moduleSize = Math.floor(size / (moduleCount + 8)); const offset = Math.floor((size - moduleCount * moduleSize) / 2); ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, size, size); ctx.fillStyle = '#000000'; function drawModule(row, col) { ctx.fillRect(offset + col * moduleSize, offset + row * moduleSize, moduleSize, moduleSize); } function drawFinderPattern(startRow, startCol) { for (let r = 0; r < 7; r++) { for (let c = 0; c < 7; c++) { if (r === 0 || r === 6 || c === 0 || c === 6 || (r >= 2 && r <= 4 && c >= 2 && c <= 4)) { drawModule(startRow + r, startCol + c); } } } } drawFinderPattern(0, 0); drawFinderPattern(0, moduleCount - 7); drawFinderPattern(moduleCount - 7, 0); let bitIndex = 0; const totalBits = bytes.length * 8; for (let row = 0; row < moduleCount && bitIndex < totalBits; row++) { for (let col = 0; col < moduleCount && bitIndex < totalBits; col++) { if ((row < 7 && col < 7) || (row < 7 && col >= moduleCount - 7) || (row >= moduleCount - 7 && col < 7)) continue; const byteIndex = Math.floor(bitIndex / 8); const bitInByte = 7 - (bitIndex % 8); const bit = (bytes[byteIndex] >> bitInByte) & 1; if (bit === 1) drawModule(row, col); bitIndex++; } } return canvas.toDataURL('image/png'); }
 
@@ -280,6 +262,37 @@ function initApp() {
     if (ts) ts.addEventListener('change', function() { toggleSoundState = this.checked; try { localStorage.setItem('robinhood_sound', toggleSoundState); } catch (e) {} });
     if (ta) ta.addEventListener('change', function() { toggleAnimations = this.checked; try { localStorage.setItem('robinhood_animations', toggleAnimations); } catch (e) {} });
     if (sd) sd.addEventListener('change', function() { selfDestructMode = this.checked; try { localStorage.setItem('robinhood_selfdestruct', selfDestructMode); } catch (e) {} if (selfDestructMode) { startSelfDestruct(); if (activeChannelId) P2PPong.sendMessage(activeChannelId, JSON.stringify({ d: '__SMOKE__' })); rMsg('🍁 Листопад включён!', 3000); } else { stopSelfDestruct(); rMsg('🍂 Листопад остановлен.', 3000); } });
+
+    const videoBgEl = document.querySelector('.video-bg');
+    const videoNames = ['Лес', 'Туман', 'Огонь', 'Рисунок'];
+    const videoFiles = ['assets/icons/background.webm', 'assets/icons/background2.webm', 'assets/icons/background3.webm', ''];
+    let videoIndex = parseInt(localStorage.getItem('robinhood_videobg') || '0');
+
+    function applyVideoBg(idx) {
+        videoIndex = idx;
+        const src = videoFiles[idx];
+        if (src) {
+            videoBgEl.querySelector('source').src = src;
+            videoBgEl.style.backgroundImage = '';
+            videoBgEl.load();
+            videoBgEl.style.display = '';
+        } else {
+            videoBgEl.querySelector('source').removeAttribute('src');
+            videoBgEl.style.backgroundImage = "url('assets/icons/background.webp')";
+            videoBgEl.style.backgroundSize = 'cover';
+            videoBgEl.style.backgroundPosition = 'center';
+            videoBgEl.style.display = 'block';
+        }
+        document.getElementById('videobg-name').textContent = videoNames[idx];
+        localStorage.setItem('robinhood_videobg', idx);
+    }
+    applyVideoBg(videoIndex);
+
+    document.getElementById('setting-videobg').addEventListener('click', () => {
+        videoIndex = (videoIndex + 1) % videoFiles.length;
+        applyVideoBg(videoIndex);
+    });
+
     document.getElementById('btn-voice-input')?.addEventListener('click', toggleVoiceRecording);
 
     const emojis = ['😀','😂','🤣','😍','😘','😜','😎','🤩','🥳','😢','😡','👍','👎','❤️','🔥','🎉','💀','🏹','🌲','🏰','🦊','🐺','✨','⚔️','🛡️','🍺','🍗','🏕️','🌙','☀️','🌟','💪','🤝','🙏','👑','💰','🎯','📞','💬','🔔','❌','✅','🎵','📜','⚜️'];
@@ -292,14 +305,7 @@ function initApp() {
     setConnectionStatus('online');
 }
 
-window.addEventListener('beforeunload', () => {
-    if (voiceTimerInterval) clearInterval(voiceTimerInterval);
-    stopSelfDestruct();
-    P2PPong.destroy();
-});
+window.addEventListener('beforeunload', () => { if (voiceTimerInterval) clearInterval(voiceTimerInterval); stopSelfDestruct(); P2PPong.destroy(); });
 
-P2PPong.on('ready', () => {
-    initUI();
-    initApp();
-});
+P2PPong.on('ready', () => { initUI(); initApp(); });
 P2PPong.init();
