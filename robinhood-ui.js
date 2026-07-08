@@ -276,7 +276,14 @@ function initApp() {
     setConnectionStatus('online');
 }
 
-window.addEventListener('beforeunload', () => { if (voiceTimerInterval) clearInterval(voiceTimerInterval); stopSelfDestruct(); P2PPong.destroy(); });
+window.addEventListener('beforeunload', () => {
+    if (voiceTimerInterval) clearInterval(voiceTimerInterval);
+    stopSelfDestruct();
+    P2PPong.destroy();
+});
 
-P2PPong.on('ready', () => { initUI(); initApp(); });
+P2PPong.on('ready', () => {
+    initUI();
+    initApp();
+});
 P2PPong.init();
