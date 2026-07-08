@@ -15,13 +15,14 @@
         html { touch-action: manipulation; }
         html,body { height:100%; overflow:hidden; font-family:'Segoe UI','Inter',sans-serif; font-size:clamp(14px,2.5vw,16px); }
         body { background:linear-gradient(135deg, var(--bg-primary), var(--bg-secondary)); color:var(--text); display:flex; flex-direction:column; height:100dvh; position:relative; }
-        body::before { content:""; position:fixed; top:0; left:0; width:100%; height:100%; background-image:url('assets/icons/background.webp'); background-size:cover; background-position:center; z-index:0; opacity:0.35; }
+        
         .leaves-container { position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:1; overflow:hidden; transition: opacity 2s ease; }
         .leaf,.feather{position:absolute;top:-50px;animation:fall linear infinite;opacity:0.8}
         .leaf{font-size:clamp(14px,3vw,22px)}.feather{font-size:clamp(10px,2.5vw,18px)}
         @keyframes fall{0%{transform:translateY(-50px) rotate(0deg) translateX(0);opacity:.9}25%{transform:translateY(25vh) rotate(90deg) translateX(40px);opacity:.8}50%{transform:translateY(50vh) rotate(180deg) translateX(-30px);opacity:.7}75%{transform:translateY(75vh) rotate(270deg) translateX(35px);opacity:.5}100%{transform:translateY(105vh) rotate(360deg) translateX(-20px);opacity:0}}
         .leaf:nth-child(odd){animation-duration:15s}.leaf:nth-child(even){animation-duration:20s}.feather:nth-child(odd){animation-duration:24s}.feather:nth-child(even){animation-duration:30s}
         .leaves-container.sleeping .leaf,.leaves-container.sleeping .feather{animation-play-state:paused;opacity:0.15}
+        .video-bg { position:fixed; top:0; left:0; width:100%; height:100%; object-fit:cover; z-index:0; opacity:0.35; pointer-events:none; }
         .header{background:linear-gradient(135deg,var(--bg-primary),var(--bg-secondary));border-bottom:2px solid var(--border);backdrop-filter:blur(8px);z-index:10;padding:6px 8px;display:flex;flex-direction:column;gap:4px;flex-shrink:0}
         .header-row-1{display:flex;align-items:center;gap:6px}
         .header-title-text{font-size:clamp(1em,3vw,1.3em);font-weight:bold;background:linear-gradient(135deg,var(--accent-light),var(--accent));-webkit-background-clip:text;background-clip:text;color:transparent}
@@ -144,6 +145,9 @@
     </style>
 </head>
 <body>
+    <video class="video-bg" autoplay muted loop playsinline>
+    <source src="assets/icons/background.webm" type="video/webm">
+</video>
 <div id="app-container" style="display:flex;flex-direction:column;height:100%;">
 <div class="leaves-container sleeping" id="leaves-container"></div>
 <div class="header">
