@@ -31,8 +31,7 @@ const videoBackgrounds = [
     { type: 'video', src: 'assets/icons/background.webm', name: 'Неон' },
     { type: 'video', src: 'assets/icons/background2.webm', name: 'Робин' },
     { type: 'video', src: 'assets/icons/background3.webm', name: 'Листва' },
-    { type: 'image', src: 'assets/icons/background.webp', name: 'Статика' },
-];
+    ];
 
 let currentBgIndex = 0;
 
