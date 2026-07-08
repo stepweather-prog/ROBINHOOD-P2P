@@ -156,8 +156,11 @@ function applyBackground(index) {
     document.getElementById('videobg-name').textContent = bg.name;
     
     if (bg.type === 'image') {
-        vbg.querySelector('source').removeAttribute('src');
+        vbg.pause();
         vbg.removeAttribute('src');
+        vbg.querySelector('source')?.removeAttribute('src');
+        vbg.load();
+        
         vbg.style.backgroundImage = `url('${bg.src}')`;
         vbg.style.backgroundSize = 'cover';
         vbg.style.backgroundPosition = 'center';
@@ -165,6 +168,9 @@ function applyBackground(index) {
         vbg.style.opacity = '1';
     } else {
         vbg.style.backgroundImage = '';
+        vbg.style.backgroundSize = '';
+        vbg.style.backgroundPosition = '';
+        
         vbg.querySelector('source').src = bg.src;
         vbg.load();
         vbg.play();
