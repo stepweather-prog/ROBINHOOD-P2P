@@ -264,9 +264,9 @@ function initApp() {
     if (sd) sd.addEventListener('change', function() { selfDestructMode = this.checked; try { localStorage.setItem('robinhood_selfdestruct', selfDestructMode); } catch (e) {} if (selfDestructMode) { startSelfDestruct(); if (activeChannelId) P2PPong.sendMessage(activeChannelId, JSON.stringify({ d: '__SMOKE__' })); rMsg('🍁 Листопад включён!', 3000); } else { stopSelfDestruct(); rMsg('🍂 Листопад остановлен.', 3000); } });
 
     const videoBgEl = document.querySelector('.video-bg');
-    const videoNames = ['Лес', 'Туман', 'Огонь', 'Рисунок'];
-    const videoFiles = ['assets/icons/background.webm', 'assets/icons/background2.webm', 'assets/icons/background3.webm', ''];
-    let videoIndex = parseInt(localStorage.getItem('robinhood_videobg') || '0');
+    const videoNames = ['Рисунок', 'Лес', 'Туман', 'Огонь'];
+const videoFiles = ['', 'assets/icons/background.webm', 'assets/icons/background2.webm', 'assets/icons/background3.webm'];
+let videoIndex = parseInt(localStorage.getItem('robinhood_videobg') || '0');
 
     function applyVideoBg(idx) {
         videoIndex = idx;
