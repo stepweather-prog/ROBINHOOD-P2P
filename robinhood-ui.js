@@ -276,8 +276,9 @@ let videoIndex = parseInt(localStorage.getItem('robinhood_videobg') || '0');
             videoBgEl.style.backgroundImage = '';
             videoBgEl.load();
             videoBgEl.style.display = '';
-        } else {
+                } else {
             videoBgEl.querySelector('source').removeAttribute('src');
+            videoBgEl.removeAttribute('src');
             videoBgEl.style.backgroundImage = "url('assets/icons/background.webp')";
             videoBgEl.style.backgroundSize = 'cover';
             videoBgEl.style.backgroundPosition = 'center';
