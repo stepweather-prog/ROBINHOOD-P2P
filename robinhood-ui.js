@@ -27,12 +27,11 @@ let selfDestructBatchSize = 5,
 
 // Фоны: первая — картинка, дальше видео, потом опять картинка
 const videoBackgrounds = [
-    { type: 'image', src: 'assets/icons/background.webp', name: 'Картина' },
-    { type: 'video', src: 'assets/icons/background.webm', name: 'Лес' },
-    { type: 'video', src: 'assets/icons/forest2.webm', name: 'Чаща' },
-    { type: 'video', src: 'assets/icons/ocean.webm', name: 'Океан' },
-    { type: 'video', src: 'assets/icons/sunset.webm', name: 'Закат' },
-    { type: 'image', src: 'assets/icons/background.webp', name: 'Картина' },
+    { type: 'image', src: 'assets/icons/background.webp', name: 'Статика' },
+    { type: 'video', src: 'assets/icons/background.webm', name: 'Неон' },
+    { type: 'video', src: 'assets/icons/background2.webm', name: 'Робин' },
+    { type: 'video', src: 'assets/icons/background3.webm', name: 'Листва' },
+    { type: 'image', src: 'assets/icons/background.webp', name: 'Статика' },
 ];
 
 let currentBgIndex = 0;
