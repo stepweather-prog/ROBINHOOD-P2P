@@ -233,9 +233,16 @@ function initApp() {
     toggleSoundState = localStorage.getItem('robinhood_sound') !== 'false'; const ts = document.getElementById('toggle-sound'); if (ts) ts.checked = toggleSoundState;
     toggleAnimations = localStorage.getItem('robinhood_animations') !== 'false'; const ta = document.getElementById('toggle-animations'); if (ta) ta.checked = toggleAnimations;
     selfDestructMode = localStorage.getItem('robinhood_selfdestruct') === 'true'; const sd = document.getElementById('toggle-selfdestruct'); if (sd) sd.checked = selfDestructMode; if (selfDestructMode) startSelfDestruct();
-    if (!toggleAnimations) {
+   if (!toggleAnimations) {
     const videoBgEl = document.querySelector('.video-bg');
-    if (videoBgEl) videoBgEl.style.display = 'none';
+    if (videoBgEl) {
+        videoBgEl.querySelector('source').removeAttribute('src');
+        videoBgEl.removeAttribute('src');
+        videoBgEl.style.backgroundImage = "url('assets/icons/background.webp')";
+        videoBgEl.style.backgroundSize = 'cover';
+        videoBgEl.style.backgroundPosition = 'center';
+        videoBgEl.style.display = 'block';
+    }
 }
     const isPWA = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone || false; const si = document.getElementById('setting-install'); if (!isPWA && si) si.classList.remove('hidden');
 
@@ -270,9 +277,17 @@ function initApp() {
     const videoBgEl = document.querySelector('.video-bg');
     if (videoBgEl) {
         if (this.checked) {
+            videoBgEl.style.backgroundImage = '';
+            videoBgEl.querySelector('source').src = 'assets/icons/background.webm';
+            videoBgEl.load();
             videoBgEl.style.display = '';
         } else {
-            videoBgEl.style.display = 'none';
+            videoBgEl.querySelector('source').removeAttribute('src');
+            videoBgEl.removeAttribute('src');
+            videoBgEl.style.backgroundImage = "url('assets/icons/background.webp')";
+            videoBgEl.style.backgroundSize = 'cover';
+            videoBgEl.style.backgroundPosition = 'center';
+            videoBgEl.style.display = 'block';
         }
     }
 });
