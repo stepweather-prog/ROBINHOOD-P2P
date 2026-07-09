@@ -188,7 +188,7 @@ function loadAvatars() { const list = document.getElementById('avatar-list'); if
 async function performDestruction(channelId, source = 'local') {
     playSmokeAnimation();
     playSound('clear cache.mp3');
-    const msg = source === 'remote' ? '👀Робин Гуд пустил все письиа на самокрутки!';
+    const msg = source === 'remote' ? '👀Робин Гуд пустил все письиа на самокрутки!'
     rMsg(msg, 5000);
     const delay = source === 'local' ? 6000 : 3000;
     await new Promise(resolve => setTimeout(resolve, delay));
