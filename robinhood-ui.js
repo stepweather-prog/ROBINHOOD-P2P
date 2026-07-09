@@ -188,7 +188,7 @@ function loadAvatars() { const list = document.getElementById('avatar-list'); if
 async function performDestruction(channelId, source = 'local') {
     playSmokeAnimation();
     playSound('clear cache.mp3');
-    const msg = source === 'remote' ? '👀 Орлиный Глаз скурил колчан! Связь потеряна.' : '🔥 Колчан скурен! Связь разорвана!';
+    const msg = source === 'remote' ? '👀Робин Гуд пустил все письиа на самокрутки!';
     rMsg(msg, 5000);
     const delay = source === 'local' ? 6000 : 3000;
     await new Promise(resolve => setTimeout(resolve, delay));
@@ -205,7 +205,7 @@ async function performDestruction(channelId, source = 'local') {
 }
 
 function initUI() {
-    P2PPong.on('ready', () => { setConnectionStatus('online'); rMsg('🏹 Глухая Прерия готова', 0); });
+    P2PPong.on('ready', () => { setConnectionStatus('online'); rMsg('🏹 Свяьые сокеты стабильны!', 0); });
     P2PPong.on('state-change', (data) => { if (data.state === 'online') setConnectionStatus('online'); else if (data.state === 'offline') setConnectionStatus('offline'); });
     P2PPong.on('peer-connected', () => { rMsg('🔗 Прямой канал установлен', 3000); });
     P2PPong.on('message-received', (data) => { handleIncomingMessage(data); });
@@ -347,5 +347,14 @@ function initApp() {
 
 window.addEventListener('beforeunload', () => { if (voiceTimerInterval) clearInterval(voiceTimerInterval); stopSelfDestruct(); P2PPong.destroy(); });
 
-P2PPong.on('ready', () => { initUI(); initApp(); });
+P2PPong.on('ready', () => {
+    const loadingScreen = document.getElementById('loading-screen');
+    if (loadingScreen) {
+        loadingScreen.style.transition = 'opacity 0.5s';
+        loadingScreen.style.opacity = '0';
+        setTimeout(() => { loadingScreen.style.display = 'none'; }, 500);
+    }
+    initUI();
+    initApp();
+});
 P2PPong.init();
