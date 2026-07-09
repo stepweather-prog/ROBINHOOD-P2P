@@ -357,7 +357,7 @@ P2PPong.on('ready', () => {
             if (loadingScreen) {
                 loadingScreen.style.transition = 'opacity 0.5s';
                 loadingScreen.style.opacity = '0';
-                setTimeout(() => { loadingScreen.style.display = 'none'; }, 500);
+                setTimeout(() => { loadingScreen.style.display = 'none'; }, 300);
             }
         };
     } else {
