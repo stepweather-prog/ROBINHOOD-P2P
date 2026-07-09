@@ -350,16 +350,19 @@ window.addEventListener('beforeunload', () => { if (voiceTimerInterval) clearInt
 P2PPong.on('ready', () => {
     initUI();
     initApp();
-    const loadingVideo = document.getElementById('loading-video');
-    if (loadingVideo) {
-        loadingVideo.onended = function() {
+    const loadingContainer = document.getElementById('loading-lottie');
+    if (loadingContainer && typeof lottie !== 'undefined') {
+        const anim = lottie.loadAnimation({
+            container: loadingContainer,
+            renderer: 'svg',
+            loop: false,
+            autoplay: true,
+            path: 'assets/Loading.json'
+        });
+        anim.addEventListener('complete', function() {
             const loadingScreen = document.getElementById('loading-screen');
-            if (loadingScreen) {
-                loadingScreen.style.transition = 'opacity 0.5s';
-                loadingScreen.style.opacity = '0';
-                setTimeout(() => { loadingScreen.style.display = 'none'; }, 300);
-            }
-        };
+            if (loadingScreen) loadingScreen.style.display = 'none';
+        });
     } else {
         const loadingScreen = document.getElementById('loading-screen');
         if (loadingScreen) loadingScreen.style.display = 'none';
