@@ -67,9 +67,10 @@ const P2PPong = {
     _ephemeralKeyPair: null, _signedPreKeyPair: null,
 
     _signalServers: [
-        { type: 'http', url: 'https://robincall.stephanclaps-491.workers.dev', name: 'Cloudflare', priority: 1 },
-        { type: 'http', url: 'https://p2ppong-v2.onrender.com', name: 'Render', priority: 1 }
-    ],
+    { type: 'http', url: 'https://robincall.stephanclaps-491.workers.dev', name: 'Cloudflare', priority: 1 },
+    { type: 'http', url: 'https://p2ppong-v2.onrender.com', name: 'Render', priority: 1 },
+    { type: 'http', url: 'https://robinhood-p2-p.vercel.app/api', name: 'Vercel', priority: 1 }
+],
 
     _listeners: {}, _state: 'idle',
     _stats: { messagesSent: 0, messagesReceived: 0, peersConnected: 0, channelsOpened: 0 },
