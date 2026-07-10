@@ -7,10 +7,13 @@ export default async function handler(req, res) {
     if (req.method === 'OPTIONS') return res.status(204).end();
 
     const url = new URL(req.url, 'http://localhost');
+    if (url.pathname === '/api/health') {
+    return res.status(200).json({ status: 'ok' });
+}
     const key = url.searchParams.get('key');
-    const path = url.pathname;
+  
 
-    if (path === '/api/health') return res.json({ status: 'ok' });
+  
 
     if (req.method === 'DELETE' && key) {
         global._beacons = global._beacons || {};
