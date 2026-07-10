@@ -1,8 +1,0 @@
-{
-  "functions": {
-    "api/beacon.js": {
-      "runtime": "nodejs22.x",
-      "maxDuration": 10
-    }
-  }
-}
