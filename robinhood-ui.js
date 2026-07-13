@@ -21,17 +21,16 @@ let deferredPrompt = null;
 let verificationModalShown = false,
     verificationDone = false;
 
-let selfDestructBatchSize = 5,
-    selfDestructIntervalTime = 20000,
+let selfDestructBatchSize = 2,
+    selfDestructIntervalTime = 40000,
     selfDestructIntervalId = null;
 
-// Фоны: первая — картинка, дальше видео, потом опять картинка
 const videoBackgrounds = [
     { type: 'image', src: 'assets/icons/background.webp', name: 'Статика' },
     { type: 'video', src: 'assets/icons/background.webm', name: 'Неон' },
     { type: 'video', src: 'assets/icons/background2.webm', name: 'Робин' },
     { type: 'video', src: 'assets/icons/background3.webm', name: 'Листва' },
-    ];
+];
 
 let currentBgIndex = 0;
 
@@ -111,14 +110,30 @@ function startSelfDestruct() {
         }
         if (box.querySelectorAll('.message-row').length === 0) stopSelfDestruct();
     }, selfDestructIntervalTime);
-    document.getElementById('leaves-container')?.classList.remove('sleeping');
+    
+    const rb = document.getElementById('robin-bar');
+    if (rb && !document.getElementById('robin-leaves')) {
+        const leavesDiv = document.createElement('div');
+        leavesDiv.id = 'robin-leaves';
+        leavesDiv.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:hidden;border-radius:14px;z-index:0;';
+        const emojis = ['🍁','🍂','🌿','🍃'];
+        for (let i = 0; i < 5; i++) {
+            const leaf = document.createElement('span');
+            leaf.textContent = emojis[i % emojis.length];
+            leaf.style.cssText = `position:absolute;top:-20px;left:${Math.random()*90}%;font-size:14px;animation:robinLeafFall ${2+Math.random()*3}s linear infinite;animation-delay:${Math.random()*2}s;opacity:0.8;`;
+            leavesDiv.appendChild(leaf);
+        }
+        rb.style.position = 'relative';
+        rb.appendChild(leavesDiv);
+    }
 }
 
 function stopSelfDestruct() {
     if (selfDestructIntervalId) { clearInterval(selfDestructIntervalId); selfDestructIntervalId = null; }
     if (P2PPong._dedupTimers) { for (const key in P2PPong._dedupTimers) clearTimeout(P2PPong._dedupTimers[key]); P2PPong._dedupTimers = {}; }
     if (activeChannelId && P2PPong._channels[activeChannelId]) { P2PPong._channels[activeChannelId].blobs = []; }
-    document.getElementById('leaves-container')?.classList.add('sleeping');
+    const rl = document.getElementById('robin-leaves');
+    if (rl) rl.remove();
 }
 
 function showVoiceRecordingUI(show) { const old = document.getElementById('voice-recording-indicator'); if (old) old.remove(); if (!show) return; const btn = document.getElementById('btn-voice-input'); if (!btn) return; const container = document.createElement('div'); container.id = 'voice-recording-indicator'; container.className = 'voice-recording-indicator'; const timer = document.createElement('span'); timer.className = 'voice-timer-text'; timer.id = 'voice-timer-text'; timer.textContent = '🎤 0:00'; const wave = document.createElement('div'); wave.style.cssText = 'display:flex;align-items:flex-end;gap:2px;height:18px;'; for (let i = 0; i < 4; i++) { const bar = document.createElement('div'); bar.className = 'voice-wave-bar'; bar.style.cssText = `width:3px;animation:voiceWaveAnim 0.5s ease-in-out infinite;animation-delay:${i * 0.1}s;height:${6 + i * 3}px;`; wave.appendChild(bar); } container.appendChild(timer); container.appendChild(wave); btn.parentNode.insertBefore(container, btn); }
@@ -269,7 +284,7 @@ async function performDestruction(channelId, source = 'local') {
 }
 
 function initUI() {
-    P2PPong.on('ready', () => { setConnectionStatus('online'); rMsg('🏹 Свяьые сокеты стабильны!', 0); });
+    P2PPong.on('ready', () => { setConnectionStatus('online'); rMsg('🏹 Святые сокеты стабильны!', 0); });
     P2PPong.on('state-change', (data) => { if (data.state === 'online') setConnectionStatus('online'); else if (data.state === 'offline') setConnectionStatus('offline'); });
     P2PPong.on('peer-connected', () => { rMsg('🔗 Прямой канал установлен', 3000); });
     P2PPong.on('message-received', (data) => { handleIncomingMessage(data); });
@@ -322,23 +337,12 @@ function handleIncomingMessage(data) {
     playSound('arrow_hit.wav');
 }
 
-let inactivityTimer;
-function resetInactivityTimer() { clearTimeout(inactivityTimer); const lc = document.getElementById('leaves-container'); if (lc) { lc.classList.remove('sleeping'); lc.style.opacity = '1'; } inactivityTimer = setTimeout(() => { const lc = document.getElementById('leaves-container'); if (lc) lc.classList.add('sleeping'); }, 90000); }
-document.addEventListener('pointermove', throttle(resetInactivityTimer, 5000)); document.addEventListener('pointerdown', resetInactivityTimer); document.addEventListener('keypress', resetInactivityTimer);
-window.addEventListener('blur', () => { clearTimeout(inactivityTimer); inactivityTimer = setTimeout(() => { const lc = document.getElementById('leaves-container'); if (lc) lc.classList.add('sleeping'); }, 5000); });
-window.addEventListener('focus', () => { clearTimeout(inactivityTimer); const lc = document.getElementById('leaves-container'); if (lc) { lc.classList.remove('sleeping'); lc.style.opacity = '1'; } resetInactivityTimer(); });
-window.addEventListener('visibilitychange', () => { if (document.hidden) { stopSelfDestruct(); } else { if (selfDestructMode) startSelfDestruct(); } });
-
-function initLeaves() { const c = document.getElementById('leaves-container'); if (!c || c.children.length > 0) return; const emojis = ['🍁','🍂','🌿','🍃','🌰']; const fragment = document.createDocumentFragment(); for (let i = 0; i < 7; i++) { const el = document.createElement('span'); el.className = i % 3 == 0 ? 'feather' : 'leaf'; el.textContent = emojis[i % emojis.length]; el.style.left = Math.random() * 100 + '%'; el.style.animationDelay = Math.random() * 15 + 's'; el.style.animationDuration = (16 + Math.random() * 18) + 's'; fragment.appendChild(el); } c.appendChild(fragment); c.classList.add('sleeping'); resetInactivityTimer(); }
-
 function generateQR(text, size) { const canvas = document.createElement('canvas'); canvas.width = size; canvas.height = size; const ctx = canvas.getContext('2d'); const bytes = new TextEncoder().encode(text); const moduleCount = 21; const moduleSize = Math.floor(size / (moduleCount + 8)); const offset = Math.floor((size - moduleCount * moduleSize) / 2); ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, size, size); ctx.fillStyle = '#000000'; function drawModule(row, col) { ctx.fillRect(offset + col * moduleSize, offset + row * moduleSize, moduleSize, moduleSize); } function drawFinderPattern(startRow, startCol) { for (let r = 0; r < 7; r++) { for (let c = 0; c < 7; c++) { if (r === 0 || r === 6 || c === 0 || c === 6 || (r >= 2 && r <= 4 && c >= 2 && c <= 4)) { drawModule(startRow + r, startCol + c); } } } } drawFinderPattern(0, 0); drawFinderPattern(0, moduleCount - 7); drawFinderPattern(moduleCount - 7, 0); let bitIndex = 0; const totalBits = bytes.length * 8; for (let row = 0; row < moduleCount && bitIndex < totalBits; row++) { for (let col = 0; col < moduleCount && bitIndex < totalBits; col++) { if ((row < 7 && col < 7) || (row < 7 && col >= moduleCount - 7) || (row >= moduleCount - 7 && col < 7)) continue; const byteIndex = Math.floor(bitIndex / 8); const bitInByte = 7 - (bitIndex % 8); const bit = (bytes[byteIndex] >> bitInByte) & 1; if (bit === 1) drawModule(row, col); bitIndex++; } } return canvas.toDataURL('image/png'); }
 
 function resetChatUI() { activeChannelId = null; activePeerId = null; document.getElementById('robin-bar-sender').textContent = 'RobinHood P2P'; document.getElementById('chat-box').innerHTML = '<div class="typing-indicator" id="typing-indicator"></div>'; contacts = []; }
 
 function initApp() {
-    //initLeaves();
     const savedTheme = localStorage.getItem('robinhood_theme'); if (savedTheme) { applyTheme(savedTheme); } else { applyTheme('forest'); }
-    // Фон всегда начинается с картинки
     currentBgIndex = 0;
     applyBackground(currentBgIndex);
     const savedAvatar = localStorage.getItem('robinhood_avatar'); if (savedAvatar) { selectedAvatar = savedAvatar.includes('/') ? savedAvatar.split('/').pop()?.replace('ava.png', '') || 'icons/01icon.png' : savedAvatar; const pas = document.getElementById('profile-avatar-small'); if (pas) pas.src = getAvatarUrl(selectedAvatar); document.getElementById('robin-avatar').src = getAvatarUrl(selectedAvatar); }
@@ -348,9 +352,9 @@ function initApp() {
     toggleAnimations = localStorage.getItem('robinhood_animations') !== 'false'; const ta = document.getElementById('toggle-animations'); if (ta) ta.checked = toggleAnimations;
     selfDestructMode = localStorage.getItem('robinhood_selfdestruct') === 'true'; const sd = document.getElementById('toggle-selfdestruct'); if (sd) sd.checked = selfDestructMode; if (selfDestructMode) startSelfDestruct();
     if (!toggleAnimations) {
-        document.getElementById('leaves-container')?.classList.add('sleeping');
+        stopSelfDestruct();
     } else {
-        document.getElementById('leaves-container')?.classList.remove('sleeping');
+        if (selfDestructMode) startSelfDestruct();
     }
     const isPWA = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone || false; const si = document.getElementById('setting-install'); if (!isPWA && si) si.classList.remove('hidden');
 
@@ -390,10 +394,8 @@ function initApp() {
         
         if (!this.checked) {
             stopSelfDestruct();
-            document.getElementById('leaves-container')?.classList.add('sleeping');
         } else {
             if (selfDestructMode) startSelfDestruct();
-            document.getElementById('leaves-container')?.classList.remove('sleeping');
         }
     });
     if (sd) sd.addEventListener('change', function() { selfDestructMode = this.checked; try { localStorage.setItem('robinhood_selfdestruct', selfDestructMode); } catch (e) {} if (selfDestructMode) { startSelfDestruct(); if (activeChannelId) P2PPong.sendMessage(activeChannelId, JSON.stringify({ d: '__SMOKE__' })); rMsg('🍁 Листопад включён!', 3000); } else { stopSelfDestruct(); rMsg('🍂 Листопад остановлен.', 3000); } });
