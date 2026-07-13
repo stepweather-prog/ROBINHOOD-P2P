@@ -42,13 +42,6 @@
         html { touch-action: manipulation; }
         html,body { height:100%; overflow:hidden; font-family:'Segoe UI','Inter',sans-serif; font-size:clamp(14px,2.5vw,16px); }
         body { background:linear-gradient(135deg, var(--bg-primary), var(--bg-secondary)); color:var(--text); display:flex; flex-direction:column; height:100dvh; position:relative; }
-        
-        .leaves-container { position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:1; overflow:hidden; transition: opacity 2s ease; }
-        .leaf,.feather{position:absolute;top:-50px;animation:fall linear infinite;opacity:0.8}
-        .leaf{font-size:clamp(14px,3vw,22px)}.feather{font-size:clamp(10px,2.5vw,18px)}
-        @keyframes fall{0%{transform:translateY(-50px) rotate(0deg) translateX(0);opacity:.9}25%{transform:translateY(25vh) rotate(90deg) translateX(40px);opacity:.8}50%{transform:translateY(50vh) rotate(180deg) translateX(-30px);opacity:.7}75%{transform:translateY(75vh) rotate(270deg) translateX(35px);opacity:.5}100%{transform:translateY(105vh) rotate(360deg) translateX(-20px);opacity:0}}
-        .leaf:nth-child(odd){animation-duration:15s}.leaf:nth-child(even){animation-duration:20s}.feather:nth-child(odd){animation-duration:24s}.feather:nth-child(even){animation-duration:30s}
-        .leaves-container.sleeping .leaf,.leaves-container.sleeping .feather{animation-play-state:paused;opacity:0.15}
         .video-bg { position:fixed; top:0; left:0; width:100%; height:100%; object-fit:cover; z-index:0; opacity:0.35; pointer-events:none; }
         
         .header {
@@ -96,14 +89,19 @@
             border: 1px solid rgba(107, 125, 179, 0.4);
             border: 1px solid rgba(var(--accent-rgb), 0.4);
             box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25), 0 0 14px rgba(107, 125, 179, 0.15), 0 0 14px rgba(var(--accent-rgb), 0.15);
-            cursor: pointer;
+            cursor: pointer; position: relative; overflow: hidden;
         }
-        .robin-bar-avatar{width:40px;height:40px;border-radius:50%;border:2px solid var(--robin-accent);object-fit:cover;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,0.3)}
-        .robin-bar-text{flex:1;min-width:0;text-shadow:0 1px 2px rgba(0,0,0,0.3)}
+        .robin-bar-avatar{width:40px;height:40px;border-radius:50%;border:2px solid var(--robin-accent);object-fit:cover;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,0.3);position:relative;z-index:1}
+        .robin-bar-text{flex:1;min-width:0;text-shadow:0 1px 2px rgba(0,0,0,0.3);position:relative;z-index:1}
         .robin-bar-sender{font-weight:900;font-size:0.85em;color:var(--text-bright)}
         .robin-bar-msg{font-size:0.85em;color:rgba(255,255,255,0.85);white-space:normal;word-break:break-word}
-        .robin-bar-status{flex-shrink:0;display:flex;align-items:center;gap:4px}
+        .robin-bar-status{flex-shrink:0;display:flex;align-items:center;gap:4px;position:relative;z-index:1}
         .robin-bar-status img{width:14px;height:14px;object-fit:contain}
+        
+        @keyframes robinLeafFall {
+            0% { transform: translateY(-20px) rotate(0deg); opacity: 0.8; }
+            100% { transform: translateY(60px) rotate(360deg); opacity: 0; }
+        }
         
         .chat-area{flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:8px;scrollbar-width:none;z-index:1}
         .chat-area::-webkit-scrollbar{display:none}
@@ -276,7 +274,6 @@
     <div id="loading-lottie" style="width:min(256px,60vw);height:min(256px,60vh);"></div>
 </div>
 <div id="app-container" style="display:flex;flex-direction:column;height:100%;">
-<div class="leaves-container sleeping" id="leaves-container"></div>
 <div class="header">
     <div class="header-row-1"><span class="header-title-text">RobinHood P2P</span><span class="header-shield">🏹</span></div>
     <div class="header-row-2">
