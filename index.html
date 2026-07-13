@@ -71,12 +71,11 @@
             width: 42px; height: 42px;
             display: flex; align-items: center; justify-content: center;
             cursor: pointer; border-radius: 50%;
-            background: rgba(255, 255, 255, 0.06);
-            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            background: rgba(255, 255, 255, 0.08);
             border: 2px solid rgba(107, 125, 179, 0.45);
             border: 2px solid rgba(var(--accent-rgb), 0.45);
             transition: all 0.2s ease; position: relative;
-            box-shadow: 0 0 12px rgba(107, 125, 179, 0.15), 0 0 12px rgba(var(--accent-rgb), 0.15), 0 2px 8px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+            box-shadow: 0 0 12px rgba(107, 125, 179, 0.15), 0 0 12px rgba(var(--accent-rgb), 0.15), 0 2px 8px rgba(0, 0, 0, 0.15);
         }
         .header-btn:active {
             background: rgba(255, 255, 255, 0.14); transform: scale(0.93);
@@ -90,14 +89,13 @@
         .header-avatar{width:clamp(26px,6vw,32px);height:clamp(26px,6vw,32px);border-radius:50%;object-fit:cover;border:none}
         
         .robin-bar {
-            background: rgba(13, 13, 26, 0.5);
-            background: rgba(var(--bg-secondary-rgb), 0.5);
-            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            background: rgba(13, 13, 26, 0.7);
+            background: rgba(var(--bg-secondary-rgb), 0.7);
             border-radius: 14px; padding: 8px 14px;
             display: flex; align-items: center; gap: 10px; width: 100%;
             border: 1px solid rgba(107, 125, 179, 0.4);
             border: 1px solid rgba(var(--accent-rgb), 0.4);
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25), 0 0 14px rgba(107, 125, 179, 0.15), 0 0 14px rgba(var(--accent-rgb), 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25), 0 0 14px rgba(107, 125, 179, 0.15), 0 0 14px rgba(var(--accent-rgb), 0.15);
             cursor: pointer;
         }
         .robin-bar-avatar{width:40px;height:40px;border-radius:50%;border:2px solid var(--robin-accent);object-fit:cover;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,0.3)}
@@ -111,9 +109,8 @@
         .chat-area::-webkit-scrollbar{display:none}
         .message-row {
             display:flex; align-items:flex-start; gap:8px;
-            background: rgba(20, 20, 30, 0.55);
-            background: rgba(var(--bg-secondary-rgb), 0.55);
-            backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+            background: rgba(20, 20, 30, 0.7);
+            background: rgba(var(--bg-secondary-rgb), 0.7);
             padding:8px 10px; border-radius:14px;
             border-left: 2px solid var(--msg-accent);
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2), -2px 0 10px rgba(var(--accent-rgb), 0.08);
@@ -122,24 +119,21 @@
         @keyframes msgIn{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:translateX(0)}}
         
         .input-area {
-            background: rgba(26, 26, 42, 0.65);
-            background: rgba(var(--bg-primary-rgb), 0.65);
-            backdrop-filter: blur(24px) saturate(180%);
-            -webkit-backdrop-filter: blur(24px) saturate(180%);
+            background: rgba(26, 26, 42, 0.85);
+            background: rgba(var(--bg-primary-rgb), 0.85);
             padding:8px; display:flex; gap:6px; align-items:center;
-            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
             z-index:1; flex-shrink:0;
         }
         #msg-input {
             flex:1;
-            background: rgba(18, 18, 28, 0.55);
-            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            background: rgba(18, 18, 28, 0.6);
+            background: rgba(var(--bg-secondary-rgb), 0.6);
             border: 1px solid rgba(160, 176, 224, 0.25);
             border: 1px solid rgba(var(--accent-light-rgb), 0.25);
             padding:10px 12px; color:var(--input-text); border-radius:10px;
             font-size:clamp(14px,2.5vw,16px); outline:none; font-family:monospace; min-width:0;
             transition: all 0.3s ease;
-            box-shadow: 0 0 6px rgba(var(--accent-rgb), 0.04);
         }
         #msg-input:focus {
             border-color: var(--accent-light);
@@ -151,9 +145,8 @@
             width: 48px; height: 48px;
             cursor: pointer; flex-shrink: 0; transition: transform 0.1s;
             border-radius: 50%;
-            background: rgba(107, 125, 179, 0.18);
-            background: rgba(var(--accent-rgb), 0.18);
-            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            background: rgba(107, 125, 179, 0.2);
+            background: rgba(var(--accent-rgb), 0.2);
             border: 2px solid rgba(107, 125, 179, 0.45);
             border: 2px solid rgba(var(--accent-rgb), 0.45);
             box-shadow: 0 0 14px rgba(107, 125, 179, 0.15), 0 0 14px rgba(var(--accent-rgb), 0.15), 0 2px 8px rgba(0, 0, 0, 0.2);
@@ -170,10 +163,8 @@
         
         .bottom-sheet,.avatar-selector {
             position: fixed; top: 0; left: 0; width: min(85%, 380px); height: 100%;
-            background: rgba(13, 13, 26, 0.8);
-            background: rgba(var(--bg-secondary-rgb), 0.8);
-            backdrop-filter: blur(28px) saturate(200%);
-            -webkit-backdrop-filter: blur(28px) saturate(200%);
+            background: rgba(13, 13, 26, 0.92);
+            background: rgba(var(--bg-secondary-rgb), 0.92);
             border-right: 1px solid rgba(107, 125, 179, 0.2);
             border-right: 1px solid rgba(var(--accent-rgb), 0.2);
             box-shadow: 4px 0 28px rgba(0, 0, 0, 0.35);
@@ -183,7 +174,7 @@
         .bottom-sheet-header{padding:16px;font-weight:bold;color:var(--accent-light);border-bottom:1px solid rgba(var(--accent-rgb),0.2);display:flex;justify-content:space-between}
         .bottom-sheet-close{background:none;border:none;color:var(--accent-light);font-size:22px;cursor:pointer}
         .bottom-sheet-list{padding:6px 12px}
-        .contact-item{display:flex;align-items:center;justify-content:space-between;padding:12px 10px;margin:5px 0;border-radius:12px;background:rgba(128,128,128,0.04);border:1px solid rgba(var(--accent-rgb),0.15);cursor:pointer;transition:all 0.15s;color:var(--text)}
+        .contact-item{display:flex;align-items:center;justify-content:space-between;padding:12px 10px;margin:5px 0;border-radius:12px;background:rgba(128,128,128,0.06);border:1px solid rgba(var(--accent-rgb),0.15);cursor:pointer;transition:all 0.15s;color:var(--text)}
         .contact-item:active{background:rgba(var(--accent-rgb),0.1);transform:scale(0.97)}
         .contact-info{display:flex;align-items:center;gap:10px;flex:1}
         .contact-info img{width:28px;height:28px;object-fit:contain}
@@ -195,16 +186,14 @@
         .avatar-option{width:clamp(45px,10vw,55px);height:clamp(45px,10vw,55px);border-radius:50%;object-fit:cover;cursor:pointer;border:2px solid transparent;transition:all 0.15s;margin:3px}
         .avatar-option:active{border-color:var(--accent-light);transform:scale(0.9)}
         
-        .overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:var(--overlay-bg);backdrop-filter:blur(4px);display:none;z-index:190}
+        .overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:var(--overlay-bg);display:none;z-index:190}
         .overlay.show{display:block}
         
         .modal-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:300;justify-content:center;align-items:center}
         .modal-overlay.active{display:flex}
         .modal-dialog {
-            background: rgba(26, 26, 42, 0.8);
-            background: rgba(var(--bg-primary-rgb), 0.8);
-            backdrop-filter: blur(28px) saturate(200%);
-            -webkit-backdrop-filter: blur(28px) saturate(200%);
+            background: rgba(26, 26, 42, 0.92);
+            background: rgba(var(--bg-primary-rgb), 0.92);
             padding: 20px; border-radius: 20px; width: 85%; max-width: 380px; text-align: center;
             border: 1px solid rgba(107, 125, 179, 0.3);
             border: 1px solid rgba(var(--accent-rgb), 0.3);
@@ -231,7 +220,7 @@
         @keyframes fadeIn{from{opacity:0}to{opacity:1}}
         @keyframes quiverPulse{0%,100%{transform:scale(1) rotate(0deg)}25%{transform:scale(1.2) rotate(-5deg)}75%{transform:scale(1.2) rotate(5deg)}}
         
-        #call-panel{display:none;position:fixed;top:0;left:0;width:100%;height:100dvh;background:var(--call-bg);backdrop-filter:blur(20px);z-index:100;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:40px 20px}
+        #call-panel{display:none;position:fixed;top:0;left:0;width:100%;height:100dvh;background:var(--call-bg);z-index:100;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:40px 20px}
         .call-avatar-large{width:100px;height:100px;border-radius:50%;object-fit:cover;border:3px solid var(--accent);animation:callPulse 2s ease-in-out infinite}
         @keyframes callPulse{0%,100%{box-shadow:0 0 20px rgba(var(--accent-rgb),0.3)}50%{box-shadow:0 0 40px rgba(var(--accent-rgb),0.6)}}
         .call-name{font-size:1.2em;font-weight:bold;color:var(--accent-light)}
@@ -244,7 +233,7 @@
         .call-btn-mute.muted{background:var(--danger)}
         .call-btn-speaker{background:var(--call-btn-bg);border:1px solid var(--call-btn-border);color:var(--text)}
         .call-btn-speaker.active{background:var(--accent);color:#1a1f0f}
-        .call-action-btn{width:85px;height:85px;border-radius:50%;border:3px solid;font-size:40px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.2s;background:transparent;backdrop-filter:blur(8px)}
+        .call-action-btn{width:85px;height:85px;border-radius:50%;border:3px solid;font-size:40px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.2s;background:transparent}
         .call-action-btn.accept{border-color:var(--seeding-color);color:var(--seeding-color);background:rgba(76,175,80,0.2);box-shadow:0 0 25px rgba(76,175,80,0.3)}
         .call-action-btn.reject{border-color:var(--danger);color:var(--danger);background:rgba(244,67,54,0.2);box-shadow:0 0 25px rgba(244,67,54,0.3)}
         .call-action-btn:active{transform:scale(0.8);filter:brightness(1.5)}
@@ -306,7 +295,7 @@
     <button class="header-btn" id="btn-voice-input" style="flex-shrink:0;position:relative;"><img src="assets/icons/03icon.png" alt="voice"></button>
     <div class="bow-button" id="send-btn"><img src="assets/icons/02icon.png" alt="Отправить"></div>
 </div>
-<div id="emoji-panel" style="display:none;position:fixed;bottom:55px;left:0;width:100%;background:rgba(var(--bg-primary-rgb),0.9);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-top:1px solid rgba(var(--accent-rgb),0.2);z-index:50;padding:8px;max-height:180px;overflow-y:auto;"><div id="emoji-grid" style="display:grid;grid-template-columns:repeat(8,1fr);gap:6px;text-align:center;"></div></div>
+<div id="emoji-panel" style="display:none;position:fixed;bottom:55px;left:0;width:100%;background:rgba(var(--bg-primary-rgb),0.92);border-top:1px solid rgba(var(--accent-rgb),0.2);z-index:50;padding:8px;max-height:180px;overflow-y:auto;"><div id="emoji-grid" style="display:grid;grid-template-columns:repeat(8,1fr);gap:6px;text-align:center;"></div></div>
 
 <div class="overlay" id="overlay"></div>
 <div class="avatar-selector" id="avatar-selector"><p>🏹 Выбери лучника 🏹</p><div id="avatar-list"></div></div>
