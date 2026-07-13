@@ -145,7 +145,71 @@ function addContact(c) { if (!contacts.find(x => x.peerId === c.peerId)) { conta
 
 const themes = [{ id: 'forest', name: 'Лес' }, { id: 'sunset', name: 'Закат' }, { id: 'ocean', name: 'Океан' }, { id: 'rose', name: 'Роза' }, { id: 'amber', name: 'Янтарь' }, { id: 'mint', name: 'Мята' }, { id: 'lavender', name: 'Лаванда' }, { id: 'cherry', name: 'Вишня' }, { id: 'emerald', name: 'Изумруд' }, { id: 'slate', name: 'Сланец' }, { id: 'coral', name: 'Коралл' }, { id: 'plum', name: 'Слива' }];
 function applyTheme(id) { document.documentElement.setAttribute('data-theme', id); try { localStorage.setItem('robinhood_theme', id); } catch (e) {} const tn = document.getElementById('theme-name'); if (tn) tn.textContent = (themes.find(t => t.id === id) || themes[0]).name; }
-function generateRandomTheme() { const hue = Math.floor(Math.random() * 360), sat = 40 + Math.floor(Math.random() * 50), bgLight = 5 + Math.floor(Math.random() * 15), bgDark = 2 + Math.floor(Math.random() * 8), id = 'random_' + Date.now(); const s = `[data-theme="${id}"]{--bg-primary:hsl(${hue},${sat}%,${bgLight}%);--bg-secondary:hsl(${hue},${sat-10}%,${bgDark}%);--accent:hsl(${(hue+30)%360},${sat+10}%,50%);--accent-light:hsl(${(hue+30)%360},${sat+20}%,70%);--text:hsl(${hue},20%,85%);--text-bright:hsl(${hue},25%,92%);--text-dim:hsl(${hue},15%,60%);--border:hsl(${(hue+30)%360},${sat+10}%,50%);--btn-bg:hsla(${(hue+30)%360},${sat+10}%,50%,0.1);--btn-border:hsla(${(hue+30)%360},${sat+10}%,50%,0.3);--btn-hover:hsla(${(hue+30)%360},${sat+10}%,50%,0.25);--sheet-bg:linear-gradient(145deg,hsl(${hue},${sat}%,${bgLight}%)0%,hsl(${hue},${sat-10}%,${bgDark}%)100%);--input-bg:hsla(${hue},${sat-10}%,${bgLight+2}%,0.9);--msg-bg:hsla(${hue},${sat-5}%,${bgLight+3}%,0.85);--msg-accent:hsl(${(hue+30)%360},${sat+10}%,50%);--robin-bg:hsla(${hue},${sat}%,${bgLight+8}%,0.9);--robin-accent:hsl(${(hue+30)%360},${sat+20}%,65%);--overlay-bg:rgba(0,0,0,0.6);--call-bg:linear-gradient(180deg,hsl(${hue},${sat}%,${bgLight}%)0%,hsl(${hue},${sat-10}%,${bgDark}%)100%);--call-btn-bg:hsla(${(hue+30)%360},${sat+10}%,50%,0.1);--call-btn-border:hsla(${(hue+30)%360},${sat+10}%,50%,0.3);--input-text:hsl(${hue},20%,85%)}`; let el = document.getElementById('gen-theme'); if (!el) { el = document.createElement('style'); el.id = 'gen-theme'; document.head.appendChild(el); } el.textContent = s; document.documentElement.setAttribute('data-theme', id); const tn = document.getElementById('theme-name'); if (tn) tn.textContent = 'Авто'; try { localStorage.setItem('robinhood_theme', id); } catch (e) {} }
+function generateRandomTheme() {
+    const hue = Math.floor(Math.random() * 360),
+          sat = 40 + Math.floor(Math.random() * 50),
+          bgLight = 5 + Math.floor(Math.random() * 15),
+          bgDark = 2 + Math.floor(Math.random() * 8),
+          id = 'random_' + Date.now();
+    
+    function hslToRgb(h, s, l) {
+        let r, g, b;
+        if (s === 0) { r = g = b = l; }
+        else {
+            const hue2rgb = (p, q, t) => {
+                if (t < 0) t += 1;
+                if (t > 1) t -= 1;
+                if (t < 1/6) return p + (q - p) * 6 * t;
+                if (t < 1/2) return q;
+                if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+                return p;
+            };
+            const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+            const p = 2 * l - q;
+            r = hue2rgb(p, q, h + 1/3);
+            g = hue2rgb(p, q, h);
+            b = hue2rgb(p, q, h - 1/3);
+        }
+        return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+    }
+    
+    const accentHue = (hue + 30) % 360;
+    const [bgR, bgG, bgB] = hslToRgb(hue / 360, sat / 100, bgLight / 100);
+    const [bg2R, bg2G, bg2B] = hslToRgb(hue / 360, (sat - 10) / 100, bgDark / 100);
+    const [accentR, accentG, accentB] = hslToRgb(accentHue / 360, (sat + 10) / 100, 50 / 100);
+    const [accentLR, accentLG, accentLB] = hslToRgb(accentHue / 360, (sat + 20) / 100, 70 / 100);
+    
+    const s = `[data-theme="${id}"]{
+        --bg-primary: hsl(${hue},${sat}%,${bgLight}%);
+        --bg-primary-rgb: ${bgR}, ${bgG}, ${bgB};
+        --bg-secondary: hsl(${hue},${sat-10}%,${bgDark}%);
+        --bg-secondary-rgb: ${bg2R}, ${bg2G}, ${bg2B};
+        --accent: hsl(${accentHue},${sat+10}%,50%);
+        --accent-rgb: ${accentR}, ${accentG}, ${accentB};
+        --accent-light: hsl(${accentHue},${sat+20}%,70%);
+        --accent-light-rgb: ${accentLR}, ${accentLG}, ${accentLB};
+        --text: hsl(${hue},20%,85%);
+        --text-bright: hsl(${hue},25%,92%);
+        --text-dim: hsl(${hue},15%,60%);
+        --border: hsl(${accentHue},${sat+10}%,50%);
+        --btn-bg: hsla(${accentHue},${sat+10}%,50%,0.1);
+        --btn-border: hsla(${accentHue},${sat+10}%,50%,0.3);
+        --btn-hover: hsla(${accentHue},${sat+10}%,50%,0.25);
+        --input-bg: hsla(${hue},${sat-10}%,${bgLight+2}%,0.9);
+        --input-text: hsl(${hue},20%,85%);
+        --robin-accent: hsl(${accentHue},${sat+20}%,65%);
+        --overlay-bg: rgba(0,0,0,0.6);
+        --call-bg: linear-gradient(180deg,hsl(${hue},${sat}%,${bgLight}%)0%,hsl(${hue},${sat-10}%,${bgDark}%)100%);
+    }`;
+    
+    let el = document.getElementById('gen-theme');
+    if (!el) { el = document.createElement('style'); el.id = 'gen-theme'; document.head.appendChild(el); }
+    el.textContent = s;
+    document.documentElement.setAttribute('data-theme', id);
+    const tn = document.getElementById('theme-name');
+    if (tn) tn.textContent = 'Авто';
+    try { localStorage.setItem('robinhood_theme', id); } catch (e) {}
+}
 
 function applyBackground(index) {
     const vbg = document.querySelector('.video-bg');
