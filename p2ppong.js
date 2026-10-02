@@ -3,9 +3,9 @@ const DEBUG = true;
 function log(msg, data) { if (DEBUG) console.log(`[P2PPong] ${msg}`, data || ''); }
 
 const CONFIG = {
-    BEACON_TTL: 300000,
+    BEACON_TTL: 600000,
     CHANNEL_TTL: 1800000,
-    POLL_MAX: 150,
+    POLL_MAX: 600,
     MSG_POLL_INTERVAL: 3000,
     WEBRTC_POLL_INTERVAL: 5000,
     HOUSEKEEP_INTERVAL: 30000,
@@ -249,7 +249,7 @@ const P2PPong = {
     async _dhRatchetStep(ch) { if (!ch?.rootKey||!ch.dhKeyPair||!ch.dhRemotePubKey) return null; const r = await workerDHRatchetStep(ch.rootKey,ch.dhKeyPair.privateKey,ch.dhRemotePubKey); ch.rootKey=r.newRootKey; ch.dhKeyPair={publicKey:r.newPubKey,privateKey:r.newPrivKey}; ch.sendKey=r.newSendKey; ch.sendIndex=0; ch.recvKey=r.newRecvKey; ch.recvIndex=0; ch.dhSendCount=0; ch.oldRecvKeys=[]; return r; },
     async _dhRatchetReceive(ch, pk) { if (!ch?.rootKey||!ch.dhKeyPair) return null; ch.dhRemotePubKey=pk; const r = await workerDHRatchetReceive(ch.rootKey,ch.dhKeyPair.privateKey,pk); ch.rootKey=r.newRootKey; ch.recvKey=r.newRecvKey; ch.recvIndex=0; ch.sendKey=r.newSendKey; ch.sendIndex=0; ch.dhRecvCount=0; ch.oldRecvKeys=[]; return r; },
 
-    _startCodePoll() { this._stopCodePoll(); this._codePollActive=true; const me=this; let n=0; (function p(){ if (!me._codePollActive||!me._beaconId||n>=120) return; if (Object.keys(me._channels).length>0) { me._stopCodePoll(); return; } n++; me._get('/beacon?key=code_'+me._beaconId).then(d=>{ if (d?.packet) { me._stopCodePoll(); me._handleIn(d.packet); } else me._codePollTimer=setTimeout(p,1000); }).catch(()=>{ me._codePollTimer=setTimeout(p,1000); }); })(); },
+    _startCodePoll() { this._stopCodePoll(); this._codePollActive=true; const me=this; let n=0; (function p(){ if (!me._codePollActive||!me._beaconId||n>=600) return; if (Object.keys(me._channels).length>0) { me._stopCodePoll(); return; } n++; me._get('/beacon?key=code_'+me._beaconId).then(d=>{ if (d?.packet) { me._stopCodePoll(); me._handleIn(d.packet); } else me._codePollTimer=setTimeout(p,1000); }).catch(()=>{ me._codePollTimer=setTimeout(p,1000); }); })(); },
     _stopCodePoll() { this._codePollActive=false; if (this._codePollTimer) { clearTimeout(this._codePollTimer); this._codePollTimer=null; } },
 
     async _postWithRetry(path, body, n=0) { if (n>=CONFIG.MAX_RETRIES) { await this._pickServer(); return this._postWithRetry(path,body,0); } const s=this._signalServer||this._signalServers[0]; try { const r=await fetch(s.url+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(5000)}); if (r.ok) return r.json(); if (r.status===429) { await new Promise(r=>setTimeout(r,10000)); return this._postWithRetry(path,body,n+1); } } catch(e) { this._serverHealth[s.url]={healthy:false,failed:true,lastCheck:Date.now()}; await this._pickServer(); return this._postWithRetry(path,body,n+1); } return null; },
